@@ -50,8 +50,8 @@ namespace OpenSim.Framework.Capabilities
 
     public class Caps
     {
-//        private static readonly ILog m_log =
-//            LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly ILog m_log =
+            LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private string m_httpListenerHostName;
         private uint m_httpListenPort;
@@ -144,7 +144,7 @@ namespace OpenSim.Framework.Capabilities
         public void RegisterHandler(string capName, IRequestHandler handler)
         {
             m_capsHandlers[capName] = handler;
-            //m_log.DebugFormat("[CAPS]: Registering handler for \"{0}\": path {1}", capName, handler.Path);
+            m_log.InfoFormat("[CAPS]: Registering handler for \"{0}\": path {1}", capName, handler.Path);
         }
 
         /// <summary>
