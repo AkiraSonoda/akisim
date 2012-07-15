@@ -119,6 +119,8 @@ namespace OpenSim.Region.CoreModules.Framework
                 // Hence this return here.
                 //return;
             }
+			
+			m_log.InfoFormat("[CapabilitiesModule] add CAPS {0}", capsObjectPath);
 
             Caps caps = new Caps(MainServer.Instance, m_scene.RegionInfo.ExternalHostName,
                     (MainServer.Instance == null) ? 0: MainServer.Instance.Port,
