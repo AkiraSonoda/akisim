@@ -2208,13 +2208,17 @@ namespace OpenSim.Region.Framework.Scenes
 
                     //Quaternion result = (sitTargetOrient * vq) * nq;
 
-					// Akira Sonoda: Solution provided by Ubit Umarov
-					if (part.CreationDate > 1320537600) // 06/11/2011 0:0:0
-					    m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
-					else
-					    m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
+					// SitTarget Compatibility Workaround 
+					if (m_scene.m_useWrongSitTarget) {
+						if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
+					    	m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
+						} else {
+					    	m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
+						}
+					} else {
+						m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
+					}
 
-                    // m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
                     Rotation = sitTargetOrient;
                     ParentPosition = part.AbsolutePosition;
                 }
