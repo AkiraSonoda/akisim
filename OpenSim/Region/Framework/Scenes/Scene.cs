@@ -288,6 +288,12 @@ namespace OpenSim.Region.Framework.Scenes
         private bool m_generateMaptiles;
         private bool m_useBackup = true;
 
+		// In November 2011 a bug concerning the SitTarget was fixed.
+		// This caused huge headache among existing Sim Oweners who had
+		// to change their furniture etc. This workaround if enabled calculates
+		// the "wrong" SitTarget for furniture created before Nov 2011
+		public bool m_useWrongSitTarget = false;
+
         #endregion Fields
 
         #region Properties
@@ -803,6 +809,8 @@ namespace OpenSim.Region.Framework.Scenes
                         m_BannedViewers.Add(viewer.Trim().ToLower());
                     }
                 }
+
+				m_useWrongSitTarget = startupConfig.GetBoolean("UseWrongSitTarget", m_useWrongSitTarget);
 
                 MinFrameTime              = startupConfig.GetFloat( "MinFrameTime",                      MinFrameTime);
                 m_update_backup           = startupConfig.GetInt(   "UpdateStorageEveryNFrames",         m_update_backup);
