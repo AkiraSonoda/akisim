@@ -496,15 +496,24 @@ namespace OpenSim.Region.Framework.Scenes
         public delegate void RegionHeartbeatEnd(Scene scene);
         public event RegionHeartbeatEnd OnRegionHeartbeatEnd;
 
-        public delegate void LoginsEnabled(string regionName);
-
         /// <summary>
         /// This should only fire in all circumstances if the RegionReady module is active.
         /// </summary>
         /// <remarks>
         /// TODO: Fire this even when the RegionReady module is not active.
         /// </remarks>
+        public delegate void LoginsEnabled(IScene scene);
         public event LoginsEnabled OnLoginsEnabled;
+
+        /// <summary>
+        /// Fired when a region is considered ready for use.
+        /// </summary>
+        /// <remarks>
+        /// A region is considered ready when startup operations such as loading of scripts already on the region
+        /// have been completed.
+        /// </remarks>
+        public delegate void RegionReady(IScene scene);
+        public event RegionReady OnRegionReady;
 
         public delegate void PrimsLoaded(Scene s);
         public event PrimsLoaded OnPrimsLoaded;
@@ -2477,21 +2486,42 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public void TriggerLoginsEnabled (string regionName)
+        public void TriggerLoginsEnabled(IScene scene)
         {
             LoginsEnabled handler = OnLoginsEnabled;
 
-            if ( handler != null)
+            if (handler != null)
             {
                 foreach (LoginsEnabled d in handler.GetInvocationList())
                 {
                     try
                     {
-                        d(regionName);
+                        d(scene);
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("[EVENT MANAGER]: Delegate for LoginsEnabled failed - continuing {0} - {1}",
+                        m_log.ErrorFormat("[EVENT MANAGER]: Delegate for OnLoginsEnabled failed - continuing {0} - {1}",
+                            e.Message, e.StackTrace);
+                    }
+                }
+            }
+        }
+
+        public void TriggerRegionReady(IScene scene)
+        {
+            RegionReady handler = OnRegionReady;
+
+            if (handler != null)
+            {
+                foreach (RegionReady d in handler.GetInvocationList())
+                {
+                    try
+                    {
+                        d(scene);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat("[EVENT MANAGER]: Delegate for OnRegionReady failed - continuing {0} - {1}",
                             e.Message, e.StackTrace);
                     }
                 }
