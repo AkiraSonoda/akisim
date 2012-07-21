@@ -128,9 +128,10 @@ namespace OpenSim.Region.Framework.Scenes
         // root agents when ACL denies access to root agent
         public bool m_strictAccessControl = true;
         public int MaxUndoCount = 5;
+
         // Using this for RegionReady module to prevent LoginsDisabled from changing under our feet;
         public bool LoginLock = false;
-        public bool LoginsDisabled = true;
+
         public bool StartDisabled = false;
         public bool LoadingPrims;
         public IXfer XferManager;
@@ -707,6 +708,8 @@ namespace OpenSim.Region.Framework.Scenes
             if (m_config.Configs["Startup"] != null)
             {
                 IConfig startupConfig = m_config.Configs["Startup"];
+
+                StartDisabled = startupConfig.GetBoolean("StartDisabled", false);
 
                 m_defaultDrawDistance = startupConfig.GetFloat("DefaultDrawDistance", m_defaultDrawDistance);
                 m_useBackup = startupConfig.GetBoolean("UseSceneBackup", m_useBackup);
@@ -1484,7 +1487,7 @@ namespace OpenSim.Region.Framework.Scenes
                     //    landMS = Util.EnvironmentTickCountSubtract(ldMS);
                     //}
     
-                    if (LoginsDisabled && Frame == 20)
+                    if (!LoginsEnabled && Frame == 20)
                     {
     //                    m_log.DebugFormat("{0} {1} {2}", LoginsDisabled, m_sceneGraph.GetActiveScriptsCount(), LoginLock);
     
@@ -1492,35 +1495,34 @@ namespace OpenSim.Region.Framework.Scenes
                         // this is a rare case where we know we have just went through a long cycle of heap
                         // allocations, and there is no more work to be done until someone logs in
                         GC.Collect();
-    
-                        IConfig startupConfig = m_config.Configs["Startup"];
-                        if (startupConfig == null || !startupConfig.GetBoolean("StartDisabled", false))
+
+                        if (!LoginLock)
                         {
-                            if (LoginLock)
-                            {
-                                // This handles a case of a region having no scripts for the RegionReady module
-                                if (m_sceneGraph.GetActiveScriptsCount() == 0)
-                                {
-                                    // XXX: need to be able to tell these have changed in RegionReady, since it will not
-                                    // detect a scenario where the region has no scripts - it's listening to the
-                                    // script compile queue.
-                                    EventManager.TriggerLoginsEnabled(this);
-                                }
-                            }
-                            else
+                            if (!StartDisabled)
                             {
                                 m_log.InfoFormat("[REGION]: Enabling logins for {0}", RegionInfo.RegionName);
-                                LoginsDisabled = false;
-                                EventManager.TriggerLoginsEnabled(this);
-                                EventManager.TriggerRegionReady(this);
+                                LoginsEnabled = true;
                             }
 
-                            m_sceneGridService.InformNeighborsThatRegionisUp(RequestModuleInterface<INeighbourService>(), RegionInfo);
+                            m_sceneGridService.InformNeighborsThatRegionisUp(
+                                RequestModuleInterface<INeighbourService>(), RegionInfo);
+
+                            // Region ready should always be triggered whether logins are immediately enabled or not.
+                            EventManager.TriggerRegionReady(this);
                         }
                         else
                         {
-                            StartDisabled = true;
-                            LoginsDisabled = true;
+                            // This handles a case of a region having no scripts for the RegionReady module
+                            if (m_sceneGraph.GetActiveScriptsCount() == 0)
+                            {
+                                // In this case, we leave it to the IRegionReadyModule to enable logins
+                               
+                                // LoginLock can currently only be set by a region module implementation.
+                                // If somehow this hasn't been done then the quickest way to bugfix is to see the
+                                // NullReferenceException
+                                IRegionReadyModule rrm = RequestModuleInterface<IRegionReadyModule>();
+                                rrm.TriggerRegionReady(this);
+                            }
                         }
                     }
                 }
@@ -3466,7 +3468,7 @@ namespace OpenSim.Region.Framework.Scenes
                 agent.startpos
             );
 
-            if (LoginsDisabled)
+            if (!LoginsEnabled)
             {
                 reason = "Logins Disabled";
                 return false;
@@ -3523,8 +3525,8 @@ namespace OpenSim.Region.Framework.Scenes
                 // We have a zombie from a crashed session. 
                 // Or the same user is trying to be root twice here, won't work.
                 // Kill it.
-                m_log.DebugFormat(
-                    "[SCENE]: Zombie scene presence detected for {0} {1} in {2}",
+                m_log.WarnFormat(
+                    "[SCENE]: Existing root scene presence detected for {0} {1} in {2} when connecting.  Removing existing presence.",
                     sp.Name, sp.UUID, RegionInfo.RegionName);
 
                 sp.ControllingClient.Close();
@@ -4473,6 +4475,23 @@ namespace OpenSim.Region.Framework.Scenes
         public ScenePresence GetScenePresence(uint localID)
         {
             return m_sceneGraph.GetScenePresence(localID);
+        }
+
+        /// <summary>
+        /// Gets all the scene presences in this scene.
+        /// </summary>
+        /// <remarks>
+        /// This method will return both root and child scene presences.
+        ///
+        /// Consider using ForEachScenePresence() or ForEachRootScenePresence() if possible since these will not
+        /// involving creating a new List object.
+        /// </remarks>
+        /// <returns>
+        /// A list of the scene presences.  Adding or removing from the list will not affect the presences in the scene.
+        /// </returns>
+        public List<ScenePresence> GetScenePresences()
+        {
+            return new List<ScenePresence>(m_sceneGraph.GetScenePresences());
         }
 
         /// <summary>
