@@ -409,6 +409,10 @@ namespace OpenSim
             m_console.Commands.AddCommand("General", false, "modules unload",
                                           "modules unload <name>",
                                           "Unload a module", HandleModules);
+
+			m_console.Commands.AddCommand("General", false, "show kpi",
+                                          "show kpi",
+                                          "prints all simulator KPI into the log. Useful for automatic monitoring", HandleShowKPI);
         }
 
         public override void ShutdownSpecific()
@@ -933,6 +937,22 @@ namespace OpenSim
                     break;
             }
         }
+
+
+        /// <summary>
+        /// Prints Base Simulator KPI into the log
+        /// </summary>
+		public override void HandleShowKPI(string mod, string[] cmd) {
+
+            // Prints info from BaseOpenSimServer
+			base.HandleShowKPI(mod, cmd);
+
+			m_log.Info("Showing OpenSim KPI:");
+
+		}
+
+
+
 
         // see BaseOpenSimServer
         /// <summary>

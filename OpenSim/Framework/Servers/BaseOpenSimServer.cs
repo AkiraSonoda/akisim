@@ -395,6 +395,22 @@ namespace OpenSim.Framework.Servers
             }
         }
 
+
+
+        /// <summary>
+        /// Prints Base Simulator KPI into the log
+        /// </summary>
+		public virtual void HandleShowKPI(string mod, string[] cmd) {
+			m_log.Info("Showing BaseOpenSimServer KPI:");
+			m_log.Info( GetVersionText() );
+			m_log.Info( "Startup directory: " + m_startupDirectory );
+            if (m_stats != null) {
+            	m_log.Info( m_stats.Report() );
+			}
+
+
+		}
+
         public virtual void HandleShow(string module, string[] cmd)
         {
             List<string> args = new List<string>(cmd);
