@@ -40,6 +40,7 @@ using OpenMetaverse;
 using OpenMetaverse.Packets;
 using OpenMetaverse.Imaging;
 using OpenSim.Framework;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Services.Interfaces;
 using OpenSim.Framework.Communications;
 using OpenSim.Framework.Console;
@@ -1507,8 +1508,8 @@ namespace OpenSim.Region.Framework.Scenes
                             m_sceneGridService.InformNeighborsThatRegionisUp(
                                 RequestModuleInterface<INeighbourService>(), RegionInfo);
 
-                            // Region ready should always be triggered whether logins are immediately enabled or not.
-                            EventManager.TriggerRegionReady(this);
+                            // Region ready should always be set
+                            Ready = true;
                         }
                         else
                         {

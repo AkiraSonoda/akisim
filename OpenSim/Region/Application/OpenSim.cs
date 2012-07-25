@@ -40,7 +40,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers;
-using OpenSim.Framework.Statistics;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
@@ -200,9 +200,9 @@ namespace OpenSim
             PrintFileToConsole("startuplogo.txt");
 
             // For now, start at the 'root' level by default
-            if (m_sceneManager.Scenes.Count == 1) // If there is only one region, select it
+            if (SceneManager.Scenes.Count == 1) // If there is only one region, select it
                 ChangeSelectedRegion("region",
-                                     new string[] {"change", "region", m_sceneManager.Scenes[0].RegionInfo.RegionName});
+                                     new string[] {"change", "region", SceneManager.Scenes[0].RegionInfo.RegionName});
             else
                 ChangeSelectedRegion("region", new string[] {"change", "region", "root"});
 
@@ -465,7 +465,7 @@ namespace OpenSim
             if (cmdparams.Length > 4)
                 alert = String.Format("\n{0}\n", String.Join(" ", cmdparams, 4, cmdparams.Length - 4));
 
-            IList agents = m_sceneManager.GetCurrentSceneAvatars();
+            IList agents = SceneManager.GetCurrentSceneAvatars();
 
             foreach (ScenePresence presence in agents)
             {
@@ -546,7 +546,7 @@ namespace OpenSim
         private void HandleForceUpdate(string module, string[] args)
         {
             MainConsole.Instance.Output("Updating all clients");
-            m_sceneManager.ForceCurrentSceneClientUpdate();
+            SceneManager.ForceCurrentSceneClientUpdate();
         }
 
         /// <summary>
@@ -558,7 +558,7 @@ namespace OpenSim
         {
             if (args.Length == 6)
             {
-                m_sceneManager.HandleEditCommandOnCurrentScene(args);
+                SceneManager.HandleEditCommandOnCurrentScene(args);
             }
             else
             {
@@ -769,7 +769,7 @@ namespace OpenSim
                     case "load":
                         if (cmdparams.Length > 1)
                         {
-                            foreach (Scene s in new ArrayList(m_sceneManager.Scenes))
+                            foreach (Scene s in new ArrayList(SceneManager.Scenes))
                             {
                                 MainConsole.Instance.Output(String.Format("Loading module: {0}", cmdparams[1]));
                                 m_moduleLoader.LoadRegionModules(cmdparams[1], s);
@@ -807,14 +807,14 @@ namespace OpenSim
 
                 case "backup":
                     MainConsole.Instance.Output("Triggering save of pending object updates to persistent store");
-                    m_sceneManager.BackupCurrentScene();
+                    SceneManager.BackupCurrentScene();
                     break;
 
                 case "remove-region":
                     string regRemoveName = CombineParams(cmdparams, 0);
 
                     Scene removeScene;
-                    if (m_sceneManager.TryGetScene(regRemoveName, out removeScene))
+                    if (SceneManager.TryGetScene(regRemoveName, out removeScene))
                         RemoveRegion(removeScene, false);
                     else
                         MainConsole.Instance.Output("No region with that name");
@@ -824,14 +824,14 @@ namespace OpenSim
                     string regDeleteName = CombineParams(cmdparams, 0);
 
                     Scene killScene;
-                    if (m_sceneManager.TryGetScene(regDeleteName, out killScene))
+                    if (SceneManager.TryGetScene(regDeleteName, out killScene))
                         RemoveRegion(killScene, true);
                     else
                         MainConsole.Instance.Output("no region with that name");
                     break;
 
                 case "restart":
-                    m_sceneManager.RestartCurrentScene();
+                    SceneManager.RestartCurrentScene();
                     break;
             }
         }
@@ -846,7 +846,7 @@ namespace OpenSim
             {
                 string newRegionName = CombineParams(cmdparams, 2);
 
-                if (!m_sceneManager.TrySetCurrentScene(newRegionName))
+                if (!SceneManager.TrySetCurrentScene(newRegionName))
                     MainConsole.Instance.Output(String.Format("Couldn't select region {0}", newRegionName));
             }
             else
@@ -854,7 +854,7 @@ namespace OpenSim
                 MainConsole.Instance.Output("Usage: change region <region name>");
             }
 
-            string regionName = (m_sceneManager.CurrentScene == null ? "root" : m_sceneManager.CurrentScene.RegionInfo.RegionName);
+            string regionName = (SceneManager.CurrentScene == null ? "root" : SceneManager.CurrentScene.RegionInfo.RegionName);
             MainConsole.Instance.Output(String.Format("Currently selected region is {0}", regionName));
 
 //            m_log.DebugFormat("Original prompt is {0}", m_consolePrompt);
@@ -872,7 +872,7 @@ namespace OpenSim
             });
 
             m_console.DefaultPrompt = prompt;
-            m_console.ConsoleScene = m_sceneManager.CurrentScene;
+            m_console.ConsoleScene = SceneManager.CurrentScene;
         }
 
         /// <summary>
@@ -896,7 +896,7 @@ namespace OpenSim
                         int newDebug;
                         if (int.TryParse(args[2], out newDebug))
                         {
-                            m_sceneManager.SetDebugPacketLevelOnCurrentScene(newDebug, name);
+                            SceneManager.SetDebugPacketLevelOnCurrentScene(newDebug, name);
                             // We provide user information elsewhere if any clients had their debug level set.
 //                            MainConsole.Instance.OutputFormat("Debug packet level set to {0}", newDebug);
                         }
@@ -911,7 +911,7 @@ namespace OpenSim
                 case "scene":
                     if (args.Length == 4)
                     {
-                        if (m_sceneManager.CurrentScene == null)
+                        if (SceneManager.CurrentScene == null)
                         {
                             MainConsole.Instance.Output("Please use 'change region <regioname>' first");
                         }
@@ -919,7 +919,7 @@ namespace OpenSim
                         {
                             string key = args[2];
                             string value = args[3];
-                            m_sceneManager.CurrentScene.SetSceneCoreDebug(
+                            SceneManager.CurrentScene.SetSceneCoreDebug(
                                 new Dictionary<string, string>() { { key, value } });
 
                             MainConsole.Instance.OutputFormat("Set debug scene {0} = {1}", key, value);
@@ -974,10 +974,10 @@ namespace OpenSim
                     IList agents;
                     if (showParams.Length > 1 && showParams[1] == "full")
                     {
-                        agents = m_sceneManager.GetCurrentScenePresences();
+                        agents = SceneManager.GetCurrentScenePresences();
                     } else
                     {
-                        agents = m_sceneManager.GetCurrentSceneAvatars();
+                        agents = SceneManager.GetCurrentSceneAvatars();
                     }
                 
                     MainConsole.Instance.Output(String.Format("\nAgents connected: {0}\n", agents.Count));
@@ -1057,7 +1057,7 @@ namespace OpenSim
                         MainConsole.Instance.Output("Shared Module: " + module.Name);
                     }
 
-                    m_sceneManager.ForEachScene(
+                    SceneManager.ForEachScene(
                         delegate(Scene scene) {
                         m_log.Error("The currently loaded modules in " + scene.RegionInfo.RegionName + " are:");
                         foreach (IRegionModule module in scene.Modules.Values)
@@ -1070,7 +1070,7 @@ namespace OpenSim
                     }
                     );
 
-                    m_sceneManager.ForEachScene(
+                    SceneManager.ForEachScene(
                         delegate(Scene scene) {
                         MainConsole.Instance.Output("Loaded new region modules in" + scene.RegionInfo.RegionName + " are:");
                         foreach (IRegionModuleBase module in scene.RegionModules.Values)
@@ -1086,7 +1086,7 @@ namespace OpenSim
                     break;
 
                 case "regions":
-                    m_sceneManager.ForEachScene(
+                    SceneManager.ForEachScene(
                         delegate(Scene scene)
                             {
                                 MainConsole.Instance.Output(String.Format(
@@ -1100,7 +1100,7 @@ namespace OpenSim
                     break;
 
                 case "ratings":
-                    m_sceneManager.ForEachScene(
+                    SceneManager.ForEachScene(
                     delegate(Scene scene)
                     {
                         string rating = "";
@@ -1135,7 +1135,7 @@ namespace OpenSim
             cdt.AddColumn("IP", 16);
             cdt.AddColumn("Viewer Name", 24);
 
-            m_sceneManager.ForEachScene(
+            SceneManager.ForEachScene(
                 s =>
                 {
                     foreach (AgentCircuitData aCircuit in s.AuthenticateHandler.GetAgentCircuits().Values)
@@ -1160,7 +1160,7 @@ namespace OpenSim
             cdt.AddColumn("Endpoint", 23);
             cdt.AddColumn("Active?", 7);
 
-            m_sceneManager.ForEachScene(
+            SceneManager.ForEachScene(
                 s => s.ForEachClient(
                     c => cdt.AddRow(
                         s.Name,
@@ -1181,11 +1181,11 @@ namespace OpenSim
         {
             if (cmdparams.Length > 5)
             {
-                m_sceneManager.SaveNamedPrimsToXml2(cmdparams[3], cmdparams[4]);
+                SceneManager.SaveNamedPrimsToXml2(cmdparams[3], cmdparams[4]);
             }
             else
             {
-                m_sceneManager.SaveNamedPrimsToXml2("Primitive", DEFAULT_PRIM_BACKUP_FILENAME);
+                SceneManager.SaveNamedPrimsToXml2("Primitive", DEFAULT_PRIM_BACKUP_FILENAME);
             }
         }
 
@@ -1200,11 +1200,11 @@ namespace OpenSim
 
             if (cmdparams.Length > 0)
             {
-                m_sceneManager.SaveCurrentSceneToXml(cmdparams[2]);
+                SceneManager.SaveCurrentSceneToXml(cmdparams[2]);
             }
             else
             {
-                m_sceneManager.SaveCurrentSceneToXml(DEFAULT_PRIM_BACKUP_FILENAME);
+                SceneManager.SaveCurrentSceneToXml(DEFAULT_PRIM_BACKUP_FILENAME);
             }
         }
 
@@ -1241,13 +1241,13 @@ namespace OpenSim
                         MainConsole.Instance.Output(String.Format("loadOffsets <X,Y,Z> = <{0},{1},{2}>",loadOffset.X,loadOffset.Y,loadOffset.Z));
                     }
                 }
-                m_sceneManager.LoadCurrentSceneFromXml(cmdparams[2], generateNewIDS, loadOffset);
+                SceneManager.LoadCurrentSceneFromXml(cmdparams[2], generateNewIDS, loadOffset);
             }
             else
             {
                 try
                 {
-                    m_sceneManager.LoadCurrentSceneFromXml(DEFAULT_PRIM_BACKUP_FILENAME, false, loadOffset);
+                    SceneManager.LoadCurrentSceneFromXml(DEFAULT_PRIM_BACKUP_FILENAME, false, loadOffset);
                 }
                 catch (FileNotFoundException)
                 {
@@ -1264,11 +1264,11 @@ namespace OpenSim
         {
             if (cmdparams.Length > 2)
             {
-                m_sceneManager.SaveCurrentSceneToXml2(cmdparams[2]);
+                SceneManager.SaveCurrentSceneToXml2(cmdparams[2]);
             }
             else
             {
-                m_sceneManager.SaveCurrentSceneToXml2(DEFAULT_PRIM_BACKUP_FILENAME);
+                SceneManager.SaveCurrentSceneToXml2(DEFAULT_PRIM_BACKUP_FILENAME);
             }
         }
 
@@ -1283,7 +1283,7 @@ namespace OpenSim
             {
                 try
                 {
-                    m_sceneManager.LoadCurrentSceneFromXml2(cmdparams[2]);
+                    SceneManager.LoadCurrentSceneFromXml2(cmdparams[2]);
                 }
                 catch (FileNotFoundException)
                 {
@@ -1294,7 +1294,7 @@ namespace OpenSim
             {
                 try
                 {
-                    m_sceneManager.LoadCurrentSceneFromXml2(DEFAULT_PRIM_BACKUP_FILENAME);
+                    SceneManager.LoadCurrentSceneFromXml2(DEFAULT_PRIM_BACKUP_FILENAME);
                 }
                 catch (FileNotFoundException)
                 {
@@ -1311,7 +1311,7 @@ namespace OpenSim
         {
             try
             {
-                m_sceneManager.LoadArchiveToCurrentScene(cmdparams);
+                SceneManager.LoadArchiveToCurrentScene(cmdparams);
             }
             catch (Exception e)
             {
@@ -1325,7 +1325,7 @@ namespace OpenSim
         /// <param name="cmdparams"></param>
         protected void SaveOar(string module, string[] cmdparams)
         {
-            m_sceneManager.SaveCurrentSceneToArchive(cmdparams);
+            SceneManager.SaveCurrentSceneToArchive(cmdparams);
         }
 
         private static string CombineParams(string[] commandParams, int pos)
