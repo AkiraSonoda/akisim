@@ -447,6 +447,15 @@ Asset service request failures: {3}" + Environment.NewLine,
         }
 
         /// <summary>
+        /// TODO Report back collected statistical information in a compact form.
+        /// </summary>
+        /// <returns></returns>
+        public string CompactReport()
+        {
+            return m_statsProvider.GetStats();
+        }
+
+        /// <summary>
         /// Report back collected statistical information.
         /// </summary>
         /// <returns></returns>
