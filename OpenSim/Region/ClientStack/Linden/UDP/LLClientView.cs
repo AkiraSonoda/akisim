@@ -12018,7 +12018,19 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
         }
 
-        public string Report()
+		/// <summary>
+		/// TODO Report back collected statistical information in a compact way. 
+		/// </summary>
+		/// <returns>
+		/// 
+		/// </returns>
+        public string CompactReport()
+        {
+            return m_udpClient.GetStats();
+        }
+
+
+		public string Report()
         {
             return m_udpClient.GetStats();
         }
