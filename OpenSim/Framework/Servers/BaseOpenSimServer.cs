@@ -407,6 +407,7 @@ namespace OpenSim.Framework.Servers
             if (m_stats != null) {
             	m_log.Info( m_stats.Report() );
 			}
+			m_log.Info("Number of Threads: " + System.Diagnostics.Process.GetCurrentProcess().Threads.Count);
 
 
 		}

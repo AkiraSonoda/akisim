@@ -32,7 +32,13 @@ namespace OpenSim.Framework.Statistics
     /// </summary>
     public interface IStatsCollector
     {
-        /// <summary>
+		/// <summary>
+        /// Report back collected statistical information in a compact way.
+        /// </summary>
+        /// <returns></returns>
+        string CompactReport();
+
+		/// <summary>
         /// Report back collected statistical information.
         /// </summary>
         /// <returns></returns>
