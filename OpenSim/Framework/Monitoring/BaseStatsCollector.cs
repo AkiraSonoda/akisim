@@ -38,19 +38,19 @@ namespace OpenSim.Framework.Monitoring
     /// </summary>
     public class BaseStatsCollector : IStatsCollector
     {
-        public virtual string CompactReport()
-        {
+        public virtual string CompactReport() {
             StringBuilder sb = new StringBuilder(Environment.NewLine);
             sb.Append(
-                string.Format(
                     "[MEMORY] Allocated to OpenSim objects: {0} MB\n",
-                    Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0)));
+                    Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
+            sb.AppendFormat(
+                    "[MEMORY] OpenSim object memory churn : {0} MB/s\n",
+                    Math.Round((MemoryWatchdog.AverageMemoryChurn * 1000) / 1024.0 / 1024, 3));
             sb.Append(
-                string.Format(
                     "[MEMORY] Process memory              : {0} MB\n",
-                    Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0)));
+                    Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));
 
-			//TODO Implement GC Counters.
+			// TODO Implement GC Counters.
             return sb.ToString();
         }
 
