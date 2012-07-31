@@ -405,7 +405,7 @@ namespace OpenSim.Framework.Servers
 			m_log.Info( GetVersionText() );
 			m_log.Info( "Startup directory: " + m_startupDirectory );
             if (m_stats != null) {
-            	m_log.Info( m_stats.CompactReport() );
+            	m_log.Info( m_stats.Report() );
 			}
 			m_log.Info("Number of Threads: " + System.Diagnostics.Process.GetCurrentProcess().Threads.Count);
 
