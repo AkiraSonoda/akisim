@@ -979,6 +979,9 @@ namespace OpenSim
 			
 			// Print Connection Info
 			PrintConnections();
+			// Print Circuit Info
+			PrintCircuits();
+			
 		}
 
         // see BaseOpenSimServer
@@ -1152,6 +1155,26 @@ namespace OpenSim
             }
         }
 
+        private void PrintCircuits() {
+			s_log.DebugFormat("[CIRCUITS] {0,-20} {1,-24} {2,-5} {3,-10} {4,-16} {5,-24}", 
+			                  "Region", "Avatar Name", "Type", "Code", "IP", "Viewer Name");
+
+            SceneManager.ForEachScene( 
+			    s => {
+                    foreach (AgentCircuitData aCircuit in s.AuthenticateHandler.GetAgentCircuits().Values)
+                        s_log.DebugFormat (
+                        	"[CIRCUITS] {0,-20} {1,-24} {2,-5} {3,-10} {4,-16} {5,-24}",
+                            s.Name,
+                            aCircuit.Name,
+                            aCircuit.child ? "child" : "root",
+                            aCircuit.circuitcode.ToString(),
+                            aCircuit.IPAddress.ToString(),
+                            aCircuit.Viewer);
+                }
+			);
+
+        }
+		
         private void HandleShowCircuits()
         {
             ConsoleDisplayTable cdt = new ConsoleDisplayTable();
