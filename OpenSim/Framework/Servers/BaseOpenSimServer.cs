@@ -336,6 +336,16 @@ namespace OpenSim.Framework.Servers
         /// Return a report about the uptime of this server
         /// </summary>
         /// <returns></returns>
+        protected void PrintUptimeReport() {
+            s_log.DebugFormat("[SIM] Time now is {0}", DateTime.Now);
+            s_log.DebugFormat("[SIM] Server has been running since {0}, {1}", m_startuptime.DayOfWeek, m_startuptime);
+            s_log.DebugFormat("[SIM] That is an elapsed time of {0}", DateTime.Now - m_startuptime);
+        }
+		
+        /// <summary>
+        /// Return a report about the uptime of this server
+        /// </summary>
+        /// <returns></returns>
         protected string GetUptimeReport()
         {
             StringBuilder sb = new StringBuilder(String.Format("Time now is {0}\n", DateTime.Now));
@@ -450,6 +460,7 @@ namespace OpenSim.Framework.Servers
 			s_log.Debug( "[SIM] Showing BaseOpenSimServer KPI:" );
 			s_log.Debug( "[SIM] " + GetVersionText() );
 			s_log.Debug( "[SIM] Startup directory: " + m_startupDirectory );
+			PrintUptimeReport();
             if (m_stats != null) {
             	m_stats.CompactReport();
 			}
