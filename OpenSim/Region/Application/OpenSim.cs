@@ -947,13 +947,37 @@ namespace OpenSim
 
             // Prints info from BaseOpenSimServer
 			base.HandleShowKPI(mod, cmd);
+			s_log.Debug("Showing OpenSim KPI:");
+			
+			// Printing AgentInfo 
+			
+			IList agents;
+            agents = SceneManager.GetCurrentScenePresences();
+            s_log.DebugFormat("[AGENTS] Agents connected: {0}", agents.Count);
+			s_log.DebugFormat("[AGENTS] {0,-16} {1,-16} {2,-37} {3,-11} {4,-16} {5,-30}", 
+			                  "Firstname", "Lastname", "Agent ID", "Root/Child", "Region", "Position");
 
-			s_log.Info("Showing OpenSim KPI:");
+			foreach (ScenePresence presence in agents) {
+        		RegionInfo regionInfo = presence.Scene.RegionInfo;
+               	string regionName;
+
+                if (regionInfo == null) {
+                	regionName = "Unresolvable";
+                } else {
+                    regionName = regionInfo.RegionName;
+                }
+
+                s_log.DebugFormat(
+                                "[AGENTS] {0,-16} {1,-16} {2,-37} {3,-11} {4,-16} {5,-30}",
+                                presence.Firstname,
+                                presence.Lastname,
+                                presence.UUID,
+                                presence.IsChildAgent ? "Child" : "Root",
+                                regionName,
+                                presence.AbsolutePosition.ToString());
+			}
 
 		}
-
-
-
 
         // see BaseOpenSimServer
         /// <summary>
