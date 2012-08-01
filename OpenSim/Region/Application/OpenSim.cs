@@ -982,6 +982,33 @@ namespace OpenSim
 			// Print Circuit Info
 			PrintCircuits();
 			
+			// Print HTTP Handler
+			s_log.DebugFormat("[HTTP HANDLER] * XMLRPC:");
+            foreach (String s in HttpServer.GetXmlRpcHandlerKeys()) {
+               s_log.DebugFormat("[XMLRPC HANDLER] {0}", s);
+			}
+
+            s_log.DebugFormat("[HTTP HANDLER] * HTTP:");
+            List<String> poll = HttpServer.GetPollServiceHandlerKeys();
+            foreach (String s in HttpServer.GetHTTPHandlerKeys()) { 
+            	s_log.DebugFormat("[HTTP HANDLER] {0} {1}", s, (poll.Contains(s) ? "(poll service)" : string.Empty));
+			}
+			
+            s_log.DebugFormat("[HTTP HANDLER] * Agent:");
+            foreach (String s in HttpServer.GetAgentHandlerKeys()) {
+                s_log.DebugFormat("[AGENT HANDLER] {0}", s);
+			}
+
+            s_log.DebugFormat("[HTTP HANDLER] * LLSD:");
+            foreach (String s in HttpServer.GetLLSDHandlerKeys()) {
+            	s_log.DebugFormat("[LLSD HANDLER] {0}", s);
+			}
+			
+            s_log.DebugFormat("[HTTP HANDLER] * StreamHandlers ({0}):", HttpServer.GetStreamHandlerKeys().Count);
+            foreach (String s in HttpServer.GetStreamHandlerKeys()) {
+                s_log.DebugFormat("[STREAM HANDLER] {0}", s);
+			}
+			
 		}
 
         // see BaseOpenSimServer
