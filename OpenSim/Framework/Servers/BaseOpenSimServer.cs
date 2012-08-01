@@ -240,6 +240,50 @@ namespace OpenSim.Framework.Servers
             m_log.Debug(sb);
         }
 
+		
+        /// <summary>
+        /// Print a report about the registered threads in this server into the SimStats Log
+        /// </summary>
+        protected void PrintThreadsReport()
+        {
+            // This should be a constant field.
+            string reportFormat = "[THREADS] {0,6}   {1,35}   {2,16}   {3,13}   {4,10}   {5,30}";
+
+            Watchdog.ThreadWatchdogInfo[] threads = Watchdog.GetThreadsInfo();
+
+            s_log.DebugFormat("[THREADS] threads are being tracked: {0}", threads.Length);
+
+            int timeNow = Environment.TickCount & Int32.MaxValue;
+
+            s_log.DebugFormat(reportFormat, "ID", "NAME", "LAST UPDATE (MS)", "LIFETIME (MS)", "PRIORITY", "STATE");
+
+            foreach (Watchdog.ThreadWatchdogInfo twi in threads)
+            {
+                Thread t = twi.Thread;
+                
+                s_log.DebugFormat(
+                    reportFormat,
+                    t.ManagedThreadId,
+                    t.Name,
+                    timeNow - twi.LastTick,
+                    timeNow - twi.FirstTick,
+                    t.Priority,
+                    t.ThreadState);
+
+            }
+
+
+            // For some reason mono 2.6.7 returns an empty threads set!  Not going to confuse people by reporting
+            // zero active threads.
+            int totalThreads = Process.GetCurrentProcess().Threads.Count;
+            if (totalThreads > 0)
+                s_log.DebugFormat("[THREADS] Total threads active: {0}", totalThreads);
+
+            s_log.Debug("[THREADS] Main threadpool (excluding script engine pools)");
+            Util.PrintThreadPoolReport();
+        }
+		
+		
         /// <summary>
         /// Get a report about the registered threads in this server.
         /// </summary>
@@ -403,14 +447,13 @@ namespace OpenSim.Framework.Servers
         /// Prints Base Simulator KPI into the log
         /// </summary>
 		public virtual void HandleShowKPI(string mod, string[] cmd) {
-			s_log.Debug("Showing BaseOpenSimServer KPI:");
-			s_log.Debug( GetVersionText() );
-			s_log.Debug( "Startup directory: " + m_startupDirectory );
+			s_log.Debug( "[SIM] Showing BaseOpenSimServer KPI:" );
+			s_log.Debug( "[SIM] " + GetVersionText() );
+			s_log.Debug( "[SIM] Startup directory: " + m_startupDirectory );
             if (m_stats != null) {
             	m_stats.CompactReport();
 			}
-			s_log.Debug("[THREADS] Number of Threads: " + System.Diagnostics.Process.GetCurrentProcess().Threads.Count);
-
+			PrintThreadsReport();
 
 		}
 

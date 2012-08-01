@@ -394,8 +394,7 @@ Asset service request failures: {3}" + Environment.NewLine,
         /// <returns></returns>
         public override void CompactReport() {
             s_log.DebugFormat(
-                    "[CONNECTION] Abnormal client thread terminations: {0}" + Environment.NewLine,
-                    abnormalClientThreadTerminations);
+                    "[CONNECTION] Abnormal client thread terminations: {0}", abnormalClientThreadTerminations);
 
             s_log.Debug("[FRAME] Dilatn  SimFPS  PhyFPS  AgntUp  RootAg  ChldAg  Prims   AtvPrm  AtvScr  ScrLPS");
             s_log.DebugFormat(

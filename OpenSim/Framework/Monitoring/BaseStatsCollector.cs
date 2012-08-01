@@ -43,13 +43,15 @@ namespace OpenSim.Framework.Monitoring
 		private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
 		
-        public virtual void CompactReport()
-        {
+        public virtual void CompactReport() {
             s_log.DebugFormat (
-                    "[MEMORY] Allocated to OpenSim objects: {0} MB\n",
+                    "[MEMORY] Allocated to OpenSim objects: {0} MB",
                     Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
             s_log.DebugFormat(
-                    "[MEMORY] Process memory              : {0} MB\n",
+                	"[MEMORY] OpenSim object memory churn : {0} MB/s",
+                	Math.Round((MemoryWatchdog.AverageMemoryChurn * 1000) / 1024.0 / 1024, 3));
+            s_log.DebugFormat(
+                    "[MEMORY] Process memory              : {0} MB",
                     Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));
 
 			//TODO Implement GC Counters.

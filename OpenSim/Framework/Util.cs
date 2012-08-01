@@ -78,6 +78,7 @@ namespace OpenSim.Framework
     public class Util
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
         private static uint nextXferID = 5000;
         private static Random randomClass = new Random();
@@ -1726,6 +1727,52 @@ namespace OpenSim.Framework
             }
 
             return sb.ToString();
+        }
+		
+        /// <summary>
+        /// Prints out a thread pool report to the SimStats Log.
+        /// </summary>
+        /// <returns></returns>
+        public static void PrintThreadPoolReport() {
+            string threadPoolUsed = null;
+            int maxThreads = 0;
+            int minThreads = 0;
+            int allocatedThreads = 0;
+            int inUseThreads = 0;
+            int waitingCallbacks = 0;
+            int completionPortThreads = 0;
+
+            if (FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool) {
+                threadPoolUsed = "SmartThreadPool";
+                maxThreads = m_ThreadPool.MaxThreads;
+                minThreads = m_ThreadPool.MinThreads;
+                inUseThreads = m_ThreadPool.InUseThreads;
+                allocatedThreads = m_ThreadPool.ActiveThreads;
+                waitingCallbacks = m_ThreadPool.WaitingCallbacks;
+            } else if (
+                FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem
+                    || FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem) {
+                threadPoolUsed = "BuiltInThreadPool";
+                ThreadPool.GetMaxThreads(out maxThreads, out completionPortThreads);
+                ThreadPool.GetMinThreads(out minThreads, out completionPortThreads);
+                int availableThreads;
+                ThreadPool.GetAvailableThreads(out availableThreads, out completionPortThreads);
+                inUseThreads = maxThreads - availableThreads;
+                allocatedThreads = -1;
+                waitingCallbacks = -1;
+            }
+
+            if (threadPoolUsed != null) {
+                s_log.DebugFormat("[THREADS] Thread pool used           : {0}", threadPoolUsed);
+                s_log.DebugFormat("[THREADS] Max {1} threads                : {0}", maxThreads, threadPoolUsed);
+                s_log.DebugFormat("[THREADS] Min {1} threads                : {0}", minThreads, threadPoolUsed);
+                s_log.DebugFormat("[THREADS] Allocated {1} threads          : {0}", allocatedThreads < 0 ? "not applicable" : allocatedThreads.ToString(), threadPoolUsed);
+                s_log.DebugFormat("[THREADS] In use {1} threads             : {0}", inUseThreads, threadPoolUsed);
+                s_log.DebugFormat("[THREADS] Work items waiting         : {0}", waitingCallbacks < 0 ? "not available" : waitingCallbacks.ToString());
+            } else {
+                s_log.DebugFormat("[THREADS] Thread pool not used");
+            }
+
         }
 
         private static object SmartThreadPoolCallback(object o)
