@@ -28,6 +28,7 @@
 using System;
 using System.Diagnostics;
 using System.Text;
+using log4net;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
@@ -38,20 +39,20 @@ namespace OpenSim.Framework.Monitoring
     /// </summary>
     public class BaseStatsCollector : IStatsCollector
     {
-        public virtual string CompactReport()
+		
+		private static readonly ILog s_log = LogManager.GetLogger("SimStats");
+
+		
+        public virtual void CompactReport()
         {
-            StringBuilder sb = new StringBuilder(Environment.NewLine);
-            sb.Append(
-                string.Format(
+            s_log.DebugFormat (
                     "[MEMORY] Allocated to OpenSim objects: {0} MB\n",
-                    Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0)));
-            sb.Append(
-                string.Format(
+                    Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
+            s_log.DebugFormat(
                     "[MEMORY] Process memory              : {0} MB\n",
-                    Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0)));
+                    Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));
 
 			//TODO Implement GC Counters.
-            return sb.ToString();
         }
 
 		public virtual string Report()

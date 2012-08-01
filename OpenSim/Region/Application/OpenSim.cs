@@ -52,6 +52,7 @@ namespace OpenSim
     public class OpenSim : OpenSimBase
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
         protected string m_startupCommandsFile;
         protected string m_shutdownCommandsFile;
@@ -947,7 +948,7 @@ namespace OpenSim
             // Prints info from BaseOpenSimServer
 			base.HandleShowKPI(mod, cmd);
 
-			m_log.Info("Showing OpenSim KPI:");
+			s_log.Info("Showing OpenSim KPI:");
 
 		}
 

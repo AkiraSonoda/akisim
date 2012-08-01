@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using log4net;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework.Monitoring.Interfaces;
@@ -39,7 +40,10 @@ namespace OpenSim.Framework.Monitoring
     /// </summary>
     public class SimExtraStatsCollector : BaseStatsCollector
     {
-        private long abnormalClientThreadTerminations;
+
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
+		
+		private long abnormalClientThreadTerminations;
 
 //        private long assetsInCache;
 //        private long texturesInCache;
@@ -385,6 +389,31 @@ Asset service request failures: {3}" + Environment.NewLine,
         }
 
         /// <summary>
+        /// Report back collected statistical information.
+        /// </summary>
+        /// <returns></returns>
+        public override void CompactReport() {
+            s_log.DebugFormat(
+                    "[CONNECTION] Abnormal client thread terminations: {0}" + Environment.NewLine,
+                    abnormalClientThreadTerminations);
+
+            s_log.Debug("[FRAME] Dilatn  SimFPS  PhyFPS  AgntUp  RootAg  ChldAg  Prims   AtvPrm  AtvScr  ScrLPS");
+            s_log.DebugFormat(
+                    "[FRAME] {0,6:0.00}  {1,6:0}  {2,6:0.0}  {3,6:0.0}  {4,6:0}  {5,6:0}  {6,6:0}  {7,6:0}  {8,6:0}  {9,6:0}",
+                    timeDilation, simFps, physicsFps, agentUpdates, rootAgents,
+                    childAgents, totalPrims, activePrims, activeScripts, scriptLinesPerSecond);
+            // There is no script frame time currently because we don't yet collect it
+            s_log.Debug("[FRAME] PktsIn  PktOut  PendDl  PendUl  UnackB  TotlFt  NetFt   PhysFt  OthrFt  AgntFt  ImgsFt");
+            s_log.DebugFormat(
+                    "[FRAME] {0,6:0}  {1,6:0}  {2,6:0}  {3,6:0}  {4,6:0}  {5,6:0.0}  {6,6:0.0}  {7,6:0.0}  {8,6:0.0}  {9,6:0.0}  {10,6:0.0}",
+                    inPacketsPerSecond, outPacketsPerSecond, pendingDownloads, pendingUploads, unackedBytes, totalFrameTime,
+                    netFrameTime, physicsFrameTime, otherFrameTime, agentFrameTime, imageFrameTime);
+            base.CompactReport(); 
+        }
+		
+		
+		
+        /// <summary>
         /// Report back collected statistical information as json serialization.
         /// </summary>
         /// <returns></returns>
@@ -439,6 +468,9 @@ Asset service request failures: {3}" + Environment.NewLine,
     /// </summary>
     public class PacketQueueStatsCollector : IStatsCollector
     {
+		
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
+		
         private IPullStatsProvider m_statsProvider;
 
         public PacketQueueStatsCollector(IPullStatsProvider provider)
@@ -450,9 +482,10 @@ Asset service request failures: {3}" + Environment.NewLine,
         /// TODO Report back collected statistical information in a compact form.
         /// </summary>
         /// <returns></returns>
-        public string CompactReport()
+        public void CompactReport()
         {
-            return m_statsProvider.GetStats();
+            // return m_statsProvider.GetStats();
+			s_log.Debug("SimExtraStatsCollector.PacketQueueStatsCollector.CompactReport: not yet implemented");
         }
 
         /// <summary>

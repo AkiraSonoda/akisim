@@ -303,7 +303,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         private const float m_sunPainDaHalfOrbitalCutoff = 4.712388980384689858f;
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        protected static Dictionary<PacketType, PacketMethod> PacketHandlers = new Dictionary<PacketType, PacketMethod>(); //Global/static handlers for all clients
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
+
+		protected static Dictionary<PacketType, PacketMethod> PacketHandlers = new Dictionary<PacketType, PacketMethod>(); //Global/static handlers for all clients
 
         /// <summary>
         /// Handles UDP texture download.
@@ -12024,9 +12026,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 		/// <returns>
 		/// 
 		/// </returns>
-        public string CompactReport()
+        public void CompactReport()
         {
-            return m_udpClient.GetStats();
+            // return m_udpClient.GetStats();
+			s_log.Debug("LLClientView.CompactReport(): not yet implemented");
         }
 
 

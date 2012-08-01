@@ -57,7 +57,9 @@ namespace OpenSim.Framework.Servers
     public abstract class BaseOpenSimServer
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
+		
         /// <summary>
         /// This will control a periodic log printout of the current 'show stats' (if they are active) for this
         /// server.
@@ -401,13 +403,13 @@ namespace OpenSim.Framework.Servers
         /// Prints Base Simulator KPI into the log
         /// </summary>
 		public virtual void HandleShowKPI(string mod, string[] cmd) {
-			m_log.Info("Showing BaseOpenSimServer KPI:");
-			m_log.Info( GetVersionText() );
-			m_log.Info( "Startup directory: " + m_startupDirectory );
+			s_log.Debug("Showing BaseOpenSimServer KPI:");
+			s_log.Debug( GetVersionText() );
+			s_log.Debug( "Startup directory: " + m_startupDirectory );
             if (m_stats != null) {
-            	m_log.Info( m_stats.Report() );
+            	m_stats.CompactReport();
 			}
-			m_log.Info("Number of Threads: " + System.Diagnostics.Process.GetCurrentProcess().Threads.Count);
+			s_log.Debug("[THREADS] Number of Threads: " + System.Diagnostics.Process.GetCurrentProcess().Threads.Count);
 
 
 		}

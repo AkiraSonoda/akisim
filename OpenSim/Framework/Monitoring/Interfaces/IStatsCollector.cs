@@ -33,10 +33,10 @@ namespace OpenSim.Framework.Monitoring
     public interface IStatsCollector
     {
 		/// <summary>
-        /// Report back collected statistical information in a compact way.
+        /// Logs a compact report into a log of its own. 
         /// </summary>
         /// <returns></returns>
-        string CompactReport();
+        void CompactReport();
 
 		/// <summary>
         /// Report back collected statistical information.
