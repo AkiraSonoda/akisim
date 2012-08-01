@@ -976,7 +976,9 @@ namespace OpenSim
                                 regionName,
                                 presence.AbsolutePosition.ToString());
 			}
-
+			
+			// Print Connection Info
+			PrintConnections();
 		}
 
         // see BaseOpenSimServer
@@ -1176,6 +1178,22 @@ namespace OpenSim
             MainConsole.Instance.Output(cdt.ToString());
         }
 
+        private void PrintConnections() {
+			s_log.DebugFormat("[CONNECTIONS] {0,-20} {1,-24} {2,-12} {3,-23} {4,-7}", 
+			                  "Region", "Avatar Name", "Cirquit code", "Endpoint", "Active");
+
+            SceneManager.ForEachScene(
+                s => s.ForEachClient(
+                    c => s_log.DebugFormat(
+                        "[CONNECTIONS] {0,-20} {1,-24} {2,-12} {3,-23} {4,-7}",
+                        s.Name,
+                        c.Name,
+                        c.CircuitCode.ToString(),
+                        c.RemoteEndPoint.ToString(),                
+                        c.IsActive.ToString())));
+        }
+		
+		
         private void HandleShowConnections()
         {
             ConsoleDisplayTable cdt = new ConsoleDisplayTable();
