@@ -52,6 +52,7 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
     public class LindenUDPInfoModule : ISharedRegionModule
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);                
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");                
         
         protected Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
         
@@ -130,6 +131,13 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
                 "Go on/off emergency monitoring mode",
                 "Go on/off emergency monitoring mode",
                 HandleEmergencyMonitoring);
+
+			scene.AddCommand(
+                "General", this, "show clientkpi",
+                "show clientkpi",
+                "Prints important client kpi into a separate OpenSimStats Log",
+                "Prints important client kpi into a separate OpenSimStats Log",
+                HandleClientKpi);
         }
         
         public void RemoveRegion(Scene scene)
@@ -144,6 +152,159 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
         {
 //            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
         }
+		
+		protected void HandleClientKpi(string module, string[] cmd) {
+			s_log.Debug("[CLIENTKPI] Showing Client KPI:");
+			
+			// Getting Priority Queues Report
+
+            int columnPadding = 2;
+            int maxNameLength = 18;                                    
+            int maxRegionNameLength = 14;
+            int maxTypeLength = 4;
+
+			int totalInfoFieldsLength
+                = maxNameLength + columnPadding
+                + maxRegionNameLength + columnPadding
+                + maxTypeLength + columnPadding;
+                         
+			StringBuilder reportline = new StringBuilder();
+			
+			bool firstClient = true;
+			
+            lock (m_scenes) {
+                foreach (Scene scene in m_scenes.Values) {
+                    scene.ForEachClient(
+                        delegate(IClientAPI client) {
+                            if (client is LLClientView) {
+							
+                                bool isChild = client.SceneAgent.IsChildAgent;                       
+                                string name = client.Name;
+                                string regionName = scene.RegionInfo.RegionName;
+								
+							
+					            reportline.Append("[PQUEUE] "); 
+								reportline.Append(GetColumnEntry("User", maxNameLength, columnPadding));
+            					reportline.Append(GetColumnEntry("Region", maxRegionNameLength, columnPadding));
+            					reportline.Append(GetColumnEntry("Type", maxTypeLength, columnPadding));
+            					reportline.AppendFormat(
+                					"{0,7} {1,7} {2,7} {3,7} {4,7} {5,7} {6,7} {7,7} {8,7} {9,7} {10,7} {11,7}",
+                					"Pri 0","Pri 1","Pri 2","Pri 3","Pri 4","Pri 5","Pri 6","Pri 7","Pri 8","Pri 9","Pri 10","Pri 11");
+								s_log.Debug(reportline); 
+                                
+                                reportline.Length = 0;
+							                                
+            					reportline.Append("[PQUEUE] "); 
+                                reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
+                                reportline.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
+                                reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));                                  
+                                reportline.Append(((LLClientView)client).EntityUpdateQueue.ToString());
+								s_log.Debug(reportline);
+							
+								reportline.Length = 0;
+							
+            					reportline.Append("[QUEUE] ");
+							    reportline.Append(GetColumnEntry("User", maxNameLength, columnPadding));
+            					reportline.Append(GetColumnEntry("Region", maxRegionNameLength, columnPadding));
+            					reportline.Append(GetColumnEntry("Type", maxTypeLength, columnPadding));
+            					reportline.AppendFormat(
+                					"{0,7} {1,7} {2,7} {3,7} {4,9} {5,7} {6,7} {7,7} {8,7} {9,7} {10,8} {11,7} {12,7}",
+                					"Since","Pkts","Pkts","Pkts","Bytes","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts");
+								s_log.Debug(reportline);
+							
+								reportline.Length = 0;
+							
+            					reportline.Append("[QUEUE] ");
+            					reportline.AppendFormat("{0,-" + totalInfoFieldsLength +  "}", "");
+					            reportline.AppendFormat(
+                					"{0,7} {1,7} {2,7} {3,7} {4,9} {5,7} {6,7} {7,7} {8,7} {9,7} {10,8} {11,7} {12,7}",
+                					"Last In","In","Out","Resent","Unacked","Resend","Land","Wind","Cloud","Task","Texture","Asset","State");
+								s_log.Debug(reportline);
+							
+								reportline.Length = 0;
+							
+            					reportline.Append("[QUEUE] ");
+								reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
+        		                reportline.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
+                	            reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
+
+                            	if (client is IStatsCollector) {
+                                	IStatsCollector stats = (IStatsCollector)client;
+                                	reportline.Append(stats.Report());
+                            	}
+								s_log.Debug(reportline);
+
+							    reportline.Length = 0;
+						
+            				   	reportline.Append("[THROTTLE] ");
+							    reportline.Append(GetColumnEntry("User", maxNameLength, columnPadding));
+            					reportline.Append(GetColumnEntry("Region", maxRegionNameLength, columnPadding));
+            					reportline.Append(GetColumnEntry("Type", maxTypeLength, columnPadding));                        
+            					reportline.AppendFormat(
+                					"{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
+                					"Total","Resend","Land","Wind","Cloud","Task","Texture","Asset");
+								s_log.Debug(reportline);
+								
+								reportline.Length = 0;
+    
+            				   	reportline.Append("[THROTTLE] ");
+            					reportline.AppendFormat("{0,-" + totalInfoFieldsLength +  "}", "");
+					            reportline.AppendFormat(
+                					"{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
+                					"kb/s","kb/s","kb/s","kb/s","kb/s","kb/s","kb/s","kb/s");
+								s_log.Debug(reportline);
+						
+								reportline.Length = 0;
+
+								LLClientView llClient = client as LLClientView;
+							
+								if( firstClient) {
+					            	reportline.Append("[THROTTLE] ");
+					            	reportline.Append(GetColumnEntry("SERVER AGENT RATES", maxNameLength, columnPadding));
+					            	reportline.Append(GetColumnEntry("-", maxRegionNameLength, columnPadding));
+					            	reportline.Append(GetColumnEntry("-", maxTypeLength, columnPadding));             
+            
+					            	ThrottleRates throttleRates = llClient.UDPServer.ThrottleRates;
+					            	reportline.AppendFormat(
+					                	"{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
+					                	(throttleRates.Total * 8) / 1000,
+					                	(throttleRates.Resend * 8) / 1000,
+                						(throttleRates.Land * 8) / 1000,
+                						(throttleRates.Wind * 8) / 1000,
+                						(throttleRates.Cloud * 8) / 1000,
+                						(throttleRates.Task * 8) / 1000,
+                						(throttleRates.Texture  * 8) / 1000,
+                						(throttleRates.Asset  * 8) / 1000);  
+									s_log.Debug(reportline);
+									reportline.Length = 0;
+									firstClient = false;
+								}
+							
+								LLUDPClient llUdpClient = llClient.UDPClient;
+                                ClientInfo ci = llUdpClient.GetClientInfo();
+            				   	reportline.Append("[THROTTLE] ");
+                                reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
+                                reportline.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
+                                reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));                                                             
+                                reportline.AppendFormat(
+                                    "{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
+                                    (ci.totalThrottle * 8) / 1000,
+                                    (ci.resendThrottle * 8) / 1000,
+                                    (ci.landThrottle * 8) / 1000,
+                                    (ci.windThrottle * 8) / 1000,
+                                    (ci.cloudThrottle * 8) / 1000,
+                                    (ci.taskThrottle * 8) / 1000,
+                                    (ci.textureThrottle  * 8) / 1000,
+                                    (ci.assetThrottle  * 8) / 1000);                                                                                      
+								s_log.Debug(reportline);
+							
+								reportline.Length = 0;
+							
+                            }
+                        });
+                }
+            }	
+		}
 
         protected string HandleImageQueuesClear(string[] cmd)
         {

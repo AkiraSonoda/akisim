@@ -413,7 +413,7 @@ namespace OpenSim
 
 			m_console.Commands.AddCommand("General", false, "show kpi",
                                           "show kpi",
-                                          "prints all simulator KPI into the log. Useful for automatic monitoring", HandleShowKPI);
+                                          "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", HandleShowKPI);
         }
 
         public override void ShutdownSpecific()
