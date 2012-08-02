@@ -218,14 +218,30 @@ namespace OpenSim.Region.CoreModules.World.LightShare
             Command wlload = new Command("load", CommandIntentions.COMMAND_NON_HAZARDOUS, HandleLoad, "Load windlight profile from the database and broadcast");
             Command wlenable = new Command("enable", CommandIntentions.COMMAND_NON_HAZARDOUS, HandleEnable, "Enable the windlight plugin");
             Command wldisable = new Command("disable", CommandIntentions.COMMAND_NON_HAZARDOUS, HandleDisable, "Disable the windlight plugin");
+            Command wlreset = new Command("reset", CommandIntentions.COMMAND_NON_HAZARDOUS, HandleReset, "Reset the windlight profile to default");
 
             m_commander.RegisterCommand("load", wlload);
             m_commander.RegisterCommand("enable", wlenable);
             m_commander.RegisterCommand("disable", wldisable);
+            m_commander.RegisterCommand("reset", wlreset);
 
             m_scene.RegisterModuleCommander(m_commander);
         }
 
+        private void HandleReset(Object[] args) {
+            if (!m_enableWindlight) {
+                m_log.InfoFormat("[WINDLIGHT]: Cannot reset windlight profile, module disabled. Use 'windlight enable' first.");
+            } else {
+                m_log.InfoFormat("[WINDLIGHT]: Resetting Windlight profile in database");
+				RegionLightShareData rlsd = new RegionLightShareData();
+				rlsd.valid = true;
+				rlsd.regionID = m_scene.RegionInfo.RegionID;
+                m_scene.StoreWindlightProfile(rlsd);
+                m_log.InfoFormat("[WINDLIGHT]: Reset complete");
+            }
+        }
+		
+		
         private void HandleLoad(Object[] args)
         {
             if (!m_enableWindlight)
