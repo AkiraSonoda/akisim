@@ -272,10 +272,20 @@ namespace OpenSim.Framework.Servers
 
             }
 
+			// Workaround https://github.com/sblom/mono/commit/ef6313d9c43e75db627984bf28206e099086de3b from Scott Blomquist integrated into my mono 
+			// Implementation, but right now it is still a workaround returning an empty correctly sized collection
 
             // For some reason mono 2.6.7 returns an empty threads set!  Not going to confuse people by reporting
             // zero active threads.
             int totalThreads = Process.GetCurrentProcess().Threads.Count;
+			
+			
+			// TODO: Uncomment whenvever the whole stuff is correctly implemented
+			// ProcessThreadCollection processThreads = System.Diagnostics.Process.GetCurrentProcess().Threads;
+			// foreach ( ProcessThread pt in processThreads ) {
+			// 	s_log.DebugFormat("[THREADS] ID: {0}, Name: {1}, State: {2}", pt.Id, pt.ToString(), pt.ThreadState.ToString());
+			// }
+			
             if (totalThreads > 0)
                 s_log.DebugFormat("[THREADS] Total threads active: {0}", totalThreads);
 

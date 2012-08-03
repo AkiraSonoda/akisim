@@ -53,8 +53,12 @@ namespace OpenSim.Framework.Monitoring
             s_log.DebugFormat(
                     "[MEMORY] Process memory              : {0} MB",
                     Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));
-
-			//TODO Implement GC Counters.
+			
+			
+			s_log.DebugFormat("[GC] Number of Generations: {0}: ", GC.MaxGeneration);
+			for (int i = 0; i< GC.MaxGeneration; i++) {
+				s_log.DebugFormat("[GC] Generation: {0} Number of Collections: {1}", i, GC.CollectionCount(i));				
+			}
         }
 
 		public virtual string Report()
