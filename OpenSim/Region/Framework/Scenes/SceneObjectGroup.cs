@@ -617,7 +617,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <remarks>
         /// If not applicable will be UUID.Zero
         /// </remarks>
-        public UUID RezzingObjectID { get; set; }
+        public UUID FromPartID { get; set; }
 
         /// <summary>
         /// The folder ID that this object was rezzed from, if applicable.
@@ -642,7 +642,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public SceneObjectGroup()
         {
-            RezzingObjectID = UUID.Zero;
         }
 
         /// <summary>
@@ -650,6 +649,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// The original SceneObjectPart will be used rather than a copy, preserving
         /// its existing localID and UUID.
         /// </summary>
+        /// <param name='part'>Root part for this scene object.</param>
         public SceneObjectGroup(SceneObjectPart part) : this()
         {
             SetRootPart(part);
@@ -658,7 +658,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Constructor.  This object is added to the scene later via AttachToScene()
         /// </summary>
-        public SceneObjectGroup(UUID ownerID, Vector3 pos, Quaternion rot, PrimitiveBaseShape shape) :this(new SceneObjectPart(ownerID, shape, pos, rot, Vector3.Zero))
+        public SceneObjectGroup(UUID ownerID, Vector3 pos, Quaternion rot, PrimitiveBaseShape shape)
+            :this(new SceneObjectPart(ownerID, shape, pos, rot, Vector3.Zero))
         { 
         }
 
