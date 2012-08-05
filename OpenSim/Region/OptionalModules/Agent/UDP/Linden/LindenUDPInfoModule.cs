@@ -183,17 +183,13 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
                                 string regionName = scene.RegionInfo.RegionName;
 							                                
             					reportline.Append("[PQUEUE] "); 
-                                reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
-                                reportline.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
-                                reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));                                  
+                                reportline.AppendFormat("AgentName:{0},RegionName:{1},isChild:{2},",name,regionName,isChild ? "Cd" : "Rt");
                                 reportline.Append(((LLClientView)client).EntityUpdateQueue.ToString());
 								s_log.Debug(reportline);
 								reportline.Length = 0;
 							
             					reportline.Append("[QUEUE] ");
-								reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
-        		                reportline.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
-                	            reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
+                                reportline.AppendFormat("AgentName:{0},RegionName:{1},isChild:{2},",name,regionName,isChild ? "Cd" : "Rt");
 
                             	if (client is IStatsCollector) {
                                 	IStatsCollector stats = (IStatsCollector)client;
@@ -205,14 +201,11 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
 								LLClientView llClient = client as LLClientView;
 							
 								if( firstClient) {
-					            	reportline.Append("[THROTTLE] ");
-					            	reportline.Append(GetColumnEntry("SERVER AGENT RATES", maxNameLength, columnPadding));
-					            	reportline.Append(GetColumnEntry("-", maxRegionNameLength, columnPadding));
-					            	reportline.Append(GetColumnEntry("-", maxTypeLength, columnPadding));             
+					            	reportline.Append("[THROTTLE] SERVER_AGENT_RATES:");
             
 					            	ThrottleRates throttleRates = llClient.UDPServer.ThrottleRates;
 					            	reportline.AppendFormat(
-					                	"{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
+					                	"{0},{1},{2},{3},{4},{5},{6},{7}",
 					                	(throttleRates.Total * 8) / 1000,
 					                	(throttleRates.Resend * 8) / 1000,
                 						(throttleRates.Land * 8) / 1000,
@@ -229,11 +222,9 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
 								LLUDPClient llUdpClient = llClient.UDPClient;
                                 ClientInfo ci = llUdpClient.GetClientInfo();
             				   	reportline.Append("[THROTTLE] ");
-                                reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
-                                reportline.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
-                                reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));                                                             
+                                reportline.AppendFormat("AgentName:{0},RegionName:{1},isChild:{2},",name,regionName,isChild ? "Cd" : "Rt");
                                 reportline.AppendFormat(
-                                    "{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
+                                    "{0},{1},{2},{3},{4},{5},{6},{7}",
                                     (ci.totalThrottle * 8) / 1000,
                                     (ci.resendThrottle * 8) / 1000,
                                     (ci.landThrottle * 8) / 1000,
