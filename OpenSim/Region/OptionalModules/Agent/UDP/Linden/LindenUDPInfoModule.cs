@@ -181,18 +181,6 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
                                 bool isChild = client.SceneAgent.IsChildAgent;                       
                                 string name = client.Name;
                                 string regionName = scene.RegionInfo.RegionName;
-								
-							
-					            reportline.Append("[PQUEUE] "); 
-								reportline.Append(GetColumnEntry("User", maxNameLength, columnPadding));
-            					reportline.Append(GetColumnEntry("Region", maxRegionNameLength, columnPadding));
-            					reportline.Append(GetColumnEntry("Type", maxTypeLength, columnPadding));
-            					reportline.AppendFormat(
-                					"{0,7} {1,7} {2,7} {3,7} {4,7} {5,7} {6,7} {7,7} {8,7} {9,7} {10,7} {11,7}",
-                					"Pri 0","Pri 1","Pri 2","Pri 3","Pri 4","Pri 5","Pri 6","Pri 7","Pri 8","Pri 9","Pri 10","Pri 11");
-								s_log.Debug(reportline); 
-                                
-                                reportline.Length = 0;
 							                                
             					reportline.Append("[PQUEUE] "); 
                                 reportline.Append(GetColumnEntry(name, maxNameLength, columnPadding));
@@ -200,27 +188,6 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
                                 reportline.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));                                  
                                 reportline.Append(((LLClientView)client).EntityUpdateQueue.ToString());
 								s_log.Debug(reportline);
-							
-								reportline.Length = 0;
-							
-            					reportline.Append("[QUEUE] ");
-							    reportline.Append(GetColumnEntry("User", maxNameLength, columnPadding));
-            					reportline.Append(GetColumnEntry("Region", maxRegionNameLength, columnPadding));
-            					reportline.Append(GetColumnEntry("Type", maxTypeLength, columnPadding));
-            					reportline.AppendFormat(
-                					"{0,7} {1,7} {2,7} {3,7} {4,9} {5,7} {6,7} {7,7} {8,7} {9,7} {10,8} {11,7} {12,7}",
-                					"Since","Pkts","Pkts","Pkts","Bytes","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts","Q Pkts");
-								s_log.Debug(reportline);
-							
-								reportline.Length = 0;
-							
-            					reportline.Append("[QUEUE] ");
-            					reportline.AppendFormat("{0,-" + totalInfoFieldsLength +  "}", "");
-					            reportline.AppendFormat(
-                					"{0,7} {1,7} {2,7} {3,7} {4,9} {5,7} {6,7} {7,7} {8,7} {9,7} {10,8} {11,7} {12,7}",
-                					"Last In","In","Out","Resent","Unacked","Resend","Land","Wind","Cloud","Task","Texture","Asset","State");
-								s_log.Debug(reportline);
-							
 								reportline.Length = 0;
 							
             					reportline.Append("[QUEUE] ");
@@ -233,29 +200,8 @@ namespace OpenSim.Region.CoreModules.UDP.Linden
                                 	reportline.Append(stats.Report());
                             	}
 								s_log.Debug(reportline);
-
 							    reportline.Length = 0;
 						
-            				   	reportline.Append("[THROTTLE] ");
-							    reportline.Append(GetColumnEntry("User", maxNameLength, columnPadding));
-            					reportline.Append(GetColumnEntry("Region", maxRegionNameLength, columnPadding));
-            					reportline.Append(GetColumnEntry("Type", maxTypeLength, columnPadding));                        
-            					reportline.AppendFormat(
-                					"{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
-                					"Total","Resend","Land","Wind","Cloud","Task","Texture","Asset");
-								s_log.Debug(reportline);
-								
-								reportline.Length = 0;
-    
-            				   	reportline.Append("[THROTTLE] ");
-            					reportline.AppendFormat("{0,-" + totalInfoFieldsLength +  "}", "");
-					            reportline.AppendFormat(
-                					"{0,7} {1,8} {2,7} {3,7} {4,7} {5,7} {6,9} {7,7}",
-                					"kb/s","kb/s","kb/s","kb/s","kb/s","kb/s","kb/s","kb/s");
-								s_log.Debug(reportline);
-						
-								reportline.Length = 0;
-
 								LLClientView llClient = client as LLClientView;
 							
 								if( firstClient) {

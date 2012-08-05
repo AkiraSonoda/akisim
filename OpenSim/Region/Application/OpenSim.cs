@@ -946,15 +946,15 @@ namespace OpenSim
 
             // Prints info from BaseOpenSimServer
 			base.HandleShowKPI(mod, cmd);
-			s_log.Debug("Showing OpenSim KPI:");
+//			s_log.Debug("Showing OpenSim KPI:");
 			
 			// Printing AgentInfo 
 			
 			IList agents;
             agents = SceneManager.GetCurrentScenePresences();
             s_log.DebugFormat("[AGENTS] Agents connected: {0}", agents.Count);
-			s_log.DebugFormat("[AGENTS] {0,-16} {1,-16} {2,-37} {3,-11} {4,-16} {5,-30}", 
-			                  "Firstname", "Lastname", "Agent ID", "Root/Child", "Region", "Position");
+//			s_log.DebugFormat("[AGENTS] {0,-16} {1,-16} {2,-37} {3,-11} {4,-16} {5,-30}", 
+//			                  "Firstname", "Lastname", "Agent ID", "Root/Child", "Region", "Position");
 
 			foreach (ScenePresence presence in agents) {
         		RegionInfo regionInfo = presence.Scene.RegionInfo;
@@ -967,7 +967,7 @@ namespace OpenSim
                 }
 
                 s_log.DebugFormat(
-                                "[AGENTS] {0,-16} {1,-16} {2,-37} {3,-11} {4,-16} {5,-30}",
+                                "[AGENTS] Firstname:{0} Lastname:{1} AgentID:{2} Root/Child:{3} Region:{4} Position:{5}",
                                 presence.Firstname,
                                 presence.Lastname,
                                 presence.UUID,
@@ -982,31 +982,31 @@ namespace OpenSim
 			PrintCircuits();
 			
 			// Print HTTP Handler
-			s_log.DebugFormat("[HTTP HANDLER] * XMLRPC:");
-            foreach (String s in HttpServer.GetXmlRpcHandlerKeys()) {
-               s_log.DebugFormat("[XMLRPC HANDLER] {0}", s);
-			}
+			// s_log.DebugFormat("[HTTP HANDLER] * XMLRPC:");
+            // foreach (String s in HttpServer.GetXmlRpcHandlerKeys()) {
+            //    s_log.DebugFormat("[XMLRPC HANDLER] {0}", s);
+			// }
 
-            s_log.DebugFormat("[HTTP HANDLER] * HTTP:");
-            List<String> poll = HttpServer.GetPollServiceHandlerKeys();
-            foreach (String s in HttpServer.GetHTTPHandlerKeys()) { 
-            	s_log.DebugFormat("[HTTP HANDLER] {0} {1}", s, (poll.Contains(s) ? "(poll service)" : string.Empty));
-			}
+//            s_log.DebugFormat("[HTTP HANDLER] * HTTP:");
+//            List<String> poll = HttpServer.GetPollServiceHandlerKeys();
+//            foreach (String s in HttpServer.GetHTTPHandlerKeys()) { 
+//            	s_log.DebugFormat("[HTTP HANDLER] {0} {1}", s, (poll.Contains(s) ? "(poll service)" : string.Empty));
+//			}
 			
-            s_log.DebugFormat("[HTTP HANDLER] * Agent:");
-            foreach (String s in HttpServer.GetAgentHandlerKeys()) {
-                s_log.DebugFormat("[AGENT HANDLER] {0}", s);
-			}
-
-            s_log.DebugFormat("[HTTP HANDLER] * LLSD:");
-            foreach (String s in HttpServer.GetLLSDHandlerKeys()) {
-            	s_log.DebugFormat("[LLSD HANDLER] {0}", s);
-			}
-			
-            s_log.DebugFormat("[HTTP HANDLER] * StreamHandlers ({0}):", HttpServer.GetStreamHandlerKeys().Count);
-            foreach (String s in HttpServer.GetStreamHandlerKeys()) {
-                s_log.DebugFormat("[STREAM HANDLER] {0}", s);
-			}
+//            s_log.DebugFormat("[HTTP HANDLER] * Agent:");
+//            foreach (String s in HttpServer.GetAgentHandlerKeys()) {
+//                s_log.DebugFormat("[AGENT HANDLER] {0}", s);
+//			}
+//
+//            s_log.DebugFormat("[HTTP HANDLER] * LLSD:");
+//            foreach (String s in HttpServer.GetLLSDHandlerKeys()) {
+//            	s_log.DebugFormat("[LLSD HANDLER] {0}", s);
+//			}
+//			
+//            s_log.DebugFormat("[HTTP HANDLER] * StreamHandlers ({0}):", HttpServer.GetStreamHandlerKeys().Count);
+//            foreach (String s in HttpServer.GetStreamHandlerKeys()) {
+//                s_log.DebugFormat("[STREAM HANDLER] {0}", s);
+//			}
 			
 		}
 
@@ -1182,14 +1182,12 @@ namespace OpenSim
         }
 
         private void PrintCircuits() {
-			s_log.DebugFormat("[CIRCUITS] {0,-20} {1,-24} {2,-5} {3,-10} {4,-16} {5,-24}", 
-			                  "Region", "Avatar Name", "Type", "Code", "IP", "Viewer Name");
 
-            SceneManager.ForEachScene( 
+			SceneManager.ForEachScene( 
 			    s => {
                     foreach (AgentCircuitData aCircuit in s.AuthenticateHandler.GetAgentCircuits().Values)
                         s_log.DebugFormat (
-                        	"[CIRCUITS] {0,-20} {1,-24} {2,-5} {3,-10} {4,-16} {5,-24}",
+                        	"[CIRCUITS] Region:{0} AvatarName:{1} Type:{2} Code:{3} IP:{4} ViewerName:{5}",
                             s.Name,
                             aCircuit.Name,
                             aCircuit.child ? "child" : "root",
@@ -1228,13 +1226,11 @@ namespace OpenSim
         }
 
         private void PrintConnections() {
-			s_log.DebugFormat("[CONNECTIONS] {0,-20} {1,-24} {2,-12} {3,-23} {4,-7}", 
-			                  "Region", "Avatar Name", "Cirquit code", "Endpoint", "Active");
 
             SceneManager.ForEachScene(
                 s => s.ForEachClient(
                     c => s_log.DebugFormat(
-                        "[CONNECTIONS] {0,-20} {1,-24} {2,-12} {3,-23} {4,-7}",
+                        "[CONNECTIONS] Region:{0} AvatarName:{1} CirquitCode:{2} Endpoint:{3} Active:{4}",
                         s.Name,
                         c.Name,
                         c.CircuitCode.ToString(),

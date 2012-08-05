@@ -3462,7 +3462,7 @@ namespace OpenSim.Region.Framework.Scenes
             // TeleportFlags.ViaLandmark | TeleportFlags.ViaLocation | TeleportFlags.ViaLandmark | TeleportFlags.Default - Regular Teleport
 
             // Don't disable this log message - it's too helpful
-            m_log.DebugFormat(
+            m_log.InfoFormat(
                 "[SCENE]: Region {0} told of incoming {1} agent {2} {3} {4} (circuit code {5}, IP {6}, viewer {7}, teleportflags ({8}), position {9})",
                 RegionInfo.RegionName,
                 (agent.child ? "child" : "root"),

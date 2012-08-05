@@ -246,32 +246,6 @@ namespace OpenSim.Framework.Servers
         /// </summary>
         protected void PrintThreadsReport()
         {
-            // This should be a constant field.
-            string reportFormat = "[THREADS] {0,6}   {1,35}   {2,16}   {3,13}   {4,10}   {5,30}";
-
-            Watchdog.ThreadWatchdogInfo[] threads = Watchdog.GetThreadsInfo();
-
-            s_log.DebugFormat("[THREADS] threads are being tracked: {0}", threads.Length);
-
-            int timeNow = Environment.TickCount & Int32.MaxValue;
-
-            s_log.DebugFormat(reportFormat, "ID", "NAME", "LAST UPDATE (MS)", "LIFETIME (MS)", "PRIORITY", "STATE");
-
-            foreach (Watchdog.ThreadWatchdogInfo twi in threads)
-            {
-                Thread t = twi.Thread;
-                
-                s_log.DebugFormat(
-                    reportFormat,
-                    t.ManagedThreadId,
-                    t.Name,
-                    timeNow - twi.LastTick,
-                    timeNow - twi.FirstTick,
-                    t.Priority,
-                    t.ThreadState);
-
-            }
-
 			// Workaround https://github.com/sblom/mono/commit/ef6313d9c43e75db627984bf28206e099086de3b from Scott Blomquist integrated into my mono 
 			// Implementation, but right now it is still a workaround returning an empty correctly sized collection
 
@@ -469,8 +443,8 @@ namespace OpenSim.Framework.Servers
 		public virtual void HandleShowKPI(string mod, string[] cmd) {
 			s_log.Debug( "[SIM] Showing BaseOpenSimServer KPI:" );
 			s_log.Debug( "[SIM] " + GetVersionText() );
-			s_log.Debug( "[SIM] Startup directory: " + m_startupDirectory );
-			PrintUptimeReport();
+			// s_log.Debug( "[SIM] Startup directory: " + m_startupDirectory );
+			// PrintUptimeReport();
             if (m_stats != null) {
             	m_stats.CompactReport();
 			}

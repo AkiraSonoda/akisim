@@ -396,18 +396,17 @@ Asset service request failures: {3}" + Environment.NewLine,
             s_log.DebugFormat(
                     "[CONNECTION] Abnormal client thread terminations: {0}", abnormalClientThreadTerminations);
 
-            s_log.Debug("[FRAME] Dilatn  SimFPS  PhyFPS  AgntUp  RootAg  ChldAg  Prims   AtvPrm  AtvScr  ScrLPS");
             s_log.DebugFormat(
-                    "[FRAME] {0,6:0.00}  {1,6:0}  {2,6:0.0}  {3,6:0.0}  {4,6:0}  {5,6:0}  {6,6:0}  {7,6:0}  {8,6:0}  {9,6:0}",
+                    "[FRAME] Dilatn:{0} SimFPS:{1} PhyFPS:{2} AgntUp:{3} RootAg:{4} ChldAg:{5} Prims:{6} AtvPrm:{7} AtvScr:{8} ScrLPS:{9}",
                     timeDilation, simFps, physicsFps, agentUpdates, rootAgents,
                     childAgents, totalPrims, activePrims, activeScripts, scriptLinesPerSecond);
             // There is no script frame time currently because we don't yet collect it
-            s_log.Debug("[FRAME] PktsIn  PktOut  PendDl  PendUl  UnackB  TotlFt  NetFt   PhysFt  OthrFt  AgntFt  ImgsFt");
             s_log.DebugFormat(
-                    "[FRAME] {0,6:0}  {1,6:0}  {2,6:0}  {3,6:0}  {4,6:0}  {5,6:0.0}  {6,6:0.0}  {7,6:0.0}  {8,6:0.0}  {9,6:0.0}  {10,6:0.0}",
+                    "[FRAME] PktsIn:{0} PktOut:{1} PendDl:{2} PendUl:{3,6:0} UnackB:{4,6:0} TotlFt:{5} NetFt:{6} PhysFt:{7} OthrFt:{8} AgntFt:{9} ImgsFt:{10}",
                     inPacketsPerSecond, outPacketsPerSecond, pendingDownloads, pendingUploads, unackedBytes, totalFrameTime,
                     netFrameTime, physicsFrameTime, otherFrameTime, agentFrameTime, imageFrameTime);
-            base.CompactReport(); 
+
+			base.CompactReport(); 
         }
 		
 		

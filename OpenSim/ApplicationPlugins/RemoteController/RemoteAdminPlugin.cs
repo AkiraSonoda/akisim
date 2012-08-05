@@ -1463,7 +1463,7 @@ namespace OpenSim.ApplicationPlugins.RemoteController
 
         private void XmlRpcLoadXMLMethod(XmlRpcRequest request, XmlRpcResponse response, IPEndPoint remoteClient)
         {
-            m_log.Info("[RADMIN]: Received Load XML Administrator Request");
+            m_log.Debug("[RADMIN]: Received Load XML Administrator Request");
 
             Hashtable responseData = (Hashtable)response.Value;
             Hashtable requestData = (Hashtable)request.Params[0];
@@ -1512,13 +1512,13 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                     throw e;
                 }
 
-                m_log.Info("[RADMIN]: Load XML Administrator Request complete");
+                m_log.Debug("[RADMIN]: Load XML Administrator Request complete");
             }
         }
 
         private void XmlRpcSaveXMLMethod(XmlRpcRequest request, XmlRpcResponse response, IPEndPoint remoteClient)
         {
-            m_log.Info("[RADMIN]: Received Save XML Administrator Request");
+            m_log.Debug("[RADMIN]: Received Save XML Administrator Request");
 
             Hashtable responseData = (Hashtable)response.Value;
             Hashtable requestData = (Hashtable)request.Params[0];
@@ -1565,12 +1565,12 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                 throw e;
             }
 
-            m_log.Info("[RADMIN]: Save XML Administrator Request complete");
+            m_log.Debug("[RADMIN]: Save XML Administrator Request complete");
         }
 
         private void XmlRpcRegionQueryMethod(XmlRpcRequest request, XmlRpcResponse response, IPEndPoint remoteClient)
         {
-            m_log.Info("[RADMIN]: Received Query XML Administrator Request");
+            m_log.Debug("[RADMIN]: Received Query XML Administrator Request");
 
             Hashtable responseData = (Hashtable)response.Value;
             Hashtable requestData = (Hashtable)request.Params[0];
@@ -1584,12 +1584,12 @@ namespace OpenSim.ApplicationPlugins.RemoteController
             responseData["health"] = health;
 
             responseData["success"] = true;
-            m_log.Info("[RADMIN]: Query XML Administrator Request complete");
+            m_log.Debug("[RADMIN]: Query XML Administrator Request complete");
         }
 
         private void XmlRpcConsoleCommandMethod(XmlRpcRequest request, XmlRpcResponse response, IPEndPoint remoteClient)
         {
-            m_log.Info("[RADMIN]: Received Command XML Administrator Request");
+            m_log.Debug("[RADMIN]: Received Command XML Administrator Request");
 
             Hashtable responseData = (Hashtable)response.Value;
             Hashtable requestData = (Hashtable)request.Params[0];
@@ -1598,7 +1598,7 @@ namespace OpenSim.ApplicationPlugins.RemoteController
 
             MainConsole.Instance.RunCommand(requestData["command"].ToString());
 
-            m_log.Info("[RADMIN]: Command XML Administrator Request complete");
+            m_log.Debug("[RADMIN]: Command XML Administrator Request complete");
         }
 
         private void XmlRpcAccessListClear(XmlRpcRequest request, XmlRpcResponse response, IPEndPoint remoteClient)

@@ -73,6 +73,7 @@ TAGS
 *~
 Makefile.local
 bin/.version
+bin/.directory
 compile.bat
 addon-modules
 OpenSim/Data/Tests/test-results/
