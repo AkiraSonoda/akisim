@@ -174,6 +174,8 @@ namespace OpenSim.Region.Framework.Scenes
         protected ICapabilitiesModule m_capsModule;
         protected IGroupsModule m_groupsModule;
 
+        private Dictionary<string, string> m_extraSettings;
+
         /// <summary>
         /// Current scene frame number
         /// </summary>
@@ -641,6 +643,8 @@ namespace OpenSim.Region.Framework.Scenes
             // FIXME: It shouldn't be up to the database plugins to create this data - we should do it when a new
             // region is set up and avoid these gyrations.
             RegionSettings rs = simDataService.LoadRegionSettings(RegionInfo.RegionID);
+            m_extraSettings = simDataService.GetExtra(RegionInfo.RegionID);
+
             bool updatedTerrainTextures = false;
             if (rs.TerrainTexture1 == UUID.Zero)
             {
@@ -2636,7 +2640,7 @@ namespace OpenSim.Region.Framework.Scenes
                     RootPrim.RemFlag(PrimFlags.TemporaryOnRez);
                     
                     if (AttachmentsModule != null)
-                        AttachmentsModule.AttachObject(sp, grp, 0, false);
+                        AttachmentsModule.AttachObject(sp, grp, 0, false, false);
                 }
                 else
                 {
@@ -5450,6 +5454,45 @@ namespace OpenSim.Region.Framework.Scenes
             AssetReceivedDelegate callback = (AssetReceivedDelegate)sender;
 
             callback(asset);
+        }
+
+        public string GetExtraSetting(string name)
+        {
+            string val;
+
+            if (!m_extraSettings.TryGetValue(name, out val))
+                return String.Empty;
+
+            return val;
+        }
+
+        public void StoreExtraSetting(string name, string val)
+        {
+            string oldVal;
+
+            if (m_extraSettings.TryGetValue(name, out oldVal))
+            {
+                if (oldVal == val)
+                    return;
+            }
+
+            m_extraSettings[name] = val;
+
+            m_SimulationDataService.SaveExtra(RegionInfo.RegionID, name, val);
+
+            m_eventManager.TriggerExtraSettingChanged(this, name, val);
+        }
+
+        public void RemoveExtraSetting(string name)
+        {
+            if (!m_extraSettings.ContainsKey(name))
+                return;
+
+            m_extraSettings.Remove(name);
+
+            m_SimulationDataService.RemoveExtra(RegionInfo.RegionID, name);
+
+            m_eventManager.TriggerExtraSettingChanged(this, name, String.Empty);
         }
     }
 }
