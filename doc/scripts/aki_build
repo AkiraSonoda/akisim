@@ -42,7 +42,7 @@ cd $OSINS
 # Hole die gerade aktuelle Versionsnummer von einem zentralen Ort
 # Falls dieser Server nicht verfügbar ist und die neuste Version nicht
 # geholt werden kann verlasse das script.
-wget -q http://suai.nine.ch/version.txt
+wget -q http://suai.dyndns.org/version.txt
 if [ ! -e "$OSINS/version.txt" ] ; then
   echo "Probably something went wrong with wget"
   exit
@@ -75,10 +75,10 @@ echo $new_version
 
 cd $OSINS
 if [ "$test_version" != "" ] ; then
-	wget http://suai.nine.ch/$test_version.tar.gz
+	wget http://suai.dyndns.org/$test_version.tar.gz
 	tar xvf $test_version.tar.gz
 else
-	wget http://suai.nine.ch/$new_version.tar.gz
+	wget http://suai.dyndns.org/$new_version.tar.gz
 	tar xvf $new_version.tar.gz
 fi
 
