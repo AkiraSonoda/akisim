@@ -1341,11 +1341,13 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 scale.y = Math.Max(World.m_minPhys, Math.Min(World.m_maxPhys, scale.y));
                 scale.z = Math.Max(World.m_minPhys, Math.Min(World.m_maxPhys, scale.z));
             }
-
-            // Next we clamp the scale to the non-physical min/max
-            scale.x = Math.Max(World.m_minNonphys, Math.Min(World.m_maxNonphys, scale.x));
-            scale.y = Math.Max(World.m_minNonphys, Math.Min(World.m_maxNonphys, scale.y));
-            scale.z = Math.Max(World.m_minNonphys, Math.Min(World.m_maxNonphys, scale.z));
+            else
+            {
+                // If not physical, then we clamp the scale to the non-physical min/max
+                scale.x = Math.Max(World.m_minNonphys, Math.Min(World.m_maxNonphys, scale.x));
+                scale.y = Math.Max(World.m_minNonphys, Math.Min(World.m_maxNonphys, scale.y));
+                scale.z = Math.Max(World.m_minNonphys, Math.Min(World.m_maxNonphys, scale.z));
+            }
 
             Vector3 tmp = part.Scale;
             tmp.X = (float)scale.x;
@@ -1377,7 +1379,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             if (face == ScriptBaseClass.ALL_SIDES)
                 face = SceneObjectPart.ALL_SIDES;
 
-            m_host.SetFaceColor(color, face);
+            m_host.SetFaceColorAlpha(face, color, null);
         }
 
         public void SetTexGen(SceneObjectPart part, int face,int style)
@@ -3572,7 +3574,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             List<SceneObjectPart> parts = GetLinkParts(linknumber);
 
             foreach (SceneObjectPart part in parts)
-                part.SetFaceColor(color, face);
+                part.SetFaceColorAlpha(face, color, null);
         }
 
         public void llCreateLink(string target, int parent)
@@ -5163,25 +5165,15 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         /// separated list. There is a space after
         /// each comma.
         /// </summary>
-
         public LSL_String llList2CSV(LSL_List src)
         {
-
-            string ret = String.Empty;
-            int    x   = 0;
-
             m_host.AddScriptLPS(1);
 
-            if (src.Data.Length > 0)
-            {
-                ret = src.Data[x++].ToString();
-                for (; x < src.Data.Length; x++)
-                {
-                    ret += ", "+src.Data[x].ToString();
-                }
-            }
-
-            return ret;
+            return string.Join(", ", 
+                    (new List<object>(src.Data)).ConvertAll<string>(o => 
+                    {
+                        return o.ToString();
+                    }).ToArray());
         }
 
         /// <summary>
@@ -7484,8 +7476,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             LSL_Vector color=rules.GetVector3Item(idx++);
                             double alpha=(double)rules.GetLSLFloatItem(idx++);
 
-                            part.SetFaceColor(color, face);
-                            SetAlpha(part, alpha, face);
+                            part.SetFaceColorAlpha(face, color, alpha);
 
                             break;
 

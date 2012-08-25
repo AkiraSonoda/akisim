@@ -2877,7 +2877,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 avatar.SpeedModifier = (float)SpeedModifier;
         }
         
-        public void osKickAvatar(string FirstName,string SurName,string alert)
+        public void osKickAvatar(string FirstName, string SurName, string alert)
         {
             CheckThreatLevel(ThreatLevel.Severe, "osKickAvatar");
             m_host.AddScriptLPS(1);
@@ -2891,9 +2891,20 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                         sp.ControllingClient.Kick(alert);
 
                     // ...and close on our side
-                    sp.Scene.IncomingCloseAgent(sp.UUID);
+                    sp.Scene.IncomingCloseAgent(sp.UUID, false);
                 }
             });
+        }
+
+        public LSL_Float osGetHealth(string avatar)
+        {
+            CheckThreatLevel(ThreatLevel.None, "osGetHealth");
+            m_host.AddScriptLPS(1);
+
+            LSL_Float health = new LSL_Float(-1);
+            ScenePresence presence = World.GetScenePresence(new UUID(avatar));
+            if (presence != null) health = presence.Health;
+            return health;
         }
         
         public void osCauseDamage(string avatar, double damage)

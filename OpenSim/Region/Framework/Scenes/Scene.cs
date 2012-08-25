@@ -3570,7 +3570,7 @@ namespace OpenSim.Region.Framework.Scenes
                     "[SCENE]: Existing root scene presence detected for {0} {1} in {2} when connecting.  Removing existing presence.",
                     sp.Name, sp.UUID, RegionInfo.RegionName);
 
-                sp.ControllingClient.Close();
+                sp.ControllingClient.Close(true);
                 sp = null;
             }
 
@@ -4124,16 +4124,19 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Tell a single agent to disconnect from the region.
         /// </summary>
-        /// <param name="regionHandle"></param>
         /// <param name="agentID"></param>
-        public bool IncomingCloseAgent(UUID agentID)
+        /// <param name="force">
+        /// Force the agent to close even if it might be in the middle of some other operation.  You do not want to
+        /// force unless you are absolutely sure that the agent is dead and a normal close is not working.
+        /// </param>
+        public bool IncomingCloseAgent(UUID agentID, bool force)
         {
             //m_log.DebugFormat("[SCENE]: Processing incoming close agent for {0}", agentID);
 
             ScenePresence presence = m_sceneGraph.GetScenePresence(agentID);
             if (presence != null)
             {
-                presence.ControllingClient.Close();
+                presence.ControllingClient.Close(force);
                 return true;
             }
 
