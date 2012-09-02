@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) Contributors, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
@@ -6,7 +6,7 @@
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
+ *     * Redistributions in binary form must reproduce the above copyrightD
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
  *     * Neither the name of the OpenSimulator Project nor the
@@ -24,27 +24,37 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+using System;
 using System.Collections.Generic;
-using OpenMetaverse;
+using System.Text;
+
+using OMV = OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Region.Framework.Scenes;
+using OpenSim.Region.Physics.Manager;
 
-namespace OpenSim.Region.Framework.Interfaces
+namespace OpenSim.Region.Physics.BulletSPlugin
 {
-    public interface IUrlModule
-    {
-        string ExternalHostNameForLSL { get; }
-        UUID RequestURL(IScriptModule engine, SceneObjectPart host, UUID itemID);
-        UUID RequestSecureURL(IScriptModule engine, SceneObjectPart host, UUID itemID);
-        void ReleaseURL(string url);
-        void HttpResponse(UUID request, int status, string body);
-        void HttpContentType(UUID request, string type);
-        
-        string GetHttpHeader(UUID request, string header);
-        int GetFreeUrls();
+// Class to wrap all objects.
+// The rest of BulletSim doesn't need to keep checking for avatars or prims
+// unless the difference is significant.
+public abstract class BSPhysObject : PhysicsActor
+{
+    public abstract BSLinkset Linkset { get; set; }
 
-        void ScriptRemoved(UUID itemID);
-        void ObjectRemoved(UUID objectID);
-    }
+    public abstract void Collide(uint collidingWith, BSPhysObject collidee, ActorTypes type,
+            OMV.Vector3 contactPoint, OMV.Vector3 contactNormal, float pentrationDepth);
+    public abstract void SendCollisions();
+
+    // Return the object mass without calculating it or side effects
+    public abstract float MassRaw { get; }
+
+    public abstract BulletBody Body { get; set; }
+    public abstract void ZeroMotion();
+
+    public virtual void StepVehicle(float timeStep) { }
+
+    public abstract void UpdateProperties(EntityProperties entprop);
+
+    public abstract void Destroy();
+}
 }

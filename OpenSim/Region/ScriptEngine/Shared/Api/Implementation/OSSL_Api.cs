@@ -140,11 +140,15 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         internal float m_ScriptDistanceFactor = 1.0f;
         internal Dictionary<string, FunctionPerms > m_FunctionPerms = new Dictionary<string, FunctionPerms >();
 
+        protected IUrlModule m_UrlModule = null;
+
         public void Initialize(IScriptEngine ScriptEngine, SceneObjectPart host, TaskInventoryItem item)
         {
             m_ScriptEngine = ScriptEngine;
             m_host = host;
             m_item = item;
+
+            m_UrlModule = m_ScriptEngine.World.RequestModuleInterface<IUrlModule>();
 
             if (m_ScriptEngine.Config.GetBoolean("AllowOSFunctions", false))
                 m_OSFunctionsEnabled = true;
@@ -2246,11 +2250,25 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             CheckThreatLevel(ThreatLevel.High, "osGetLinkPrimitiveParams");
             m_host.AddScriptLPS(1);
             InitLSL();
+            // One needs to cast m_LSL_Api because we're using functions not
+            // on the ILSL_Api interface.
+            LSL_Api LSL_Api = (LSL_Api)m_LSL_Api;
             LSL_List retVal = new LSL_List();
-            List<SceneObjectPart> parts = ((LSL_Api)m_LSL_Api).GetLinkParts(linknumber);
+            LSL_List remaining = null;
+            List<SceneObjectPart> parts = LSL_Api.GetLinkParts(linknumber);
             foreach (SceneObjectPart part in parts)
             {
-                retVal += ((LSL_Api)m_LSL_Api).GetLinkPrimitiveParams(part, rules);
+                remaining = LSL_Api.GetPrimParams(part, rules, ref retVal);
+            }
+
+            while (remaining != null && remaining.Length > 2)
+            {
+                linknumber = remaining.GetLSLIntegerItem(0);
+                rules = remaining.GetSublist(1, -1);
+                parts = LSL_Api.GetLinkParts(linknumber);
+
+                foreach (SceneObjectPart part in parts)
+                    remaining = LSL_Api.GetPrimParams(part, rules, ref retVal);
             }
             return retVal;
         }
@@ -2965,7 +2983,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             m_host.AddScriptLPS(1);
             InitLSL();
             
-            return m_LSL_Api.GetLinkPrimitiveParamsEx(prim, rules);
+            return m_LSL_Api.GetPrimitiveParamsEx(prim, rules);
         }
 
         public void osSetPrimitiveParams(LSL_Key prim, LSL_List rules)
@@ -2974,7 +2992,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             m_host.AddScriptLPS(1);
             InitLSL();
             
-            m_LSL_Api.SetPrimitiveParamsEx(prim, rules);
+            m_LSL_Api.SetPrimitiveParamsEx(prim, rules, "osSetPrimitiveParams");
         }
         
         /// <summary>
@@ -3344,5 +3362,17 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
             return new LSL_Key(m_host.ParentGroup.FromPartID.ToString());
         }
-    }
+ 
+        /// <summary>
+        /// Sets the response type for an HTTP request/response
+        /// </summary>
+        /// <returns></returns>
+        public void osSetContentType(LSL_Key id, string type)
+        {
+            CheckThreatLevel(ThreatLevel.High,"osSetResponseType");
+            if (m_UrlModule != null)
+                m_UrlModule.HttpContentType(new UUID(id),type);
+        }
+        
+   }
 }
