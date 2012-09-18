@@ -25,33 +25,37 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using OpenMetaverse;
+using System;
+using System.Drawing;
+using OpenSim.Region.Framework.Interfaces;
 
-namespace OpenSim.Region.Framework.Interfaces
+namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 {
-    public delegate void ChangeDelegate(UUID regionID);
-    public delegate void MessageDelegate(UUID regionID, UUID fromID, string fromName, string message);
-
-    public interface IEstateModule
+    public class DynamicTexture : IDynamicTexture
     {
-        event ChangeDelegate OnRegionInfoChange;
-        event ChangeDelegate OnEstateInfoChange;
-        event MessageDelegate OnEstateMessage;
+        public string InputCommands { get; private set; }
+        public Uri InputUri { get; private set; }
+        public string InputParams { get; private set; }
+        public byte[] Data { get; private set; }
+        public Size Size { get; private set; }
+        public bool IsReuseable { get; private set; }
 
-        uint GetRegionFlags();
-        bool IsManager(UUID avatarID);
-        
-        /// <summary>
-        /// Tell all clients about the current state of the region (terrain textures, water height, etc.).
-        /// </summary>
-        void sendRegionHandshakeToAll();
+        public DynamicTexture(string inputCommands, string inputParams, byte[] data, Size size, bool isReuseable)
+        {
+            InputCommands = inputCommands;
+            InputParams = inputParams;
+            Data = data;
+            Size = size;
+            IsReuseable = isReuseable;
+        }
 
-        /// <summary>
-        /// Fires the OnRegionInfoChange event.
-        /// </summary>
-        void TriggerRegionInfoChange();
-
-        void setEstateTerrainBaseTexture(int level, UUID texture);
-        void setEstateTerrainTextureHeights(int corner, float lowValue, float highValue);
+        public DynamicTexture(Uri inputUri, string inputParams, byte[] data, Size size, bool isReuseable)
+        {
+            InputUri = inputUri;
+            InputParams = inputParams;
+            Data = data;
+            Size = size;
+            IsReuseable = isReuseable;
+        }
     }
 }

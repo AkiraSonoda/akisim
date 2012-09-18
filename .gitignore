@@ -68,6 +68,7 @@ Examples/*.dll
 OpenSim.build
 OpenSim.sln
 OpenSim.suo
+OpenSim.userprefs
 Prebuild/Prebuild.build
 Prebuild/Prebuild.sln
 TestResult.xml

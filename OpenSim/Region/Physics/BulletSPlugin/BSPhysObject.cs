@@ -41,14 +41,18 @@ public abstract class BSPhysObject : PhysicsActor
 {
     public abstract BSLinkset Linkset { get; set; }
 
-    public abstract void Collide(uint collidingWith, BSPhysObject collidee, ActorTypes type,
+    public abstract bool Collide(uint collidingWith, BSPhysObject collidee,
             OMV.Vector3 contactPoint, OMV.Vector3 contactNormal, float pentrationDepth);
     public abstract void SendCollisions();
 
     // Return the object mass without calculating it or side effects
     public abstract float MassRaw { get; }
 
-    public abstract BulletBody Body { get; set; }
+    // Reference to the physical body (btCollisionObject) of this object
+    public abstract BulletBody BSBody { get; set; }
+    // Reference to the physical shape (btCollisionShape) of this object
+    public abstract BulletShape BSShape { get; set; }
+
     public abstract void ZeroMotion();
 
     public virtual void StepVehicle(float timeStep) { }
