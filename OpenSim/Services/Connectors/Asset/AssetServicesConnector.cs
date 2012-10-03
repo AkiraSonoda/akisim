@@ -49,11 +49,10 @@ namespace OpenSim.Services.Connectors
         private IImprovedAssetCache m_Cache = null;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
-		private List<AssetRetrievedEx> AssetRetrievedExList;
-		
+
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
-        private Dictionary<string, List<AssetRetrievedEx>> m_AssetHandlers = new Dictionary<string, List<AssetRetrievedEx>>();
+        private Dictionary<string, AssetRetrievedEx> m_AssetHandlers = new Dictionary<string, AssetRetrievedEx>();
 
 
         public AssetServicesConnector()
@@ -109,7 +108,7 @@ namespace OpenSim.Services.Connectors
             if (asset == null)
             {
                 asset = SynchronousRestObjectRequester.
-                        MakeRequest<int, AssetBase>("GET", uri, 0);
+                        MakeRequest<int, AssetBase>("GET", uri, 0, 30);
 
                 if (m_Cache != null)
                     m_Cache.Cache(asset);
@@ -193,17 +192,16 @@ namespace OpenSim.Services.Connectors
                 {
                     AssetRetrievedEx handlerEx = new AssetRetrievedEx(delegate(AssetBase _asset) { handler(id, sender, _asset); });
 
-                    List<AssetRetrievedEx> handlers;
+                    AssetRetrievedEx handlers;
                     if (m_AssetHandlers.TryGetValue(id, out handlers))
                     {
                         // Someone else is already loading this asset. It will notify our handler when done.
-                        handlers.Add(handlerEx);
+                        handlers += handlerEx;
                         return true;
                     }
 
                     // Load the asset ourselves
-                    handlers = new List<AssetRetrievedEx>();
-					handlers.Add(handlerEx);
+                    handlers += handlerEx;
                     m_AssetHandlers.Add(id, handlers);
                 }
 
@@ -216,15 +214,14 @@ namespace OpenSim.Services.Connectors
                             if (m_Cache != null)
                                 m_Cache.Cache(a);
 
-                            List<AssetRetrievedEx> handlers;
+                            AssetRetrievedEx handlers;
                             lock (m_AssetHandlers)
                             {
                                 handlers = m_AssetHandlers[id];
                                 m_AssetHandlers.Remove(id);
                             }
-                            foreach(AssetRetrievedEx h in handlers)
-								h.Invoke(a);
-                        });
+                            handlers.Invoke(a);
+                        }, 30);
                     
                     success = true;
                 }

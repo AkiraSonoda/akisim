@@ -1,5 +1,5 @@
    <<<>>>>The following people have contributed to OpenSim (Thank you 
-for your effort!)
+for your effort!) 
 
 = Current OpenSim Developers (in very rough order of appearance) =
 These folks represent the current core team for OpenSim, and are the
@@ -16,7 +16,7 @@ people that make the day to day of OpenSim happen.
 * BlueWall (James Hughes)
 * Nebadon Izumi (Michael Cerquoni, OSgrid)
 * Snoopy Pfeffer
-* Richard Adams (Intel)
+* Robert Adams (Intel)
 
 = Core Developers Following the White Rabbit =
 Core developers who have temporarily (we hope) gone chasing the white rabbit. 
@@ -209,3 +209,4 @@ In addition, we would like to thank:
 * The NANT Developers
 * Microsoft (.NET, MSSQL-Adapters)
 *x
+  
