@@ -46,6 +46,7 @@ namespace OpenSim.Services.Connectors
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         private string m_ServerURI = String.Empty;
+		private int maxConnections = 0;
         private IImprovedAssetCache m_Cache = null;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
@@ -72,23 +73,29 @@ namespace OpenSim.Services.Connectors
         public virtual void Initialise(IConfigSource source)
         {
             IConfig assetConfig = source.Configs["AssetService"];
-            if (assetConfig == null)
-            {
+            if (assetConfig == null) {
                 m_log.Error("[ASSET CONNECTOR]: AssetService missing from OpenSim.ini");
                 throw new Exception("Asset connector init error");
             }
 
-            string serviceURI = assetConfig.GetString("AssetServerURI",
-                    String.Empty);
+            string serviceURI = assetConfig.GetString("AssetServerURI",String.Empty);
 
-            if (serviceURI == String.Empty)
-            {
+            if (serviceURI == String.Empty) {
                 m_log.Error("[ASSET CONNECTOR]: No Server URI named in section AssetService");
                 throw new Exception("Asset connector init error");
             }
 
             m_ServerURI = serviceURI;
-        }
+			
+			IConfig networkConfig = source.Configs["Network"];
+            if (networkConfig == null) {
+                m_log.Error("[ASSET CONNECTOR]: Network missing from OpenSim.ini");
+                throw new Exception("Asset connector init error");
+            }
+			
+			maxConnections = networkConfig.GetInt("max_connections",30);
+
+		}
 
         protected void SetCache(IImprovedAssetCache cache)
         {
@@ -108,7 +115,7 @@ namespace OpenSim.Services.Connectors
             if (asset == null)
             {
                 asset = SynchronousRestObjectRequester.
-                        MakeRequest<int, AssetBase>("GET", uri, 0, 30);
+                        MakeRequest<int, AssetBase>("GET", uri, 0, maxConnections);
 
                 if (m_Cache != null)
                     m_Cache.Cache(asset);

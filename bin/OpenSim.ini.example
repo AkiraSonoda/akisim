@@ -455,6 +455,9 @@
     ;; " (Mozilla Compatible)" to the text where there are problems with a web server
     ; user_agent = "OpenSim LSL (Mozilla Compatible)"
 
+    ;# {max_connections} {} {maximum connections to use for tcp requests to the grid servers} {} 30
+    max_connections = 30;
+
 
 [ClientStack.LindenUDP]
     ;; See OpensSimDefaults.ini for the throttle options. You can copy the
