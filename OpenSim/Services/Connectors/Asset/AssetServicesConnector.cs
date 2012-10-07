@@ -46,7 +46,6 @@ namespace OpenSim.Services.Connectors
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         private string m_ServerURI = String.Empty;
-		private int maxConnections = 0;
         private IImprovedAssetCache m_Cache = null;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
@@ -86,15 +85,6 @@ namespace OpenSim.Services.Connectors
             }
 
             m_ServerURI = serviceURI;
-			
-			IConfig networkConfig = source.Configs["Network"];
-            if (networkConfig == null) {
-                m_log.Error("[ASSET CONNECTOR]: Network missing from OpenSim.ini");
-                throw new Exception("Asset connector init error");
-            }
-			
-			maxConnections = networkConfig.GetInt("max_connections",30);
-
 		}
 
         protected void SetCache(IImprovedAssetCache cache)
@@ -115,7 +105,7 @@ namespace OpenSim.Services.Connectors
             if (asset == null)
             {
                 asset = SynchronousRestObjectRequester.
-                        MakeRequest<int, AssetBase>("GET", uri, 0, maxConnections);
+                        MakeRequest<int, AssetBase>("GET", uri, 0);
 
                 if (m_Cache != null)
                     m_Cache.Cache(asset);
@@ -228,7 +218,7 @@ namespace OpenSim.Services.Connectors
                                 m_AssetHandlers.Remove(id);
                             }
                             handlers.Invoke(a);
-                        }, 30);
+                        });
                     
                     success = true;
                 }

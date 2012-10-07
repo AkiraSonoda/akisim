@@ -165,6 +165,10 @@ namespace OpenSim
             {
                 proxyUrl = networkConfig.GetString("proxy_url", "");
                 proxyOffset = Int32.Parse(networkConfig.GetString("proxy_offset", "0"));
+				// Setting maxConnections used for outgoing http requests
+				WebUtil.maxConnections = networkConfig.GetInt("max_connections", 30);
+				// Set the configured debug Level
+				WebUtil.DebugLevel = networkConfig.GetInt("webutil_debug_level",0);
             }
         }
 

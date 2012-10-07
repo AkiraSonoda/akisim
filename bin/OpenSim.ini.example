@@ -458,6 +458,16 @@
     ;# {max_connections} {} {maximum connections to use for tcp requests to the grid servers} {} 30
     max_connections = 30;
 
+    ;# {webutil_debug_level} {} {Enables debugging messages} {} 0
+    ; >= 1 then short warnings are logged when receiving bad input data.
+    ; >= 2 then long warnings are logged when receiving bad input data.
+    ; >= 3 then short notices about all incoming non-poll HTTP requests are logged.
+    ; >= 4 then the time taken to fulfill the request is logged.
+    ; >= 5 then the start of the body of incoming non-poll HTTP requests will be logged.
+    ; >= 6 then the entire body of incoming non-poll HTTP requests will be logged.
+    ; Defaults to 0
+    ; This debug Level can also be set during runtime of the sim. 
+    webutil_debug_level = 0;
 
 [ClientStack.LindenUDP]
     ;; See OpensSimDefaults.ini for the throttle options. You can copy the
