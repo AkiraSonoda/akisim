@@ -3924,7 +3924,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 {
                     List<ImprovedTerseObjectUpdatePacket.ObjectDataBlock> blocks = terseAgentUpdateBlocks.Value;
 
-                    ImprovedTerseObjectUpdatePacket packet = new ImprovedTerseObjectUpdatePacket();
+                    ImprovedTerseObjectUpdatePacket packet
+                        = (ImprovedTerseObjectUpdatePacket)PacketPool.Instance.GetPacket(PacketType.ImprovedTerseObjectUpdate);
+
                     packet.RegionData.RegionHandle = m_scene.RegionInfo.RegionHandle;
                     packet.RegionData.TimeDilation = timeDilation;
                     packet.ObjectData = new ImprovedTerseObjectUpdatePacket.ObjectDataBlock[blocks.Count];
@@ -3969,7 +3971,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 {
                     List<ImprovedTerseObjectUpdatePacket.ObjectDataBlock> blocks = terseUpdateBlocks.Value;
         
-                    ImprovedTerseObjectUpdatePacket packet = new ImprovedTerseObjectUpdatePacket();
+                    ImprovedTerseObjectUpdatePacket packet
+                        = (ImprovedTerseObjectUpdatePacket)PacketPool.Instance.GetPacket(
+                            PacketType.ImprovedTerseObjectUpdate);
+
                     packet.RegionData.RegionHandle = m_scene.RegionInfo.RegionHandle;
                     packet.RegionData.TimeDilation = timeDilation;
                     packet.ObjectData = new ImprovedTerseObjectUpdatePacket.ObjectDataBlock[blocks.Count];
@@ -4961,7 +4966,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             Utils.UInt16ToBytes(Utils.FloatToUInt16(angularVelocity.Y, -64.0f, 64.0f), data, pos); pos += 2;
             Utils.UInt16ToBytes(Utils.FloatToUInt16(angularVelocity.Z, -64.0f, 64.0f), data, pos); pos += 2;
 
-            ImprovedTerseObjectUpdatePacket.ObjectDataBlock block = new ImprovedTerseObjectUpdatePacket.ObjectDataBlock();
+            ImprovedTerseObjectUpdatePacket.ObjectDataBlock block
+                = PacketPool.Instance.GetDataBlock<ImprovedTerseObjectUpdatePacket.ObjectDataBlock>();
+            
             block.Data = data;
 
             if (textureEntry != null && textureEntry.Length > 0)
@@ -9058,7 +9065,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
             #endregion
 
-            switch (Utils.BytesToString(messagePacket.MethodData.Method))
+            string method = Utils.BytesToString(messagePacket.MethodData.Method);
+
+            switch (method)
             {
                 case "getinfo":
                     if (((Scene)m_scene).Permissions.CanIssueEstateCommand(AgentId, false))
@@ -9374,7 +9383,17 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     return true;
 
                 default:
-                    m_log.Error("EstateOwnerMessage: Unknown method requested\n" + messagePacket);
+                    m_log.WarnFormat(
+                        "[LLCLIENTVIEW]: EstateOwnerMessage: Unknown method {0} requested for {1} in {2}",
+                        method, Name, Scene.Name);
+
+                    for (int i = 0; i < messagePacket.ParamList.Length; i++)
+                    {
+                        EstateOwnerMessagePacket.ParamListBlock block = messagePacket.ParamList[i];
+                        string data = (string)Utils.BytesToString(block.Parameter);
+                        m_log.DebugFormat("[LLCLIENTVIEW]: Param {0}={1}", i, data);
+                    }
+
                     return true;
             }
 
@@ -11760,7 +11779,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     logPacket = false;
                 
                 if (DebugPacketLevel <= 50
-                    & (packet.Type == PacketType.ImprovedTerseObjectUpdate || packet.Type == PacketType.ObjectUpdate))
+                    && (packet.Type == PacketType.ImprovedTerseObjectUpdate || packet.Type == PacketType.ObjectUpdate))
                     logPacket = false;
 
                 if (DebugPacketLevel <= 25 && packet.Type == PacketType.ObjectPropertiesFamily)
@@ -12301,7 +12320,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 ushort timeDilation = Utils.FloatToUInt16(TIME_DILATION, 0.0f, 1.0f);
 
 
-                ImprovedTerseObjectUpdatePacket packet = new ImprovedTerseObjectUpdatePacket();
+                ImprovedTerseObjectUpdatePacket packet
+                    = (ImprovedTerseObjectUpdatePacket)PacketPool.Instance.GetPacket(
+                        PacketType.ImprovedTerseObjectUpdate);
+
                 packet.RegionData.RegionHandle = m_scene.RegionInfo.RegionHandle;
                 packet.RegionData.TimeDilation = timeDilation;
                 packet.ObjectData = new ImprovedTerseObjectUpdatePacket.ObjectDataBlock[1];
