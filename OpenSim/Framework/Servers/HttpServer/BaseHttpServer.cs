@@ -344,7 +344,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
 			IRequestHandler requestHandler = null;
 
 			try {
-				//m_log.DebugFormat("[BASE HTTP SERVER]: <{0}> handle request for {1}",reqnum,request.RawUrl);
+				m_log.DebugFormat("[BASE HTTP SERVER]: <{0}> handle request for {1}",RequestNumber,request.RawUrl);
 
 				Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US", true);
 
