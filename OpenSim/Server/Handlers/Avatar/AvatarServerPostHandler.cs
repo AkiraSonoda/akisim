@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using Nini.Config;
 using log4net;
 using System;
@@ -42,23 +41,19 @@ using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenMetaverse;
 
-namespace OpenSim.Server.Handlers.Avatar
-{
-    public class AvatarServerPostHandler : BaseStreamHandler
-    {
+namespace OpenSim.Server.Handlers.Avatar {
+    public class AvatarServerPostHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private IAvatarService m_AvatarService;
 
         public AvatarServerPostHandler(IAvatarService service) :
-                base("POST", "/avatar")
-        {
+                base("POST", "/avatar") {
             m_AvatarService = service;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[AvatarServerPostHandler] RequestId: {0}", requestId);
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();
@@ -66,18 +61,17 @@ namespace OpenSim.Server.Handlers.Avatar
 
             //m_log.DebugFormat("[XXX]: query String: {0}", body);
 
-            try
-            {
+            try {
                 Dictionary<string, object> request =
                         ServerUtils.ParseQueryString(body);
 
-                if (!request.ContainsKey("METHOD"))
+                if (!request.ContainsKey("METHOD")) {
                     return FailureResult();
+                }
 
-                string method = request["METHOD"].ToString();
+                string method = request ["METHOD"].ToString();
 
-                switch (method)
-                {
+                switch (method) {
                     case "getavatar":
                         return GetAvatar(request);
                     case "setavatar":
@@ -89,35 +83,34 @@ namespace OpenSim.Server.Handlers.Avatar
                     case "removeitems":
                         return RemoveItems(request);
                 }
-                m_log.DebugFormat("[AVATAR HANDLER]: unknown method request: {0}", method);
-            }
-            catch (Exception e)
-            {
-                m_log.Debug("[AVATAR HANDLER]: Exception {0}" + e);
+                m_log.WarnFormat("[AVATAR HANDLER]: unknown method request: {0}", method);
+            } catch (Exception e) {
+                m_log.WarnFormat("[AVATAR HANDLER]: Exception {0}", e);
             }
 
             return FailureResult();
 
         }
 
-        byte[] GetAvatar(Dictionary<string, object> request)
-        {
+        byte[] GetAvatar(Dictionary<string, object> request) {
             UUID user = UUID.Zero;
 
-            if (!request.ContainsKey("UserID"))
+            if (!request.ContainsKey("UserID")) {
                 return FailureResult();
+            }
 
-            if (UUID.TryParse(request["UserID"].ToString(), out user))
-            {
+            if (UUID.TryParse(request ["UserID"].ToString(), out user)) {
                 AvatarData avatar = m_AvatarService.GetAvatar(user);
-                if (avatar == null)
+                if (avatar == null) {
                     return FailureResult();
+                }
 
                 Dictionary<string, object> result = new Dictionary<string, object>();
-                if (avatar == null)
-                    result["result"] = "null";
-                else
-                    result["result"] = avatar.ToKeyValuePairs();
+                if (avatar == null) {
+                    result ["result"] = "null";
+                } else {
+                    result ["result"] = avatar.ToKeyValuePairs();
+                }
 
                 string xmlString = ServerUtils.BuildXmlResponse(result);
 
@@ -127,38 +120,42 @@ namespace OpenSim.Server.Handlers.Avatar
             return FailureResult();
         }
 
-        byte[] SetAvatar(Dictionary<string, object> request)
-        {
+        byte[] SetAvatar(Dictionary<string, object> request) {
             UUID user = UUID.Zero;
 
-            if (!request.ContainsKey("UserID"))
+            if (!request.ContainsKey("UserID")) {
                 return FailureResult();
+            }
 
-            if (!UUID.TryParse(request["UserID"].ToString(), out user))
+            if (!UUID.TryParse(request ["UserID"].ToString(), out user)) {
                 return FailureResult();
+            }
 
             RemoveRequestParamsNotForStorage(request);
 
             AvatarData avatar = new AvatarData(request);
-            if (m_AvatarService.SetAvatar(user, avatar))
+            if (m_AvatarService.SetAvatar(user, avatar)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
 
-        byte[] ResetAvatar(Dictionary<string, object> request)
-        {
+        byte[] ResetAvatar(Dictionary<string, object> request) {
             UUID user = UUID.Zero;
-            if (!request.ContainsKey("UserID"))
+            if (!request.ContainsKey("UserID")) {
                 return FailureResult();
+            }
 
-            if (!UUID.TryParse(request["UserID"].ToString(), out user))
+            if (!UUID.TryParse(request ["UserID"].ToString(), out user)) {
                 return FailureResult();
+            }
 
             RemoveRequestParamsNotForStorage(request);
 
-            if (m_AvatarService.ResetAvatar(user))
+            if (m_AvatarService.ResetAvatar(user)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
@@ -167,112 +164,96 @@ namespace OpenSim.Server.Handlers.Avatar
         /// Remove parameters that were used to invoke the method and should not in themselves be persisted.
         /// </summary>
         /// <param name='request'></param>
-        private void RemoveRequestParamsNotForStorage(Dictionary<string, object> request)
-        {
+        private void RemoveRequestParamsNotForStorage(Dictionary<string, object> request) {
             request.Remove("VERSIONMAX");
             request.Remove("VERSIONMIN");
             request.Remove("METHOD");
             request.Remove("UserID");
         }
         
-        byte[] SetItems(Dictionary<string, object> request)
-        {
+        byte[] SetItems(Dictionary<string, object> request) {
             UUID user = UUID.Zero;
             string[] names, values;
 
-            if (!request.ContainsKey("UserID") || !request.ContainsKey("Names") || !request.ContainsKey("Values"))
+            if (!request.ContainsKey("UserID") || !request.ContainsKey("Names") || !request.ContainsKey("Values")) {
                 return FailureResult();
+            }
 
-            if (!UUID.TryParse(request["UserID"].ToString(), out user))
+            if (!UUID.TryParse(request ["UserID"].ToString(), out user)) {
                 return FailureResult();
+            }
 
-            if (!(request["Names"] is List<string> || request["Values"] is List<string>))
+            if (!(request ["Names"] is List<string> || request ["Values"] is List<string>)) {
                 return FailureResult();
+            }
 
             RemoveRequestParamsNotForStorage(request);
 
-            List<string> _names = (List<string>)request["Names"];
+            List<string> _names = (List<string>)request ["Names"];
             names = _names.ToArray();
-            List<string> _values = (List<string>)request["Values"];
+            List<string> _values = (List<string>)request ["Values"];
             values = _values.ToArray();
             
-            if (m_AvatarService.SetItems(user, names, values))
+            if (m_AvatarService.SetItems(user, names, values)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
 
-        byte[] RemoveItems(Dictionary<string, object> request)
-        {
+        byte[] RemoveItems(Dictionary<string, object> request) {
             UUID user = UUID.Zero;
             string[] names;
 
-            if (!request.ContainsKey("UserID") || !request.ContainsKey("Names"))
+            if (!request.ContainsKey("UserID") || !request.ContainsKey("Names")) {
                 return FailureResult();
+            }
 
-            if (!UUID.TryParse(request["UserID"].ToString(), out user))
+            if (!UUID.TryParse(request ["UserID"].ToString(), out user)) {
                 return FailureResult();
+            }
 
-            if (!(request["Names"] is List<string>))
+            if (!(request ["Names"] is List<string>)) {
                 return FailureResult();
+            }
 
-            List<string> _names = (List<string>)request["Names"];
+            List<string> _names = (List<string>)request ["Names"];
             names = _names.ToArray();
 
-            if (m_AvatarService.RemoveItems(user, names))
+            if (m_AvatarService.RemoveItems(user, names)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
-
-
         
-        private byte[] SuccessResult()
-        {
+        private byte[] SuccessResult() {
             XmlDocument doc = new XmlDocument();
-
-            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
-                    "", "");
-
+            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,"", "");
             doc.AppendChild(xmlnode);
-
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse",
-                    "");
-
+            XmlElement rootElement = doc.CreateElement("", "ServerResponse","");
             doc.AppendChild(rootElement);
-
             XmlElement result = doc.CreateElement("", "result", "");
             result.AppendChild(doc.CreateTextNode("Success"));
-
             rootElement.AppendChild(result);
 
             return DocToBytes(doc);
         }
 
-        private byte[] FailureResult()
-        {
+        private byte[] FailureResult() {
             XmlDocument doc = new XmlDocument();
-
-            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
-                    "", "");
-
+            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,"", "");
             doc.AppendChild(xmlnode);
-
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse",
-                    "");
-
+            XmlElement rootElement = doc.CreateElement("", "ServerResponse","");
             doc.AppendChild(rootElement);
-
             XmlElement result = doc.CreateElement("", "result", "");
             result.AppendChild(doc.CreateTextNode("Failure"));
-
             rootElement.AppendChild(result);
 
             return DocToBytes(doc);
         }
 
-        private byte[] DocToBytes(XmlDocument doc)
-        {
+        private byte[] DocToBytes(XmlDocument doc) {
             MemoryStream ms = new MemoryStream();
             XmlTextWriter xw = new XmlTextWriter(ms, null);
             xw.Formatting = Formatting.Indented;

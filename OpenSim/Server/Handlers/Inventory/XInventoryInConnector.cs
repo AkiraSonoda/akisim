@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.Reflection;
 using System.Text;
@@ -40,32 +39,31 @@ using OpenSim.Server.Handlers.Base;
 using log4net;
 using OpenMetaverse;
 
-namespace OpenSim.Server.Handlers.Asset
-{
-    public class XInventoryInConnector : ServiceConnector
-    {
+namespace OpenSim.Server.Handlers.Asset {
+    public class XInventoryInConnector : ServiceConnector {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private IInventoryService m_InventoryService;
         private string m_ConfigName = "InventoryService";
 
         public XInventoryInConnector(IConfigSource config, IHttpServer server, string configName) :
-                base(config, server, configName)
-        {
-            if (configName != String.Empty)
+                base(config, server, configName) {
+            if (configName != String.Empty) {
                 m_ConfigName = configName;
+            }
 
             m_log.DebugFormat("[XInventoryInConnector]: Starting with config name {0}", m_ConfigName);
 
-            IConfig serverConfig = config.Configs[m_ConfigName];
-            if (serverConfig == null)
+            IConfig serverConfig = config.Configs [m_ConfigName];
+            if (serverConfig == null) {
                 throw new Exception(String.Format("No section '{0}' in config file", m_ConfigName));
+            }
 
             string inventoryService = serverConfig.GetString("LocalServiceModule",
                     String.Empty);
 
-            if (inventoryService == String.Empty)
+            if (inventoryService == String.Empty) {
                 throw new Exception("No InventoryService in config file");
+            }
 
             Object[] args = new Object[] { config, m_ConfigName };
             m_InventoryService =
@@ -75,41 +73,36 @@ namespace OpenSim.Server.Handlers.Asset
         }
     }
 
-    public class XInventoryConnectorPostHandler : BaseStreamHandler
-    {
+    public class XInventoryConnectorPostHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private IInventoryService m_InventoryService;
 
         public XInventoryConnectorPostHandler(IInventoryService service) :
-                base("POST", "/xinventory")
-        {
+                base("POST", "/xinventory") {
             m_InventoryService = service;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();
             body = body.Trim();
 
-            //m_log.DebugFormat("[XXX]: query String: {0}", body);
+            m_log.DebugFormat("[XInventoryConnectorPostHandler] RequestId: {0}, query String: {1}", requestId, body);
 
-            try
-            {
+            try {
                 Dictionary<string, object> request =
                         ServerUtils.ParseQueryString(body);
 
-                if (!request.ContainsKey("METHOD"))
+                if (!request.ContainsKey("METHOD")) {
                     return FailureResult();
+                }
 
-                string method = request["METHOD"].ToString();
+                string method = request ["METHOD"].ToString();
                 request.Remove("METHOD");
 
-                switch (method)
-                {
+                switch (method) {
                     case "CREATEUSERINVENTORY":
                         return HandleCreateUserInventory(request);
                     case "GETINVENTORYSKELETON":
@@ -151,50 +144,36 @@ namespace OpenSim.Server.Handlers.Asset
                     case "GETASSETPERMISSIONS":
                         return HandleGetAssetPermissions(request);
                 }
-                m_log.DebugFormat("[XINVENTORY HANDLER]: unknown method request: {0}", method);
-            }
-            catch (Exception e)
-            {
-                m_log.DebugFormat("[XINVENTORY HANDLER]: Exception {0}", e.StackTrace);
+                m_log.WarnFormat("[XInventoryConnectorPostHandler]: unknown method request: {0}", method);
+            } catch (Exception e) {
+                m_log.ErrorFormat("[XInventoryConnectorPostHandler]: Exception {0}", e.StackTrace);
             }
 
             return FailureResult();
         }
 
-        private byte[] FailureResult()
-        {
+        private byte[] FailureResult() {
             return BoolResult(false);
         }
 
-        private byte[] SuccessResult()
-        {
+        private byte[] SuccessResult() {
             return BoolResult(true);
         }
 
-        private byte[] BoolResult(bool value)
-        {
+        private byte[] BoolResult(bool value) {
             XmlDocument doc = new XmlDocument();
-
-            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
-                    "", "");
-
+            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,"", "");
             doc.AppendChild(xmlnode);
-
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse",
-                    "");
-
+            XmlElement rootElement = doc.CreateElement("", "ServerResponse","");
             doc.AppendChild(rootElement);
-
             XmlElement result = doc.CreateElement("", "RESULT", "");
             result.AppendChild(doc.CreateTextNode(value.ToString()));
-
             rootElement.AppendChild(result);
 
             return DocToBytes(doc);
         }
 
-        private byte[] DocToBytes(XmlDocument doc)
-        {
+        private byte[] DocToBytes(XmlDocument doc) {
             MemoryStream ms = new MemoryStream();
             XmlTextWriter xw = new XmlTextWriter(ms, null);
             xw.Formatting = Formatting.Indented;
@@ -204,504 +183,455 @@ namespace OpenSim.Server.Handlers.Asset
             return ms.ToArray();
         }
 
-        byte[] HandleCreateUserInventory(Dictionary<string,object> request)
-        {
+        byte[] HandleCreateUserInventory(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
 
-            if (!request.ContainsKey("PRINCIPAL"))
+            if (!request.ContainsKey("PRINCIPAL")) {
                 return FailureResult();
+            }
 
-            if (m_InventoryService.CreateUserInventory(new UUID(request["PRINCIPAL"].ToString())))
-                result["RESULT"] = "True";
-            else
-                result["RESULT"] = "False";
+            if (m_InventoryService.CreateUserInventory(new UUID(request ["PRINCIPAL"].ToString()))) {
+                result ["RESULT"] = "True";
+            } else {
+                result ["RESULT"] = "False";
+            }
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
-
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetInventorySkeleton(Dictionary<string,object> request)
-        {
+        byte[] HandleGetInventorySkeleton(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
 
-            if (!request.ContainsKey("PRINCIPAL"))
+            if (!request.ContainsKey("PRINCIPAL")) {
                 return FailureResult();
+            }
 
-
-            List<InventoryFolderBase> folders = m_InventoryService.GetInventorySkeleton(new UUID(request["PRINCIPAL"].ToString()));
+            List<InventoryFolderBase> folders = m_InventoryService.GetInventorySkeleton(new UUID(request ["PRINCIPAL"].ToString()));
 
             Dictionary<string, object> sfolders = new Dictionary<string, object>();
-            if (folders != null)
-            {
+            if (folders != null) {
                 int i = 0;
-                foreach (InventoryFolderBase f in folders)
-                {
-                    sfolders["folder_" + i.ToString()] = EncodeFolder(f);
+                foreach (InventoryFolderBase f in folders) {
+                    sfolders ["folder_" + i.ToString()] = EncodeFolder(f);
                     i++;
                 }
             }
-            result["FOLDERS"] = sfolders;
-
+            result ["FOLDERS"] = sfolders;
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetUserInventory(Dictionary<string, object> request)
-        {
+        byte[] HandleGetUserInventory(Dictionary<string, object> request) {
             Dictionary<string, object> result = new Dictionary<string, object>();
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
 
             InventoryCollection icoll = m_InventoryService.GetUserInventory(principal);
-            if (icoll != null)
-            {
+            if (icoll != null) {
                 Dictionary<string, object> folders = new Dictionary<string, object>();
                 int i = 0;
-                if (icoll.Folders != null)
-                {
-                    foreach (InventoryFolderBase f in icoll.Folders)
-                    {
-                        folders["folder_" + i.ToString()] = EncodeFolder(f);
+                if (icoll.Folders != null) {
+                    foreach (InventoryFolderBase f in icoll.Folders) {
+                        folders ["folder_" + i.ToString()] = EncodeFolder(f);
                         i++;
                     }
-                    result["FOLDERS"] = folders;
+                    result ["FOLDERS"] = folders;
                 }
-                if (icoll.Items != null)
-                {
+                if (icoll.Items != null) {
                     i = 0;
                     Dictionary<string, object> items = new Dictionary<string, object>();
-                    foreach (InventoryItemBase it in icoll.Items)
-                    {
-                        items["item_" + i.ToString()] = EncodeItem(it);
+                    foreach (InventoryItemBase it in icoll.Items) {
+                        items ["item_" + i.ToString()] = EncodeItem(it);
                         i++;
                     }
-                    result["ITEMS"] = items;
+                    result ["ITEMS"] = items;
                 }
             }
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
-
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetRootFolder(Dictionary<string,object> request)
-        {
+        byte[] HandleGetRootFolder(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
 
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
             InventoryFolderBase rfolder = m_InventoryService.GetRootFolder(principal);
-            if (rfolder != null)
-                result["folder"] = EncodeFolder(rfolder);
-
+            if (rfolder != null) {
+                result ["folder"] = EncodeFolder(rfolder);
+            }
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetFolderForType(Dictionary<string,object> request)
-        {
+        byte[] HandleGetFolderForType(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
             int type = 0;
-            Int32.TryParse(request["TYPE"].ToString(), out type);
+            Int32.TryParse(request ["TYPE"].ToString(), out type);
             InventoryFolderBase folder = m_InventoryService.GetFolderForType(principal, (AssetType)type);
-            if (folder != null)
-                result["folder"] = EncodeFolder(folder);
-
+            if (folder != null) {
+                result ["folder"] = EncodeFolder(folder);
+            }
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetFolderContent(Dictionary<string,object> request)
-        {
+        byte[] HandleGetFolderContent(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
             UUID folderID = UUID.Zero;
-            UUID.TryParse(request["FOLDER"].ToString(), out folderID);
+            UUID.TryParse(request ["FOLDER"].ToString(), out folderID);
 
             InventoryCollection icoll = m_InventoryService.GetFolderContent(principal, folderID);
-            if (icoll != null)
-            {
+            if (icoll != null) {
                 Dictionary<string, object> folders = new Dictionary<string, object>();
                 int i = 0; 
-                if (icoll.Folders != null)
-                {
-                    foreach (InventoryFolderBase f in icoll.Folders)
-                    {
-                        folders["folder_" + i.ToString()] = EncodeFolder(f);
+                if (icoll.Folders != null) {
+                    foreach (InventoryFolderBase f in icoll.Folders) {
+                        folders ["folder_" + i.ToString()] = EncodeFolder(f);
                         i++;
                     }
-                    result["FOLDERS"] = folders;
+                    result ["FOLDERS"] = folders;
                 }
-                if (icoll.Items != null)
-                {
+                if (icoll.Items != null) {
                     i = 0;
                     Dictionary<string, object> items = new Dictionary<string, object>();
-                    foreach (InventoryItemBase it in icoll.Items)
-                    {
-                        items["item_" + i.ToString()] = EncodeItem(it);
+                    foreach (InventoryItemBase it in icoll.Items) {
+                        items ["item_" + i.ToString()] = EncodeItem(it);
                         i++;
                     }
-                    result["ITEMS"] = items;
+                    result ["ITEMS"] = items;
                 }
             }
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetFolderItems(Dictionary<string,object> request)
-        {
+        byte[] HandleGetFolderItems(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
             UUID folderID = UUID.Zero;
-            UUID.TryParse(request["FOLDER"].ToString(), out folderID);
+            UUID.TryParse(request ["FOLDER"].ToString(), out folderID);
 
             List<InventoryItemBase> items = m_InventoryService.GetFolderItems(principal, folderID);
             Dictionary<string, object> sitems = new Dictionary<string, object>();
 
-            if (items != null)
-            {
+            if (items != null) {
                 int i = 0;
-                foreach (InventoryItemBase item in items)
-                {
-                    sitems["item_" + i.ToString()] = EncodeItem(item);
+                foreach (InventoryItemBase item in items) {
+                    sitems ["item_" + i.ToString()] = EncodeItem(item);
                     i++;
                 }
             }
-            result["ITEMS"] = sitems;
+            result ["ITEMS"] = sitems;
             
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleAddFolder(Dictionary<string,object> request)
-        {
+        byte[] HandleAddFolder(Dictionary<string,object> request) {
             InventoryFolderBase folder = BuildFolder(request);
 
-            if (m_InventoryService.AddFolder(folder))
+            if (m_InventoryService.AddFolder(folder)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] HandleUpdateFolder(Dictionary<string,object> request)
-        {
+        byte[] HandleUpdateFolder(Dictionary<string,object> request) {
             InventoryFolderBase folder = BuildFolder(request);
 
-            if (m_InventoryService.UpdateFolder(folder))
+            if (m_InventoryService.UpdateFolder(folder)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] HandleMoveFolder(Dictionary<string,object> request)
-        {
+        byte[] HandleMoveFolder(Dictionary<string,object> request) {
             UUID parentID = UUID.Zero;
-            UUID.TryParse(request["ParentID"].ToString(), out parentID);
+            UUID.TryParse(request ["ParentID"].ToString(), out parentID);
             UUID folderID = UUID.Zero;
-            UUID.TryParse(request["ID"].ToString(), out folderID);
+            UUID.TryParse(request ["ID"].ToString(), out folderID);
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
 
             InventoryFolderBase folder = new InventoryFolderBase(folderID, "", principal, parentID);
-            if (m_InventoryService.MoveFolder(folder))
+            if (m_InventoryService.MoveFolder(folder)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
-
-        }
-
-        byte[] HandleDeleteFolders(Dictionary<string,object> request)
-        {
-            UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
-            List<string> slist = (List<string>)request["FOLDERS"];
-            List<UUID> uuids = new List<UUID>();
-            foreach (string s in slist)
-            {
-                UUID u = UUID.Zero;
-                if (UUID.TryParse(s, out u))
-                    uuids.Add(u);
             }
 
-            if (m_InventoryService.DeleteFolders(principal, uuids))
+        }
+
+        byte[] HandleDeleteFolders(Dictionary<string,object> request) {
+            UUID principal = UUID.Zero;
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
+            List<string> slist = (List<string>)request ["FOLDERS"];
+            List<UUID> uuids = new List<UUID>();
+            foreach (string s in slist) {
+                UUID u = UUID.Zero;
+                if (UUID.TryParse(s, out u)) {
+                    uuids.Add(u);
+                }
+            }
+
+            if (m_InventoryService.DeleteFolders(principal, uuids)) {
                 return SuccessResult();
-            else
+            } else {
                 return
                     FailureResult();
+            }
         }
 
-        byte[] HandlePurgeFolder(Dictionary<string,object> request)
-        {
+        byte[] HandlePurgeFolder(Dictionary<string,object> request) {
             UUID folderID = UUID.Zero;
-            UUID.TryParse(request["ID"].ToString(), out folderID);
+            UUID.TryParse(request ["ID"].ToString(), out folderID);
 
             InventoryFolderBase folder = new InventoryFolderBase(folderID);
-            if (m_InventoryService.PurgeFolder(folder))
+            if (m_InventoryService.PurgeFolder(folder)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] HandleAddItem(Dictionary<string,object> request)
-        {
+        byte[] HandleAddItem(Dictionary<string,object> request) {
             InventoryItemBase item = BuildItem(request);
 
-            if (m_InventoryService.AddItem(item))
+            if (m_InventoryService.AddItem(item)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] HandleUpdateItem(Dictionary<string,object> request)
-        {
+        byte[] HandleUpdateItem(Dictionary<string,object> request) {
             InventoryItemBase item = BuildItem(request);
 
-            if (m_InventoryService.UpdateItem(item))
+            if (m_InventoryService.UpdateItem(item)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] HandleMoveItems(Dictionary<string,object> request)
-        {
-            List<string> idlist = (List<string>)request["IDLIST"];
-            List<string> destlist = (List<string>)request["DESTLIST"];
+        byte[] HandleMoveItems(Dictionary<string,object> request) {
+            List<string> idlist = (List<string>)request ["IDLIST"];
+            List<string> destlist = (List<string>)request ["DESTLIST"];
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
 
             List<InventoryItemBase> items = new List<InventoryItemBase>();
             int n = 0;
-            try
-            {
-                foreach (string s in idlist)
-                {
+            try {
+                foreach (string s in idlist) {
                     UUID u = UUID.Zero;
-                    if (UUID.TryParse(s, out u))
-                    {
+                    if (UUID.TryParse(s, out u)) {
                         UUID fid = UUID.Zero;
-                        if (UUID.TryParse(destlist[n++], out fid))
-                        {
+                        if (UUID.TryParse(destlist [n++], out fid)) {
                             InventoryItemBase item = new InventoryItemBase(u, principal);
                             item.Folder = fid;
                             items.Add(item);
                         }
                     }
                 }
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 m_log.DebugFormat("[XINVENTORY IN CONNECTOR]: Exception in HandleMoveItems: {0}", e.Message);
                 return FailureResult();
             }
 
-            if (m_InventoryService.MoveItems(principal, items))
+            if (m_InventoryService.MoveItems(principal, items)) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] HandleDeleteItems(Dictionary<string,object> request)
-        {
+        byte[] HandleDeleteItems(Dictionary<string,object> request) {
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
-            List<string> slist = (List<string>)request["ITEMS"];
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
+            List<string> slist = (List<string>)request ["ITEMS"];
             List<UUID> uuids = new List<UUID>();
-            foreach (string s in slist)
-            {
+            foreach (string s in slist) {
                 UUID u = UUID.Zero;
-                if (UUID.TryParse(s, out u))
+                if (UUID.TryParse(s, out u)) {
                     uuids.Add(u);
+                }
             }
 
-            if (m_InventoryService.DeleteItems(principal, uuids))
+            if (m_InventoryService.DeleteItems(principal, uuids)) {
                 return SuccessResult();
-            else
+            } else {
                 return
                     FailureResult();
+            }
         }
 
-        byte[] HandleGetItem(Dictionary<string,object> request)
-        {
+        byte[] HandleGetItem(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID id = UUID.Zero;
-            UUID.TryParse(request["ID"].ToString(), out id);
+            UUID.TryParse(request ["ID"].ToString(), out id);
 
             InventoryItemBase item = new InventoryItemBase(id);
             item = m_InventoryService.GetItem(item);
-            if (item != null)
-                result["item"] = EncodeItem(item);
+            if (item != null) {
+                result ["item"] = EncodeItem(item);
+            }
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetFolder(Dictionary<string,object> request)
-        {
+        byte[] HandleGetFolder(Dictionary<string,object> request) {
             Dictionary<string, object> result = new Dictionary<string, object>();
             UUID id = UUID.Zero;
-            UUID.TryParse(request["ID"].ToString(), out id);
+            UUID.TryParse(request ["ID"].ToString(), out id);
 
             InventoryFolderBase folder = new InventoryFolderBase(id);
             folder = m_InventoryService.GetFolder(folder);
-            if (folder != null)
-                result["folder"] = EncodeFolder(folder);
+            if (folder != null) {
+                result ["folder"] = EncodeFolder(folder);
+            }
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetActiveGestures(Dictionary<string,object> request)
-        {
+        byte[] HandleGetActiveGestures(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
 
             List<InventoryItemBase> gestures = m_InventoryService.GetActiveGestures(principal);
             Dictionary<string, object> items = new Dictionary<string, object>();
-            if (gestures != null)
-            {
+            if (gestures != null) {
                 int i = 0;
-                foreach (InventoryItemBase item in gestures)
-                {
-                    items["item_" + i.ToString()] = EncodeItem(item);
+                foreach (InventoryItemBase item in gestures) {
+                    items ["item_" + i.ToString()] = EncodeItem(item);
                     i++;
                 }
             }
-            result["ITEMS"] = items;
-
+            result ["ITEMS"] = items;
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] HandleGetAssetPermissions(Dictionary<string,object> request)
-        {
+        byte[] HandleGetAssetPermissions(Dictionary<string,object> request) {
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID principal = UUID.Zero;
-            UUID.TryParse(request["PRINCIPAL"].ToString(), out principal);
+            UUID.TryParse(request ["PRINCIPAL"].ToString(), out principal);
             UUID assetID = UUID.Zero;
-            UUID.TryParse(request["ASSET"].ToString(), out assetID);
-
+            UUID.TryParse(request ["ASSET"].ToString(), out assetID);
             int perms = m_InventoryService.GetAssetPermissions(principal, assetID);
-
-            result["RESULT"] = perms.ToString();
+            result ["RESULT"] = perms.ToString();
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
-            //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        private Dictionary<string, object> EncodeFolder(InventoryFolderBase f)
-        {
+        private Dictionary<string, object> EncodeFolder(InventoryFolderBase f) {
             Dictionary<string, object> ret = new Dictionary<string, object>();
-
-            ret["ParentID"] = f.ParentID.ToString();
-            ret["Type"] = f.Type.ToString();
-            ret["Version"] = f.Version.ToString();
-            ret["Name"] = f.Name;
-            ret["Owner"] = f.Owner.ToString();
-            ret["ID"] = f.ID.ToString();
+            ret ["ParentID"] = f.ParentID.ToString();
+            ret ["Type"] = f.Type.ToString();
+            ret ["Version"] = f.Version.ToString();
+            ret ["Name"] = f.Name;
+            ret ["Owner"] = f.Owner.ToString();
+            ret ["ID"] = f.ID.ToString();
 
             return ret;
         }
 
-        private Dictionary<string, object> EncodeItem(InventoryItemBase item)
-        {
+        private Dictionary<string, object> EncodeItem(InventoryItemBase item) {
             Dictionary<string, object> ret = new Dictionary<string, object>();
 
-            ret["AssetID"] = item.AssetID.ToString();
-            ret["AssetType"] = item.AssetType.ToString();
-            ret["BasePermissions"] = item.BasePermissions.ToString();
-            ret["CreationDate"] = item.CreationDate.ToString();
-            if (item.CreatorId != null)
-                ret["CreatorId"] = item.CreatorId.ToString();
-            else
-                ret["CreatorId"] = String.Empty;
-            if (item.CreatorData != null)
-                ret["CreatorData"] = item.CreatorData;
-            else
-                ret["CreatorData"] = String.Empty;
-            ret["CurrentPermissions"] = item.CurrentPermissions.ToString();
-            ret["Description"] = item.Description.ToString();
-            ret["EveryOnePermissions"] = item.EveryOnePermissions.ToString();
-            ret["Flags"] = item.Flags.ToString();
-            ret["Folder"] = item.Folder.ToString();
-            ret["GroupID"] = item.GroupID.ToString();
-            ret["GroupOwned"] = item.GroupOwned.ToString();
-            ret["GroupPermissions"] = item.GroupPermissions.ToString();
-            ret["ID"] = item.ID.ToString();
-            ret["InvType"] = item.InvType.ToString();
-            ret["Name"] = item.Name.ToString();
-            ret["NextPermissions"] = item.NextPermissions.ToString();
-            ret["Owner"] = item.Owner.ToString();
-            ret["SalePrice"] = item.SalePrice.ToString();
-            ret["SaleType"] = item.SaleType.ToString();
+            ret ["AssetID"] = item.AssetID.ToString();
+            ret ["AssetType"] = item.AssetType.ToString();
+            ret ["BasePermissions"] = item.BasePermissions.ToString();
+            ret ["CreationDate"] = item.CreationDate.ToString();
+            if (item.CreatorId != null) {
+                ret ["CreatorId"] = item.CreatorId.ToString();
+            } else {
+                ret ["CreatorId"] = String.Empty;
+            }
+            if (item.CreatorData != null) {
+                ret ["CreatorData"] = item.CreatorData;
+            } else {
+                ret ["CreatorData"] = String.Empty;
+            }
+            ret ["CurrentPermissions"] = item.CurrentPermissions.ToString();
+            ret ["Description"] = item.Description.ToString();
+            ret ["EveryOnePermissions"] = item.EveryOnePermissions.ToString();
+            ret ["Flags"] = item.Flags.ToString();
+            ret ["Folder"] = item.Folder.ToString();
+            ret ["GroupID"] = item.GroupID.ToString();
+            ret ["GroupOwned"] = item.GroupOwned.ToString();
+            ret ["GroupPermissions"] = item.GroupPermissions.ToString();
+            ret ["ID"] = item.ID.ToString();
+            ret ["InvType"] = item.InvType.ToString();
+            ret ["Name"] = item.Name.ToString();
+            ret ["NextPermissions"] = item.NextPermissions.ToString();
+            ret ["Owner"] = item.Owner.ToString();
+            ret ["SalePrice"] = item.SalePrice.ToString();
+            ret ["SaleType"] = item.SaleType.ToString();
 
             return ret;
         }
 
-        private InventoryFolderBase BuildFolder(Dictionary<string,object> data)
-        {
+        private InventoryFolderBase BuildFolder(Dictionary<string,object> data) {
             InventoryFolderBase folder = new InventoryFolderBase();
 
-            folder.ParentID =  new UUID(data["ParentID"].ToString());
-            folder.Type = short.Parse(data["Type"].ToString());
-            folder.Version = ushort.Parse(data["Version"].ToString());
-            folder.Name = data["Name"].ToString();
-            folder.Owner =  new UUID(data["Owner"].ToString());
-            folder.ID = new UUID(data["ID"].ToString());
+            folder.ParentID = new UUID(data ["ParentID"].ToString());
+            folder.Type = short.Parse(data ["Type"].ToString());
+            folder.Version = ushort.Parse(data ["Version"].ToString());
+            folder.Name = data ["Name"].ToString();
+            folder.Owner = new UUID(data ["Owner"].ToString());
+            folder.ID = new UUID(data ["ID"].ToString());
 
             return folder;
         }
 
-        private InventoryItemBase BuildItem(Dictionary<string,object> data)
-        {
+        private InventoryItemBase BuildItem(Dictionary<string,object> data) {
             InventoryItemBase item = new InventoryItemBase();
 
-            item.AssetID = new UUID(data["AssetID"].ToString());
-            item.AssetType = int.Parse(data["AssetType"].ToString());
-            item.Name = data["Name"].ToString();
-            item.Owner = new UUID(data["Owner"].ToString());
-            item.ID = new UUID(data["ID"].ToString());
-            item.InvType = int.Parse(data["InvType"].ToString());
-            item.Folder = new UUID(data["Folder"].ToString());
-            item.CreatorId = data["CreatorId"].ToString();
-            item.CreatorData = data["CreatorData"].ToString();
-            item.Description = data["Description"].ToString();
-            item.NextPermissions = uint.Parse(data["NextPermissions"].ToString());
-            item.CurrentPermissions = uint.Parse(data["CurrentPermissions"].ToString());
-            item.BasePermissions = uint.Parse(data["BasePermissions"].ToString());
-            item.EveryOnePermissions = uint.Parse(data["EveryOnePermissions"].ToString());
-            item.GroupPermissions = uint.Parse(data["GroupPermissions"].ToString());
-            item.GroupID = new UUID(data["GroupID"].ToString());
-            item.GroupOwned = bool.Parse(data["GroupOwned"].ToString());
-            item.SalePrice = int.Parse(data["SalePrice"].ToString());
-            item.SaleType = byte.Parse(data["SaleType"].ToString());
-            item.Flags = uint.Parse(data["Flags"].ToString());
-            item.CreationDate = int.Parse(data["CreationDate"].ToString());
+            item.AssetID = new UUID(data ["AssetID"].ToString());
+            item.AssetType = int.Parse(data ["AssetType"].ToString());
+            item.Name = data ["Name"].ToString();
+            item.Owner = new UUID(data ["Owner"].ToString());
+            item.ID = new UUID(data ["ID"].ToString());
+            item.InvType = int.Parse(data ["InvType"].ToString());
+            item.Folder = new UUID(data ["Folder"].ToString());
+            item.CreatorId = data ["CreatorId"].ToString();
+            item.CreatorData = data ["CreatorData"].ToString();
+            item.Description = data ["Description"].ToString();
+            item.NextPermissions = uint.Parse(data ["NextPermissions"].ToString());
+            item.CurrentPermissions = uint.Parse(data ["CurrentPermissions"].ToString());
+            item.BasePermissions = uint.Parse(data ["BasePermissions"].ToString());
+            item.EveryOnePermissions = uint.Parse(data ["EveryOnePermissions"].ToString());
+            item.GroupPermissions = uint.Parse(data ["GroupPermissions"].ToString());
+            item.GroupID = new UUID(data ["GroupID"].ToString());
+            item.GroupOwned = bool.Parse(data ["GroupOwned"].ToString());
+            item.SalePrice = int.Parse(data ["SalePrice"].ToString());
+            item.SaleType = byte.Parse(data ["SaleType"].ToString());
+            item.Flags = uint.Parse(data ["Flags"].ToString());
+            item.CreationDate = int.Parse(data ["CreationDate"].ToString());
 
             return item;
         }

@@ -47,8 +47,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Regions
             //     foreach (string v in httpRequest.Headers.GetValues(h))
             //         m_log.DebugFormat("{0} IsGod: {1} -> {2}", MsgID, h, v);
 
-            MsgID = RequestID;
-            m_log.DebugFormat("{0} GET path {1} param {2}", MsgID, path, param);
+            requestId = requestNum;
+            m_log.DebugFormat("{0} GET path {1} param {2}", requestId, path, param);
 
             try
             {
@@ -102,7 +102,7 @@ namespace OpenSim.ApplicationPlugins.Rest.Regions
             string[] comps = param.Split('/');
             UUID regionID = (UUID)comps[0];
 
-            m_log.DebugFormat("{0} GET region UUID {1}", MsgID, regionID.ToString());
+            m_log.DebugFormat("{0} GET region UUID {1}", requestId, regionID.ToString());
 
             if (UUID.Zero == regionID) throw new Exception("missing region ID");
 

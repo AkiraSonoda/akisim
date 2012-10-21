@@ -24,32 +24,27 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System.IO;
 using System.Text;
 
-namespace OpenSim.Framework.Servers.HttpServer
-{
-    public class RestStreamHandler : BaseStreamHandler
-    {
+namespace OpenSim.Framework.Servers.HttpServer {
+    public class RestStreamHandler : BaseStreamHandler {
         private RestMethod m_restMethod;
 
-        public RestMethod Method
-        {
+        public RestMethod Method {
             get { return m_restMethod; }
         }
 
         public RestStreamHandler(string httpMethod, string path, RestMethod restMethod)
-            : this(httpMethod, path, restMethod, null, null) {}
+            : this(httpMethod, path, restMethod, null, null) {
+        }
 
         public RestStreamHandler(string httpMethod, string path, RestMethod restMethod, string name, string description)
-            : base(httpMethod, path, name, description)
-        {
+            : base(httpMethod, path, name, description) {
             m_restMethod = restMethod;
         }
 
-        public override byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             Encoding encoding = Encoding.UTF8;
             StreamReader streamReader = new StreamReader(request, encoding);
 

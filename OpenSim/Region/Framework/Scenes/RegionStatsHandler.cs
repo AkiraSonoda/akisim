@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.IO;
 using System.Net;
@@ -44,12 +43,9 @@ using OpenSim.Region.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
-namespace OpenSim.Region.Framework.Scenes
-{
-    public class RegionStatsHandler : IStreamedRequestHandler
-    {
-        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
+namespace OpenSim.Region.Framework.Scenes {
+    public class RegionStatsHandler : IStreamedRequestHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private string osRXStatsURI = String.Empty;
         private string osXStatsURI = String.Empty;
         //private string osSecret = String.Empty;
@@ -58,51 +54,47 @@ namespace OpenSim.Region.Framework.Scenes
         public TimeSpan utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
 
         public string Name { get { return "RegionStats"; } }
+
         public string Description { get { return "Region Statistics"; } }
 
-        public RegionStatsHandler(RegionInfo region_info)
-        {
+        public RegionStatsHandler(RegionInfo region_info) {
             regionInfo = region_info;
             osRXStatsURI = Util.SHA1Hash(regionInfo.regionSecret);
             osXStatsURI = Util.SHA1Hash(regionInfo.osSecret);
         }
                     
-        public byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[RegionStatsHandler] RequestId: {0}", requestId);
             return Util.UTF8.GetBytes(Report());
         }
 
-        public string ContentType
-        {
+        public string ContentType {
             get { return "text/plain"; }
         }
 
-        public string HttpMethod
-        {
+        public string HttpMethod {
             get { return "GET"; }
         }
 
-        public string Path
-        {
+        public string Path {
             // This is for the region and is the regionSecret hashed
             get { return "/" + osRXStatsURI; }
         }
         
-        private string Report()
-        {
+        private string Report() {
             OSDMap args = new OSDMap(30);
             //int time = Util.ToUnixTime(DateTime.Now);
-            args["OSStatsURI"] = OSD.FromString("http://" + regionInfo.ExternalHostName + ":" + regionInfo.HttpPort + "/" + osXStatsURI + "/");
-            args["TimeZoneName"] = OSD.FromString(localZone);
-            args["TimeZoneOffs"] = OSD.FromReal(utcOffset.TotalHours);
-            args["UxTime"] = OSD.FromInteger(Util.ToUnixTime(DateTime.Now));
-            args["Memory"] = OSD.FromReal(Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
-            args["Version"] = OSD.FromString(VersionInfo.Version);
+            args ["OSStatsURI"] = OSD.FromString("http://" + regionInfo.ExternalHostName + ":" + regionInfo.HttpPort + "/" + osXStatsURI + "/");
+            args ["TimeZoneName"] = OSD.FromString(localZone);
+            args ["TimeZoneOffs"] = OSD.FromReal(utcOffset.TotalHours);
+            args ["UxTime"] = OSD.FromInteger(Util.ToUnixTime(DateTime.Now));
+            args ["Memory"] = OSD.FromReal(Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
+            args ["Version"] = OSD.FromString(VersionInfo.Version);
             
             string strBuffer = "";
             strBuffer = OSDParser.SerializeJsonString(args);
 
             return strBuffer;
-         }
+        }
     }
 }

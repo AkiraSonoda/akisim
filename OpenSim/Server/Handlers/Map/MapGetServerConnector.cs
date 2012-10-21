@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.IO;
 using System.Net;
@@ -38,28 +37,25 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Server.Handlers.Base;
 
-namespace OpenSim.Server.Handlers.MapImage
-{
-    public class MapGetServiceConnector : ServiceConnector
-    {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
+namespace OpenSim.Server.Handlers.MapImage {
+    public class MapGetServiceConnector : ServiceConnector {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private IMapImageService m_MapService;
-
         private string m_ConfigName = "MapImageService";
 
         public MapGetServiceConnector(IConfigSource config, IHttpServer server, string configName) :
-            base(config, server, configName)
-        {
-            IConfig serverConfig = config.Configs[m_ConfigName];
-            if (serverConfig == null)
+            base(config, server, configName) {
+            IConfig serverConfig = config.Configs [m_ConfigName];
+            if (serverConfig == null) {
                 throw new Exception(String.Format("No section {0} in config file", m_ConfigName));
+            }
 
             string gridService = serverConfig.GetString("LocalServiceModule",
                     String.Empty);
 
-            if (gridService == String.Empty)
+            if (gridService == String.Empty) {
                 throw new Exception("No LocalServiceModule in config file");
+            }
 
             Object[] args = new Object[] { config };
             m_MapService = ServerUtils.LoadPlugin<IMapImageService>(gridService, args);
@@ -68,34 +64,29 @@ namespace OpenSim.Server.Handlers.MapImage
         }
     }
 
-    class MapServerGetHandler : BaseStreamHandler
-    {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
+    class MapServerGetHandler : BaseStreamHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private IMapImageService m_MapService;
 
         public MapServerGetHandler(IMapImageService service) :
-                base("GET", "/map")
-        {
+                base("GET", "/map") {
             m_MapService = service;
         }
 
-        public override byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[InventoryServerMoveItemsHandler] RequestId: {0}", requestId);
             byte[] result = new byte[0];
 
             string format = string.Empty;
             result = m_MapService.GetMapTile(path.Trim('/'), out format);
-            if (result.Length > 0)
-            {
+            if (result.Length > 0) {
                 httpResponse.StatusCode = (int)HttpStatusCode.OK;
-                if (format.Equals(".png"))
+                if (format.Equals(".png")) {
                     httpResponse.ContentType = "image/png";
-                else if (format.Equals(".jpg") || format.Equals(".jpeg"))
+                } else if (format.Equals(".jpg") || format.Equals(".jpeg")) {
                     httpResponse.ContentType = "image/jpeg";
-            }
-            else
-            {
+                }
+            } else {
                 httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
                 httpResponse.ContentType = "text/plain";
             }

@@ -72,7 +72,7 @@ namespace OpenSim.ApplicationPlugins.Rest.Regions
                     return;
                 }
                 
-                m_log.InfoFormat("{0} REST region plugin enabled", MsgID);
+                m_log.InfoFormat("{0} REST region plugin enabled", requestId);
 
                 // add REST method handlers
                 AddRestStreamHandler("GET", "/regions/", GetHandler);
@@ -81,8 +81,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Regions
             }
             catch (Exception e)
             {
-                m_log.WarnFormat("{0} Initialization failed: {1}", MsgID, e.Message);
-                m_log.DebugFormat("{0} Initialization failed: {1}", MsgID, e.ToString());
+                m_log.WarnFormat("{0} Initialization failed: {1}", requestId, e.Message);
+                m_log.DebugFormat("{0} Initialization failed: {1}", requestId, e.ToString());
             }
         }
 

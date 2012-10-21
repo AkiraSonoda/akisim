@@ -48,7 +48,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             m_method = method;
         }
 
-        public void Handle(string path, Stream request, Stream responseStream,
+        public void Handle(string requestId, string path, Stream request, Stream responseStream,
                            IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
             TRequest deserial;

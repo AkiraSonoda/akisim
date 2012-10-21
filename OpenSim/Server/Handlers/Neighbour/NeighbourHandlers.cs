@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.IO;
 using System.Reflection;
@@ -43,56 +42,50 @@ using OpenMetaverse.StructuredData;
 using Nini.Config;
 using log4net;
 
-
-namespace OpenSim.Server.Handlers.Neighbour
-{
-    public class NeighbourGetHandler : BaseStreamHandler
-    {
+namespace OpenSim.Server.Handlers.Neighbour {
+    public class NeighbourGetHandler : BaseStreamHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         // TODO: unused: private ISimulationService m_SimulationService;
         // TODO: unused: private IAuthenticationService m_AuthenticationService;
 
         public NeighbourGetHandler(INeighbourService service, IAuthenticationService authentication) :
-                base("GET", "/region")
-        {
+                base("GET", "/region") {
             // TODO: unused: m_SimulationService = service;
             // TODO: unused: m_AuthenticationService = authentication;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             // Not implemented yet
+            m_log.DebugFormat("[NeighbourGetHandler] RequestId: {0}", requestId);
             Console.WriteLine("--- Get region --- " + path);
             httpResponse.StatusCode = (int)HttpStatusCode.NotImplemented;
             return new byte[] { };
         }
     }
 
-    public class NeighbourPostHandler : BaseStreamHandler
-    {
+    public class NeighbourPostHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private INeighbourService m_NeighbourService;
         private IAuthenticationService m_AuthenticationService;
         // TODO: unused: private bool m_AllowForeignGuests;
 
         public NeighbourPostHandler(INeighbourService service, IAuthenticationService authentication) :
-            base("POST", "/region")
-        {
+            base("POST", "/region") {
             m_NeighbourService = service;
             m_AuthenticationService = authentication;
             // TODO: unused: m_AllowForeignGuests = foreignGuests;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[NeighbourGetHandler] RequestId: {0}", requestId);
             byte[] result = new byte[0];
 
             UUID regionID;
             string action;
             ulong regionHandle;
-            if (RestHandlerUtils.GetParams(path, out regionID, out regionHandle, out action))
-            {
+            if (RestHandlerUtils.GetParams(path, out regionID, out regionHandle, out action)) {
                 m_log.InfoFormat("[RegionPostHandler]: Invalid parameters for neighbour message {0}", path);
                 httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
                 httpResponse.StatusDescription = "Invalid parameters for neighbour message " + path;
@@ -100,13 +93,11 @@ namespace OpenSim.Server.Handlers.Neighbour
                 return result;
             }
 
-            if (m_AuthenticationService != null)
-            {
+            if (m_AuthenticationService != null) {
                 // Authentication
                 string authority = string.Empty;
                 string authToken = string.Empty;
-                if (!RestHandlerUtils.GetAuthentication(httpRequest, out authority, out authToken))
-                {
+                if (!RestHandlerUtils.GetAuthentication(httpRequest, out authority, out authToken)) {
                     m_log.InfoFormat("[RegionPostHandler]: Authentication failed for neighbour message {0}", path);
                     httpResponse.StatusCode = (int)HttpStatusCode.Unauthorized;
                     return result;
@@ -122,27 +113,24 @@ namespace OpenSim.Server.Handlers.Neighbour
             }
 
             OSDMap args = Util.GetOSDMap(request, (int)httpRequest.ContentLength);
-            if (args == null)
-            {
+            if (args == null) {
                 httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
                 httpResponse.StatusDescription = "Unable to retrieve data";
-                m_log.DebugFormat("[RegionPostHandler]: Unable to retrieve data for post {0}", path);
+                m_log.WarnFormat("[RegionPostHandler]: Unable to retrieve data for post {0}", path);
                 return result;
             }
 
             // retrieve the regionhandle
             ulong regionhandle = 0;
-            if (args["destination_handle"] != null)
-                UInt64.TryParse(args["destination_handle"].AsString(), out regionhandle);
+            if (args ["destination_handle"] != null) {
+                UInt64.TryParse(args ["destination_handle"].AsString(), out regionhandle);
+            }
 
             RegionInfo aRegion = new RegionInfo();
-            try
-            {
+            try {
                 aRegion.UnpackRegionInfoData(args);
-            }
-            catch (Exception ex)
-            {
-                m_log.InfoFormat("[RegionPostHandler]: exception on unpacking region info {0}", ex.Message);
+            } catch (Exception ex) {
+                m_log.ErrorFormat("[RegionPostHandler]: exception on unpacking region info {0}", ex.Message);
                 httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
                 httpResponse.StatusDescription = "Problems with data deserialization";
                 return result;
@@ -153,10 +141,11 @@ namespace OpenSim.Server.Handlers.Neighbour
             
             OSDMap resp = new OSDMap(1);
 
-            if (thisRegion != null)
-                resp["success"] = OSD.FromBoolean(true);
-            else
-                resp["success"] = OSD.FromBoolean(false);
+            if (thisRegion != null) {
+                resp ["success"] = OSD.FromBoolean(true);
+            } else {
+                resp ["success"] = OSD.FromBoolean(false);
+            }
 
             httpResponse.StatusCode = (int)HttpStatusCode.OK;
 
@@ -164,42 +153,40 @@ namespace OpenSim.Server.Handlers.Neighbour
         }
     }
 
-    public class NeighbourPutHandler : BaseStreamHandler
-    {
+    public class NeighbourPutHandler : BaseStreamHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         // TODO: unused: private ISimulationService m_SimulationService;
         // TODO: unused: private IAuthenticationService m_AuthenticationService;
 
         public NeighbourPutHandler(INeighbourService service, IAuthenticationService authentication) :
-            base("PUT", "/region")
-        {
+            base("PUT", "/region") {
             // TODO: unused: m_SimulationService = service;
             // TODO: unused: m_AuthenticationService = authentication;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[NeighbourPutHandler] RequestId: {0}", requestId);
             // Not implemented yet
             httpResponse.StatusCode = (int)HttpStatusCode.NotImplemented;
             return new byte[] { };
         }
     }
 
-    public class NeighbourDeleteHandler : BaseStreamHandler
-    {
+    public class NeighbourDeleteHandler : BaseStreamHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         // TODO: unused: private ISimulationService m_SimulationService;
         // TODO: unused: private IAuthenticationService m_AuthenticationService;
 
         public NeighbourDeleteHandler(INeighbourService service, IAuthenticationService authentication) :
-            base("DELETE", "/region")
-        {
+            base("DELETE", "/region") {
             // TODO: unused: m_SimulationService = service;
             // TODO: unused: m_AuthenticationService = authentication;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[NeighbourDeleteHandler] RequestId: {0}", requestId);
             // Not implemented yet
             httpResponse.StatusCode = (int)HttpStatusCode.NotImplemented;
             return new byte[] { };

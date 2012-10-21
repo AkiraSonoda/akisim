@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using Nini.Config;
 using log4net;
 using System;
@@ -43,23 +42,20 @@ using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenMetaverse;
 
-namespace OpenSim.Server.Handlers.Friends
-{
-    public class FriendsServerPostHandler : BaseStreamHandler
-    {
+namespace OpenSim.Server.Handlers.Friends {
+    public class FriendsServerPostHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private IFriendsService m_FriendsService;
 
         public FriendsServerPostHandler(IFriendsService service) :
-                base("POST", "/friends")
-        {
+                base("POST", "/friends") {
             m_FriendsService = service;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+
+            m_log.DebugFormat("[AuthorizationServerPostHandler] RequestId: {0}", requestId);
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();
@@ -67,40 +63,31 @@ namespace OpenSim.Server.Handlers.Friends
 
             //m_log.DebugFormat("[XXX]: query String: {0}", body);
 
-            try
-            {
-                Dictionary<string, object> request =
-                        ServerUtils.ParseQueryString(body);
+            try {
+                Dictionary<string, object> request = ServerUtils.ParseQueryString(body);
 
-                if (!request.ContainsKey("METHOD"))
+                if (!request.ContainsKey("METHOD")) {
                     return FailureResult();
-
-                string method = request["METHOD"].ToString();
-
-                switch (method)
-                {
-                    case "getfriends":
-                        return GetFriends(request);
-
-                    case "getfriends_string":
-                        return GetFriendsString(request);
-
-                    case "storefriend":
-                        return StoreFriend(request);
-
-                    case "deletefriend":
-                        return DeleteFriend(request);
-
-                    case "deletefriend_string":
-                        return DeleteFriendString(request);
-
                 }
 
-                m_log.DebugFormat("[FRIENDS HANDLER]: unknown method request {0}", method);
-            }
-            catch (Exception e)
-            {
-                m_log.DebugFormat("[FRIENDS HANDLER]: Exception {0}", e);
+                string method = request ["METHOD"].ToString();
+
+                switch (method) {
+                    case "getfriends":
+                        return GetFriends(request);
+                    case "getfriends_string":
+                        return GetFriendsString(request);
+                    case "storefriend":
+                        return StoreFriend(request);
+                    case "deletefriend":
+                        return DeleteFriend(request);
+                    case "deletefriend_string":
+                        return DeleteFriendString(request);
+                }
+
+                m_log.WarnFormat("[FRIENDS HANDLER]: unknown method request {0}", method);
+            } catch (Exception e) {
+                m_log.ErrorFormat("[FRIENDS HANDLER]: Exception {0}", e);
             }
 
             return FailureResult();
@@ -108,45 +95,42 @@ namespace OpenSim.Server.Handlers.Friends
 
         #region Method-specific handlers
 
-        byte[] GetFriends(Dictionary<string, object> request)
-        {
+        byte[] GetFriends(Dictionary<string, object> request) {
             UUID principalID = UUID.Zero;
-            if (request.ContainsKey("PRINCIPALID"))
-                UUID.TryParse(request["PRINCIPALID"].ToString(), out principalID);
-            else
+            if (request.ContainsKey("PRINCIPALID")) {
+                UUID.TryParse(request ["PRINCIPALID"].ToString(), out principalID);
+            } else {
                 m_log.WarnFormat("[FRIENDS HANDLER]: no principalID in request to get friends");
+            }
 
             FriendInfo[] finfos = m_FriendsService.GetFriends(principalID);
 
             return PackageFriends(finfos);
         }
 
-        byte[] GetFriendsString(Dictionary<string, object> request)
-        {
+        byte[] GetFriendsString(Dictionary<string, object> request) {
             string principalID = string.Empty;
-            if (request.ContainsKey("PRINCIPALID"))
-                principalID = request["PRINCIPALID"].ToString();
-            else
+            if (request.ContainsKey("PRINCIPALID")) {
+                principalID = request ["PRINCIPALID"].ToString();
+            } else {
                 m_log.WarnFormat("[FRIENDS HANDLER]: no principalID in request to get friends");
+            }
 
             FriendInfo[] finfos = m_FriendsService.GetFriends(principalID);
 
             return PackageFriends(finfos);
         }
 
-        private byte[] PackageFriends(FriendInfo[] finfos)
-        {
+        private byte[] PackageFriends(FriendInfo[] finfos) {
 
             Dictionary<string, object> result = new Dictionary<string, object>();
-            if ((finfos == null) || ((finfos != null) && (finfos.Length == 0)))
-                result["result"] = "null";
-            else
-            {
+            if ((finfos == null) || ((finfos != null) && (finfos.Length == 0))) {
+                result ["result"] = "null";
+            } else {
                 int i = 0;
-                foreach (FriendInfo finfo in finfos)
-                {
+                foreach (FriendInfo finfo in finfos) {
                     Dictionary<string, object> rinfoDict = finfo.ToKeyValuePairs();
-                    result["friend" + i] = rinfoDict;
+                    result ["friend" + i] = rinfoDict;
                     i++;
                 }
             }
@@ -157,114 +141,98 @@ namespace OpenSim.Server.Handlers.Friends
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] StoreFriend(Dictionary<string, object> request)
-        {
-            string principalID = string.Empty, friend = string.Empty; int flags = 0;
+        byte[] StoreFriend(Dictionary<string, object> request) {
+            string principalID = string.Empty, friend = string.Empty;
+            int flags = 0;
             FromKeyValuePairs(request, out principalID, out friend, out flags);
             bool success = m_FriendsService.StoreFriend(principalID, friend, flags);
 
-            if (success)
+            if (success) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] DeleteFriend(Dictionary<string, object> request)
-        {
+        byte[] DeleteFriend(Dictionary<string, object> request) {
             UUID principalID = UUID.Zero;
-            if (request.ContainsKey("PRINCIPALID"))
-                UUID.TryParse(request["PRINCIPALID"].ToString(), out principalID);
-            else
+            if (request.ContainsKey("PRINCIPALID")) {
+                UUID.TryParse(request ["PRINCIPALID"].ToString(), out principalID);
+            } else {
                 m_log.WarnFormat("[FRIENDS HANDLER]: no principalID in request to delete friend");
+            }
             string friend = string.Empty;
-            if (request.ContainsKey("FRIEND"))
-                friend = request["FRIEND"].ToString();
+            if (request.ContainsKey("FRIEND")) {
+                friend = request ["FRIEND"].ToString();
+            }
 
             bool success = m_FriendsService.Delete(principalID, friend);
-            if (success)
+            if (success) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
-        byte[] DeleteFriendString(Dictionary<string, object> request)
-        {
+        byte[] DeleteFriendString(Dictionary<string, object> request) {
             string principalID = string.Empty;
-            if (request.ContainsKey("PRINCIPALID"))
-                principalID = request["PRINCIPALID"].ToString();
-            else
+            if (request.ContainsKey("PRINCIPALID")) {
+                principalID = request ["PRINCIPALID"].ToString();
+            } else {
                 m_log.WarnFormat("[FRIENDS HANDLER]: no principalID in request to delete friend");
+            }
             string friend = string.Empty;
-            if (request.ContainsKey("FRIEND"))
-                friend = request["FRIEND"].ToString();
+            if (request.ContainsKey("FRIEND")) {
+                friend = request ["FRIEND"].ToString();
+            }
 
             bool success = m_FriendsService.Delete(principalID, friend);
-            if (success)
+            if (success) {
                 return SuccessResult();
-            else
+            } else {
                 return FailureResult();
+            }
         }
 
         #endregion
 
         #region Misc
 
-        private byte[] SuccessResult()
-        {
+        private byte[] SuccessResult() {
+
             XmlDocument doc = new XmlDocument();
-
-            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
-                    "", "");
-
+            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,"", "");
             doc.AppendChild(xmlnode);
-
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse",
-                    "");
-
+            XmlElement rootElement = doc.CreateElement("", "ServerResponse", "");
             doc.AppendChild(rootElement);
-
             XmlElement result = doc.CreateElement("", "Result", "");
             result.AppendChild(doc.CreateTextNode("Success"));
-
             rootElement.AppendChild(result);
 
             return DocToBytes(doc);
         }
 
-        private byte[] FailureResult()
-        {
+        private byte[] FailureResult() {
             return FailureResult(String.Empty);
         }
 
-        private byte[] FailureResult(string msg)
-        {
+        private byte[] FailureResult(string msg) {
             XmlDocument doc = new XmlDocument();
-
-            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
-                    "", "");
-
+            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,"", "");
             doc.AppendChild(xmlnode);
-
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse",
-                    "");
-
+            XmlElement rootElement = doc.CreateElement("", "ServerResponse","");
             doc.AppendChild(rootElement);
-
             XmlElement result = doc.CreateElement("", "Result", "");
             result.AppendChild(doc.CreateTextNode("Failure"));
-
             rootElement.AppendChild(result);
-
             XmlElement message = doc.CreateElement("", "Message", "");
             message.AppendChild(doc.CreateTextNode(msg));
-
             rootElement.AppendChild(message);
 
             return DocToBytes(doc);
         }
 
-        private byte[] DocToBytes(XmlDocument doc)
-        {
+        private byte[] DocToBytes(XmlDocument doc) {
             MemoryStream ms = new MemoryStream();
             XmlTextWriter xw = new XmlTextWriter(ms, null);
             xw.Formatting = Formatting.Indented;
@@ -274,17 +242,19 @@ namespace OpenSim.Server.Handlers.Friends
             return ms.ToArray();
         }
 
-        void FromKeyValuePairs(Dictionary<string, object> kvp, out string principalID, out string friend, out int flags)
-        {
+        void FromKeyValuePairs(Dictionary<string, object> kvp, out string principalID, out string friend, out int flags) {
             principalID = string.Empty;
-            if (kvp.ContainsKey("PrincipalID") && kvp["PrincipalID"] != null)
-                principalID = kvp["PrincipalID"].ToString();
+            if (kvp.ContainsKey("PrincipalID") && kvp ["PrincipalID"] != null) {
+                principalID = kvp ["PrincipalID"].ToString();
+            }
             friend = string.Empty;
-            if (kvp.ContainsKey("Friend") && kvp["Friend"] != null)
-                friend = kvp["Friend"].ToString();
+            if (kvp.ContainsKey("Friend") && kvp ["Friend"] != null) {
+                friend = kvp ["Friend"].ToString();
+            }
             flags = 0;
-            if (kvp.ContainsKey("MyFlags") && kvp["MyFlags"] != null)
-                Int32.TryParse(kvp["MyFlags"].ToString(), out flags);
+            if (kvp.ContainsKey("MyFlags") && kvp ["MyFlags"] != null) {
+                Int32.TryParse(kvp ["MyFlags"].ToString(), out flags);
+            }
         }
 
         #endregion

@@ -24,35 +24,28 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System.Collections;
 
-namespace OpenSim.Framework.Servers.HttpServer
-{
-    public class RestHTTPHandler : BaseHTTPHandler
-    {
+namespace OpenSim.Framework.Servers.HttpServer {
+    public class RestHTTPHandler : BaseHTTPHandler {
         private GenericHTTPMethod m_dhttpMethod;
 
-        public GenericHTTPMethod Method
-        {
+        public GenericHTTPMethod Method {
             get { return m_dhttpMethod; }
         }
 
         public RestHTTPHandler(string httpMethod, string path, GenericHTTPMethod dhttpMethod)
-            : base(httpMethod, path)
-        {
+            : base(httpMethod, path) {
             m_dhttpMethod = dhttpMethod;
         }
 
         public RestHTTPHandler(
             string httpMethod, string path, GenericHTTPMethod dhttpMethod, string name, string description)
-            : base(httpMethod, path, name, description)
-        {
+            : base(httpMethod, path, name, description) {
             m_dhttpMethod = dhttpMethod;
         }
 
-        public override Hashtable Handle(string path, Hashtable request)
-        {
+        public override Hashtable Handle(string requestId, string path, Hashtable request) {
             string param = GetParam(path);
             request.Add("param", param);
             request.Add("path", path);

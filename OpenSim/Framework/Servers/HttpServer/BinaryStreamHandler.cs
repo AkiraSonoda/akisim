@@ -24,29 +24,25 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System.IO;
 using System.Text;
 
-namespace OpenSim.Framework.Servers.HttpServer
-{
-    public delegate string BinaryMethod(byte[] data, string path, string param);
+namespace OpenSim.Framework.Servers.HttpServer {
+    public delegate string BinaryMethod(byte[] data,string path,string param);
 
-    public class BinaryStreamHandler : BaseStreamHandler
-    {
+    public class BinaryStreamHandler : BaseStreamHandler {
         private BinaryMethod m_method;
 
         public BinaryStreamHandler(string httpMethod, string path, BinaryMethod binaryMethod)
-            : this(httpMethod, path, binaryMethod, null, null) {}
+            : this(httpMethod, path, binaryMethod, null, null) {
+        }
 
         public BinaryStreamHandler(string httpMethod, string path, BinaryMethod binaryMethod, string name, string description)
-            : base(httpMethod, path, name, description)
-        {
+            : base(httpMethod, path, name, description) {
             m_method = binaryMethod;
         }
 
-        public override byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             byte[] data = ReadFully(request);
             string param = GetParam(path);
             string responseString = m_method(data, path, param);
@@ -54,17 +50,13 @@ namespace OpenSim.Framework.Servers.HttpServer
             return Encoding.UTF8.GetBytes(responseString);
         }
 
-        private static byte[] ReadFully(Stream stream)
-        {
+        private static byte[] ReadFully(Stream stream) {
             byte[] buffer = new byte[1024];
-            using (MemoryStream ms = new MemoryStream(1024*256))
-            {
-                while (true)
-                {
+            using (MemoryStream ms = new MemoryStream(1024*256)) {
+                while (true) {
                     int read = stream.Read(buffer, 0, buffer.Length);
 
-                    if (read <= 0)
-                    {
+                    if (read <= 0) {
                         return ms.ToArray();
                     }
 

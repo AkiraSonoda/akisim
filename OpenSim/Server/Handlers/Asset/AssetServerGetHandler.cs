@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using Nini.Config;
 using log4net;
 using System;
@@ -40,51 +39,41 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 
-namespace OpenSim.Server.Handlers.Asset
-{
-    public class AssetServerGetHandler : BaseStreamHandler
-    {
-        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
+namespace OpenSim.Server.Handlers.Asset {
+    public class AssetServerGetHandler : BaseStreamHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private IAssetService m_AssetService;
 
         public AssetServerGetHandler(IAssetService service) :
-                base("GET", "/assets")
-        {
+                base("GET", "/assets") {
             m_AssetService = service;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
-            byte[] result = new byte[0];
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+           m_log.DebugFormat("[AssetServerGetHandler] RequestId: {0}", requestId);
+           byte[] result = new byte[0];
 
             string[] p = SplitParams(path);
 
-            if (p.Length == 0)
+            if (p.Length == 0) {
                 return result;
+            }
 
-            if (p.Length > 1 && p[1] == "data")
-            {
-                result = m_AssetService.GetData(p[0]);
-                if (result == null)
-                {
+            if (p.Length > 1 && p [1] == "data") {
+                result = m_AssetService.GetData(p [0]);
+                if (result == null) {
                     httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
                     httpResponse.ContentType = "text/plain";
                     result = new byte[0];
-                }
-                else
-                {
+                } else {
                     httpResponse.StatusCode = (int)HttpStatusCode.OK;
                     httpResponse.ContentType = "application/octet-stream";
                 }
-            }
-            else if (p.Length > 1 && p[1] == "metadata")
-            {
-                AssetMetadata metadata = m_AssetService.GetMetadata(p[0]);
+            } else if (p.Length > 1 && p [1] == "metadata") {
+                AssetMetadata metadata = m_AssetService.GetMetadata(p [0]);
 
-                if (metadata != null)
-                {
+                if (metadata != null) {
                     XmlSerializer xs =
                             new XmlSerializer(typeof(AssetMetadata));
                     result = ServerUtils.SerializeResult(xs, metadata);
@@ -92,29 +81,22 @@ namespace OpenSim.Server.Handlers.Asset
                     httpResponse.StatusCode = (int)HttpStatusCode.OK;
                     httpResponse.ContentType =
                             SLUtil.SLAssetTypeToContentType(metadata.Type);
-                }
-                else
-                {
+                } else {
                     httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
                     httpResponse.ContentType = "text/plain";
                     result = new byte[0];
                 }
-            }
-            else
-            {
-                AssetBase asset = m_AssetService.Get(p[0]);
+            } else {
+                AssetBase asset = m_AssetService.Get(p [0]);
 
-                if (asset != null)
-                {
+                if (asset != null) {
                     XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
                     result = ServerUtils.SerializeResult(xs, asset);
 
                     httpResponse.StatusCode = (int)HttpStatusCode.OK;
                     httpResponse.ContentType =
                             SLUtil.SLAssetTypeToContentType(asset.Type);
-                }
-                else
-                {
+                } else {
                     httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
                     httpResponse.ContentType = "text/plain";
                     result = new byte[0];

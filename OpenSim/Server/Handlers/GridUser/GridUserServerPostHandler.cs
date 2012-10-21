@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using Nini.Config;
 using log4net;
 using System;
@@ -42,42 +41,36 @@ using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenMetaverse;
 
-namespace OpenSim.Server.Handlers.GridUser
-{
-    public class GridUserServerPostHandler : BaseStreamHandler
-    {
+namespace OpenSim.Server.Handlers.GridUser {
+    public class GridUserServerPostHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private IGridUserService m_GridUserService;
 
         public GridUserServerPostHandler(IGridUserService service) :
-                base("POST", "/griduser")
-        {
+                base("POST", "/griduser") {
             m_GridUserService = service;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[GridUserServerPostHandler] RequestId: {0}", requestId);
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();
             body = body.Trim();
 
-            //m_log.DebugFormat("[XXX]: query String: {0}", body);
             string method = string.Empty;
-            try
-            {
+            try {
                 Dictionary<string, object> request =
                         ServerUtils.ParseQueryString(body);
 
-                if (!request.ContainsKey("METHOD"))
+                if (!request.ContainsKey("METHOD")) {
                     return FailureResult();
+                }
 
-                method = request["METHOD"].ToString();
+                method = request ["METHOD"].ToString();
 
-                switch (method)
-                {
+                switch (method) {
                     case "loggedin":
                         return LoggedIn(request);
                     case "loggedout":
@@ -91,30 +84,28 @@ namespace OpenSim.Server.Handlers.GridUser
                     case "getgriduserinfos":
                         return GetGridUserInfos(request);
                 }
-                m_log.DebugFormat("[GRID USER HANDLER]: unknown method request: {0}", method);
-            }
-            catch (Exception e)
-            {
-                m_log.DebugFormat("[GRID USER HANDLER]: Exception in method {0}: {1}", method, e);
+                m_log.WarnFormat("[GRID USER HANDLER]: unknown method request: {0}", method);
+            } catch (Exception e) {
+                m_log.ErrorFormat("[GRID USER HANDLER]: Exception in method {0}: {1}", method, e);
             }
 
             return FailureResult();
 
         }
 
-        byte[] LoggedIn(Dictionary<string, object> request)
-        {
+        byte[] LoggedIn(Dictionary<string, object> request) {
             string user = String.Empty;
 
-            if (!request.ContainsKey("UserID"))
+            if (!request.ContainsKey("UserID")) {
                 return FailureResult();
+            }
 
-            user = request["UserID"].ToString();
+            user = request ["UserID"].ToString();
 
             GridUserInfo guinfo = m_GridUserService.LoggedIn(user);
 
             Dictionary<string, object> result = new Dictionary<string, object>();
-            result["result"] = guinfo.ToKeyValuePairs();
+            result ["result"] = guinfo.ToKeyValuePairs();
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
@@ -122,70 +113,74 @@ namespace OpenSim.Server.Handlers.GridUser
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] LoggedOut(Dictionary<string, object> request)
-        {
+        byte[] LoggedOut(Dictionary<string, object> request) {
             string userID = string.Empty;
             UUID regionID = UUID.Zero;
             Vector3 position = Vector3.Zero;
             Vector3 lookat = Vector3.Zero;
 
-            if (!UnpackArgs(request, out userID, out regionID, out position, out lookat))
+            if (!UnpackArgs(request, out userID, out regionID, out position, out lookat)) {
                 return FailureResult();
+            }
 
-            if (m_GridUserService.LoggedOut(userID, UUID.Zero, regionID, position, lookat))
+            if (m_GridUserService.LoggedOut(userID, UUID.Zero, regionID, position, lookat)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
 
-        byte[] SetHome(Dictionary<string, object> request)
-        {
+        byte[] SetHome(Dictionary<string, object> request) {
             string user = string.Empty;
             UUID region = UUID.Zero;
             Vector3 position = new Vector3(128, 128, 70);
             Vector3 look = Vector3.Zero;
 
-            if (!UnpackArgs(request, out user, out region, out position, out look))
+            if (!UnpackArgs(request, out user, out region, out position, out look)) {
                 return FailureResult();
+            }
 
-            if (m_GridUserService.SetHome(user, region, position, look))
+            if (m_GridUserService.SetHome(user, region, position, look)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
 
-        byte[] SetPosition(Dictionary<string, object> request)
-        {
+        byte[] SetPosition(Dictionary<string, object> request) {
             string user = string.Empty;
             UUID region = UUID.Zero;
             Vector3 position = new Vector3(128, 128, 70);
             Vector3 look = Vector3.Zero;
 
-            if (!request.ContainsKey("UserID") || !request.ContainsKey("RegionID"))
+            if (!request.ContainsKey("UserID") || !request.ContainsKey("RegionID")) {
                 return FailureResult();
+            }
 
-            if (!UnpackArgs(request, out user, out region, out position, out look))
+            if (!UnpackArgs(request, out user, out region, out position, out look)) {
                 return FailureResult();
+            }
 
-            if (m_GridUserService.SetLastPosition(user, UUID.Zero, region, position, look))
+            if (m_GridUserService.SetLastPosition(user, UUID.Zero, region, position, look)) {
                 return SuccessResult();
+            }
 
             return FailureResult();
         }
 
-        byte[] GetGridUserInfo(Dictionary<string, object> request)
-        {
+        byte[] GetGridUserInfo(Dictionary<string, object> request) {
             string user = String.Empty;
 
-            if (!request.ContainsKey("UserID"))
+            if (!request.ContainsKey("UserID")) {
                 return FailureResult();
+            }
 
-            user = request["UserID"].ToString();
+            user = request ["UserID"].ToString();
 
             GridUserInfo guinfo = m_GridUserService.GetGridUserInfo(user);
 
             Dictionary<string, object> result = new Dictionary<string, object>();
-            result["result"] = guinfo.ToKeyValuePairs();
+            result ["result"] = guinfo.ToKeyValuePairs();
 
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
@@ -193,37 +188,32 @@ namespace OpenSim.Server.Handlers.GridUser
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        byte[] GetGridUserInfos(Dictionary<string, object> request)
-        {
+        byte[] GetGridUserInfos(Dictionary<string, object> request) {
 
             string[] userIDs;
 
-            if (!request.ContainsKey("AgentIDs"))
-            {
+            if (!request.ContainsKey("AgentIDs")) {
                 m_log.DebugFormat("[GRID USER HANDLER]: GetGridUserInfos called without required uuids argument");
                 return FailureResult();
             }
 
-            if (!(request["AgentIDs"] is List<string>))
-            {
-                m_log.DebugFormat("[GRID USER HANDLER]: GetGridUserInfos input argument was of unexpected type {0}", request["uuids"].GetType().ToString());
+            if (!(request ["AgentIDs"] is List<string>)) {
+                m_log.DebugFormat("[GRID USER HANDLER]: GetGridUserInfos input argument was of unexpected type {0}", request ["uuids"].GetType().ToString());
                 return FailureResult();
             }
 
-            userIDs = ((List<string>)request["AgentIDs"]).ToArray();
+            userIDs = ((List<string>)request ["AgentIDs"]).ToArray();
 
             GridUserInfo[] pinfos = m_GridUserService.GetGridUserInfo(userIDs);
 
             Dictionary<string, object> result = new Dictionary<string, object>();
-            if ((pinfos == null) || ((pinfos != null) && (pinfos.Length == 0)))
-                result["result"] = "null";
-            else
-            {
+            if ((pinfos == null) || ((pinfos != null) && (pinfos.Length == 0))) {
+                result ["result"] = "null";
+            } else {
                 int i = 0;
-                foreach (GridUserInfo pinfo in pinfos)
-                {
+                foreach (GridUserInfo pinfo in pinfos) {
                     Dictionary<string, object> rinfoDict = pinfo.ToKeyValuePairs();
-                    result["griduser" + i] = rinfoDict;
+                    result ["griduser" + i] = rinfoDict;
                     i++;
                 }
             }
@@ -232,33 +222,34 @@ namespace OpenSim.Server.Handlers.GridUser
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }
 
-        private bool UnpackArgs(Dictionary<string, object> request, out string user, out UUID region, out Vector3 position, out Vector3 lookAt)
-        {
+        private bool UnpackArgs(Dictionary<string, object> request, out string user, out UUID region, out Vector3 position, out Vector3 lookAt) {
             user = string.Empty;
             region = UUID.Zero;
             position = new Vector3(128, 128, 70);
             lookAt = Vector3.Zero;
 
-            if (!request.ContainsKey("UserID") || !request.ContainsKey("RegionID"))
+            if (!request.ContainsKey("UserID") || !request.ContainsKey("RegionID")) {
                 return false;
+            }
 
-            user = request["UserID"].ToString();
+            user = request ["UserID"].ToString();
 
-            if (!UUID.TryParse(request["RegionID"].ToString(), out region))
+            if (!UUID.TryParse(request ["RegionID"].ToString(), out region)) {
                 return false;
+            }
 
-            if (request.ContainsKey("Position"))
-                Vector3.TryParse(request["Position"].ToString(), out position);
+            if (request.ContainsKey("Position")) {
+                Vector3.TryParse(request ["Position"].ToString(), out position);
+            }
 
-            if (request.ContainsKey("LookAt"))
-                Vector3.TryParse(request["LookAt"].ToString(), out lookAt);
+            if (request.ContainsKey("LookAt")) {
+                Vector3.TryParse(request ["LookAt"].ToString(), out lookAt);
+            }
 
             return true;
         }
 
-
-        private byte[] SuccessResult()
-        {
+        private byte[] SuccessResult() {
             XmlDocument doc = new XmlDocument();
 
             XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
@@ -279,8 +270,7 @@ namespace OpenSim.Server.Handlers.GridUser
             return DocToBytes(doc);
         }
 
-        private byte[] FailureResult()
-        {
+        private byte[] FailureResult() {
             XmlDocument doc = new XmlDocument();
 
             XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
@@ -301,8 +291,7 @@ namespace OpenSim.Server.Handlers.GridUser
             return DocToBytes(doc);
         }
 
-        private byte[] DocToBytes(XmlDocument doc)
-        {
+        private byte[] DocToBytes(XmlDocument doc) {
             MemoryStream ms = new MemoryStream();
             XmlTextWriter xw = new XmlTextWriter(ms, null);
             xw.Formatting = Formatting.Indented;

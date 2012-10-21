@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -37,39 +36,32 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Server.Handlers.Base;
 
-namespace OpenSim.Server.Handlers.Hypergrid
-{
-    public class HeloServiceInConnector : ServiceConnector
-    {
+namespace OpenSim.Server.Handlers.Hypergrid {
+    public class HeloServiceInConnector : ServiceConnector {
         public HeloServiceInConnector(IConfigSource config, IHttpServer server, string configName) :
-                base(config, server, configName)
-        {
+                base(config, server, configName) {
             server.AddStreamHandler(new HeloServerGetHandler("opensim-robust"));
             server.AddStreamHandler(new HeloServerHeadHandler("opensim-robust"));
         }
     }
 
     [Obsolete]
-    public class HeloServerGetHandler : BaseStreamHandler
-    {
+    public class HeloServerGetHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private string m_HandlersType;
 
         public HeloServerGetHandler(string handlersType) :
-            base("GET", "/helo")
-        {
+            base("GET", "/helo") {
             m_HandlersType = handlersType;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[HeloServerGetHandler] RequestId: {0}", requestId);
             return OKResponse(httpResponse);
         }
 
-        private byte[] OKResponse(IOSHttpResponse httpResponse)
-        {
+        private byte[] OKResponse(IOSHttpResponse httpResponse) {
             m_log.Debug("[HELO]: hi, GET was called");
             httpResponse.AddHeader("X-Handlers-Provided", m_HandlersType);
             httpResponse.StatusCode = (int)HttpStatusCode.OK;
@@ -79,26 +71,22 @@ namespace OpenSim.Server.Handlers.Hypergrid
 
     }
 
-    public class HeloServerHeadHandler : BaseStreamHandler
-    {
+    public class HeloServerHeadHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private string m_HandlersType;
 
         public HeloServerHeadHandler(string handlersType) :
-            base("HEAD", "/helo")
-        {
+            base("HEAD", "/helo") {
             m_HandlersType = handlersType;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[HeloServerHeadHandler] RequestId: {0}", requestId);
             return OKResponse(httpResponse);
         }
 
-        private byte[] OKResponse(IOSHttpResponse httpResponse)
-        {
+        private byte[] OKResponse(IOSHttpResponse httpResponse) {
             m_log.Debug("[HELO]: hi, HEAD was called");
             httpResponse.AddHeader("X-Handlers-Provided", m_HandlersType);
             httpResponse.StatusCode = (int)HttpStatusCode.OK;

@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using Nini.Config;
 using log4net;
 using System;
@@ -40,32 +39,27 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 
-namespace OpenSim.Server.Handlers.Asset
-{
-    public class AssetServerDeleteHandler : BaseStreamHandler
-    {
-        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
+namespace OpenSim.Server.Handlers.Asset {
+    public class AssetServerDeleteHandler : BaseStreamHandler {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private IAssetService m_AssetService;
         protected bool m_allowDelete;
 
         public AssetServerDeleteHandler(IAssetService service, bool allowDelete) :
-                base("DELETE", "/assets")
-        {
+                base("DELETE", "/assets") {
             m_AssetService = service;
             m_allowDelete = allowDelete;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[AssetServerDeleteHandler] RequestId: {0}", requestId);
             bool result = false;
 
             string[] p = SplitParams(path);
 
-            if (p.Length > 0 && m_allowDelete)
-            {
-                result = m_AssetService.Delete(p[0]);
+            if (p.Length > 0 && m_allowDelete) {
+                result = m_AssetService.Delete(p [0]);
             }
 
             XmlSerializer xs = new XmlSerializer(typeof(bool));

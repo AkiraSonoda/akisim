@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -40,53 +39,39 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenMetaverse;
 using log4net;
 
-namespace OpenSim.Region.OptionalModules.World.WorldView
-{
-    public class WorldViewRequestHandler : BaseStreamHandler
-    {
+namespace OpenSim.Region.OptionalModules.World.WorldView {
+    public class WorldViewRequestHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         protected WorldViewModule m_WorldViewModule;
         protected Object m_RequestLock = new Object();
 
         public WorldViewRequestHandler(WorldViewModule fmodule, string rid)
-                : base("GET", "/worldview/" + rid)
-        {
+                : base("GET", "/worldview/" + rid) {
             m_WorldViewModule = fmodule;
         }
 
-        public override byte[] Handle(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
+        public override byte[] Handle(string requestId, string path, Stream requestData,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[WorldViewRequestHandler] RequestId: {0}", requestId);
             httpResponse.ContentType = "image/jpeg";
 
-//            StreamReader sr = new StreamReader(requestData);
-//            string body = sr.ReadToEnd();
-//            sr.Close();
-//            body = body.Trim();
-
-            try
-            {
-                lock (m_RequestLock)
-                {
+            try {
+                lock (m_RequestLock) {
                     Dictionary<string, object> request =
                             new Dictionary<string, object>();
                     foreach (string name in httpRequest.QueryString)
-                        request[name] = httpRequest.QueryString[name];
+                        request [name] = httpRequest.QueryString [name];
 
                     return SendWorldView(request);
                 }
-            }
-            catch (Exception e)
-            {
-                m_log.Debug("[WORLDVIEW]: Exception: " + e.ToString());
+            } catch (Exception e) {
+                m_log.ErrorFormat("[WorldViewRequestHandler]: Exception: {0} ",e.ToString());
             }
 
             return new Byte[0];
         }
 
-        public Byte[] SendWorldView(Dictionary<string, object> request)
-        {
+        public Byte[] SendWorldView(Dictionary<string, object> request) {
             float posX;
             float posY;
             float posZ;
@@ -98,42 +83,49 @@ namespace OpenSim.Region.OptionalModules.World.WorldView
             int height;
             bool usetex;
 
-            if (!request.ContainsKey("posX"))
+            if (!request.ContainsKey("posX")) {
                 return new Byte[0];
-            if (!request.ContainsKey("posY"))
-                return new Byte[0];
-            if (!request.ContainsKey("posZ"))
-                return new Byte[0];
-            if (!request.ContainsKey("rotX"))
-                return new Byte[0];
-            if (!request.ContainsKey("rotY"))
-                return new Byte[0];
-            if (!request.ContainsKey("rotZ"))
-                return new Byte[0];
-            if (!request.ContainsKey("fov"))
-                return new Byte[0];
-            if (!request.ContainsKey("width"))
-                return new Byte[0];
-            if (!request.ContainsKey("height"))
-                return new Byte[0];
-            if (!request.ContainsKey("usetex"))
-                return new Byte[0];
-
-            try
-            {
-                posX = Convert.ToSingle(request["posX"]);
-                posY = Convert.ToSingle(request["posY"]);
-                posZ = Convert.ToSingle(request["posZ"]);
-                rotX = Convert.ToSingle(request["rotX"]);
-                rotY = Convert.ToSingle(request["rotY"]);
-                rotZ = Convert.ToSingle(request["rotZ"]);
-                fov = Convert.ToSingle(request["fov"]);
-                width = Convert.ToInt32(request["width"]);
-                height = Convert.ToInt32(request["height"]);
-                usetex = Convert.ToBoolean(request["usetex"]);
             }
-            catch
-            {
+            if (!request.ContainsKey("posY")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("posZ")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("rotX")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("rotY")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("rotZ")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("fov")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("width")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("height")) {
+                return new Byte[0];
+            }
+            if (!request.ContainsKey("usetex")) {
+                return new Byte[0];
+            }
+
+            try {
+                posX = Convert.ToSingle(request ["posX"]);
+                posY = Convert.ToSingle(request ["posY"]);
+                posZ = Convert.ToSingle(request ["posZ"]);
+                rotX = Convert.ToSingle(request ["rotX"]);
+                rotY = Convert.ToSingle(request ["rotY"]);
+                rotZ = Convert.ToSingle(request ["rotZ"]);
+                fov = Convert.ToSingle(request ["fov"]);
+                width = Convert.ToInt32(request ["width"]);
+                height = Convert.ToInt32(request ["height"]);
+                usetex = Convert.ToBoolean(request ["usetex"]);
+            } catch {
                 return new Byte[0];
             }
 

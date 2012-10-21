@@ -24,14 +24,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System.Collections;
 using System.IO;
 
-namespace OpenSim.Framework.Servers.HttpServer
-{
-    public interface IRequestHandler
-    {
+namespace OpenSim.Framework.Servers.HttpServer {
+    public interface IRequestHandler {
 
         /// <summary>
         /// Name for this handler.
@@ -61,20 +58,17 @@ namespace OpenSim.Framework.Servers.HttpServer
         string Path { get; }
     }
 
-    public interface IStreamedRequestHandler : IRequestHandler
-    {
+    public interface IStreamedRequestHandler : IRequestHandler {
         // Handle request stream, return byte array
-        byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse);
+        byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse);
     }
 
-    public interface IStreamHandler : IRequestHandler
-    {
+    public interface IStreamHandler : IRequestHandler {
         // Handle request stream, return byte array
-        void Handle(string path, Stream request, Stream response, IOSHttpRequest httpReqbuest, IOSHttpResponse httpResponse);
+        void Handle(string requestId, string path, Stream request, Stream response, IOSHttpRequest httpReqbuest, IOSHttpResponse httpResponse);
     }
     
-    public interface IGenericHTTPHandler : IRequestHandler
-    {
-        Hashtable Handle(string path, Hashtable request);
+    public interface IGenericHTTPHandler : IRequestHandler {
+        Hashtable Handle(string requestId, string path, Hashtable request);
     }
 }

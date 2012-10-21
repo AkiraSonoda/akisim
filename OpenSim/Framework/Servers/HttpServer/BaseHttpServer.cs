@@ -51,13 +51,13 @@ namespace OpenSim.Framework.Servers.HttpServer {
 		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 		private HttpServerLogWriter httpserverlog = new HttpServerLogWriter();
 
-		/// <summary>
-		/// Gets or sets the debug level.
-		/// </summary>
-		/// <value>
-		/// See MainServer.DebugLevel.
-		/// </value>
-		public int DebugLevel { get; set; }
+        /// <summary>
+        /// Gets or sets the debug level.
+        /// </summary>
+        /// <value>
+        /// See MainServer.DebugLevel.
+        /// </value>
+        public int DebugLevel { get; set; }
 
 		/// <summary>
 		/// Request number for diagnostic purposes.
@@ -305,7 +305,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
 		public void OnHandleRequestIOThread(IHttpClientContext context, IHttpRequest request) {
 			OSHttpRequest req = new OSHttpRequest(context, request);
 			OSHttpResponse resp = new OSHttpResponse(new HttpResponse(context, request), context);
-			HandleRequest(req, resp);
+			HandleRequest(Guid.NewGuid().ToString(), req, resp);
 
 			// !!!HACK ALERT!!!
 			// There seems to be a bug in the underlying http code that makes subsequent requests
@@ -323,7 +323,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
 		/// </summary>
 		/// <param name="request"></param>
 		/// <param name="response"></param>
-		public virtual void HandleRequest(OSHttpRequest request, OSHttpResponse response) {
+		public virtual void HandleRequest(string requestId, OSHttpRequest request, OSHttpResponse response) {
 			if (request.HttpMethod == String.Empty) {  // Can't handle empty requests, not wasting a thread
 				try {
 					SendHTML500(response);
@@ -364,13 +364,12 @@ namespace OpenSim.Framework.Servers.HttpServer {
 
 					if (requestHandler is IStreamedRequestHandler) {
 						IStreamedRequestHandler streamedRequestHandler = requestHandler as IStreamedRequestHandler;
+						buffer = streamedRequestHandler.Handle(requestId, path, request.InputStream, request, response);
+                    } else if (requestHandler is IGenericHTTPHandler) {
 
-						buffer = streamedRequestHandler.Handle(path, request.InputStream, request, response);
-					} else if (requestHandler is IGenericHTTPHandler) {
 						//m_log.Debug("[BASE HTTP SERVER]: Found Caps based HTTP Handler");
 						IGenericHTTPHandler HTTPRequestHandler = requestHandler as IGenericHTTPHandler;
 						Stream requestStream = request.InputStream;
-
 						Encoding encoding = Encoding.UTF8;
 						StreamReader reader = new StreamReader(requestStream, encoding);
 
@@ -396,12 +395,12 @@ namespace OpenSim.Framework.Servers.HttpServer {
 						keysvals.Add("requestbody", requestBody);
 						keysvals.Add("headers", headervals);
 
-						buffer = DoHTTPGruntWork(HTTPRequestHandler.Handle(path, keysvals), response);
+						buffer = DoHTTPGruntWork(HTTPRequestHandler.Handle(requestId, path, keysvals), response);
 					} else {
 						IStreamHandler streamHandler = (IStreamHandler)requestHandler;
 
 						using (MemoryStream memoryStream = new MemoryStream()) {
-							streamHandler.Handle(path, request.InputStream, memoryStream, request, response);
+							streamHandler.Handle(requestId, path, request.InputStream, memoryStream, request, response);
 							memoryStream.Flush();
 							buffer = memoryStream.ToArray();
 						}
@@ -417,7 +416,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
                                     RequestNumber, Port, request.ContentType, request.HttpMethod, request.Url.PathAndQuery, request.RemoteIPEndPoint);
 							}
     
-							buffer = HandleHTTPRequest(request, response);
+							buffer = HandleHTTPRequest(requestId, request, response);
 							break;
     
 						case "application/llsd+xml":
@@ -451,7 +450,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
 									LogIncomingToContentTypeHandler(request);
 								}
     
-								buffer = HandleHTTPRequest(request, response);
+								buffer = HandleHTTPRequest(requestId, request, response);
 							} else {
 								if (DebugLevel >= 3) {
 									LogIncomingToXmlRpcHandler(request);
@@ -1078,10 +1077,10 @@ namespace OpenSim.Framework.Servers.HttpServer {
 
 		}
 
-		public byte[] HandleHTTPRequest(OSHttpRequest request, OSHttpResponse response) {
-//            m_log.DebugFormat(
-//                "[BASE HTTP SERVER]: HandleHTTPRequest for request to {0}, method {1}",
-//                request.RawUrl, request.HttpMethod);
+		public byte[] HandleHTTPRequest(string requestId, OSHttpRequest request, OSHttpResponse response) {
+            m_log.DebugFormat(
+                "[BASE HTTP SERVER]: HandleHTTPRequest for request to {0}, method {1}",
+                request.RawUrl, request.HttpMethod);
 
 			switch (request.HttpMethod) {
 				case "OPTIONS":
@@ -1089,12 +1088,12 @@ namespace OpenSim.Framework.Servers.HttpServer {
 					return null;
 
 				default:
-					return HandleContentVerbs(request, response);
+					return HandleContentVerbs(requestId, request, response);
 			}
 		}
 
-		private byte[] HandleContentVerbs(OSHttpRequest request, OSHttpResponse response) {
-//            m_log.DebugFormat("[BASE HTTP SERVER]: HandleContentVerbs for request to {0}", request.RawUrl);
+		private byte[] HandleContentVerbs(string requestId, OSHttpRequest request, OSHttpResponse response) {
+            m_log.DebugFormat("[BASE HTTP SERVER]: HandleContentVerbs for request to {0}", request.RawUrl);
 
 			// This is a test.  There's a workable alternative..  as this way sucks.
 			// We'd like to put this into a text file parhaps that's easily editable.
@@ -1137,14 +1136,11 @@ namespace OpenSim.Framework.Servers.HttpServer {
 			keysvals.Add("http-method", request.HttpMethod);
 
 			foreach (string queryname in querystringkeys) {
-//                m_log.DebugFormat(
-//                    "[BASE HTTP SERVER]: Got query paremeter {0}={1}", queryname, request.QueryString[queryname]);
 				keysvals.Add(queryname, request.QueryString [queryname]);
 				requestVars.Add(queryname, keysvals [queryname]);
 			}
 
 			foreach (string headername in rHeaders) {
-//                m_log.Debug("[BASE HTTP SERVER]: " + headername + "=" + request.Headers[headername]);
 				headervals [headername] = request.Headers [headername];
 			}
 

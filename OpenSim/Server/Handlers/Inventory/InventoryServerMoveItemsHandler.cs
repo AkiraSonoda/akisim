@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using Nini.Config;
 using log4net;
 using System;
@@ -42,37 +41,32 @@ using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenMetaverse;
 
-namespace OpenSim.Server.Handlers.Inventory
-{
-    public class InventoryServerMoveItemsHandler : BaseStreamHandler
-    {
+namespace OpenSim.Server.Handlers.Inventory {
+    public class InventoryServerMoveItemsHandler : BaseStreamHandler {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
         private IInventoryService m_InventoryService;
 
         public InventoryServerMoveItemsHandler(IInventoryService service) :
-                base("PUT", "/inventory")
-        {
+                base("PUT", "/inventory") {
             m_InventoryService = service;
         }
 
-        public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
-            XmlSerializer xs = new XmlSerializer(typeof (List<InventoryItemBase>));
+        public override byte[] Handle(string requestId, string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+            m_log.DebugFormat("[InventoryServerMoveItemsHandler] RequestId: {0}", requestId);
+            XmlSerializer xs = new XmlSerializer(typeof(List<InventoryItemBase>));
             List<InventoryItemBase> items = (List<InventoryItemBase>)xs.Deserialize(request);
 
             bool result = false;
             string[] p = SplitParams(path);
 
-            if (p.Length > 0)
-            {
+            if (p.Length > 0) {
                 UUID ownerID = UUID.Zero;
-                UUID.TryParse(p[0], out ownerID);
+                UUID.TryParse(p [0], out ownerID);
                 result = m_InventoryService.MoveItems(ownerID, items);
-            }
-            else
+            } else {
                 m_log.WarnFormat("[MOVEITEMS HANDLER]: ownerID not provided in request. Unable to serve.");
+            }
 
             xs = new XmlSerializer(typeof(bool));
             return ServerUtils.SerializeResult(xs, result);

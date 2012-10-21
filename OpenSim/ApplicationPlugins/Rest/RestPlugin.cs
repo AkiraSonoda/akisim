@@ -65,7 +65,7 @@ namespace OpenSim.ApplicationPlugins.Rest
         /// <summary>
         /// Return an ever increasing request ID for logging
         /// </summary>
-        protected string RequestID
+        protected string requestNum
         {
             get { return _reqk++.ToString(); }
             set { _reqk = Convert.ToInt32(value); }
@@ -74,7 +74,7 @@ namespace OpenSim.ApplicationPlugins.Rest
         /// <summary>
         /// Thread-constant message IDs for logging.
         /// </summary>
-        protected string MsgID
+        protected string requestId
         {
             get { return String.Format("[REST-{0}] #{1}", Name, _threadRequestID); }
             set { _threadRequestID = value; }
@@ -203,14 +203,14 @@ namespace OpenSim.ApplicationPlugins.Rest
         /// </remarks>
         public virtual void Initialise(OpenSimBase openSim)
         {
-            RequestID = "0";
-            MsgID = RequestID;
+            requestNum = "0";
+            requestId = requestNum;
 
             try
             {
                 if ((_config = openSim.ConfigSource.Source.Configs["RestPlugins"]) == null)
                 {
-                    m_log.WarnFormat("{0} Rest Plugins not configured", MsgID);
+                    m_log.WarnFormat("{0} Rest Plugins not configured", requestId);
                     return;
                 }
 
@@ -232,7 +232,7 @@ namespace OpenSim.ApplicationPlugins.Rest
                 // Get plugin specific config
                 _pluginConfig = openSim.ConfigSource.Source.Configs[ConfigName];
 
-                m_log.InfoFormat("{0} Rest Plugins Enabled", MsgID);
+                m_log.InfoFormat("{0} Rest Plugins Enabled", requestId);
             }
             catch (Exception e)
             {
@@ -248,8 +248,8 @@ namespace OpenSim.ApplicationPlugins.Rest
                 // diagnostic indication as to why. The same is true if
                 // the HTTP server reference is bad.
                 // We should at least issue a message...
-                m_log.WarnFormat("{0} Initialization failed: {1}", MsgID, e.Message);
-                m_log.DebugFormat("{0} Initialization failed: {1}", MsgID, e.ToString());
+                m_log.WarnFormat("{0} Initialization failed: {1}", requestId, e.Message);
+                m_log.DebugFormat("{0} Initialization failed: {1}", requestId, e.ToString());
             }
         }
 
@@ -280,7 +280,7 @@ namespace OpenSim.ApplicationPlugins.Rest
             _httpd.AddStreamHandler(h);
             _handlers.Add(h);
 
-            m_log.DebugFormat("{0} Added REST handler {1} {2}", MsgID, httpMethod, path);
+            m_log.DebugFormat("{0} Added REST handler {1} {2}", requestId, httpMethod, path);
         }
 
         /// <summary>
@@ -387,7 +387,7 @@ namespace OpenSim.ApplicationPlugins.Rest
             response.StatusCode = (int) status;
             response.StatusDescription = m;
 
-            m_log.ErrorFormat("{0} {1} failed: {2}", MsgID, method, m);
+            m_log.ErrorFormat("{0} {1} failed: {2}", requestId, method, m);
             return String.Format("<error>{0}</error>", m);
         }
 
@@ -406,8 +406,8 @@ namespace OpenSim.ApplicationPlugins.Rest
             response.StatusCode = (int) status;
             response.StatusDescription = m;
 
-            m_log.DebugFormat("{0} {1} failed: {2}", MsgID, method, e.ToString());
-            m_log.ErrorFormat("{0} {1} failed: {2}", MsgID, method, e.Message);
+            m_log.DebugFormat("{0} {1} failed: {2}", requestId, method, e.ToString());
+            m_log.ErrorFormat("{0} {1} failed: {2}", requestId, method, e.Message);
 
             return String.Format("<error>{0}</error>", e.Message);
         }
