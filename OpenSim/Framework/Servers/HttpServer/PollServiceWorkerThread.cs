@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -36,15 +35,11 @@ using System.Reflection;
 using log4net;
 using OpenSim.Framework.Monitoring;
 
-namespace OpenSim.Framework.Servers.HttpServer
-{
+namespace OpenSim.Framework.Servers.HttpServer {
     public delegate void ReQueuePollServiceItem(PollServiceHttpRequest req);
     
-    public class PollServiceWorkerThread
-    {
-        private static readonly ILog m_log =
-                LogManager.GetLogger(
-                MethodBase.GetCurrentMethod().DeclaringType);
+    public class PollServiceWorkerThread {
+        private static readonly ILog m_log = LogManager.GetLogger( MethodBase.GetCurrentMethod().DeclaringType );
 
         public event ReQueuePollServiceItem ReQueue;
 
@@ -53,37 +48,29 @@ namespace OpenSim.Framework.Servers.HttpServer
         private bool m_running = true;
         private int m_timeout = 250;
 
-        public PollServiceWorkerThread(BaseHttpServer pSrv, int pTimeout)
-        {
+        public PollServiceWorkerThread(BaseHttpServer pSrv, int pTimeout) {
             m_request = new BlockingQueue<PollServiceHttpRequest>();
             m_server = pSrv;
             m_timeout = pTimeout;
         }
 
-        public void ThreadStart()
-        {
+        public void ThreadStart() {
             Run();
         }
 
-        public void Run()
-        {
-            while (m_running)
-            {
+        public void Run() {
+            while (m_running) {
                 PollServiceHttpRequest req = m_request.Dequeue();
 
                 Watchdog.UpdateThread();
                 
-                try
-                {
-                    if (req.PollServiceArgs.HasEvents(req.RequestID, req.PollServiceArgs.Id))
-                    {
+                try {
+                    if (req.PollServiceArgs.HasEvents(req.RequestID, req.PollServiceArgs.Id)) {
+                        m_log.DebugFormat("[PollServiceWorkerThread] requestId <{0}>: Processing", req.RequestID.ToString());
                         StreamReader str;
-                        try
-                        {
+                        try {
                             str = new StreamReader(req.Request.Body);
-                        }
-                        catch (System.ArgumentException)
-                        {
+                        } catch (System.ArgumentException) {
                             // Stream was not readable means a child agent
                             // was closed due to logout, leaving the
                             // Event Queue request orphaned.
@@ -92,41 +79,33 @@ namespace OpenSim.Framework.Servers.HttpServer
 
                         Hashtable responsedata = req.PollServiceArgs.GetEvents(req.RequestID, req.PollServiceArgs.Id, str.ReadToEnd());
                         DoHTTPGruntWork(m_server, req, responsedata);
-                    }
-                    else
-                    {
-                        if ((Environment.TickCount - req.RequestTime) > m_timeout)
-                        {
+                    } else {
+                        if ((Environment.TickCount - req.RequestTime) > m_timeout) {
                             DoHTTPGruntWork(
                                 m_server,
                                 req,
                                 req.PollServiceArgs.NoEvents(req.RequestID, req.PollServiceArgs.Id));
-                        }
-                        else
-                        {
+                        } else {
                             ReQueuePollServiceItem reQueueItem = ReQueue;
-                            if (reQueueItem != null)
+                            if (reQueueItem != null) {
                                 reQueueItem(req);
+                            }
                         }
                     }
-                }
-                catch (Exception e)
-                {
-                    m_log.ErrorFormat("Exception in poll service thread: " + e.ToString());
+                } catch (Exception e) {
+                    m_log.ErrorFormat("[PollServiceWorkerThread] Run - Exception: {0}", e.ToString());
                 }
             }
         }
 
-        internal void Enqueue(PollServiceHttpRequest pPollServiceHttpRequest)
-        {
+        internal void Enqueue(PollServiceHttpRequest pPollServiceHttpRequest) {
             m_request.Enqueue(pPollServiceHttpRequest);
         }
 
         /// <summary>
         /// FIXME: This should be part of BaseHttpServer
         /// </summary>
-        internal static void DoHTTPGruntWork(BaseHttpServer server, PollServiceHttpRequest req, Hashtable responsedata)
-        {
+        internal static void DoHTTPGruntWork(BaseHttpServer server, PollServiceHttpRequest req, Hashtable responsedata) {
             OSHttpResponse response
                 = new OSHttpResponse(new HttpResponse(req.HttpContext, req.Request), req.HttpContext);
 
@@ -136,28 +115,20 @@ namespace OpenSim.Framework.Servers.HttpServer
             response.ContentLength64 = buffer.Length;
             response.ContentEncoding = Encoding.UTF8;
 
-            try
-            {
+            try {
                 response.OutputStream.Write(buffer, 0, buffer.Length);
-            }
-            catch (Exception ex)
-            {
-                m_log.Warn(string.Format("[POLL SERVICE WORKER THREAD]: Error ", ex));
-            }
-            finally
-            {
+            } catch (Exception ex) {
+                m_log.ErrorFormat("[PollServiceWorkerThread]: DoHTTPGruntWork - Exception: {0} ", ex.ToString());
+            } finally {
                 //response.OutputStream.Close();
-                try
-                {
+                try {
                     response.OutputStream.Flush();
                     response.Send();
 
                     //if (!response.KeepAlive && response.ReuseContext)
                     //    response.FreeContext();
-                }
-                catch (Exception e)
-                {
-                    m_log.Warn(String.Format("[POLL SERVICE WORKER THREAD]: Error ", e));
+                } catch (Exception e) {
+//                    m_log.ErrorFormat("[PollServiceWorkerThread]: DoHTTPGruntWork - Exception: ", e.ToString());
                 }
             }
         }

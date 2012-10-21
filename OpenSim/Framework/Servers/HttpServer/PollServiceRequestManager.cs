@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.Collections;
 using System.Threading;
@@ -34,11 +33,9 @@ using HttpServer;
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
 
-namespace OpenSim.Framework.Servers.HttpServer
-{
-    public class PollServiceRequestManager
-    {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+namespace OpenSim.Framework.Servers.HttpServer {
+    public class PollServiceRequestManager {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private readonly BaseHttpServer m_server;
         private static Queue m_requests = Queue.Synchronized(new Queue());
@@ -47,22 +44,20 @@ namespace OpenSim.Framework.Servers.HttpServer
         private PollServiceWorkerThread[] m_PollServiceWorkerThreads;
         private bool m_running = true;
 
-        public PollServiceRequestManager(BaseHttpServer pSrv, uint pWorkerThreadCount, int pTimeout)
-        {
+        public PollServiceRequestManager(BaseHttpServer pSrv, uint pWorkerThreadCount, int pTimeout) {
             m_server = pSrv;
             m_WorkerThreadCount = pWorkerThreadCount;
             m_workerThreads = new Thread[m_WorkerThreadCount];
             m_PollServiceWorkerThreads = new PollServiceWorkerThread[m_WorkerThreadCount];
 
             //startup worker threads
-            for (uint i = 0; i < m_WorkerThreadCount; i++)
-            {
-                m_PollServiceWorkerThreads[i] = new PollServiceWorkerThread(m_server, pTimeout);
-                m_PollServiceWorkerThreads[i].ReQueue += ReQueueEvent;
+            for (uint i = 0; i < m_WorkerThreadCount; i++) {
+                m_PollServiceWorkerThreads [i] = new PollServiceWorkerThread(m_server, pTimeout);
+                m_PollServiceWorkerThreads [i].ReQueue += ReQueueEvent;
 
-                m_workerThreads[i]
+                m_workerThreads [i]
                     = Watchdog.StartThread(
-                        m_PollServiceWorkerThreads[i].ThreadStart,
+                        m_PollServiceWorkerThreads [i].ThreadStart,
                         String.Format("PollServiceWorkerThread{0}", i),
                         ThreadPriority.Normal,
                         false,
@@ -81,51 +76,40 @@ namespace OpenSim.Framework.Servers.HttpServer
                 1000 * 60 * 10);
         }
 
-        internal void ReQueueEvent(PollServiceHttpRequest req)
-        {
+        internal void ReQueueEvent(PollServiceHttpRequest req) {
             // Do accounting stuff here
             Enqueue(req);
         }
 
-        public void Enqueue(PollServiceHttpRequest req)
-        {
-            lock (m_requests)
+        public void Enqueue(PollServiceHttpRequest req) {
+            lock (m_requests) {
                 m_requests.Enqueue(req);
+            }
         }
 
-        public void ThreadStart()
-        {
-            while (m_running)
-            {
+        public void ThreadStart() {
+            while (m_running) {
                 Watchdog.UpdateThread();
                 ProcessQueuedRequests();
                 Thread.Sleep(1000);
             }
         }
 
-        private void ProcessQueuedRequests()
-        {
-            lock (m_requests)
-            {
-                if (m_requests.Count == 0)
+        private void ProcessQueuedRequests() {
+            lock (m_requests) {
+                if (m_requests.Count == 0) {
                     return;
+                }
 
-//                m_log.DebugFormat("[POLL SERVICE REQUEST MANAGER]: Processing {0} requests", m_requests.Count);
-
-                int reqperthread = (int) (m_requests.Count/m_WorkerThreadCount) + 1;
+                int reqperthread = (int)(m_requests.Count / m_WorkerThreadCount) + 1;
 
                 // For Each WorkerThread
-                for (int tc = 0; tc < m_WorkerThreadCount && m_requests.Count > 0; tc++)
-                {
+                for (int tc = 0; tc < m_WorkerThreadCount && m_requests.Count > 0; tc++) {
                     //Loop over number of requests each thread handles.
-                    for (int i = 0; i < reqperthread && m_requests.Count > 0; i++)
-                    {
-                        try
-                        {
-                            m_PollServiceWorkerThreads[tc].Enqueue((PollServiceHttpRequest)m_requests.Dequeue());
-                        }
-                        catch (InvalidOperationException)
-                        {
+                    for (int i = 0; i < reqperthread && m_requests.Count > 0; i++) {
+                        try {
+                            m_PollServiceWorkerThreads [tc].Enqueue((PollServiceHttpRequest)m_requests.Dequeue());
+                        } catch (InvalidOperationException) {
                             // The queue is empty, we did our calculations wrong!
                             return;
                         }
@@ -136,19 +120,16 @@ namespace OpenSim.Framework.Servers.HttpServer
             
         }
 
-        ~PollServiceRequestManager()
-        {
-            foreach (object o in m_requests)
-            {
-                PollServiceHttpRequest req = (PollServiceHttpRequest) o;
+        ~PollServiceRequestManager() {
+            foreach (object o in m_requests) {
+                PollServiceHttpRequest req = (PollServiceHttpRequest)o;
                 PollServiceWorkerThread.DoHTTPGruntWork(
                     m_server, req, req.PollServiceArgs.NoEvents(req.RequestID, req.PollServiceArgs.Id));
             }
 
             m_requests.Clear();
 
-            foreach (Thread t in m_workerThreads)
-            {
+            foreach (Thread t in m_workerThreads) {
                 t.Abort();
             }
             
