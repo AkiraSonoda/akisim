@@ -74,7 +74,7 @@ namespace OpenSim.Server.Handlers.Simulation {
             UUID regionID;
             string action;
             if (!Utils.GetParams((string)request ["uri"], out agentID, out regionID, out action)) {
-                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", request ["uri"]);
+                m_log.InfoFormat("[AgentHandler]: Invalid parameters for agent message {0}", request ["uri"]);
                 responsedata ["int_response_code"] = 404;
                 responsedata ["str_response_string"] = "false";
 
@@ -93,7 +93,7 @@ namespace OpenSim.Server.Handlers.Simulation {
                 DoQueryAccess(request, responsedata, agentID, regionID);
                 return responsedata;
             } else {
-                m_log.InfoFormat("[AGENT HANDLER]: method {0} not supported in agent message", method);
+                m_log.InfoFormat("[AgentHandler]: method {0} not supported in agent message", method);
                 responsedata ["int_response_code"] = HttpStatusCode.MethodNotAllowed;
                 responsedata ["str_response_string"] = "Method not allowed";
 
@@ -104,7 +104,7 @@ namespace OpenSim.Server.Handlers.Simulation {
 
         protected virtual void DoQueryAccess(Hashtable request, Hashtable responsedata, UUID id, UUID regionID) {
             if (m_SimulationService == null) {
-                m_log.Debug("[AGENT HANDLER]: Agent QUERY called. Harmless but useless.");
+                m_log.Debug("[AgentHandler]: Agent QUERY called. Harmless but useless.");
                 responsedata ["content_type"] = "application/json";
                 responsedata ["int_response_code"] = HttpStatusCode.NotImplemented;
                 responsedata ["str_response_string"] = string.Empty;
@@ -112,7 +112,7 @@ namespace OpenSim.Server.Handlers.Simulation {
                 return;
             }
 
-            // m_log.DebugFormat("[AGENT HANDLER]: Received QUERYACCESS with {0}", (string)request["body"]);
+            // m_log.DebugFormat("[AgentHandler]: Received QUERYACCESS with {0}", (string)request["body"]);
             OSDMap args = Utils.GetOSDMap((string)request ["body"]);
 
             Vector3 position = Vector3.Zero;
@@ -143,7 +143,7 @@ namespace OpenSim.Server.Handlers.Simulation {
 
         protected virtual void DoAgentGet(Hashtable request, Hashtable responsedata, UUID id, UUID regionID) {
             if (m_SimulationService == null) {
-                m_log.Debug("[AGENT HANDLER]: Agent GET called. Harmless but useless.");
+                m_log.Debug("[AgentHandler]: Agent GET called. Harmless but useless.");
                 responsedata ["content_type"] = "application/json";
                 responsedata ["int_response_code"] = HttpStatusCode.NotImplemented;
                 responsedata ["str_response_string"] = string.Empty;
@@ -164,7 +164,7 @@ namespace OpenSim.Server.Handlers.Simulation {
                     try {
                         strBuffer = OSDParser.SerializeJsonString(map);
                     } catch (Exception e) {
-                        m_log.WarnFormat("[AGENT HANDLER]: Exception thrown on serialization of DoAgentGet: {0}", e.Message);
+                        m_log.WarnFormat("[AgentHandler]: Exception thrown on serialization of DoAgentGet: {0}", e.Message);
                         responsedata ["int_response_code"] = HttpStatusCode.InternalServerError;
                         // ignore. buffer will be empty, caller should check.
                     }
@@ -197,7 +197,7 @@ namespace OpenSim.Server.Handlers.Simulation {
             responsedata ["int_response_code"] = HttpStatusCode.OK;
             responsedata ["str_response_string"] = "OpenSim agent " + id.ToString();
 
-            m_log.DebugFormat("[AGENT HANDLER]: Agent {0} Released/Deleted from region {1}", id, regionID);
+            m_log.InfoFormat("[AgentHandler]: Agent {0} Released/Deleted from region {1}", id, regionID);
         }
 
         protected virtual void ReleaseAgent(UUID regionID, UUID id) {
@@ -271,7 +271,7 @@ namespace OpenSim.Server.Handlers.Simulation {
             string action;
 
             if (!Utils.GetParams((string)keysvals ["uri"], out agentID, out regionID, out action)) {
-                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", keysvals ["uri"]);
+                m_log.InfoFormat("[AgentHandler]: Invalid parameters for agent message {0}", keysvals ["uri"]);
                 httpResponse.StatusCode = 404;
                 return encoding.GetBytes("false");
             }
@@ -324,7 +324,7 @@ namespace OpenSim.Server.Handlers.Simulation {
             try {
                 aCircuit.UnpackAgentCircuitData(args);
             } catch (Exception ex) {
-                m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildCreate message {0}", ex.Message);
+                m_log.InfoFormat("[AgentHandler]: exception on unpacking ChildCreate message {0}", ex.Message);
                 responsedata ["int_response_code"] = HttpStatusCode.BadRequest;
                 responsedata ["str_response_string"] = "Bad request";
                 return;
@@ -366,11 +366,11 @@ namespace OpenSim.Server.Handlers.Simulation {
             }
 
             if (!headers.ContainsKey(xff) || headers [xff] == null) {
-                m_log.WarnFormat("[AGENT HANDLER]: No XFF header");
+                m_log.WarnFormat("[AgentHandler]: No XFF header");
                 return Util.GetCallerIP(request);
             }
 
-            m_log.DebugFormat("[AGENT HANDLER]: XFF is {0}", headers [xff]);
+            m_log.DebugFormat("[AgentHandler]: XFF is {0}", headers [xff]);
 
             IPEndPoint ep = Util.GetClientIPFromXFF((string)headers [xff]);
             if (ep != null) {
@@ -450,7 +450,7 @@ namespace OpenSim.Server.Handlers.Simulation {
             string action;
 
             if (!Utils.GetParams((string)keysvals ["uri"], out agentID, out regionID, out action)) {
-                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", keysvals ["uri"]);
+                m_log.InfoFormat("[AgentHandler]: Invalid parameters for agent message {0}", keysvals ["uri"]);
 
                 httpResponse.StatusCode = 404;
 
@@ -498,7 +498,7 @@ namespace OpenSim.Server.Handlers.Simulation {
             if (args ["message_type"] != null) {
                 messageType = args ["message_type"].AsString();
             } else {
-                m_log.Warn("[AGENT HANDLER]: Agent Put Message Type not found. ");
+                m_log.Warn("[AgentHandler]: Agent Put Message Type not found. ");
                 messageType = "AgentData";
             }
 
@@ -508,7 +508,7 @@ namespace OpenSim.Server.Handlers.Simulation {
                 try {
                     agent.Unpack(args, m_SimulationService.GetScene(destination.RegionID));
                 } catch (Exception ex) {
-                    m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildAgentUpdate message {0}", ex.Message);
+                    m_log.InfoFormat("[AgentHandler]: exception on unpacking ChildAgentUpdate message {0}", ex.Message);
                     responsedata ["int_response_code"] = HttpStatusCode.BadRequest;
                     responsedata ["str_response_string"] = "Bad request";
                     return;
@@ -523,7 +523,7 @@ namespace OpenSim.Server.Handlers.Simulation {
                 try {
                     agent.Unpack(args, m_SimulationService.GetScene(destination.RegionID));
                 } catch (Exception ex) {
-                    m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildAgentUpdate message {0}", ex.Message);
+                    m_log.InfoFormat("[AgentHandler]: exception on unpacking ChildAgentUpdate message {0}", ex.Message);
                     return;
                 }
                 //agent.Dump();
