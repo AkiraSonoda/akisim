@@ -3644,8 +3644,9 @@ namespace OpenSim.Region.Framework.Scenes {
                 return false;
             }
 
-            // We have to wait until the viewer contacts this region after receiving EAC.
-            // That calls AddNewClient, which finally creates the ScenePresence
+            // We have to wait until the viewer contacts this region
+            // after receiving the EnableSimulator HTTP Event Queue message.  This triggers the viewer to send
+            // a UseCircuitCode packet which in turn calls AddNewClient which finally creates the ScenePresence.
             ScenePresence childAgentUpdate = WaitGetScenePresence(cAgentData.AgentID);
 
             if (childAgentUpdate != null) {
@@ -4105,9 +4106,21 @@ namespace OpenSim.Region.Framework.Scenes {
         /// Get a group via its UUID
         /// </summary>
         /// <param name="fullID"></param>
-        /// <returns>null if no group with that name exists</returns>
-        public SceneObjectGroup GetSceneObjectGroup(UUID fullID) {
+        /// <returns>null if no group with that id exists</returns>
+        public SceneObjectGroup GetSceneObjectGroup(UUID fullID)
+        {
             return m_sceneGraph.GetSceneObjectGroup(fullID);
+        }
+
+        /// <summary>
+        /// Get a group via its local ID
+        /// </summary>
+        /// <remarks>This will only return a group if the local ID matches a root part</remarks>
+        /// <param name="localID"></param>
+        /// <returns>null if no group with that id exists</returns>
+        public SceneObjectGroup GetSceneObjectGroup(uint localID)
+        {
+            return m_sceneGraph.GetSceneObjectGroup(localID);
         }
 
         /// <summary>

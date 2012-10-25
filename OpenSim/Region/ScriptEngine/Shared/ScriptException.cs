@@ -25,16 +25,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using OpenMetaverse;
+using System;
 
-namespace OpenSim.Framework.Client
+namespace OpenSim.Region.ScriptEngine.Shared
 {
-    public interface IClientChat
+    public class ScriptException : Exception
     {
-        event ChatMessage OnChatFromClient;
+        public ScriptException() : base() {}
 
-        void SendChatMessage(
-            string message, byte type, Vector3 fromPos, string fromName, UUID fromAgentID, UUID ownerID, byte source,
-            byte audible);
+        public ScriptException(string message) : base(message) {}
+
+        public ScriptException(string message, Exception innerException) : base(message, innerException) {}
     }
 }

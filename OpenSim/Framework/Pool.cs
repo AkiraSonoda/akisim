@@ -25,16 +25,67 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using OpenMetaverse;
+using System;
+using System.Collections.Generic;
 
-namespace OpenSim.Framework.Client
+namespace OpenSim.Framework
 {
-    public interface IClientChat
+    /// <summary>
+    /// Naive pool implementation.
+    /// </summary>
+    /// <remarks>
+    /// Currently assumes that objects are in a useable state when returned.
+    /// </remarks>
+    public class Pool<T>
     {
-        event ChatMessage OnChatFromClient;
+        /// <summary>
+        /// Number of objects in the pool.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                lock (m_pool)
+                    return m_pool.Count;
+            }
+        }
 
-        void SendChatMessage(
-            string message, byte type, Vector3 fromPos, string fromName, UUID fromAgentID, UUID ownerID, byte source,
-            byte audible);
+        private Stack<T> m_pool;
+
+        /// <summary>
+        /// Maximum pool size.  Beyond this, any returned objects are not pooled.
+        /// </summary>
+        private int m_maxPoolSize;
+
+        private Func<T> m_createFunction;
+
+        public Pool(Func<T> createFunction, int maxSize)
+        {
+            m_maxPoolSize = maxSize;
+            m_createFunction = createFunction;
+            m_pool = new Stack<T>(m_maxPoolSize);
+        }
+
+        public T GetObject()
+        {
+            lock (m_pool)
+            {
+                if (m_pool.Count > 0)
+                    return m_pool.Pop();
+                else
+                    return m_createFunction();
+            }
+        }
+
+        public void ReturnObject(T obj)
+        {
+            lock (m_pool)
+            {
+                if (m_pool.Count >= m_maxPoolSize)
+                    return;
+                else
+                    m_pool.Push(obj);
+            }
+        }
     }
 }

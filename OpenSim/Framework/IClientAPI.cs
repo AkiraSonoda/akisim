@@ -805,8 +805,23 @@ namespace OpenSim.Framework
         event Action<IClientAPI> OnRegionHandShakeReply;
         event GenericCall1 OnRequestWearables;
         event Action<IClientAPI, bool> OnCompleteMovementToRegion;
+
+        /// <summary>
+        /// Called when an AgentUpdate message is received and before OnAgentUpdate.
+        /// </summary>
+        /// <remarks>
+        /// Listeners must not retain a reference to AgentUpdateArgs since this object may be reused for subsequent AgentUpdates.
+        /// </remarks>
         event UpdateAgent OnPreAgentUpdate;
+
+        /// <summary>
+        /// Called when an AgentUpdate message is received and after OnPreAgentUpdate.
+        /// </summary>
+        /// <remarks>
+        /// Listeners must not retain a reference to AgentUpdateArgs since this object may be reused for subsequent AgentUpdates.
+        /// </remarks>
         event UpdateAgent OnAgentUpdate;
+
         event AgentRequestSit OnAgentRequestSit;
         event AgentSit OnAgentSit;
         event AvatarPickerRequest OnAvatarPickerRequest;
@@ -1084,8 +1099,20 @@ namespace OpenSim.Framework
         void SendAnimations(UUID[] animID, int[] seqs, UUID sourceAgentId, UUID[] objectIDs);
         void SendRegionHandshake(RegionInfo regionInfo, RegionHandshakeArgs args);
 
-        void SendChatMessage(string message, byte type, Vector3 fromPos, string fromName, UUID fromAgentID, byte source,
-                             byte audible);
+        /// <summary>
+        /// Send chat to the viewer.
+        /// </summary>
+        /// <param name='message'></param>
+        /// <param name='type'></param>
+        /// <param name='fromPos'></param>
+        /// <param name='fromName'></param>
+        /// <param name='fromAgentID'></param>
+        /// <param name='ownerID'></param>
+        /// <param name='source'></param>
+        /// <param name='audible'></param>
+        void SendChatMessage(
+            string message, byte type, Vector3 fromPos, string fromName, UUID fromAgentID, UUID ownerID, byte source,
+            byte audible);
 
         void SendInstantMessage(GridInstantMessage im);
 

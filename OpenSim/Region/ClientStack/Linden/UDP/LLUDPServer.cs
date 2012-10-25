@@ -37,6 +37,7 @@ using log4net;
 using Nini.Config;
 using OpenMetaverse.Packets;
 using OpenSim.Framework;
+using OpenSim.Framework.Console;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Scenes;
 using OpenMetaverse;
@@ -167,6 +168,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <summary>Flag to signal when clients should send pings</summary>
         protected bool m_sendPing;
 
+        private Pool<IncomingPacket> m_incomingPacketPool;
+
+        private Stat m_incomingPacketPoolStat;
+
         private int m_defaultRTO = 0;
         private int m_maxRTO = 0;
         private int m_ackTimeout = 0;
@@ -187,7 +192,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// </summary>
         private IClientAPI m_currentIncomingClient;
 
-        public LLUDPServer(IPAddress listenIP, ref uint port, int proxyPortOffsetParm, bool allow_alternate_port, IConfigSource configSource, AgentCircuitManager circuitManager)
+        public LLUDPServer(
+            IPAddress listenIP, ref uint port, int proxyPortOffsetParm, bool allow_alternate_port,
+            IConfigSource configSource, AgentCircuitManager circuitManager)
             : base(listenIP, (int)port)
         {
             #region Environment.TickCount Measurement
@@ -209,6 +216,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             m_circuitManager = circuitManager;
             int sceneThrottleBps = 0;
+            bool usePools = false;
 
             IConfig config = configSource.Configs["ClientStack.LindenUDP"];
             if (config != null)
@@ -241,6 +249,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 PacketPool.Instance.RecyclePackets = packetConfig.GetBoolean("RecyclePackets", true);
                 PacketPool.Instance.RecycleDataBlocks = packetConfig.GetBoolean("RecycleDataBlocks", true);
+                usePools = packetConfig.GetBoolean("RecycleBaseUDPPackets", usePools);
             }
 
             #region BinaryStats
@@ -270,20 +279,28 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             m_throttle = new TokenBucket(null, sceneThrottleBps);
             ThrottleRates = new ThrottleRates(configSource);
+
+            if (usePools)
+                EnablePools();
         }
 
         public void Start()
         {
-            if (m_scene == null)
-                throw new InvalidOperationException("[LLUDPSERVER]: Cannot LLUDPServer.Start() without an IScene reference");
+            StartInbound();
+            StartOutbound();
 
+            m_elapsedMSSinceLastStatReport = Environment.TickCount;
+        }
+
+        private void StartInbound()
+        {
             m_log.InfoFormat(
-                "[LLUDPSERVER]: Starting the LLUDP server in {0} mode",
-                m_asyncPacketHandling ? "asynchronous" : "synchronous");
+                "[LLUDPSERVER]: Starting inbound packet processing for the LLUDP server in {0} mode with UsePools = {1}",
+                m_asyncPacketHandling ? "asynchronous" : "synchronous", UsePools);
 
-            base.Start(m_recvBufferSize, m_asyncPacketHandling);
+            base.StartInbound(m_recvBufferSize, m_asyncPacketHandling);
 
-            // Start the packet processing threads
+            // This thread will process the packets received that are placed on the packetInbox
             Watchdog.StartThread(
                 IncomingPacketHandler,
                 string.Format("Incoming Packets ({0})", m_scene.RegionInfo.RegionName),
@@ -292,6 +309,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 true,
                 GetWatchdogIncomingAlarmData,
                 Watchdog.DEFAULT_WATCHDOG_TIMEOUT_MS);
+        }
+
+        private new void StartOutbound()
+        {
+            m_log.Info("[LLUDPSERVER]: Starting outbound packet processing for the LLUDP server");
+
+            base.StartOutbound();
 
             Watchdog.StartThread(
                 OutgoingPacketHandler,
@@ -301,8 +325,57 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 true,
                 GetWatchdogOutgoingAlarmData,
                 Watchdog.DEFAULT_WATCHDOG_TIMEOUT_MS);
+        }
 
-            m_elapsedMSSinceLastStatReport = Environment.TickCount;
+        public void Stop()
+        {
+            m_log.Info("[LLUDPSERVER]: Shutting down the LLUDP server for " + m_scene.RegionInfo.RegionName);
+            base.StopOutbound();
+            base.StopInbound();
+        }
+
+        protected override bool EnablePools()
+        {
+            if (!UsePools)
+            {
+                base.EnablePools();
+
+                m_incomingPacketPool = new Pool<IncomingPacket>(() => new IncomingPacket(), 500);
+
+                m_incomingPacketPoolStat
+                    = new Stat(
+                        "IncomingPacketPoolCount",
+                        "Objects within incoming packet pool",
+                        "The number of objects currently stored within the incoming packet pool",
+                        "",
+                        "clientstack",
+                        "packetpool",
+                        StatType.Pull,
+                        stat => stat.Value = m_incomingPacketPool.Count,
+                        StatVerbosity.Debug);
+
+                StatsManager.RegisterStat(m_incomingPacketPoolStat);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        protected override bool DisablePools()
+        {
+            if (UsePools)
+            {
+                base.DisablePools();
+
+                StatsManager.DeregisterStat(m_incomingPacketPoolStat);
+
+                // We won't null out the pool to avoid a race condition with code that may be in the middle of using it.
+
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -327,12 +400,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 m_currentOutgoingClient != null ? m_currentOutgoingClient.Name : "none");
         }
 
-        public new void Stop()
-        {
-            m_log.Info("[LLUDPSERVER]: Shutting down the LLUDP server for " + m_scene.RegionInfo.RegionName);
-            base.Stop();
-        }
-
         public void AddScene(IScene scene)
         {
             if (m_scene != null)
@@ -349,6 +416,117 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             m_scene = (Scene)scene;
             m_location = new Location(m_scene.RegionInfo.RegionHandle);
+
+            MainConsole.Instance.Commands.AddCommand(
+                "Debug",
+                false,
+                "debug lludp start",
+                "debug lludp start <in|out|all>",
+                "Control LLUDP packet processing.",
+                "No effect if packet processing has already started.\n"
+                    + "in  - start inbound processing.\n"
+                    + "out - start outbound processing.\n"
+                    + "all - start in and outbound processing.\n",
+                HandleStartCommand);
+
+            MainConsole.Instance.Commands.AddCommand(
+                "Debug",
+                false,
+                "debug lludp stop",
+                "debug lludp stop <in|out|all>",
+                "Stop LLUDP packet processing.",
+                "No effect if packet processing has already stopped.\n"
+                    + "in  - stop inbound processing.\n"
+                    + "out - stop outbound processing.\n"
+                    + "all - stop in and outbound processing.\n",
+                HandleStopCommand);
+
+            MainConsole.Instance.Commands.AddCommand(
+                "Debug",
+                false,
+                "debug lludp pool",
+                "debug lludp pool <on|off>",
+                "Turn object pooling within the lludp component on or off.",
+                HandlePoolCommand);
+
+            MainConsole.Instance.Commands.AddCommand(
+                "Debug",
+                false,
+                "debug lludp status",
+                "debug lludp status",
+                "Return status of LLUDP packet processing.",
+                HandleStatusCommand);
+        }
+
+        private void HandleStartCommand(string module, string[] args)
+        {
+            if (args.Length != 4)
+            {
+                MainConsole.Instance.Output("Usage: debug lludp start <in|out|all>");
+                return;
+            }
+
+            string subCommand = args[3];
+
+            if (subCommand == "in" || subCommand == "all")
+                StartInbound();
+
+            if (subCommand == "out" || subCommand == "all")
+                StartOutbound();
+        }
+
+        private void HandleStopCommand(string module, string[] args)
+        {
+            if (args.Length != 4)
+            {
+                MainConsole.Instance.Output("Usage: debug lludp stop <in|out|all>");
+                return;
+            }
+
+            string subCommand = args[3];
+
+            if (subCommand == "in" || subCommand == "all")
+                StopInbound();
+
+            if (subCommand == "out" || subCommand == "all")
+                StopOutbound();
+        }
+
+        private void HandlePoolCommand(string module, string[] args)
+        {
+            if (args.Length != 4)
+            {
+                MainConsole.Instance.Output("Usage: debug lludp pool <on|off>");
+                return;
+            }
+
+            string enabled = args[3];
+
+            if (enabled == "on")
+            {
+                if (EnablePools())
+                    MainConsole.Instance.OutputFormat("Packet pools enabled on {0}", m_scene.Name);
+            }
+            else if (enabled == "off")
+            {
+                if (DisablePools())
+                    MainConsole.Instance.OutputFormat("Packet pools disabled on {0}", m_scene.Name);
+            }
+            else
+            {
+                MainConsole.Instance.Output("Usage: debug lludp pool <on|off>");
+            }
+        }
+
+        private void HandleStatusCommand(string module, string[] args)
+        {
+            MainConsole.Instance.OutputFormat(
+                "IN  LLUDP packet processing for {0} is {1}", m_scene.Name, IsRunningInbound ? "enabled" : "disabled");
+
+            MainConsole.Instance.OutputFormat(
+                "OUT LLUDP packet processing for {0} is {1}", m_scene.Name, IsRunningOutbound ? "enabled" : "disabled");
+
+            MainConsole.Instance.OutputFormat("LLUDP pools in {0} are {1}", m_scene.Name, UsePools ? "on" : "off");
         }
 
         public bool HandlesRegion(Location x)
@@ -718,7 +896,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             LLUDPClient udpClient = null;
             Packet packet = null;
             int packetEnd = buffer.DataLength - 1;
-            IPEndPoint address = (IPEndPoint)buffer.RemoteEndPoint;
+            IPEndPoint endPoint = (IPEndPoint)buffer.RemoteEndPoint;
 
             #region Decoding
 
@@ -728,7 +906,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 //                    "[LLUDPSERVER]: Dropping undersized packet with {0} bytes received from {1} in {2}",
 //                    buffer.DataLength, buffer.RemoteEndPoint, m_scene.RegionInfo.RegionName);
 
-                return; // Drop undersizd packet
+                return; // Drop undersized packet
             }
 
             int headerLen = 7;
@@ -754,6 +932,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 //                packet = Packet.BuildPacket(buffer.Data, ref packetEnd,
 //                    // Only allocate a buffer for zerodecoding if the packet is zerocoded
 //                    ((buffer.Data[0] & Helpers.MSG_ZEROCODED) != 0) ? new byte[4096] : null);
+                // If OpenSimUDPBase.UsePool == true (which is currently separate from the PacketPool) then we
+                // assume that packet construction does not retain a reference to byte[] buffer.Data (instead, all
+                // bytes are copied out).
                 packet = PacketPool.Instance.GetPacket(buffer.Data, ref packetEnd,
                     // Only allocate a buffer for zerodecoding if the packet is zerocoded
                     ((buffer.Data[0] & Helpers.MSG_ZEROCODED) != 0) ? new byte[4096] : null);
@@ -796,7 +977,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // UseCircuitCode handling
             if (packet.Type == PacketType.UseCircuitCode)
             {
-                object[] array = new object[] { buffer, packet };
+                // We need to copy the endpoint so that it doesn't get changed when another thread reuses the
+                // buffer.
+                object[] array = new object[] { new IPEndPoint(endPoint.Address, endPoint.Port), packet };
 
                 Util.FireAndForget(HandleUseCircuitCode, array);
 
@@ -805,7 +988,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             // Determine which agent this packet came from
             IClientAPI client;
-            if (!m_scene.TryGetClient(address, out client) || !(client is LLClientView))
+            if (!m_scene.TryGetClient(endPoint, out client) || !(client is LLClientView))
             {
                 //m_log.Debug("[LLUDPSERVER]: Received a " + packet.Type + " packet from an unrecognized source: " + address + " in " + m_scene.RegionInfo.RegionName);
                 return;
@@ -829,6 +1012,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // Handle appended ACKs
             if (packet.Header.AppendedAcks && packet.Header.AckList != null)
             {
+//                m_log.DebugFormat(
+//                    "[LLUDPSERVER]: Handling {0} appended acks from {1} in {2}",
+//                    packet.Header.AckList.Length, client.Name, m_scene.Name);
+
                 for (int i = 0; i < packet.Header.AckList.Length; i++)
                     udpClient.NeedAcks.Acknowledge(packet.Header.AckList[i], now, packet.Header.Resent);
             }
@@ -837,6 +1024,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (packet.Type == PacketType.PacketAck)
             {
                 PacketAckPacket ackPacket = (PacketAckPacket)packet;
+
+//                m_log.DebugFormat(
+//                    "[LLUDPSERVER]: Handling {0} packet acks for {1} in {2}",
+//                    ackPacket.Packets.Length, client.Name, m_scene.Name);
 
                 for (int i = 0; i < ackPacket.Packets.Length; i++)
                     udpClient.NeedAcks.Acknowledge(ackPacket.Packets[i].ID, now, packet.Header.Resent);
@@ -851,6 +1042,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             if (packet.Header.Reliable)
             {
+//                m_log.DebugFormat(
+//                    "[LLUDPSERVER]: Adding ack request for {0} {1} from {2} in {3}",
+//                    packet.Type, packet.Header.Sequence, client.Name, m_scene.Name);
+
                 udpClient.PendingAcks.Enqueue(packet.Header.Sequence);
 
                 // This is a somewhat odd sequence of steps to pull the client.BytesSinceLastACK value out,
@@ -897,6 +1092,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             if (packet.Type == PacketType.StartPingCheck)
             {
+//                m_log.DebugFormat("[LLUDPSERVER]: Handling ping from {0} in {1}", client.Name, m_scene.Name);
+
                 // We don't need to do anything else with ping checks
                 StartPingCheckPacket startPing = (StartPingCheckPacket)packet;
                 CompletePing(udpClient, startPing.PingID.PingID);
@@ -916,8 +1113,21 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             #endregion Ping Check Handling
 
+            IncomingPacket incomingPacket;
+
             // Inbox insertion
-            packetInbox.Enqueue(new IncomingPacket((LLClientView)client, packet));
+            if (UsePools)
+            {
+                incomingPacket = m_incomingPacketPool.GetObject();
+                incomingPacket.Client = (LLClientView)client;
+                incomingPacket.Packet = packet;
+            }
+            else
+            {
+                incomingPacket = new IncomingPacket((LLClientView)client, packet);
+            }
+
+            packetInbox.Enqueue(incomingPacket);
         }
 
         #region BinaryStats
@@ -1003,21 +1213,19 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         private void HandleUseCircuitCode(object o)
         {
-            IPEndPoint remoteEndPoint = null;
+            IPEndPoint endPoint = null;
             IClientAPI client = null;
 
             try
             {
     //            DateTime startTime = DateTime.Now;
                 object[] array = (object[])o;
-                UDPPacketBuffer buffer = (UDPPacketBuffer)array[0];
+                endPoint = (IPEndPoint)array[0];
                 UseCircuitCodePacket uccp = (UseCircuitCodePacket)array[1];
 
                 m_log.DebugFormat(
                     "[LLUDPSERVER]: Handling UseCircuitCode request for circuit {0} to {1} from IP {2}",
-                    uccp.CircuitCode.Code, m_scene.RegionInfo.RegionName, buffer.RemoteEndPoint);
-    
-                remoteEndPoint = (IPEndPoint)buffer.RemoteEndPoint;
+                    uccp.CircuitCode.Code, m_scene.RegionInfo.RegionName, endPoint);
     
                 AuthenticateResponse sessionInfo;
                 if (IsClientAuthorized(uccp, out sessionInfo))
@@ -1028,13 +1236,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                             uccp.CircuitCode.Code,
                             uccp.CircuitCode.ID,
                             uccp.CircuitCode.SessionID,
-                            remoteEndPoint,
+                            endPoint,
                             sessionInfo);
             
                     // Send ack straight away to let the viewer know that the connection is active.
                     // The client will be null if it already exists (e.g. if on a region crossing the client sends a use
                     // circuit code to the existing child agent.  This is not particularly obvious.
-                    SendAckImmediate(remoteEndPoint, uccp.Header.Sequence);
+                    SendAckImmediate(endPoint, uccp.Header.Sequence);
             
                     // We only want to send initial data to new clients, not ones which are being converted from child to root.
                     if (client != null)
@@ -1045,7 +1253,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     // Don't create clients for unauthorized requesters.
                     m_log.WarnFormat(
                         "[LLUDPSERVER]: Ignoring connection request for {0} to {1} with unknown circuit code {2} from IP {3}",
-                        uccp.CircuitCode.ID, m_scene.RegionInfo.RegionName, uccp.CircuitCode.Code, remoteEndPoint);
+                        uccp.CircuitCode.ID, m_scene.RegionInfo.RegionName, uccp.CircuitCode.Code, endPoint);
                 }
     
                 //            m_log.DebugFormat(
@@ -1057,7 +1265,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 m_log.ErrorFormat(
                     "[LLUDPSERVER]: UseCircuitCode handling from endpoint {0}, client {1} {2} failed.  Exception {3}{4}",
-                    remoteEndPoint != null ? remoteEndPoint.ToString() : "n/a",
+                    endPoint != null ? endPoint.ToString() : "n/a",
                     client != null ? client.Name : "unknown",
                     client != null ? client.AgentId.ToString() : "unknown",
                     e.Message,
@@ -1174,7 +1382,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // on to en-US to avoid number parsing issues
             Culture.SetCurrentCulture();
 
-            while (base.IsRunning)
+            while (IsRunningInbound)
             {
                 try
                 {
@@ -1189,7 +1397,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     }
 
                     if (packetInbox.Dequeue(100, ref incomingPacket))
+                    {
                         ProcessInPacket(incomingPacket);//, incomingPacket); Util.FireAndForget(ProcessInPacket, incomingPacket);
+
+                        if (UsePools)
+                            m_incomingPacketPool.ReturnObject(incomingPacket);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1216,7 +1429,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // Action generic every round
             Action<IClientAPI> clientPacketHandler = ClientOutgoingPacketHandler;
 
-            while (base.IsRunning)
+            while (base.IsRunningOutbound)
             {
                 try
                 {
