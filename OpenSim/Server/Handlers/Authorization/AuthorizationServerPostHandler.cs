@@ -49,9 +49,8 @@ namespace OpenSim.Server.Handlers.Authorization {
             m_AuthorizationService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request,
+        public override byte[] Handle(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[AuthorizationServerPostHandler] RequestId: {0}", requestId);
             XmlSerializer xs = new XmlSerializer(typeof(AuthorizationRequest));
             AuthorizationRequest Authorization = (AuthorizationRequest)xs.Deserialize(request);
 

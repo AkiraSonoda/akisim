@@ -51,9 +51,8 @@ namespace OpenSim.Server.Handlers.Inventory {
             m_InventoryService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request,
+        public override byte[] Handle(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[InventoryServerMoveItemsHandler] RequestId: {0}", requestId);
             XmlSerializer xs = new XmlSerializer(typeof(List<InventoryItemBase>));
             List<InventoryItemBase> items = (List<InventoryItemBase>)xs.Deserialize(request);
 

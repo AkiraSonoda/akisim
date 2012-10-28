@@ -378,7 +378,7 @@ namespace OpenSim.Services.GridService
             regInfo.RegionSecret = handle.ToString();
 
             AddHyperlinkRegion(regInfo, handle);
-            m_log.InfoFormat("[HYPERGRID LINKER]: Successfully linked to region {0} with image {1}", regInfo.RegionName, regInfo.TerrainImage);
+            m_log.DebugFormat("[HYPERGRID LINKER]: Successfully linked to region {0} with image {1}", regInfo.RegionName, regInfo.TerrainImage);
             return true;
         }
 

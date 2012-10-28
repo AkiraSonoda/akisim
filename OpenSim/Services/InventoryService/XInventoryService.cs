@@ -60,7 +60,6 @@ namespace OpenSim.Services.InventoryService
 
             string dllName = String.Empty;
             string connString = String.Empty;
-            //string realm = "Inventory"; // OSG version doesn't use this
 
             //
             // Try reading the [InventoryService] section first, if it exists
@@ -71,7 +70,6 @@ namespace OpenSim.Services.InventoryService
                 dllName = authConfig.GetString("StorageProvider", dllName);
                 connString = authConfig.GetString("ConnectionString", connString);
                 m_AllowDelete = authConfig.GetBoolean("AllowDelete", true);
-                // realm = authConfig.GetString("Realm", realm);
             }
 
             //
@@ -167,7 +165,7 @@ namespace OpenSim.Services.InventoryService
 
         protected virtual XInventoryFolder[] GetSystemFolders(UUID principalID, UUID rootID)
         {
-//            m_log.DebugFormat("[XINVENTORY SERVICE]: Getting system folders for {0}", principalID);
+            m_log.DebugFormat("[XINVENTORY SERVICE]: Getting system folders for {0}", principalID);
             
             XInventoryFolder[] allFolders = m_Database.GetFolders(
                     new string[] { "agentID", "parentFolderID" },
@@ -182,8 +180,8 @@ namespace OpenSim.Services.InventoryService
                         return false;
                     });
 
-//            m_log.DebugFormat(
-//                "[XINVENTORY SERVICE]: Found {0} system folders for {1}", sysFolders.Length, principalID);
+            m_log.WarnFormat(
+                "[XINVENTORY SERVICE]: Found {0} system folders for {1}", sysFolders.Length, principalID);
             
             return sysFolders;
         }
@@ -201,7 +199,6 @@ namespace OpenSim.Services.InventoryService
 
             foreach (XInventoryFolder x in allFolders)
             {
-                //m_log.DebugFormat("[XINVENTORY SERVICE]: Adding folder {0} to skeleton", x.folderName);
                 folders.Add(ConvertToOpenSim(x));
             }
 
@@ -229,7 +226,7 @@ namespace OpenSim.Services.InventoryService
 
         public virtual InventoryFolderBase GetFolderForType(UUID principalID, AssetType type)
         {
-//            m_log.DebugFormat("[XINVENTORY SERVICE]: Getting folder type {0} for user {1}", type, principalID);
+            m_log.DebugFormat("[XINVENTORY SERVICE]: Getting folder type {0} for user {1}", type, principalID);
 
             InventoryFolderBase rootFolder = GetRootFolder(principalID);
 
@@ -247,21 +244,17 @@ namespace OpenSim.Services.InventoryService
 
         private InventoryFolderBase GetSystemFolderForType(InventoryFolderBase rootFolder, AssetType type)
         {
-//            m_log.DebugFormat("[XINVENTORY SERVICE]: Getting folder type {0} for user {1}", type, principalID);
-            
+
             XInventoryFolder[] folders = m_Database.GetFolders(
                     new string[] { "agentID", "parentFolderID", "type"},
                     new string[] { rootFolder.Owner.ToString(), rootFolder.ID.ToString(), ((int)type).ToString() });
 
             if (folders.Length == 0)
             {
-//                m_log.WarnFormat("[XINVENTORY SERVICE]: Found no folder for type {0} for user {1}", type, principalID);
+                m_log.WarnFormat("[XINVENTORY SERVICE]: Found no folder for type {0} for user {1}", type, rootFolder.Owner.ToString());
                 return null;
             }
             
-//            m_log.DebugFormat(
-//                "[XINVENTORY SERVICE]: Found folder {0} {1} for type {2} for user {3}", 
-//                folders[0].folderName, folders[0].folderID, type, principalID);
 
             return ConvertToOpenSim(folders[0]);
         }
@@ -272,7 +265,6 @@ namespace OpenSim.Services.InventoryService
             // connector. So we disregard the principal and look
             // by ID.
             //
-            //m_log.DebugFormat("[XINVENTORY SERVICE]: Fetch contents for folder {0}", folderID.ToString());
             InventoryCollection inventory = new InventoryCollection();
             inventory.UserID = principalID;
             inventory.Folders = new List<InventoryFolderBase>();
@@ -284,7 +276,6 @@ namespace OpenSim.Services.InventoryService
 
             foreach (XInventoryFolder x in folders)
             {
-                //m_log.DebugFormat("[XINVENTORY]: Adding folder {0} to response", x.folderName);
                 inventory.Folders.Add(ConvertToOpenSim(x));
             }
 
@@ -294,7 +285,6 @@ namespace OpenSim.Services.InventoryService
 
             foreach (XInventoryItem i in items)
             {
-                //m_log.DebugFormat("[XINVENTORY]: Adding item {0} to response", i.inventoryName);
                 inventory.Items.Add(ConvertToOpenSim(i));
             }
 
@@ -303,8 +293,6 @@ namespace OpenSim.Services.InventoryService
         
         public virtual List<InventoryItemBase> GetFolderItems(UUID principalID, UUID folderID)
         {
-//            m_log.DebugFormat("[XINVENTORY]: Fetch items for folder {0}", folderID);
-            
             // Since we probably don't get a valid principal here, either ...
             //
             List<InventoryItemBase> invItems = new List<InventoryItemBase>();
@@ -321,8 +309,6 @@ namespace OpenSim.Services.InventoryService
 
         public virtual bool AddFolder(InventoryFolderBase folder)
         {
-//            m_log.DebugFormat("[XINVENTORY]: Add folder {0} type {1} in parent {2}", folder.Name, folder.Type, folder.ParentID);
-
             InventoryFolderBase check = GetFolder(folder);
             if (check != null)
                 return false;
@@ -363,8 +349,6 @@ namespace OpenSim.Services.InventoryService
 
         public virtual bool UpdateFolder(InventoryFolderBase folder)
         {
-//            m_log.DebugFormat("[XINVENTORY]: Update folder {0} {1} ({2})", folder.Name, folder.Type, folder.ID);
-
             XInventoryFolder xFolder = ConvertFromOpenSim(folder);
             InventoryFolderBase check = GetFolder(folder);
 
@@ -376,16 +360,11 @@ namespace OpenSim.Services.InventoryService
             {
                 if (xFolder.version < check.Version)
                 {
-//                    m_log.DebugFormat("[XINVENTORY]: {0} < {1} can't do", xFolder.version, check.Version);
                     return false;
                 }
 
                 check.Version = (ushort)xFolder.version;
                 xFolder = ConvertFromOpenSim(check);
-
-//                m_log.DebugFormat(
-//                    "[XINVENTORY]: Storing version only update to system folder {0} {1} {2}",
-//                    xFolder.folderName, xFolder.version, xFolder.type);
 
                 return m_Database.StoreFolder(xFolder);
             }
@@ -425,12 +404,10 @@ namespace OpenSim.Services.InventoryService
                 return false;
 
             // Ignore principal ID, it's bogus at connector level
-            //
             foreach (UUID id in folderIDs)
             {
                 if (onlyIfTrash && !ParentIsTrash(id))
                     continue;
-                //m_log.InfoFormat("[XINVENTORY SERVICE]: Delete folder {0}", id);
                 InventoryFolderBase f = new InventoryFolderBase();
                 f.ID = id;
                 PurgeFolder(f, onlyIfTrash);
@@ -470,9 +447,6 @@ namespace OpenSim.Services.InventoryService
 
         public virtual bool AddItem(InventoryItemBase item)
         {
-//            m_log.DebugFormat(
-//                "[XINVENTORY SERVICE]: Adding item {0} {1} to folder {2} for {3}", item.Name, item.ID, item.Folder, item.Owner);
-            
             return m_Database.StoreItem(ConvertFromOpenSim(item));
         }
 
@@ -481,9 +455,6 @@ namespace OpenSim.Services.InventoryService
             if (!m_AllowDelete)
                 if (item.AssetType == (sbyte)AssetType.Link || item.AssetType == (sbyte)AssetType.LinkFolder)
                     return false;
-
-//            m_log.InfoFormat(
-//                "[XINVENTORY SERVICE]: Updating item {0} {1} in folder {2}", item.Name, item.ID, item.Folder);
 
             return m_Database.StoreItem(ConvertFromOpenSim(item));
         }

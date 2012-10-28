@@ -64,9 +64,9 @@ namespace OpenSim.Tests.Clients.InstantMessage
             bool success = InstantMessageServiceConnector.SendInstantMessage(serverURI, im);
 
             if (success)
-                m_log.InfoFormat("[IM CLIENT]: Successfully IMed {0}", serverURI);
+                m_log.DebugFormat("[IMClient]: Successfully IMed {0}", serverURI);
             else
-                m_log.InfoFormat("[IM CLIENT]: failed to IM {0}", serverURI);
+                m_log.WarnFormat("[IMCLient]: failed to IM {0}", serverURI);
 
             System.Console.WriteLine("\n");
         }

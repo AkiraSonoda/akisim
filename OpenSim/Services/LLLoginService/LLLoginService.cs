@@ -580,7 +580,7 @@ namespace OpenSim.Services.LLLoginService
                 Match uriMatch = reURI.Match(startLocation);
                 if (uriMatch == null)
                 {
-                    m_log.InfoFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, but can't process it", startLocation);
+                    m_log.WarnFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, but can't process it", startLocation);
                     return null;
                 }
                 else
@@ -597,7 +597,7 @@ namespace OpenSim.Services.LLLoginService
                             List<GridRegion> regions = m_GridService.GetRegionsByName(scopeID, regionName, 1);
                             if ((regions == null) || (regions != null && regions.Count == 0))
                             {
-                                m_log.InfoFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, can't locate region {1}. Trying defaults.", startLocation, regionName);
+                                m_log.WarnFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, can't locate region {1}. Trying defaults.", startLocation, regionName);
                                 regions = m_GridService.GetDefaultRegions(scopeID);
                                 if (regions != null && regions.Count > 0)
                                 {
@@ -606,7 +606,7 @@ namespace OpenSim.Services.LLLoginService
                                 }
                                 else
                                 {
-                                    m_log.Info("[LLOGIN SERVICE]: Last Region Not Found Attempting to find random region");
+                                    m_log.Debug("[LLOGIN SERVICE]: Last Region Not Found Attempting to find random region");
                                     region = FindAlternativeRegion(scopeID);
                                     if (region != null)
                                     {
@@ -615,7 +615,7 @@ namespace OpenSim.Services.LLLoginService
                                     }
                                     else
                                     {
-                                        m_log.InfoFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, Grid does not provide default regions and no alternative found.", startLocation);
+                                        m_log.WarnFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, Grid does not provide default regions and no alternative found.", startLocation);
                                         return null;
                                     }
                                 }
@@ -632,7 +632,7 @@ namespace OpenSim.Services.LLLoginService
                             string[] parts = regionName.Split(new char[] { '@' });
                             if (parts.Length < 2)
                             {
-                                m_log.InfoFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, can't locate region {1}", startLocation, regionName);
+                                m_log.WarnFormat("[LLLOGIN SERVICE]: Got Custom Login URI {0}, can't locate region {1}", startLocation, regionName);
                                 return null;
                             }
                             // Valid specification of a remote grid
@@ -662,9 +662,6 @@ namespace OpenSim.Services.LLLoginService
                             return null;
                     }
                 }
-                //response.LookAt = "[r0,r1,r0]";
-                //// can be: last, home, safe, url
-                //response.StartLocation = "url";
 
             }
 

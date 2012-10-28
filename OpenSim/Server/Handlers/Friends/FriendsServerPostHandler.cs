@@ -52,10 +52,9 @@ namespace OpenSim.Server.Handlers.Friends {
             m_FriendsService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData,
+        public override byte[] Handle(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
 
-            m_log.DebugFormat("[AuthorizationServerPostHandler] RequestId: {0}", requestId);
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();

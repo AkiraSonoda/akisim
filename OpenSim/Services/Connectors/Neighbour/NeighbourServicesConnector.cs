@@ -87,7 +87,6 @@ namespace OpenSim.Services.Connectors
         public bool DoHelloNeighbourCall(GridRegion region, RegionInfo thisRegion)
         {
             string uri = region.ServerURI + "region/" + thisRegion.RegionID + "/";
-//            m_log.Debug("   >>> DoHelloNeighbourCall <<< " + uri);
 
             WebRequest helloNeighbourRequest;
 
@@ -149,7 +148,7 @@ namespace OpenSim.Services.Connectors
                 helloNeighbourRequest.ContentLength = buffer.Length;   //Count bytes to send
                 os = helloNeighbourRequest.GetRequestStream();
                 os.Write(buffer, 0, strBuffer.Length);         //Send it
-                //m_log.InfoFormat("[REST COMMS]: Posted HelloNeighbour request to remote sim {0}", uri);
+                m_log.DebugFormat("[REST COMMS]: Posted HelloNeighbour request to remote sim {0}", uri);
             }
             catch (Exception e)
             {
@@ -166,7 +165,7 @@ namespace OpenSim.Services.Connectors
             }
 
             // Let's wait for the response
-            //m_log.Info("[REST COMMS]: Waiting for a reply after DoHelloNeighbourCall");
+            m_log.Debug("[REST COMMS]: Waiting for a reply after DoHelloNeighbourCall");
 
             StreamReader sr = null;
             try
@@ -180,9 +179,7 @@ namespace OpenSim.Services.Connectors
                 }
 
                 sr = new StreamReader(webResponse.GetResponseStream());
-                //reply = sr.ReadToEnd().Trim();
                 sr.ReadToEnd().Trim();
-                //m_log.InfoFormat("[REST COMMS]: DoHelloNeighbourCall reply was {0} ", reply);
 
             }
             catch (Exception e)

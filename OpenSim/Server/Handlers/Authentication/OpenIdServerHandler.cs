@@ -42,30 +42,34 @@ using Nini.Config;
 using OpenMetaverse;
 using log4net;
 
-namespace OpenSim.Server.Handlers.Authentication {
+namespace OpenSim.Server.Handlers.Authentication
+{
     /// <summary>
     /// Temporary, in-memory store for OpenID associations
     /// </summary>
-    public class ProviderMemoryStore : IAssociationStore<AssociationRelyingPartyType> {
-        private class AssociationItem {
+    public class ProviderMemoryStore : IAssociationStore<AssociationRelyingPartyType>
+    {
+        private class AssociationItem
+        {
             public AssociationRelyingPartyType DistinguishingFactor;
             public string Handle;
             public DateTime Expires;
             public byte[] PrivateData;
         }
 
-        Dictionary<string, AssociationItem> m_store = new Dictionary<string, AssociationItem>();
-        SortedList<DateTime, AssociationItem> m_sortedStore = new SortedList<DateTime, AssociationItem>();
-        object m_syncRoot = new object();
+        Dictionary<string, AssociationItem> m_store = new Dictionary<string, AssociationItem> ();
+        SortedList<DateTime, AssociationItem> m_sortedStore = new SortedList<DateTime, AssociationItem> ();
+        object m_syncRoot = new object ();
 
         #region IAssociationStore<AssociationRelyingPartyType> Members
 
-        public void StoreAssociation(AssociationRelyingPartyType distinguishingFactor, Association assoc) {
-            AssociationItem item = new AssociationItem();
+        public void StoreAssociation (AssociationRelyingPartyType distinguishingFactor, Association assoc)
+        {
+            AssociationItem item = new AssociationItem ();
             item.DistinguishingFactor = distinguishingFactor;
             item.Handle = assoc.Handle;
-            item.Expires = assoc.Expires.ToLocalTime();
-            item.PrivateData = assoc.SerializePrivateData();
+            item.Expires = assoc.Expires.ToLocalTime ();
+            item.PrivateData = assoc.SerializePrivateData ();
 
             lock (m_syncRoot) {
                 m_store [item.Handle] = item;
@@ -73,56 +77,60 @@ namespace OpenSim.Server.Handlers.Authentication {
             }
         }
 
-        public Association GetAssociation(AssociationRelyingPartyType distinguishingFactor) {
+        public Association GetAssociation (AssociationRelyingPartyType distinguishingFactor)
+        {
             lock (m_syncRoot) {
                 if (m_sortedStore.Count > 0) {
                     AssociationItem item = m_sortedStore.Values [m_sortedStore.Count - 1];
-                    return Association.Deserialize(item.Handle, item.Expires.ToUniversalTime(), item.PrivateData);
+                    return Association.Deserialize (item.Handle, item.Expires.ToUniversalTime (), item.PrivateData);
                 } else {
                     return null;
                 }
             }
         }
 
-        public Association GetAssociation(AssociationRelyingPartyType distinguishingFactor, string handle) {
+        public Association GetAssociation (AssociationRelyingPartyType distinguishingFactor, string handle)
+        {
             AssociationItem item;
             bool success = false;
             lock (m_syncRoot) {
-                success = m_store.TryGetValue(handle, out item);
+                success = m_store.TryGetValue (handle, out item);
             }
 
             if (success) {
-                return Association.Deserialize(item.Handle, item.Expires.ToUniversalTime(), item.PrivateData);
+                return Association.Deserialize (item.Handle, item.Expires.ToUniversalTime (), item.PrivateData);
             } else {
                 return null;
             }
         }
 
-        public bool RemoveAssociation(AssociationRelyingPartyType distinguishingFactor, string handle) {
+        public bool RemoveAssociation (AssociationRelyingPartyType distinguishingFactor, string handle)
+        {
             lock (m_syncRoot) {
                 for (int i = 0; i < m_sortedStore.Values.Count; i++) {
                     AssociationItem item = m_sortedStore.Values [i];
                     if (item.Handle == handle) {
-                        m_sortedStore.RemoveAt(i);
+                        m_sortedStore.RemoveAt (i);
                         break;
                     }
                 }
 
-                return m_store.Remove(handle);
+                return m_store.Remove (handle);
             }
         }
 
-        public void ClearExpiredAssociations() {
+        public void ClearExpiredAssociations ()
+        {
             lock (m_syncRoot) {
-                List<AssociationItem> itemsCopy = new List<AssociationItem>(m_sortedStore.Values);
+                List<AssociationItem> itemsCopy = new List<AssociationItem> (m_sortedStore.Values);
                 DateTime now = DateTime.Now;
 
                 for (int i = 0; i < itemsCopy.Count; i++) {
                     AssociationItem item = itemsCopy [i];
 
                     if (item.Expires <= now) {
-                        m_sortedStore.RemoveAt(i);
-                        m_store.Remove(item.Handle);
+                        m_sortedStore.RemoveAt (i);
+                        m_store.Remove (item.Handle);
                     }
                 }
             }
@@ -131,7 +139,8 @@ namespace OpenSim.Server.Handlers.Authentication {
         #endregion
     }
 
-    public class OpenIdStreamHandler : IStreamHandler {
+    public class OpenIdStreamHandler : IStreamHandler
+    {
         #region HTML
 
         /// <summary>Login form used to authenticate OpenID requests</summary>
@@ -174,12 +183,16 @@ For more information, see <a href='http://openid.net/'>http://openid.net/</a>.
 
         #endregion HTML
 
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger (MethodBase.GetCurrentMethod ().DeclaringType);
 
         public string Name { get { return "OpenId"; } }
+
         public string Description { get { return null; } }
+
         public string ContentType { get { return m_contentType; } }
+
         public string HttpMethod { get { return m_httpMethod; } }
+
         public string Path { get { return m_path; } }
 
         string m_contentType;
@@ -187,12 +200,13 @@ For more information, see <a href='http://openid.net/'>http://openid.net/</a>.
         string m_path;
         IAuthenticationService m_authenticationService;
         IUserAccountService m_userAccountService;
-        ProviderMemoryStore m_openidStore = new ProviderMemoryStore();
+        ProviderMemoryStore m_openidStore = new ProviderMemoryStore ();
 
         /// <summary>
         /// Constructor
         /// </summary>
-        public OpenIdStreamHandler(string httpMethod, string path, IUserAccountService userService, IAuthenticationService authService) {
+        public OpenIdStreamHandler (string httpMethod, string path, IUserAccountService userService, IAuthenticationService authService)
+        {
             m_authenticationService = authService;
             m_userAccountService = userService;
             m_httpMethod = httpMethod;
@@ -205,31 +219,31 @@ For more information, see <a href='http://openid.net/'>http://openid.net/</a>.
         /// Handles all GET and POST requests for OpenID identifier pages and endpoint
         /// server communication
         /// </summary>
-        public void Handle(string requestId, string path, Stream request, Stream response, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[OpenIdStreamHandler] RequestId: {0}", requestId);
-            Uri providerEndpoint = new Uri(String.Format("{0}://{1}{2}", httpRequest.Url.Scheme, httpRequest.Url.Authority, httpRequest.Url.AbsolutePath));
+        public void Handle (string path, Stream request, Stream response, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+        {
+            Uri providerEndpoint = new Uri (String.Format ("{0}://{1}{2}", httpRequest.Url.Scheme, httpRequest.Url.Authority, httpRequest.Url.AbsolutePath));
 
             // Defult to returning HTML content
             m_contentType = "text/html";
 
             try {
-                NameValueCollection postQuery = HttpUtility.ParseQueryString(new StreamReader(httpRequest.InputStream).ReadToEnd());
-                NameValueCollection getQuery = HttpUtility.ParseQueryString(httpRequest.Url.Query);
-                NameValueCollection openIdQuery = (postQuery.GetValues("openid.mode") != null ? postQuery : getQuery);
+                NameValueCollection postQuery = HttpUtility.ParseQueryString (new StreamReader (httpRequest.InputStream).ReadToEnd ());
+                NameValueCollection getQuery = HttpUtility.ParseQueryString (httpRequest.Url.Query);
+                NameValueCollection openIdQuery = (postQuery.GetValues ("openid.mode") != null ? postQuery : getQuery);
 
-                OpenIdProvider provider = new OpenIdProvider(m_openidStore, providerEndpoint, httpRequest.Url, openIdQuery);
+                OpenIdProvider provider = new OpenIdProvider (m_openidStore, providerEndpoint, httpRequest.Url, openIdQuery);
 
                 if (provider.Request != null) {
                     if (!provider.Request.IsResponseReady && provider.Request is IAuthenticationRequest) {
                         IAuthenticationRequest authRequest = (IAuthenticationRequest)provider.Request;
-                        string[] passwordValues = postQuery.GetValues("pass");
+                        string[] passwordValues = postQuery.GetValues ("pass");
 
                         UserAccount account;
-                        if (TryGetAccount(new Uri(authRequest.ClaimedIdentifier.ToString()), out account)) {
+                        if (TryGetAccount (new Uri (authRequest.ClaimedIdentifier.ToString ()), out account)) {
                             // Check for form POST data
                             if (passwordValues != null && passwordValues.Length == 1) {
                                 if (account != null && 
-                                    (m_authenticationService.Authenticate(account.PrincipalID, Util.Md5Hash(passwordValues [0]), 30) != string.Empty)) {
+                                    (m_authenticationService.Authenticate (account.PrincipalID, Util.Md5Hash (passwordValues [0]), 30) != string.Empty)) {
                                     authRequest.IsAuthenticated = true;
                                 } else {
                                     authRequest.IsAuthenticated = false;
@@ -237,7 +251,7 @@ For more information, see <a href='http://openid.net/'>http://openid.net/</a>.
                             } else {
                                 // Authentication was requested, send the client a login form
                                 using (StreamWriter writer = new StreamWriter(response)) {
-                                    writer.Write(String.Format(LOGIN_PAGE, account.FirstName, account.LastName));
+                                    writer.Write (String.Format (LOGIN_PAGE, account.FirstName, account.LastName));
                                 }
                                 return;
                             }
@@ -249,43 +263,43 @@ For more information, see <a href='http://openid.net/'>http://openid.net/</a>.
 
                     // Add OpenID headers to the response
                     foreach (string key in provider.Request.Response.Headers.Keys)
-                        httpResponse.AddHeader(key, provider.Request.Response.Headers [key]);
+                        httpResponse.AddHeader (key, provider.Request.Response.Headers [key]);
 
-                    string[] contentTypeValues = provider.Request.Response.Headers.GetValues("Content-Type");
+                    string[] contentTypeValues = provider.Request.Response.Headers.GetValues ("Content-Type");
                     if (contentTypeValues != null && contentTypeValues.Length == 1) {
                         m_contentType = contentTypeValues [0];
                     }
 
                     // Set the response code and document body based on the OpenID result
                     httpResponse.StatusCode = (int)provider.Request.Response.Code;
-                    response.Write(provider.Request.Response.Body, 0, provider.Request.Response.Body.Length);
-                    response.Close();
-                } else if (httpRequest.Url.AbsolutePath.Contains("/openid/server")) {
+                    response.Write (provider.Request.Response.Body, 0, provider.Request.Response.Body.Length);
+                    response.Close ();
+                } else if (httpRequest.Url.AbsolutePath.Contains ("/openid/server")) {
                     // Standard HTTP GET was made on the OpenID endpoint, send the client the default error page
                     using (StreamWriter writer = new StreamWriter(response)) {
-                        writer.Write(ENDPOINT_PAGE);
+                        writer.Write (ENDPOINT_PAGE);
                     }
                 } else {
                     // Try and lookup this avatar
                     UserAccount account;
-                    if (TryGetAccount(httpRequest.Url, out account)) {
+                    if (TryGetAccount (httpRequest.Url, out account)) {
                         using (StreamWriter writer = new StreamWriter(response)) {
                             // TODO: Print out a full profile page for this avatar
-                            writer.Write(String.Format(OPENID_PAGE, httpRequest.Url.Scheme,
+                            writer.Write (String.Format (OPENID_PAGE, httpRequest.Url.Scheme,
                                 httpRequest.Url.Authority, account.FirstName, account.LastName)
                             );
                         }
                     } else {
                         // Couldn't parse an avatar name, or couldn't find the avatar in the user server
                         using (StreamWriter writer = new StreamWriter(response)) {
-                            writer.Write(INVALID_OPENID_PAGE);
+                            writer.Write (INVALID_OPENID_PAGE);
                         }
                     }
                 }
             } catch (Exception ex) {
                 httpResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
                 using (StreamWriter writer = new StreamWriter(response)) {
-                    writer.Write(ex.Message);
+                    writer.Write (ex.Message);
                 }
             }
         }
@@ -297,14 +311,15 @@ For more information, see <a href='http://openid.net/'>http://openid.net/</a>.
         /// <param name="requestUrl">URL to parse for an avatar name</param>
         /// <param name="profile">Profile data for the avatar</param>
         /// <returns>True if the parse and lookup were successful, otherwise false</returns>
-        bool TryGetAccount(Uri requestUrl, out UserAccount account) {
+        bool TryGetAccount (Uri requestUrl, out UserAccount account)
+        {
             if (requestUrl.Segments.Length == 3 && requestUrl.Segments [1] == "users/") {
                 // Parse the avatar name from the path
                 string username = requestUrl.Segments [requestUrl.Segments.Length - 1];
-                string[] name = username.Split('_');
+                string[] name = username.Split ('_');
 
                 if (name.Length == 2) {
-                    account = m_userAccountService.GetUserAccount(UUID.Zero, name [0], name [1]);
+                    account = m_userAccountService.GetUserAccount (UUID.Zero, name [0], name [1]);
                     return (account != null);
                 }
             }

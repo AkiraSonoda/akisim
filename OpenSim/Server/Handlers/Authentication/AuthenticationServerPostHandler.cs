@@ -64,9 +64,8 @@ namespace OpenSim.Server.Handlers.Authentication {
             }
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request,
+        public override byte[] Handle(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[AuthenticationServerPostHandler] RequestId: {0}", requestId);
             string[] p = SplitParams(path);
 
             if (p.Length > 0) {

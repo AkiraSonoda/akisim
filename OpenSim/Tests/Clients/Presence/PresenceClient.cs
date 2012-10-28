@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -44,70 +43,70 @@ namespace OpenSim.Tests.Clients.PresenceClient
     public class PresenceClient
     {
         private static readonly ILog m_log =
-                LogManager.GetLogger(
-                MethodBase.GetCurrentMethod().DeclaringType);
+                LogManager.GetLogger (
+                MethodBase.GetCurrentMethod ().DeclaringType);
         
-        public static void Main(string[] args)
+        public static void Main (string[] args)
         {
-            ConsoleAppender consoleAppender = new ConsoleAppender();
+            ConsoleAppender consoleAppender = new ConsoleAppender ();
             consoleAppender.Layout =
-                new PatternLayout("%date [%thread] %-5level %logger [%property{NDC}] - %message%newline");
-            log4net.Config.BasicConfigurator.Configure(consoleAppender);
+                new PatternLayout ("%date [%thread] %-5level %logger [%property{NDC}] - %message%newline");
+            log4net.Config.BasicConfigurator.Configure (consoleAppender);
 
             string serverURI = "http://127.0.0.1:8003";
-            PresenceServicesConnector m_Connector = new PresenceServicesConnector(serverURI);
+            PresenceServicesConnector m_Connector = new PresenceServicesConnector (serverURI);
 
-            UUID user1 = UUID.Random();
-            UUID session1 = UUID.Random();
-            UUID region1 = UUID.Random();
+            UUID user1 = UUID.Random ();
+            UUID session1 = UUID.Random ();
+            UUID region1 = UUID.Random ();
 
-            bool success = m_Connector.LoginAgent(user1.ToString(), session1, UUID.Zero);
+            bool success = m_Connector.LoginAgent (user1.ToString (), session1, UUID.Zero);
             if (success)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Successfully logged in user {0} with session {1}", user1, session1);
+                m_log.DebugFormat ("[PresenceClient]: Successfully logged in user {0} with session {1}", user1, session1);
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: failed to login user {0}", user1);
+                m_log.WarnFormat ("[PresenceClient]: failed to login user {0}", user1);
 
-            System.Console.WriteLine("\n");
+            System.Console.WriteLine ("\n");
 
-            PresenceInfo pinfo = m_Connector.GetAgent(session1);
+            PresenceInfo pinfo = m_Connector.GetAgent (session1);
             if (pinfo == null)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Unable to retrieve presence for {0}", user1);
+                m_log.DebugFormat ("[PresenceClient]: Unable to retrieve presence for {0}", user1);
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: Presence retrieved correctly: userID={0}; regionID={1}", 
+                m_log.WarnFormat ("[PresenceClient]: Presence retrieved correctly: userID={0}; regionID={1}", 
                     pinfo.UserID, pinfo.RegionID);
 
-            System.Console.WriteLine("\n");
-            success = m_Connector.ReportAgent(session1, region1);
+            System.Console.WriteLine ("\n");
+            success = m_Connector.ReportAgent (session1, region1);
             if (success)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Successfully reported session {0} in region {1}", user1, region1);
+                m_log.DebugFormat ("[PresenceClient]: Successfully reported session {0} in region {1}", user1, region1);
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: failed to report session {0}", session1);
-            pinfo = m_Connector.GetAgent(session1);
+                m_log.WarnFormat ("[PresenceClient]: failed to report session {0}", session1);
+            pinfo = m_Connector.GetAgent (session1);
             if (pinfo == null)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Unable to retrieve presence for {0} for second time", user1);
+                m_log.WarnFormat ("[PresenceClient]: Unable to retrieve presence for {0} for second time", user1);
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: Presence retrieved correctly: userID={0}; regionID={2}",
+                m_log.DebugFormat ("[PresenceClient]: Presence retrieved correctly: userID={0}; regionID={2}",
                     pinfo.UserID, pinfo.RegionID);
 
-            System.Console.WriteLine("\n");
-            success = m_Connector.LogoutAgent(session1);
+            System.Console.WriteLine ("\n");
+            success = m_Connector.LogoutAgent (session1);
             if (success)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Successfully logged out user {0}", user1);
+                m_log.DebugFormat ("[PresenceClient]: Successfully logged out user {0}", user1);
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: failed to logout user {0}", user1);
-            pinfo = m_Connector.GetAgent(session1);
+                m_log.WarnFormat ("[PresenceClient]: failed to logout user {0}", user1);
+            pinfo = m_Connector.GetAgent (session1);
             if (pinfo == null)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Unable to retrieve presence for {0} for fourth time", user1);
+                m_log.WarnFormat ("[PresenceClient]: Unable to retrieve presence for {0} for fourth time", user1);
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: Presence retrieved correctly: userID={0}; regionID={1}",
+                m_log.DebugFormat ("[PresenceClient]: Presence retrieved correctly: userID={0}; regionID={1}",
                     pinfo.UserID, pinfo.RegionID);
 
-            System.Console.WriteLine("\n");
-            success = m_Connector.ReportAgent(session1, UUID.Random());
+            System.Console.WriteLine ("\n");
+            success = m_Connector.ReportAgent (session1, UUID.Random ());
             if (success)
-                m_log.InfoFormat("[PRESENCE CLIENT]: Report agent succeeded, but this is wrong");
+                m_log.DebugFormat ("[PresenceClient]: Report agent succeeded, but this is wrong");
             else
-                m_log.InfoFormat("[PRESENCE CLIENT]: failed to report agent, as it should because user is not logged in");
+                m_log.WarnFormat ("[PresenceClient]: failed to report agent, as it should because user is not logged in");
 
         }
 

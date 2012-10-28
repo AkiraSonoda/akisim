@@ -65,12 +65,8 @@ namespace OpenSim.Services.Base
             {
                 Assembly pluginAssembly = Assembly.LoadFrom(dllName);
 
-//                m_log.DebugFormat("[SERVICE BASE]: Found assembly {0}", dllName);
-
                 foreach (Type pluginType in pluginAssembly.GetTypes())
                 {
-//                    m_log.DebugFormat("[SERVICE BASE]: Found type {0}", pluginType);
-
                     if (pluginType.IsPublic)
                     {
                         if (className != String.Empty &&

@@ -54,11 +54,6 @@ namespace OpenSim.Services.FreeswitchService
 
             Hashtable response = new Hashtable();
 
-//            foreach (DictionaryEntry item in request)
-//            {
-////               m_log.InfoFormat("[FreeSwitchDirectory]: requestBody item {0} {1}",item.Key, item.Value);
-//            }
-
             string requestcontext = (string) request["Hunt-Context"];
             response["content_type"] = "text/xml";
             response["keepalive"] = false;

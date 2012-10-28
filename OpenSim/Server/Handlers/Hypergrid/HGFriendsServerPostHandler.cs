@@ -64,14 +64,12 @@ namespace OpenSim.Server.Handlers.Hypergrid {
             }
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData,
+        public override byte[] Handle(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();
             body = body.Trim();
-
-            m_log.DebugFormat("[HGFriendsServerPostHandler] RequestId: {0}, query String {1}", requestId, body);
 
             try {
                 Dictionary<string, object> request =

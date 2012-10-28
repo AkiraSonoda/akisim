@@ -55,9 +55,8 @@ namespace OpenSim.Server.Handlers.Hypergrid {
             m_HandlersType = handlersType;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData,
+        public override byte[] Handle(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[HeloServerGetHandler] RequestId: {0}", requestId);
             return OKResponse(httpResponse);
         }
 
@@ -80,9 +79,8 @@ namespace OpenSim.Server.Handlers.Hypergrid {
             m_HandlersType = handlersType;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData,
+        public override byte[] Handle(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[HeloServerHeadHandler] RequestId: {0}", requestId);
             return OKResponse(httpResponse);
         }
 

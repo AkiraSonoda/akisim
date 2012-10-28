@@ -56,7 +56,6 @@ namespace OpenSim.Services.Connectors.SimianGrid
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         private string m_ServerURI = String.Empty;
-//        private bool m_Enabled = false;
 
         public SimianGridServiceConnector() { }
         public SimianGridServiceConnector(string serverURI)
@@ -93,7 +92,6 @@ namespace OpenSim.Services.Connectors.SimianGrid
             if (!serviceUrl.EndsWith("/") && !serviceUrl.EndsWith("="))
                 serviceUrl = serviceUrl + '/';
             m_ServerURI = serviceUrl;
-//            m_Enabled = true;
         }
 
         #region IGridService
@@ -175,7 +173,6 @@ namespace OpenSim.Services.Connectors.SimianGrid
                     }
                 }
 
-//                m_log.Debug("[SIMIAN GRID CONNECTOR]: Found " + regions.Count + " neighbors for region " + regionID);
                 return regions;
             }
 
@@ -190,12 +187,9 @@ namespace OpenSim.Services.Connectors.SimianGrid
                 { "SceneID", regionID.ToString() }
             };
 
-            // m_log.DebugFormat("[SIMIAN GRID CONNECTOR] request region with uuid {0}",regionID.ToString());
-
             OSDMap response = WebUtil.PostToService(m_ServerURI, requestArgs);
             if (response["Success"].AsBoolean())
             {
-                // m_log.DebugFormat("[SIMIAN GRID CONNECTOR] uuid request successful {0}",response["Name"].AsString());
                 return ResponseToGridRegion(response);
             }
             else
@@ -218,18 +212,14 @@ namespace OpenSim.Services.Connectors.SimianGrid
                 { "Enabled", "1" }
             };
 
-            // m_log.DebugFormat("[SIMIAN GRID CONNECTOR] request grid at {0}",position.ToString());
-            
+
             OSDMap response = WebUtil.PostToService(m_ServerURI, requestArgs);
             if (response["Success"].AsBoolean())
             {
-                // m_log.DebugFormat("[SIMIAN GRID CONNECTOR] position request successful {0}",response["Name"].AsString());
                 return ResponseToGridRegion(response);
             }
             else
             {
-                // m_log.InfoFormat("[SIMIAN GRID CONNECTOR]: Grid service did not find a match for region at {0},{1}",
-                //     x / Constants.RegionSize, y / Constants.RegionSize);
                 return null;
             }
         }

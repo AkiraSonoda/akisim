@@ -356,7 +356,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
 
 					if (requestHandler is IStreamedRequestHandler) {
 						IStreamedRequestHandler streamedRequestHandler = requestHandler as IStreamedRequestHandler;
-						buffer = streamedRequestHandler.Handle(requestId, path, request.InputStream, request, response);
+						buffer = streamedRequestHandler.Handle(path, request.InputStream, request, response);
                     } else if (requestHandler is IGenericHTTPHandler) {
 
 						//m_log.Debug("[BaseHttpServer]: Found Caps based HTTP Handler");
@@ -387,12 +387,12 @@ namespace OpenSim.Framework.Servers.HttpServer {
 						keysvals.Add("requestbody", requestBody);
 						keysvals.Add("headers", headervals);
 
-						buffer = DoHTTPGruntWork(HTTPRequestHandler.Handle(requestId, path, keysvals), response);
+						buffer = DoHTTPGruntWork(HTTPRequestHandler.Handle(path, keysvals), response);
 					} else {
 						IStreamHandler streamHandler = (IStreamHandler)requestHandler;
 
 						using (MemoryStream memoryStream = new MemoryStream()) {
-							streamHandler.Handle(requestId, path, request.InputStream, memoryStream, request, response);
+							streamHandler.Handle(path, request.InputStream, memoryStream, request, response);
 							memoryStream.Flush();
 							buffer = memoryStream.ToArray();
 						}

@@ -92,7 +92,7 @@ namespace OpenSim.Region.OptionalModules.Simian
                 return;
 
             m_refreshtime = refreshseconds * 1000; // convert from seconds to ms
-            m_log.InfoFormat("[SIMIAN MAPTILE] enabled with refresh timeout {0} and URL {1}",
+            m_log.DebugFormat("[SIMIAN MAPTILE] enabled with refresh timeout {0} and URL {1}",
                              m_refreshtime,m_serverUrl);
 
             m_enabled = true;

@@ -4051,7 +4051,7 @@ namespace OpenSim.Region.Framework.Scenes
             if((m_teleportFlags & TeleportFlags.ViaHGLogin) == TeleportFlags.ViaHGLogin)
                 HG = true;
     
-            m_log.InfoFormat("[SCENE PRESENCE]: TELEPORT ******************");
+            m_log.DebugFormat("[SCENE PRESENCE]: TELEPORT ******************");
     
             uint i = 0u;
             for (int x = 0; x <= 30 ; x++, i = 1u << x)
@@ -4060,12 +4060,12 @@ namespace OpenSim.Region.Framework.Scenes
     
                 if((m_teleportFlags & (TeleportFlags)i) == (TeleportFlags)i)
                     if (HG == false)
-                        m_log.InfoFormat("[SCENE PRESENCE]: Teleport Flags include {0}", ((TeleportFlags) i).ToString());
+                        m_log.DebugFormat("[SCENE PRESENCE]: Teleport Flags include {0}", ((TeleportFlags) i).ToString());
                     else
-                        m_log.InfoFormat("[SCENE PRESENCE]: HG Teleport Flags include {0}", ((TeleportFlags)i).ToString());
+                        m_log.DebugFormat("[SCENE PRESENCE]: HG Teleport Flags include {0}", ((TeleportFlags)i).ToString());
             }
     
-            m_log.InfoFormat("[SCENE PRESENCE]: TELEPORT ******************");
+            m_log.DebugFormat("[SCENE PRESENCE]: TELEPORT ******************");
     
         }
 

@@ -1021,9 +1021,6 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         ForEachRootScenePresence(delegate(ScenePresence agent)
                         {
-                            //agent.ControllingClient.new
-                            //this.CommsManager.InterRegion.InformRegionOfChildAgent(otherRegion.RegionHandle, agent.ControllingClient.RequestClientInfo());
-
                             List<ulong> old = new List<ulong>();
                             old.Add(otherRegion.RegionHandle);
                             agent.DropOldNeighbours(old);

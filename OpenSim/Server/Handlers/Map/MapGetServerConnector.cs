@@ -73,8 +73,7 @@ namespace OpenSim.Server.Handlers.MapImage {
             m_MapService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[InventoryServerMoveItemsHandler] RequestId: {0}", requestId);
+        public override byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             byte[] result = new byte[0];
 
             string format = string.Empty;

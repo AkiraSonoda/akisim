@@ -306,7 +306,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
 
                     IRCBridgeModule.m_channels.Add(cs);
 
-                    m_log.InfoFormat("[IRC-Channel-{0}] New channel initialized for {1}, nick: {2}, commands {3}, private channels {4}", 
+                    m_log.DebugFormat("[IRC-Channel-{0}] New channel initialized for {1}, nick: {2}, commands {3}, private channels {4}", 
                                  cs.idn, rs.Region, cs.DefaultZone, 
                                  cs.CommandsEnabled ? "enabled" : "not enabled",
                                  cs.RelayPrivateChannels ? "relayed" : "not relayed");
@@ -467,8 +467,6 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
             // Repeatedly scan the string until all possible
             // substitutions have been performed.
 
-            // m_log.DebugFormat("[IRC-Channel] Parse[1]: {0}", result);
-
             while (arg.IsMatch(result))
             {
 
@@ -496,26 +494,24 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
                         result = result.Replace(vvar, rs.config.GetString(var,var));
                         break;
                 }
-                // m_log.DebugFormat("[IRC-Channel] Parse[2]: {0}", result);
             }
 
-            // m_log.DebugFormat("[IRC-Channel] Parse[3]: {0}", result);
             return result;
 
         }
 
         public void Close()
         {
-            m_log.InfoFormat("[IRC-Channel-{0}] Closing channel <{1}> to server <{2}:{3}>",
+            m_log.DebugFormat("[IRC-Channel-{0}] Closing channel <{1}> to server <{2}:{3}>",
                              idn, IrcChannel, Server, Port);
-            m_log.InfoFormat("[IRC-Channel-{0}] There are {1} active clients",
+            m_log.DebugFormat("[IRC-Channel-{0}] There are {1} active clients",
                              idn, clientregions.Count);
             irc.Close();
         }
 
         public void Open()
         {
-            m_log.InfoFormat("[IRC-Channel-{0}] Opening channel <{1}> to server <{2}:{3}>",
+            m_log.DebugFormat("[IRC-Channel-{0}] Opening channel <{1}> to server <{2}:{3}>",
                              idn, IrcChannel, Server, Port);
 
             irc.Open();
@@ -544,9 +540,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
                 {
                     Close();
                     IRCBridgeModule.m_channels.Remove(this);
-                    m_log.InfoFormat("[IRC-Channel-{0}] Region {1} is last user of channel <{2}> to server <{3}:{4}>",
+                    m_log.DebugFormat("[IRC-Channel-{0}] Region {1} is last user of channel <{2}> to server <{3}:{4}>",
                              idn, rs.Region, IrcChannel, Server, Port);
-                    m_log.InfoFormat("[IRC-Channel-{0}] Removed", idn);
+                    m_log.DebugFormat("[IRC-Channel-{0}] Removed", idn);
                 }
             }
         }
@@ -555,7 +551,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
 
         public void AddRegion(RegionState rs)
         {
-            m_log.InfoFormat("[IRC-Channel-{0}] Adding region {1} to channel <{2}> to server <{3}:{4}>",
+            m_log.DebugFormat("[IRC-Channel-{0}] Adding region {1} to channel <{2}> to server <{3}:{4}>",
                              idn, rs.Region, IrcChannel, Server, Port);
             if (!clientregions.Contains(rs))
             {

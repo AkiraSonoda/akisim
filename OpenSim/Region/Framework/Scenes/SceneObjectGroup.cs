@@ -1017,8 +1017,6 @@ namespace OpenSim.Region.Framework.Scenes
                 offsetHeight = maxZ - (boundingBox.Z / 2);
                 offsetHeight *= -1;
             }
-
-           // m_log.InfoFormat("BoundingBox is {0} , {1} , {2} ", boundingBox.X, boundingBox.Y, boundingBox.Z);
             return boundingBox;
         }
 

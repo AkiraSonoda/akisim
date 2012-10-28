@@ -44,7 +44,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
             m_restMethod = restMethod;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+        public override byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             Encoding encoding = Encoding.UTF8;
             StreamReader streamReader = new StreamReader(request, encoding);
 

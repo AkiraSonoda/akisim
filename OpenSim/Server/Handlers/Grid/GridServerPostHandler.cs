@@ -52,9 +52,8 @@ namespace OpenSim.Server.Handlers.Grid {
             m_GridService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData,
+        public override byte[] Handle(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[GridServerPostHandler] RequestId: {0}", requestId);
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();

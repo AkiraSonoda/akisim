@@ -70,13 +70,11 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
             m_config = config.Configs["IRC"];
             if (m_config == null)
             {
-//                m_log.InfoFormat("[IRC-Bridge] module not configured");
                 return;
             }
 
             if (!m_config.GetBoolean("enabled", false))
             {
-//                m_log.InfoFormat("[IRC-Bridge] module disabled in configuration");
                 return;
             }
 
@@ -86,7 +84,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
             }
 
             m_pluginEnabled = true;
-            m_log.InfoFormat("[IRC-Bridge]: Module enabled");
+            m_log.DebugFormat("[IRC-Bridge]: Module enabled");
         }
 
         public void AddRegion(Scene scene)
@@ -95,7 +93,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Chat
             {
                 try
                 {
-                    m_log.InfoFormat("[IRC-Bridge] Connecting region {0}", scene.RegionInfo.RegionName);
+                    m_log.DebugFormat("[IRC-Bridge] Connecting region {0}", scene.RegionInfo.RegionName);
                     if (!String.IsNullOrEmpty(m_password))
                         MainServer.Instance.AddXmlRPCHandler("irc_admin", XmlRpcAdminMethod, false);
                     m_region = new RegionState(scene, m_config);

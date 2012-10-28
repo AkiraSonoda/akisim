@@ -96,8 +96,7 @@ namespace OpenSim.Server.Handlers.MapImage {
             m_Proxy = proxy;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[InventoryServerMoveItemsHandler] RequestId: {0}, Received {1}", requestId, path);
+        public override byte[] Handle(string path, Stream requestData, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
             StreamReader sr = new StreamReader(requestData);
             string body = sr.ReadToEnd();
             sr.Close();

@@ -60,15 +60,15 @@ namespace OpenSim.Framework.Servers.HttpServer {
 
     public interface IStreamedRequestHandler : IRequestHandler {
         // Handle request stream, return byte array
-        byte[] Handle(string requestId, string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse);
+        byte[] Handle(string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse);
     }
 
     public interface IStreamHandler : IRequestHandler {
         // Handle request stream, return byte array
-        void Handle(string requestId, string path, Stream request, Stream response, IOSHttpRequest httpReqbuest, IOSHttpResponse httpResponse);
+        void Handle(string path, Stream request, Stream response, IOSHttpRequest httpReqbuest, IOSHttpResponse httpResponse);
     }
     
     public interface IGenericHTTPHandler : IRequestHandler {
-        Hashtable Handle(string requestId, string path, Hashtable request);
+        Hashtable Handle(string path, Hashtable request);
     }
 }

@@ -39,261 +39,272 @@ using OpenSim.Services.Interfaces;
 using OpenMetaverse;
 using log4net;
 
-namespace OpenSim.Region.CoreModules.Avatar.Friends {
-    public class FriendsRequestHandler : BaseStreamHandler {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+namespace OpenSim.Region.CoreModules.Avatar.Friends
+{
+    public class FriendsRequestHandler : BaseStreamHandler
+    {
+        private static readonly ILog m_log = LogManager.GetLogger (MethodBase.GetCurrentMethod ().DeclaringType);
         private FriendsModule m_FriendsModule;
 
-        public FriendsRequestHandler(FriendsModule fmodule)
-                : base("POST", "/friends") {
+        public FriendsRequestHandler (FriendsModule fmodule)
+                : base("POST", "/friends")
+        {
             m_FriendsModule = fmodule;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream requestData, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            StreamReader sr = new StreamReader(requestData);
-            string body = sr.ReadToEnd();
-            sr.Close();
-            body = body.Trim();
-
-            //m_log.DebugFormat("[XXX]: query String: {0}", body);
-            m_log.DebugFormat("[FriendsRequestHandler] RequestId: {0}, query String: {1}", requestId, body);
+        public override byte[] Handle (string path, Stream requestData, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+        {
+            StreamReader sr = new StreamReader (requestData);
+            string body = sr.ReadToEnd ();
+            sr.Close ();
+            body = body.Trim ();
 
             try {
-                Dictionary<string, object> request = ServerUtils.ParseQueryString(body);
+                Dictionary<string, object> request = ServerUtils.ParseQueryString (body);
 
-                if (!request.ContainsKey("METHOD")) {
-                    return FailureResult();
+                if (!request.ContainsKey ("METHOD")) {
+                    return FailureResult ();
                 }
 
-                string method = request ["METHOD"].ToString();
-                request.Remove("METHOD");
+                string method = request ["METHOD"].ToString ();
+                request.Remove ("METHOD");
 
                 switch (method) {
-                    case "friendship_offered":
-                        return FriendshipOffered(request);
-                    case "friendship_approved":
-                        return FriendshipApproved(request);
-                    case "friendship_denied":
-                        return FriendshipDenied(request);
-                    case "friendship_terminated":
-                        return FriendshipTerminated(request);
-                    case "grant_rights":
-                        return GrantRights(request);
-                    case "status":
-                        return StatusNotification(request);
+                case "friendship_offered":
+                    return FriendshipOffered (request);
+                case "friendship_approved":
+                    return FriendshipApproved (request);
+                case "friendship_denied":
+                    return FriendshipDenied (request);
+                case "friendship_terminated":
+                    return FriendshipTerminated (request);
+                case "grant_rights":
+                    return GrantRights (request);
+                case "status":
+                    return StatusNotification (request);
                 }
             } catch (Exception e) {
-                m_log.ErrorFormat("[FriendsRequestHandler]: Exception {0}", e.ToString());
+                m_log.ErrorFormat ("[FriendsRequestHandler]: Exception {0}", e.ToString ());
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
-        byte[] FriendshipOffered(Dictionary<string, object> request) {
+        byte[] FriendshipOffered (Dictionary<string, object> request)
+        {
             UUID fromID = UUID.Zero;
             UUID toID = UUID.Zero;
             string message = string.Empty;
 
-            if (!request.ContainsKey("FromID") || !request.ContainsKey("ToID")) {
-                return FailureResult();
+            if (!request.ContainsKey ("FromID") || !request.ContainsKey ("ToID")) {
+                return FailureResult ();
             }
 
-            message = request ["Message"].ToString();
+            message = request ["Message"].ToString ();
 
-            if (!UUID.TryParse(request ["FromID"].ToString(), out fromID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["FromID"].ToString (), out fromID)) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["ToID"].ToString(), out toID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["ToID"].ToString (), out toID)) {
+                return FailureResult ();
             }
 
-            UserAccount account = m_FriendsModule.UserAccountService.GetUserAccount(UUID.Zero, fromID);
+            UserAccount account = m_FriendsModule.UserAccountService.GetUserAccount (UUID.Zero, fromID);
             string name = (account == null) ? "Unknown" : account.FirstName + " " + account.LastName;
 
-            GridInstantMessage im = new GridInstantMessage(m_FriendsModule.Scene, fromID, name, toID, 
+            GridInstantMessage im = new GridInstantMessage (m_FriendsModule.Scene, fromID, name, toID, 
                 (byte)InstantMessageDialog.FriendshipOffered, message, false, Vector3.Zero);
 
             // !! HACK
             im.imSessionID = im.fromAgentID;
 
-            if (m_FriendsModule.LocalFriendshipOffered(toID, im)) {
-                return SuccessResult();
+            if (m_FriendsModule.LocalFriendshipOffered (toID, im)) {
+                return SuccessResult ();
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
-        byte[] FriendshipApproved(Dictionary<string, object> request) {
+        byte[] FriendshipApproved (Dictionary<string, object> request)
+        {
             UUID fromID = UUID.Zero;
             UUID toID = UUID.Zero;
             string fromName = string.Empty;
 
-            if (!request.ContainsKey("FromID") || !request.ContainsKey("ToID")) {
-                return FailureResult();
+            if (!request.ContainsKey ("FromID") || !request.ContainsKey ("ToID")) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["FromID"].ToString(), out fromID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["FromID"].ToString (), out fromID)) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["ToID"].ToString(), out toID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["ToID"].ToString (), out toID)) {
+                return FailureResult ();
             }
 
-            if (request.ContainsKey("FromName")) {
-                fromName = request ["FromName"].ToString();
+            if (request.ContainsKey ("FromName")) {
+                fromName = request ["FromName"].ToString ();
             }
 
-            if (m_FriendsModule.LocalFriendshipApproved(fromID, fromName, toID)) {
-                return SuccessResult();
+            if (m_FriendsModule.LocalFriendshipApproved (fromID, fromName, toID)) {
+                return SuccessResult ();
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
-        byte[] FriendshipDenied(Dictionary<string, object> request) {
+        byte[] FriendshipDenied (Dictionary<string, object> request)
+        {
             UUID fromID = UUID.Zero;
             UUID toID = UUID.Zero;
             string fromName = string.Empty;
 
-            if (!request.ContainsKey("FromID") || !request.ContainsKey("ToID")) {
-                return FailureResult();
+            if (!request.ContainsKey ("FromID") || !request.ContainsKey ("ToID")) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["FromID"].ToString(), out fromID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["FromID"].ToString (), out fromID)) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["ToID"].ToString(), out toID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["ToID"].ToString (), out toID)) {
+                return FailureResult ();
             }
 
-            if (request.ContainsKey("FromName")) {
-                fromName = request ["FromName"].ToString();
+            if (request.ContainsKey ("FromName")) {
+                fromName = request ["FromName"].ToString ();
             }
 
-            if (m_FriendsModule.LocalFriendshipDenied(fromID, fromName, toID)) {
-                return SuccessResult();
+            if (m_FriendsModule.LocalFriendshipDenied (fromID, fromName, toID)) {
+                return SuccessResult ();
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
-        byte[] FriendshipTerminated(Dictionary<string, object> request) {
+        byte[] FriendshipTerminated (Dictionary<string, object> request)
+        {
             UUID fromID = UUID.Zero;
             UUID toID = UUID.Zero;
 
-            if (!request.ContainsKey("FromID") || !request.ContainsKey("ToID")) {
-                return FailureResult();
+            if (!request.ContainsKey ("FromID") || !request.ContainsKey ("ToID")) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["FromID"].ToString(), out fromID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["FromID"].ToString (), out fromID)) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["ToID"].ToString(), out toID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["ToID"].ToString (), out toID)) {
+                return FailureResult ();
             }
 
-            if (m_FriendsModule.LocalFriendshipTerminated(toID)) {
-                return SuccessResult();
+            if (m_FriendsModule.LocalFriendshipTerminated (toID)) {
+                return SuccessResult ();
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
-        byte[] GrantRights(Dictionary<string, object> request) {
+        byte[] GrantRights (Dictionary<string, object> request)
+        {
             UUID fromID = UUID.Zero;
             UUID toID = UUID.Zero;
             int rights = 0, userFlags = 0;
 
-            if (!request.ContainsKey("FromID") || !request.ContainsKey("ToID")) {
-                return FailureResult();
+            if (!request.ContainsKey ("FromID") || !request.ContainsKey ("ToID")) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["FromID"].ToString(), out fromID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["FromID"].ToString (), out fromID)) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["ToID"].ToString(), out toID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["ToID"].ToString (), out toID)) {
+                return FailureResult ();
             }
 
-            if (!Int32.TryParse(request ["UserFlags"].ToString(), out userFlags)) {
-                return FailureResult();
+            if (!Int32.TryParse (request ["UserFlags"].ToString (), out userFlags)) {
+                return FailureResult ();
             }
 
-            if (!Int32.TryParse(request ["Rights"].ToString(), out rights)) {
-                return FailureResult();
+            if (!Int32.TryParse (request ["Rights"].ToString (), out rights)) {
+                return FailureResult ();
             }
 
-            if (m_FriendsModule.LocalGrantRights(UUID.Zero, UUID.Zero, userFlags, rights)) {
-                return SuccessResult();
+            if (m_FriendsModule.LocalGrantRights (UUID.Zero, UUID.Zero, userFlags, rights)) {
+                return SuccessResult ();
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
-        byte[] StatusNotification(Dictionary<string, object> request) {
+        byte[] StatusNotification (Dictionary<string, object> request)
+        {
             UUID fromID = UUID.Zero;
             UUID toID = UUID.Zero;
             bool online = false;
 
-            if (!request.ContainsKey("FromID") || !request.ContainsKey("ToID") || !request.ContainsKey("Online")) {
-                return FailureResult();
+            if (!request.ContainsKey ("FromID") || !request.ContainsKey ("ToID") || !request.ContainsKey ("Online")) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["FromID"].ToString(), out fromID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["FromID"].ToString (), out fromID)) {
+                return FailureResult ();
             }
 
-            if (!UUID.TryParse(request ["ToID"].ToString(), out toID)) {
-                return FailureResult();
+            if (!UUID.TryParse (request ["ToID"].ToString (), out toID)) {
+                return FailureResult ();
             }
 
-            if (!Boolean.TryParse(request ["Online"].ToString(), out online)) {
-                return FailureResult();
+            if (!Boolean.TryParse (request ["Online"].ToString (), out online)) {
+                return FailureResult ();
             }
 
-            if (m_FriendsModule.LocalStatusNotification(fromID, toID, online)) {
-                return SuccessResult();
+            if (m_FriendsModule.LocalStatusNotification (fromID, toID, online)) {
+                return SuccessResult ();
             }
 
-            return FailureResult();
+            return FailureResult ();
         }
 
         #region Misc
 
-        private byte[] FailureResult() {
-            return BoolResult(false);
+        private byte[] FailureResult ()
+        {
+            return BoolResult (false);
         }
 
-        private byte[] SuccessResult() {
-            return BoolResult(true);
+        private byte[] SuccessResult ()
+        {
+            return BoolResult (true);
         }
 
-        private byte[] BoolResult(bool value) {
-            XmlDocument doc = new XmlDocument();
-            XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,"", "");
-            doc.AppendChild(xmlnode);
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse","");
-            doc.AppendChild(rootElement);
-            XmlElement result = doc.CreateElement("", "RESULT", "");
-            result.AppendChild(doc.CreateTextNode(value.ToString()));
-            rootElement.AppendChild(result);
+        private byte[] BoolResult (bool value)
+        {
+            XmlDocument doc = new XmlDocument ();
+            XmlNode xmlnode = doc.CreateNode (XmlNodeType.XmlDeclaration, "", "");
+            doc.AppendChild (xmlnode);
+            XmlElement rootElement = doc.CreateElement ("", "ServerResponse", "");
+            doc.AppendChild (rootElement);
+            XmlElement result = doc.CreateElement ("", "RESULT", "");
+            result.AppendChild (doc.CreateTextNode (value.ToString ()));
+            rootElement.AppendChild (result);
 
-            return DocToBytes(doc);
+            return DocToBytes (doc);
         }
 
-        private byte[] DocToBytes(XmlDocument doc) {
-            MemoryStream ms = new MemoryStream();
-            XmlTextWriter xw = new XmlTextWriter(ms, null);
+        private byte[] DocToBytes (XmlDocument doc)
+        {
+            MemoryStream ms = new MemoryStream ();
+            XmlTextWriter xw = new XmlTextWriter (ms, null);
             xw.Formatting = Formatting.Indented;
-            doc.WriteTo(xw);
-            xw.Flush();
+            doc.WriteTo (xw);
+            xw.Flush ();
 
-            return ms.ToArray();
+            return ms.ToArray ();
         }
 
         #endregion

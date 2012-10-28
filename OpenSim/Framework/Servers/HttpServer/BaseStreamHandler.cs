@@ -36,7 +36,7 @@ namespace OpenSim.Framework.Servers.HttpServer {
             : base(httpMethod, path, name, description) {
         }
 
-        public abstract byte[] Handle(string requestId, string path, Stream request,
+        public abstract byte[] Handle(string path, Stream request,
                                       IOSHttpRequest httpRequest, IOSHttpResponse httpResponse);
 
     }

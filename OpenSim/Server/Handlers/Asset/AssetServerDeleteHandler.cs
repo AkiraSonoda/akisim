@@ -51,9 +51,8 @@ namespace OpenSim.Server.Handlers.Asset {
             m_allowDelete = allowDelete;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request,
+        public override byte[] Handle(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-            m_log.DebugFormat("[AssetServerDeleteHandler] RequestId: {0}", requestId);
             bool result = false;
 
             string[] p = SplitParams(path);

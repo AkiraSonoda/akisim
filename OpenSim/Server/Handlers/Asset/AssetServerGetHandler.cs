@@ -49,9 +49,8 @@ namespace OpenSim.Server.Handlers.Asset {
             m_AssetService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request,
+        public override byte[] Handle(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
-           m_log.DebugFormat("[AssetServerGetHandler] RequestId: {0}", requestId);
            byte[] result = new byte[0];
 
             string[] p = SplitParams(path);

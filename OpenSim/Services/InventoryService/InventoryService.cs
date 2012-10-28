@@ -144,7 +144,7 @@ namespace OpenSim.Services.InventoryService
         /// <returns>The user's inventory.  If an inventory cannot be found then an empty collection is returned.</returns>
         public InventoryCollection GetUserInventory(UUID userID)
         {
-            m_log.InfoFormat("[INVENTORY SERVICE]: Processing request for inventory of {0}", userID);
+            m_log.DebugFormat("[INVENTORY SERVICE]: Processing request for inventory of {0}", userID);
 
             // Uncomment me to simulate a slow responding inventory server
             //Thread.Sleep(16000);
@@ -176,17 +176,7 @@ namespace OpenSim.Services.InventoryService
             invCollection.Folders = allFolders;
             invCollection.Items = allItems;
 
-            //            foreach (InventoryFolderBase folder in invCollection.Folders)
-            //            {
-            //                m_log.DebugFormat("[GRID INVENTORY SERVICE]: Sending back folder {0} {1}", folder.Name, folder.ID);
-            //            }
-            //
-            //            foreach (InventoryItemBase item in invCollection.Items)
-            //            {
-            //                m_log.DebugFormat("[GRID INVENTORY SERVICE]: Sending back item {0} {1}, folder {2}", item.Name, item.ID, item.Folder);
-            //            }
-
-            m_log.InfoFormat(
+            m_log.DebugFormat(
                 "[INVENTORY SERVICE]: Sending back inventory response to user {0} containing {1} folders and {2} items",
                 invCollection.UserID, invCollection.Folders.Count, invCollection.Items.Count);
 
@@ -200,7 +190,7 @@ namespace OpenSim.Services.InventoryService
         /// <param name="callback"></param>
         public void GetUserInventory(UUID userID, InventoryReceiptCallback callback)
         {
-            m_log.InfoFormat("[INVENTORY SERVICE]: Requesting inventory for user {0}", userID);
+            m_log.DebugFormat("[INVENTORY SERVICE]: Requesting inventory for user {0}", userID);
 
             List<InventoryFolderImpl> folders = new List<InventoryFolderImpl>();
             List<InventoryItemBase> items = new List<InventoryItemBase>();
@@ -235,7 +225,7 @@ namespace OpenSim.Services.InventoryService
                     }
                 }
 
-                m_log.InfoFormat(
+                m_log.DebugFormat(
                     "[INVENTORY SERVICE]: Received inventory response for user {0} containing {1} folders and {2} items",
                     userID, folders.Count, items.Count);
             }
@@ -401,7 +391,7 @@ namespace OpenSim.Services.InventoryService
         // See IInventoryServices
         public virtual bool UpdateItem(InventoryItemBase item)
         {
-            m_log.InfoFormat(
+            m_log.DebugFormat(
                 "[INVENTORY SERVICE]: Updating item {0} {1} in folder {2}", item.Name, item.ID, item.Folder);
 
             m_Database.updateInventoryItem(item);
@@ -412,7 +402,7 @@ namespace OpenSim.Services.InventoryService
 
         public virtual bool MoveItems(UUID ownerID, List<InventoryItemBase> items)
         {
-            m_log.InfoFormat(
+            m_log.DebugFormat(
                 "[INVENTORY SERVICE]: Moving {0} items from user {1}", items.Count, ownerID);
 
             InventoryItemBase itm = null;
@@ -431,7 +421,7 @@ namespace OpenSim.Services.InventoryService
         // See IInventoryServices
         public virtual bool DeleteItems(UUID owner, List<UUID> itemIDs)
         {
-            m_log.InfoFormat(
+            m_log.DebugFormat(
                 "[INVENTORY SERVICE]: Deleting {0} items from user {1}", itemIDs.Count, owner);
 
             // uhh.....

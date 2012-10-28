@@ -158,7 +158,6 @@ namespace OpenSim.Services.Connectors.SimianGrid
 
         public bool LogoutAgent(UUID sessionID)
         {
-//            m_log.InfoFormat("[SIMIAN PRESENCE CONNECTOR]: Logout requested for agent with sessionID " + sessionID);
 
             NameValueCollection requestArgs = new NameValueCollection
             {
@@ -177,7 +176,6 @@ namespace OpenSim.Services.Connectors.SimianGrid
 
         public bool LogoutRegionAgents(UUID regionID)
         {
-//            m_log.InfoFormat("[SIMIAN PRESENCE CONNECTOR]: Logout requested for all agents in region " + regionID);
 
             NameValueCollection requestArgs = new NameValueCollection
             {
