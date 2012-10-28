@@ -105,11 +105,15 @@ if [ -e "$OSBAK/$SCREENID/$SCREENID/bin/LocalUserStatistics.db" ] ; then
 fi
 
 if [ "$test_version" != "" ] ; then
+  cp $OSINS/$test_version/doc/log4net/OpenSim.exe.config $OSINS/$SCREENID/bin
+  cp $OSINS/$test_version/doc/log4net/OpenSim.32BitLaunch.exe.config $OSINS/$SCREENID/bin
   cp $OSINS/$test_version/doc/osgrid/ini/OpenSim.ini $OSINS/$SCREENID/bin
   cp $OSINS/$test_version/doc/osgrid/ini/config-include/GridCommon.ini $OSINS/$SCREENID/bin/config-include
   cp $OSINS/$test_version/doc/osgrid/ini/config-include/GridHypergrid.ini $OSINS/$SCREENID/bin/config-include
   cp $OSINS/$test_version/doc/osgrid/ini/config-include/FlotsamCache.ini $OSINS/$SCREENID/bin/config-include
 else
+  cp $OSINS/$build_version/doc/log4net/OpenSim.exe.config $OSINS/$SCREENID/bin
+  cp $OSINS/$build_version/doc/log4net/OpenSim.32BitLaunch.exe.config $OSINS/$SCREENID/bin
   cp $OSINS/$build_version/doc/osgrid/ini/OpenSim.ini $OSINS/$SCREENID/bin
   cp $OSINS/$build_version/doc/osgrid/ini/config-include/GridCommon.ini $OSINS/$SCREENID/bin/config-include
   cp $OSINS/$build_version/doc/osgrid/ini/config-include/GridHypergrid.ini $OSINS/$SCREENID/bin/config-include

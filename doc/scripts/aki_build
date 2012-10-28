@@ -124,11 +124,13 @@ cd $OSINS
 
 # Housekeeping
 if [ "$test_version" != "" ] ; then
-	rm -f $test_version.tar.gz
-	rm version.txt
+  cp $OSINS/$test_version/doc/scripts/* $OSINS/bin
+  rm -f $test_version.tar.gz
+  rm version.txt
 else
-	rm -f $new_version.tar.gz
-	rm version.txt
+  cp $OSINS/$new_version/doc/scripts/* $OSINS/bin
+  rm -f $new_version.tar.gz
+  rm version.txt
 fi
 
 echo "Finished building the simulator".
