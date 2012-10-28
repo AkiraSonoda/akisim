@@ -847,7 +847,7 @@ namespace OpenSim.Framework
                 }
 
                 m_log.InfoFormat (
-                    "[WEB UTIL]: Slow AsynchronousRequestObject {0} {1} {2} took {3}ms, {4}ms writing, {5}",
+                    "[WEB UTIL]: Slow AsynchronousRequestObject request {0} {1} {2} took {3}ms, {4}ms writing, {5}",
                     reqnum,
                     verb,
                     requestUrl,
@@ -959,7 +959,7 @@ namespace OpenSim.Framework
             int tickdiff = Util.EnvironmentTickCountSubtract (tickstart);
             if (tickdiff > WebUtil.LongCallTime) {
                 m_log.InfoFormat (
-                    "[WEB UTIL]: Slow SynchronousRestForms {0} {1} {2} took {3}ms, {4}ms writing, {5}",
+                    "[WEB UTIL]: Slow SynchronousRestForms request {0} {1} {2} took {3}ms, {4}ms writing, {5}",
                     reqnum,
                     verb,
                     requestUrl,
@@ -1099,7 +1099,7 @@ namespace OpenSim.Framework
                 }
 
                 m_log.InfoFormat (
-                    "[WEB UTIL]: SynchronousRestObject Slow request {0} {1} {2} took {3}ms, {4}ms writing, {5}",
+                    "[WEB UTIL]: Slow SynchronousRestObject request {0} {1} {2} took {3}ms, {4}ms writing, {5}",
                     reqnum,
                     verb,
                     requestUrl,
