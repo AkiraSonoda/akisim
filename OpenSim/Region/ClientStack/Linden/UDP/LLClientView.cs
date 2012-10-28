@@ -454,17 +454,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP {
 
         #endregion Properties
 
-//        ~LLClientView()
-//        {
-//            m_log.DebugFormat("[LLCLIENTVIEW]: Destructor called for {0}, circuit code {1}", Name, CircuitCode);
-//        }
-
         /// <summary>
         /// Constructor
         /// </summary>
         public LLClientView(Scene scene, LLUDPServer udpServer, LLUDPClient udpClient, AuthenticateResponse sessionInfo,
             UUID agentId, UUID sessionId, uint circuitCode) {
-//            DebugPacketLevel = 1;
 
             CloseSyncLock = new Object();
 
@@ -477,7 +471,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP {
             m_entityProps = new PriorityQueue(m_scene.Entities.Count);
             m_fullUpdateDataBlocksBuilder = new List<ObjectUpdatePacket.ObjectDataBlock>();
             m_killRecord = new HashSet<uint>();
-//            m_attachmentsSent = new HashSet<uint>();
 
             m_assetService = m_scene.RequestModuleInterface<IAssetService>();
             m_GroupsModule = scene.RequestModuleInterface<IGroupsModule>();
@@ -10867,7 +10860,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP {
             }
 
             if (!ProcessPacketMethod(packet)) {
-                m_log.Warn("[LLClientView]: unhandled packet " + packet.Type);
+                m_log.DebugFormat("[LLClientView]: unhandled packet {0}", packet.Type);
             }
 
             PacketPool.Instance.ReturnPacket(packet);
