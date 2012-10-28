@@ -359,20 +359,18 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             result[i] = (string)(LSL_String)plist[i];                            
                         else if (plist[i] is LSL_Integer)
                             result[i] = (int)(LSL_Integer)plist[i];
+                        // The int check exists because of the many plain old int script constants in ScriptBase which
+                        // are not LSL_Integers.
+                        else if (plist[i] is int)
+                            result[i] = plist[i];
                         else if (plist[i] is LSL_Float)
                             result[i] = (float)(LSL_Float)plist[i];
                         else if (plist[i] is LSL_Key)
                             result[i] = new UUID((LSL_Key)plist[i]);
                         else if (plist[i] is LSL_Rotation)
-                        {
-                            result[i] = (OpenMetaverse.Quaternion)(
-                                (LSL_Rotation)plist[i]);
-                        }
+                            result[i] = (Quaternion)((LSL_Rotation)plist[i]);
                         else if (plist[i] is LSL_Vector)
-                        {
-                            result[i] = (OpenMetaverse.Vector3)(
-                                (LSL_Vector)plist[i]);
-                        }
+                            result[i] = (Vector3)((LSL_Vector)plist[i]);
                         else
                             MODError(String.Format("{0}: unknown LSL list element type", fname));
                     }
