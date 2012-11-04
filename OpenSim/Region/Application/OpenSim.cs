@@ -1135,8 +1135,8 @@ namespace OpenSim
                             s.Name,
                             aCircuit.Name,
                             aCircuit.child ? "child" : "root",
-                            aCircuit.circuitcode.ToString (),
-                            aCircuit.IPAddress.ToString (),
+                            aCircuit.circuitcode.ToString(),
+                            aCircuit.IPAddress != null ? aCircuit.IPAddress.ToString() : "not set",
                             aCircuit.Viewer);
             }
             );
