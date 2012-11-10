@@ -3963,17 +3963,17 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                 if (m_TransferModule != null)
                 {
-                    byte[] bucket = new byte[] { (byte)item.Type };
+                    byte[] bucket = new byte[1];
+                    bucket[0] = (byte)item.Type;
 
                     GridInstantMessage msg = new GridInstantMessage(World,
-                            m_host.UUID, m_host.Name + ", an object owned by " +
-                            resolveName(m_host.OwnerID) + ",", destId,
+                            m_host.OwnerID, m_host.Name, destId,
                             (byte)InstantMessageDialog.TaskInventoryOffered,
-                            false, item.Name + "\n" + m_host.Name + " is located at " +
+                            false, item.Name+". "+m_host.Name+" is located at "+
                             World.RegionInfo.RegionName+" "+
                             m_host.AbsolutePosition.ToString(),
                             agentItem.ID, true, m_host.AbsolutePosition,
-                            bucket, true); // TODO: May actually send no timestamp
+                            bucket, true);
 
                     m_TransferModule.SendInstantMessage(msg, delegate(bool success) {});
                 }
@@ -6635,6 +6635,36 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         {
             m_host.AddScriptLPS(1);
             m_host.SetCameraAtOffset(offset);
+        }
+
+        public void llSetLinkCamera(LSL_Integer link, LSL_Vector eye, LSL_Vector at)
+        {
+            m_host.AddScriptLPS(1);
+
+            if (link == ScriptBaseClass.LINK_SET ||
+                link == ScriptBaseClass.LINK_ALL_CHILDREN ||
+                link == ScriptBaseClass.LINK_ALL_OTHERS) return;
+
+            SceneObjectPart part = null;
+
+            switch (link)
+            {
+                case ScriptBaseClass.LINK_ROOT:
+                    part = m_host.ParentGroup.RootPart;
+                    break;
+                case ScriptBaseClass.LINK_THIS:
+                    part = m_host;
+                    break;
+                default:
+                    part = m_host.ParentGroup.GetLinkNumPart(link);
+                    break;
+            }
+
+            if (null != part)
+            {
+                part.SetCameraEyeOffset(eye);
+                part.SetCameraAtOffset(at);
+            }
         }
 
         public LSL_String llDumpList2String(LSL_List src, string seperator)
