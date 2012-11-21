@@ -30,6 +30,7 @@ using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
+using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
@@ -38,6 +39,7 @@ using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 
 namespace OpenSim.Region.CoreModules.World.WorldMap
 {
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MapSearchModule")]
     public class MapSearchModule : ISharedRegionModule
     {
         private static readonly ILog m_log =
@@ -113,19 +115,15 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 m_Clients.Add(remoteClient.AgentId);
             }
 
-            Util.FireAndForget(delegate
+            try
             {
-                try
-                {
-                    OnMapNameRequest(remoteClient, mapName, flags);
-                }
-                finally
-                {
-                    lock (m_Clients)
-                        m_Clients.Remove(remoteClient.AgentId);
-                }
-            });
-
+                OnMapNameRequest(remoteClient, mapName, flags);
+            }
+            finally
+            {
+                lock (m_Clients)
+                    m_Clients.Remove(remoteClient.AgentId);
+            }
         }
 
         private void OnMapNameRequest(IClientAPI remoteClient, string mapName, uint flags)

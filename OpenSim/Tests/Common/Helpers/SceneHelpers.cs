@@ -139,7 +139,7 @@ namespace OpenSim.Tests.Common
             SceneCommunicationService scs = new SceneCommunicationService();
 
             TestScene testScene = new TestScene(
-                regInfo, m_acm, scs, m_simDataService, m_estateDataService, null, false, configSource, null);
+                regInfo, m_acm, scs, m_simDataService, m_estateDataService, false, configSource, null);
 
             INonSharedRegionModule godsModule = new GodsModule();
             godsModule.Initialise(new IniConfigSource());
@@ -350,6 +350,10 @@ namespace OpenSim.Tests.Common
         /// </summary>
         /// <remarks>
         /// If called directly, then all the modules must be shared modules.
+        /// 
+        /// We are emulating here the normal calls made to setup region modules 
+        /// (Initialise(), PostInitialise(), AddRegion, RegionLoaded()).
+        /// TODO: Need to reuse normal runtime module code.
         /// </remarks>
         /// <param name="scenes"></param>
         /// <param name="config"></param>
@@ -359,28 +363,10 @@ namespace OpenSim.Tests.Common
             List<IRegionModuleBase> newModules = new List<IRegionModuleBase>();
             foreach (object module in modules)
             {
-//                Console.WriteLine("MODULE RAW {0}", module);
-                if (module is IRegionModule)
-                {
-                    IRegionModule m = (IRegionModule)module;
-
-                    foreach (Scene scene in scenes)
-                    {
-                        m.Initialise(scene, config);
-                        scene.AddModule(m.Name, m);
-                    }
-
-                    m.PostInitialise();
-                }
-                else if (module is IRegionModuleBase)
-                {
-                    // for the new system, everything has to be initialised first,
-                    // shared modules have to be post-initialised, then all get an AddRegion with the scene
-                    IRegionModuleBase m = (IRegionModuleBase)module;
-//                    Console.WriteLine("MODULE {0}", m.Name);
-                    m.Initialise(config);
-                    newModules.Add(m);
-                }
+                IRegionModuleBase m = (IRegionModuleBase)module;
+//                Console.WriteLine("MODULE {0}", m.Name);
+                m.Initialise(config);
+                newModules.Add(m);
             }
 
             foreach (IRegionModuleBase module in newModules)

@@ -127,14 +127,6 @@ namespace OpenSim
             get { return m_httpServerPort; }
         }
 
-        public ModuleLoader ModuleLoader
-        {
-            get { return m_moduleLoader; }
-            set { m_moduleLoader = value; }
-        }
-
-        protected ModuleLoader m_moduleLoader;
-
         protected IRegistryCore m_applicationRegistry = new RegistryCore();
 
         public IRegistryCore ApplicationRegistry
@@ -207,24 +199,35 @@ namespace OpenSim
             IConfig simDataConfig = m_config.Source.Configs["SimulationDataStore"];
             if (simDataConfig == null)
                 throw new Exception("Configuration file is missing the [SimulationDataStore] section.  Have you copied OpenSim.ini.example to OpenSim.ini to reference config-include/ files?");
+
             string module = simDataConfig.GetString("LocalServiceModule", String.Empty);
             if (String.IsNullOrEmpty(module))
                 throw new Exception("Configuration file is missing the LocalServiceModule parameter in the [SimulationDataStore] section.");
+
             m_simulationDataService = ServerUtils.LoadPlugin<ISimulationDataService>(module, new object[] { m_config.Source });
+            if (m_simulationDataService == null)
+                throw new Exception(
+                    string.Format(
+                        "Could not load an ISimulationDataService implementation from {0}, as configured in the LocalServiceModule parameter of the [SimulationDataStore] config section.", 
+                        module));
 
             // Load the estate data service
             IConfig estateDataConfig = m_config.Source.Configs["EstateDataStore"];
             if (estateDataConfig == null)
                 throw new Exception("Configuration file is missing the [EstateDataStore] section.  Have you copied OpenSim.ini.example to OpenSim.ini to reference config-include/ files?");
+
             module = estateDataConfig.GetString("LocalServiceModule", String.Empty);
             if (String.IsNullOrEmpty(module))
                 throw new Exception("Configuration file is missing the LocalServiceModule parameter in the [EstateDataStore] section");
+
             m_estateDataService = ServerUtils.LoadPlugin<IEstateDataService>(module, new object[] { m_config.Source });
+            if (m_estateDataService == null)
+                throw new Exception(
+                    string.Format(
+                        "Could not load an IEstateDataService implementation from {0}, as configured in the LocalServiceModule parameter of the [EstateDataStore] config section.", 
+                        module));
 
             base.StartupSpecific();
-
-            // Create a ModuleLoader instance
-            m_moduleLoader = new ModuleLoader(m_config.Source);
 
             LoadPlugins();
             foreach (IApplicationPlugin plugin in m_plugins)
@@ -370,12 +373,6 @@ namespace OpenSim
 
             m_log.Info("[MODULES]: Loading Region's modules (old style)");
 
-            List<IRegionModule> modules = m_moduleLoader.PickupModules(scene, ".");
-
-            // This needs to be ahead of the script engine load, so the
-            // script module can pick up events exposed by a module
-            m_moduleLoader.InitialiseSharedModules(scene);
-
             // Use this in the future, the line above will be deprecated soon
             m_log.Info("[REGIONMODULES]: Loading Region's modules (new style)");
             IRegionModulesController controller;
@@ -426,13 +423,6 @@ namespace OpenSim
                 clientServer.Start();
             }
 
-            if (do_post_init)
-            {
-                foreach (IRegionModule module in modules)
-                {
-                    module.PostInitialise();
-                }
-            }
             scene.EventManager.OnShutdown += delegate() { ShutdownRegion(scene); };
 
             mscene = scene;
@@ -722,7 +712,7 @@ namespace OpenSim
 
             return new Scene(
                 regionInfo, circuitManager, sceneGridService,
-                simDataService, estateDataService, m_moduleLoader, false,
+                simDataService, estateDataService, false,
                 m_config.Source, m_version);
         }
         

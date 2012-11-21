@@ -469,6 +469,26 @@
     ; This debug Level can also be set during runtime of the sim. 
     webutil_debug_level = 0;
 
+[XMLRPC]
+    ;# {XmlRpcRouterModule} {} {Module used to route incoming llRemoteData calls} {XmlRpcRouterModule XmlRpcGridRouterModule} XmlRpcRouterModule
+    ;; If enabled and set to XmlRpcRouterModule, this will post an event, 
+    ;; "xmlrpc_uri(string)" to the script concurrently with the first 
+    ;; remote_data event. This will contain the fully qualified URI an 
+    ;; external site needs to use to send XMLRPC requests to that script
+    ;;
+    ;; If enabled and set to XmlRpcGridRouterModule, newly created channels
+    ;; will be registered with an external service via a configured uri
+    ;XmlRpcRouterModule = "XmlRpcRouterModule"
+
+    ;# {XmlRpcPort} {} {Port for incoming llRemoteData xmlrpc calls} {} 20800
+    ;XmlRpcPort = 20800
+
+    ;# {XmlRpcHubURI} {XmlRpcRouterModule} {URI for external service used to register xmlrpc channels created in the simulator. This depends on XmlRpcRouterModule being set to XmlRpcGridRouterModule} http://example.com
+    ;; If XmlRpcRouterModule is set to XmlRpcGridRouterModule, the simulator
+    ;; will use this address to register xmlrpc channels on the external
+    ;; service 
+    ; XmlRpcHubURI = http://example.com
+
 [ClientStack.LindenUDP]
     ;; See OpensSimDefaults.ini for the throttle options. You can copy the
     ;; relevant sections and override them here.

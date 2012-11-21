@@ -561,18 +561,24 @@ namespace OpenSim.Framework.Servers.HttpServer {
 			using (StreamReader reader = new StreamReader(Util.Copy(request.InputStream), Encoding.UTF8)) {
 				string output;
 
-				if (DebugLevel == 5) {
-					const int sampleLength = 80;
-					char[] sampleChars = new char[sampleLength];
-					reader.Read(sampleChars, 0, sampleLength);
-					output = string.Format("[BaseHttpServer]: {0}...", new string(sampleChars).Replace("\n", @"\n"));
-				} else {
-					output = string.Format("[BaseHttpServer]: {0}", reader.ReadToEnd());
-				}
+                if (DebugLevel == 5)
+                {
+                    const int sampleLength = 80;
+                    char[] sampleChars = new char[sampleLength + 3];
+                    reader.Read(sampleChars, 0, sampleLength);
+                    sampleChars[80] = '.';
+                    sampleChars[81] = '.';
+                    sampleChars[82] = '.';
+                    output = new string(sampleChars);
+                }
+                else
+                {
+                    output = reader.ReadToEnd();
+                }
 
-				m_log.Debug(output);
-			}
-		}
+                m_log.DebugFormat("[BASE HTTP SERVER]: {0}...", output.Replace("\n", @"\n"));
+            }
+        }
 
 		private bool TryGetStreamHandler(string handlerKey, out IRequestHandler streamHandler) {
 			string bestMatch = null;
