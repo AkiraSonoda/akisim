@@ -46,6 +46,7 @@ namespace OpenSim.Framework.Servers
     public class ServerBase
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+		private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
         public IConfigSource Config { get; protected set; }
 
@@ -234,6 +235,13 @@ namespace OpenSim.Framework.Servers
                 "force gc",
                 "Manually invoke runtime garbage collection.  For debugging purposes",
                 HandleForceGc);
+
+			m_console.Commands.AddCommand(
+				"General", false, "show kpi",
+			    "show kpi",
+			    "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", 
+				HandleShowKPI);
+
         }
 
         private void HandleForceGc(string module, string[] args)
@@ -269,6 +277,18 @@ namespace OpenSim.Framework.Servers
                     break;
             }
         }
+
+		/// <summary>
+		/// Prints Base Simulator KPI into the log
+		/// </summary>
+		public virtual void HandleShowKPI(string mod, string[] cmd) {
+			s_log.Debug("[SIM] Showing BaseOpenSimServer KPI:");
+			s_log.Debug("[SIM] " + GetVersionText());
+			// s_log.Debug( "[SIM] Startup directory: " + m_startupDirectory );
+			// PrintUptimeReport();
+			StatsManager.SimExtraStats.CompactReport();
+			PrintThreadsReport();
+		}
 
         /// <summary>
         /// Change and load configuration file data.
@@ -625,6 +645,32 @@ namespace OpenSim.Framework.Servers
 
             return sb.ToString();
         }
+
+		/// <summary>
+		/// Print a report about the registered threads in this server into the SimStats Log
+		/// </summary>
+		protected void PrintThreadsReport() {
+			// Workaround https://github.com/sblom/mono/commit/ef6313d9c43e75db627984bf28206e099086de3b from Scott Blomquist integrated into my mono 
+			// Implementation, but right now it is still a workaround returning an empty correctly sized collection
+			
+			// For some reason mono 2.6.7 returns an empty threads set!  Not going to confuse people by reporting
+			// zero active threads.
+			int totalThreads = Process.GetCurrentProcess().Threads.Count;
+			
+			
+			// TODO: Uncomment whenvever the whole stuff is correctly implemented
+			// ProcessThreadCollection processThreads = System.Diagnostics.Process.GetCurrentProcess().Threads;
+			// foreach ( ProcessThread pt in processThreads ) {
+			//  s_log.DebugFormat("[THREADS] ID: {0}, Name: {1}, State: {2}", pt.Id, pt.ToString(), pt.ThreadState.ToString());
+			// }
+			
+			if (totalThreads > 0) {
+				s_log.DebugFormat("[THREADS] Total threads active: {0}", totalThreads);
+			}
+			
+			s_log.Debug("[THREADS] Main threadpool (excluding script engine pools)");
+			Util.PrintThreadPoolReport();
+		}
 
         public virtual void HandleThreadsAbort(string module, string[] cmd)
         {
