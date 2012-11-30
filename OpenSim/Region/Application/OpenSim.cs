@@ -80,8 +80,8 @@ namespace OpenSim
         {
             base.ReadExtraConfigSettings ();
 
-            IConfig startupConfig = m_config.Source.Configs ["Startup"];
-            IConfig networkConfig = m_config.Source.Configs ["Network"];
+            IConfig startupConfig = Config.Configs["Startup"];
+            IConfig networkConfig = Config.Configs["Network"];
 
             int stpMaxThreads = 15;
 
@@ -104,20 +104,7 @@ namespace OpenSim
                     m_timeInterval = startupConfig.GetInt ("timer_Interval", 1200);
                 }
 
-                if (m_logFileAppender != null) {
-                    if (m_logFileAppender is log4net.Appender.FileAppender) {
-                        log4net.Appender.FileAppender appender =
-                                (log4net.Appender.FileAppender)m_logFileAppender;
-                        string fileName = startupConfig.GetString ("LogFile", String.Empty);
-                        if (fileName != String.Empty) {
-                            appender.File = fileName;
-                            appender.ActivateOptions ();
-                        }
-                        m_log.InfoFormat ("[LOGGING]: Logging started to file {0}", appender.File);
-                    }
-                }
-
-                string asyncCallMethodStr = startupConfig.GetString ("async_call_method", String.Empty);
+                string asyncCallMethodStr = startupConfig.GetString("async_call_method", String.Empty);
                 FireAndForgetMethod asyncCallMethod;
                 if (!String.IsNullOrEmpty (asyncCallMethodStr) && Utils.EnumTryParse<FireAndForgetMethod> (asyncCallMethodStr, out asyncCallMethod)) {
                     Util.FireAndForgetMethod = asyncCallMethod;
@@ -151,8 +138,8 @@ namespace OpenSim
                     m_console = new CommandConsole ("Region");
                     break;
                 case "rest":
-                    m_console = new RemoteConsole ("Region");
-                    ((RemoteConsole)m_console).ReadConfig (m_config.Source);
+                    m_console = new RemoteConsole("Region");
+                    ((RemoteConsole)m_console).ReadConfig(Config);
                     break;
                 default:
                     m_console = new LocalConsole ("Region");
@@ -162,7 +149,8 @@ namespace OpenSim
 
             MainConsole.Instance = m_console;
 
-            RegisterConsoleCommands ();
+            RegisterCommonAppenders(Config.Configs["Startup"]);
+            RegisterConsoleCommands();
 
             base.StartupSpecific ();
 
@@ -363,27 +351,7 @@ namespace OpenSim
                                           "restart",
                                           "Restart all sims in this instance", RunCommand);
 
-            m_console.Commands.AddCommand ("General", false, "config set",
-                                          "config set <section> <key> <value>",
-                                          "Set a config option.  In most cases this is not useful since changed parameters are not dynamically reloaded.  Neither do changed parameters persist - you will have to change a config file manually and restart.", HandleConfig);
-
-            m_console.Commands.AddCommand ("General", false, "config get",
-                                          "config get [<section>] [<key>]",
-                                          "Synonym for config show",
-                                          HandleConfig);
-            
-            m_console.Commands.AddCommand ("General", false, "config show",
-                                          "config show [<section>] [<key>]",
-                                          "Show config information", 
-                                          "If neither section nor field are specified, then the whole current configuration is printed." + Environment.NewLine
-                + "If a section is given but not a field, then all fields in that section are printed.",
-                                          HandleConfig);            
-
-            m_console.Commands.AddCommand ("General", false, "config save",
-                                          "config save <path>",
-                                          "Save current configuration to a file at the given path", HandleConfig);
-
-            m_console.Commands.AddCommand ("General", false, "command-script",
+            m_console.Commands.AddCommand("General", false, "command-script",
                                           "command-script <script>",
                                           "Run a command script from file", RunCommand);
 
@@ -532,31 +500,6 @@ namespace OpenSim
         }
 
         /// <summary>
-        /// Run an optional startup list of commands
-        /// </summary>
-        /// <param name="fileName"></param>
-        private void RunCommandScript (string fileName)
-        {
-            if (File.Exists (fileName)) {
-                m_log.Info ("[COMMANDFILE]: Running " + fileName);
-
-                using (StreamReader readFile = File.OpenText(fileName)) {
-                    string currentCommand;
-                    while ((currentCommand = readFile.ReadLine()) != null) {
-                        currentCommand = currentCommand.Trim ();
-                        if (!(currentCommand == ""
-                            || currentCommand.StartsWith (";")
-                            || currentCommand.StartsWith ("//")
-                            || currentCommand.StartsWith ("#"))) {
-                            m_log.Info ("[COMMANDFILE]: Running '" + currentCommand + "'");
-                            m_console.RunCommand (currentCommand);
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
         /// Opens a file and uses it as input to the console command parser.
         /// </summary>
         /// <param name="fileName">name of file to use as input to the console</param>
@@ -645,93 +588,10 @@ namespace OpenSim
 
             bool changed = PopulateRegionEstateInfo (regInfo);
             IScene scene;
-            CreateRegion (regInfo, true, out scene);
-            if (changed) {
-                regInfo.EstateSettings.Save ();
-            }
-        }
+            CreateRegion(regInfo, true, out scene);
 
-        /// <summary>
-        /// Change and load configuration file data.
-        /// </summary>
-        /// <param name="module"></param>
-        /// <param name="cmd"></param>
-        private void HandleConfig (string module, string[] cmd)
-        {
-            List<string> args = new List<string> (cmd);
-            args.RemoveAt (0);
-            string[] cmdparams = args.ToArray ();
-
-            if (cmdparams.Length > 0) {
-                string firstParam = cmdparams [0].ToLower ();
-                
-                switch (firstParam) {
-                case "set":
-                    if (cmdparams.Length < 4) {
-                        Notice ("Syntax: config set <section> <key> <value>");
-                        Notice ("Example: config set ScriptEngine.DotNetEngine NumberOfScriptThreads 5");
-                    } else {
-                        IConfig c;
-                        IConfigSource source = new IniConfigSource ();
-                        c = source.AddConfig (cmdparams [1]);
-                        if (c != null) {
-                            string _value = String.Join (" ", cmdparams, 3, cmdparams.Length - 3);
-                            c.Set (cmdparams [2], _value);
-                            m_config.Source.Merge (source);
-
-                            Notice ("In section [{0}], set {1} = {2}", c.Name, cmdparams [2], _value);
-                        }
-                    }
-                    break;
-
-                case "get":
-                case "show":
-                    if (cmdparams.Length == 1) {
-                        foreach (IConfig config in m_config.Source.Configs) {
-                            Notice ("[{0}]", config.Name);
-                            string[] keys = config.GetKeys ();
-                            foreach (string key in keys)
-                                Notice ("  {0} = {1}", key, config.GetString (key));
-                        }
-                    } else if (cmdparams.Length == 2 || cmdparams.Length == 3) {
-                        IConfig config = m_config.Source.Configs [cmdparams [1]];
-                        if (config == null) {
-                            Notice ("Section \"{0}\" does not exist.", cmdparams [1]);
-                            break;
-                        } else {
-                            if (cmdparams.Length == 2) {
-                                Notice ("[{0}]", config.Name);
-                                foreach (string key in config.GetKeys())
-                                    Notice ("  {0} = {1}", key, config.GetString (key));                                
-                            } else {
-                                Notice (
-                                        "config get {0} {1} : {2}", 
-                                        cmdparams [1], cmdparams [2], config.GetString (cmdparams [2]));
-                            }
-                        }
-                    } else {
-                        Notice ("Syntax: config {0} [<section>] [<key>]", firstParam);
-                        Notice ("Example: config {0} ScriptEngine.DotNetEngine NumberOfScriptThreads", firstParam);
-                    }
-
-                    break;
-
-                case "save":
-                    if (cmdparams.Length < 2) {
-                        Notice ("Syntax: config save <path>");
-                        return;
-                    }
-
-                    if (Application.iniFilePath == cmdparams [1]) {
-                        Notice ("Path can not be " + Application.iniFilePath);
-                        return;
-                    }
-
-                    Notice ("Saving configuration file: " + cmdparams [1]);
-                    m_config.Save (cmdparams [1]);
-                    break;
-                }
-            }
+            if (changed)
+	            regInfo.EstateSettings.Save();
         }
 
         /// <summary>
@@ -779,17 +639,12 @@ namespace OpenSim
 
             cmdparams = args.ToArray ();
 
-            switch (command) {
-            case "command-script":
-                if (cmdparams.Length > 0) {
-                    RunCommandScript (cmdparams [0]);
-                }
-                break;
-
-            case "backup":
-                MainConsole.Instance.Output ("Triggering save of pending object updates to persistent store");
-                SceneManager.BackupCurrentScene ();
-                break;
+            switch (command)
+            {
+                case "backup":
+                    MainConsole.Instance.Output("Triggering save of pending object updates to persistent store");
+                    SceneManager.BackupCurrentScene();
+                    break;
 
             case "remove-region":
                 string regRemoveName = CombineParams (cmdparams, 0);
@@ -828,13 +683,22 @@ namespace OpenSim
             if (cmdparams.Length > 2) {
                 string newRegionName = CombineParams (cmdparams, 2);
 
-                if (!SceneManager.TrySetCurrentScene (newRegionName)) {
-                    MainConsole.Instance.Output (String.Format ("Couldn't select region {0}", newRegionName));
-                }
-            } else {
-                MainConsole.Instance.Output ("Usage: change region <region name>");
+                if (!SceneManager.TrySetCurrentScene(newRegionName))
+                    MainConsole.Instance.Output(String.Format("Couldn't select region {0}", newRegionName));
+                else
+                    RefreshPrompt();
             }
+            else
+            {
+                MainConsole.Instance.Output("Usage: change region <region name>");
+            }
+        }
 
+        /// <summary>
+        /// Refreshs prompt with the current selection details.
+        /// </summary>
+        private void RefreshPrompt()
+        {
             string regionName = (SceneManager.CurrentScene == null ? "root" : SceneManager.CurrentScene.RegionInfo.RegionName);
             MainConsole.Instance.Output (String.Format ("Currently selected region is {0}", regionName));
 
@@ -856,6 +720,18 @@ namespace OpenSim
 
             m_console.DefaultPrompt = prompt;
             m_console.ConsoleScene = SceneManager.CurrentScene;
+        }
+
+        protected override void HandleRestartRegion(RegionInfo whichRegion)
+        {
+            base.HandleRestartRegion(whichRegion);
+ 
+            // Where we are restarting multiple scenes at once, a previous call to RefreshPrompt may have set the 
+            // m_console.ConsoleScene to null (indicating all scenes).
+            if (m_console.ConsoleScene != null && whichRegion.RegionName == ((Scene)m_console.ConsoleScene).Name)
+                SceneManager.TrySetCurrentScene(whichRegion.RegionName);
+
+            RefreshPrompt();
         }
 
         /// <summary>

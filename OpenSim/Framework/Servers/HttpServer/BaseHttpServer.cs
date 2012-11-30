@@ -1022,66 +1022,25 @@ namespace OpenSim.Framework.Servers.HttpServer {
 			}
 		}
 
-		private OSDMap GenerateNoLLSDHandlerResponse() {
-			OSDMap map = new OSDMap();
-			map ["reason"] = OSD.FromString("LLSDRequest");
-			map ["message"] = OSD.FromString("No handler registered for LLSD Requests");
-			map ["login"] = OSD.FromString("false");
-			return map;
-		}
-		/// <summary>
-		/// A specific agent handler was provided. Such a handler is expecetd to have an
-		/// intimate, and highly specific relationship with the client. Consequently,
-		/// nothing is done here.
-		/// </summary>
-		/// <param name="handler"></param>
-		/// <param name="request"></param>
-		/// <param name="response"></param>
+        private OSDMap GenerateNoLLSDHandlerResponse()
+        {
+            OSDMap map = new OSDMap();
+            map["reason"] = OSD.FromString("LLSDRequest");
+            map["message"] = OSD.FromString("No handler registered for LLSD Requests");
+            map["login"] = OSD.FromString("false");
+            return map;
+        }
 
-		private bool HandleAgentRequest(IHttpAgentHandler handler, OSHttpRequest request, OSHttpResponse response) {
-			// In the case of REST, then handler is responsible for ALL aspects of
-			// the request/response handling. Nothing is done here, not even encoding.
+        private bool HandleAgentRequest(IHttpAgentHandler handler, OSHttpRequest request, OSHttpResponse response)
+        {
+            // In the case of REST, then handler is responsible for ALL aspects of
+            // the request/response handling. Nothing is done here, not even encoding.
 
-			try {
-				return handler.Handle(request, response);
-			} catch (Exception e) {
-				// If the handler did in fact close the stream, then this will blow
-				// chunks. So that that doesn't disturb anybody we throw away any
-				// and all exceptions raised. We've done our best to release the
-				// client.
-				try {
-					m_log.Warn("[HTTP-AGENT]: Error - " + e.Message);
-					response.SendChunked = false;
-					response.KeepAlive = true;
-					response.StatusCode = (int)OSHttpStatusCode.ServerErrorInternalError;
-					//response.OutputStream.Close();
-					try {
-						response.Send();
-						//response.FreeContext();
-					} catch (SocketException f) {
-						// This has to be here to prevent a Linux/Mono crash
-						m_log.Warn(
-                            String.Format("[BaseHttpServer]: XmlRpcRequest issue {0}.\nNOTE: this may be spurious on Linux. ", f.Message), f);
-					}
-				} catch (Exception) {
-				}
-			}
-
-			// Indicate that the request has been "handled"
-
-			return true;
-
-		}
-
-		public byte[] HandleHTTPRequest(string requestId, OSHttpRequest request, OSHttpResponse response) {
-            m_log.DebugFormat(
-                "[BaseHttpServer]: HandleHTTPRequest for request to {0}, method {1}",
-                request.RawUrl, request.HttpMethod);
-
-			switch (request.HttpMethod) {
-				case "OPTIONS":
-					response.StatusCode = (int)OSHttpStatusCode.SuccessOk;
-					return null;
+            switch (request.HttpMethod)
+            {
+                case "OPTIONS":
+                    response.StatusCode = (int)OSHttpStatusCode.SuccessOk;
+                    return null;
 
 				default:
 					return HandleContentVerbs(requestId, request, response);
