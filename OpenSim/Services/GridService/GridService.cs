@@ -132,6 +132,10 @@ namespace OpenSim.Services.GridService
 
         public string RegisterRegion(UUID scopeID, GridRegion regionInfos)
         {
+			m_log.DebugFormat("[GridService]: Register Region {0} Server {1} HTTP Port: {2} X:{3} Y:{4}",
+			                  regionInfos.RegionName, regionInfos.ServerURI, regionInfos.HttpPort, 
+			                  regionInfos.RegionCoordX, regionInfos.RegionCoordY);
+
             IConfig gridConfig = m_config.Configs["GridService"];
 
             if (regionInfos.RegionID == UUID.Zero)

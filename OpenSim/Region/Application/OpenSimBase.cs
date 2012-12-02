@@ -116,10 +116,15 @@ namespace OpenSim
 
         protected List<IClientNetworkServer> m_clientServers = new List<IClientNetworkServer>();
        
-        public uint HttpServerPort
+        public uint InternalHttpServerPort
         {
-            get { return m_httpServerPort; }
+            get { return m_internalHttpServerPort; }
         }
+
+		public uint ExternalHttpServerPort
+		{
+			get { return m_externalHttpServerPort; }
+		}
 
         protected IRegistryCore m_applicationRegistry = new RegistryCore();
 
@@ -298,8 +303,9 @@ namespace OpenSim
         {
             // Called from base.StartUp()
 
-            m_httpServerPort = m_networkServersInfo.HttpListenerPort;
-            SceneManager.OnRestartSim += HandleRestartRegion;
+            m_internalHttpServerPort = m_networkServersInfo.internalHttpListenerPort;
+			m_externalHttpServerPort = m_networkServersInfo.externalHttpListenerPort;
+			SceneManager.OnRestartSim += HandleRestartRegion;
 
             // Only enable the watchdogs when all regions are ready.  Otherwise we get false positives when cpu is
             // heavily used during initial startup.
@@ -350,7 +356,7 @@ namespace OpenSim
             //regionInfo.originRegionID = regionInfo.RegionID;
 
             // set initial ServerURI
-            regionInfo.HttpPort = m_httpServerPort;
+            regionInfo.HttpPort = m_externalHttpServerPort;
             regionInfo.ServerURI = "http://" + regionInfo.ExternalHostName + ":" + regionInfo.HttpPort.ToString() + "/";
             
             regionInfo.osSecret = m_osSecret;

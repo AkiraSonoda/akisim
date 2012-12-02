@@ -1898,6 +1898,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <exception cref="System.Exception">Thrown if registration of the region itself fails.</exception>
         public void RegisterRegionWithGrid()
         {
+			m_log.DebugFormat("[Scene]: RegisterRegionWithGrid()");
             m_sceneGridService.SetScene(this);
 
             //// Unfortunately this needs to be here and it can't be async.

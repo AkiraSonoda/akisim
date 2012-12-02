@@ -26,18 +26,30 @@
  */
 
 using System;
+
+// Logging includes
+using log4net;
+using System.Reflection;
+// end Logging includes
+
 using Nini.Config;
 
 namespace OpenSim.Framework
 {
     public class NetworkServersInfo
     {
-        public uint HttpListenerPort = ConfigSettings.DefaultRegionHttpPort;
-        public bool secureInventoryServer = false;
+		private static readonly ILog m_log =
+			LogManager.GetLogger (
+				MethodBase.GetCurrentMethod ().DeclaringType);
+
+        public uint internalHttpListenerPort = ConfigSettings.DefaultRegionHttpPort;
+		public uint externalHttpListenerPort = ConfigSettings.DefaultRegionHttpPort;
+		public bool secureInventoryServer = false;
         public bool isSandbox;
         public bool HttpUsesSSL = false;
         public string HttpSSLCN = "";
-        public uint httpSSLPort = 9001;
+        public uint internalHttpSSLPort = 9001;
+		public uint externalHttpSSLPort = 9001;
 
         // "Out of band" managemnt https
         public bool ssl_listener = false;
@@ -47,19 +59,21 @@ namespace OpenSim.Framework
 
         public NetworkServersInfo()
         {
+			m_log.Debug("[NetworkServersInfo]: NetworkServersInfo()");
         }
 
         public NetworkServersInfo(uint defaultHomeLocX, uint defaultHomeLocY)
         {
-        }
+			m_log.DebugFormat("[NetworkServersInfo]: NetworkServersInfo({0},{1})", defaultHomeLocX,defaultHomeLocY);
+		}
 
         public void loadFromConfiguration(IConfigSource config)
         {
-            HttpListenerPort =
-                (uint) config.Configs["Network"].GetInt("http_listener_port", (int) ConfigSettings.DefaultRegionHttpPort);
-            httpSSLPort =
-                (uint)config.Configs["Network"].GetInt("http_listener_sslport", ((int)ConfigSettings.DefaultRegionHttpPort+1));
-            HttpUsesSSL = config.Configs["Network"].GetBoolean("http_listener_ssl", false);
+            internalHttpListenerPort = (uint) config.Configs["Network"].GetInt("internal_http_listener_port", (int) ConfigSettings.DefaultRegionHttpPort);
+			externalHttpListenerPort = (uint) config.Configs["Network"].GetInt("external_http_listener_port", (int) ConfigSettings.DefaultRegionHttpPort);
+			internalHttpSSLPort = (uint)config.Configs["Network"].GetInt("internal_http_listener_sslport", ((int)ConfigSettings.DefaultRegionHttpPort+1));
+			externalHttpSSLPort = (uint)config.Configs["Network"].GetInt("external_http_listener_sslport", ((int)ConfigSettings.DefaultRegionHttpPort+1));
+			HttpUsesSSL = config.Configs["Network"].GetBoolean("http_listener_ssl", false);
             HttpSSLCN = config.Configs["Network"].GetString("http_listener_cn", "localhost");
 
             // "Out of band management https"
