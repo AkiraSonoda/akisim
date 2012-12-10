@@ -59,7 +59,7 @@ public sealed class BSLinksetCompound : BSLinkset
     //   refresh will happen once after all the other taints are applied.
     public override void Refresh(BSPhysObject requestor)
     {
-        // External request for Refresh (from BSPrim) is not necessary
+        // External request for Refresh (from BSPrim) doesn't need to do anything
         // InternalRefresh(requestor);
     }
 
@@ -86,7 +86,7 @@ public sealed class BSLinksetCompound : BSLinkset
         DetailLog("{0},BSLinksetCompound.MakeDynamic,call,IsRoot={1}", child.LocalID, IsRoot(child));
         if (!IsRoot(child))
         {
-            // Physical children are removed from the world as the shape ofthe root compound
+            // The origional prims are removed from the world as the shape of the root compound
             //     shape takes over.
             BulletSimAPI.AddToCollisionFlags2(child.PhysBody.ptr, CollisionFlags.CF_NO_CONTACT_RESPONSE);
             BulletSimAPI.ForceActivationState2(child.PhysBody.ptr, ActivationState.DISABLE_SIMULATION);
@@ -118,7 +118,7 @@ public sealed class BSLinksetCompound : BSLinkset
     // Called at taint-time!!
     public override void UpdateProperties(BSPhysObject updated)
     {
-        // Nothing to do for constraints on property updates
+        // Nothing to do for compound linksets on property updates
     }
 
     // The children move around in relationship to the root.
@@ -192,6 +192,8 @@ public sealed class BSLinksetCompound : BSLinkset
                             child.LocalID, child.PhysBody.ptr.ToString("X"));
 
             // Cause the child's body to be rebuilt and thus restored to normal operation
+            // TODO: position and rotation must be restored because the child could have moved
+            //    based on the linkset.
             child.ForceBodyShapeRebuild(false);
 
             if (!HasAnyChildren)
@@ -236,9 +238,10 @@ public sealed class BSLinksetCompound : BSLinkset
 
                 if (cPrim.PhysShape.isNativeShape)
                 {
-                    // Native shapes are not shared so we need to create a new one.
-                    // A mesh or hull is created because scale is not available on a native shape.
-                    //     (TODO: Bullet does have a btScaledCollisionShape. Can that be used?)
+                    // A native shape is turning into a null collision shape because native
+                    //    shapes are not shared so we have to hullify it so it will be tracked
+                    //    and freed at the correct time. This also solves the scaling problem
+                    //    (native shapes scaled but hull/meshes are assumed to not be).
                     BulletShape saveShape = cPrim.PhysShape;
                     cPrim.PhysShape.ptr = IntPtr.Zero;  // Don't let the create free the child's shape
                     PhysicsScene.Shapes.CreateGeomMeshOrHull(cPrim, null);
@@ -257,6 +260,11 @@ public sealed class BSLinksetCompound : BSLinkset
                     BulletSimAPI.AddChildShapeToCompoundShape2(LinksetRoot.PhysShape.ptr, cPrim.PhysShape.ptr, displacementPos, displacementRot);
                 }
             }
+
+            // TODO: need to phantomize the child prims left behind.
+            //     Maybe just destroy the children bodies and shapes and have them rebuild on unlink.
+            //     Selection/deselection might cause way too many build/destructions esp. for LARGE linksets.
+
             return false;   // 'false' says to move onto the next child in the list
         });
 
