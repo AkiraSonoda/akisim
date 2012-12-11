@@ -57,7 +57,7 @@ namespace OpenSim.Capabilities.Handlers
 
         public string FetchInventoryRequest(string request, string path, string param, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-//            m_log.DebugFormat("[FETCH INVENTORY HANDLER]: Received FetchInventory capabilty request");
+			m_log.DebugFormat("[FetchInventory2Handler]: Received FetchInventory capabilty request");
 
             OSDMap requestmap = (OSDMap)OSDParser.DeserializeLLSDXml(Utils.StringToBytes(request));
             OSDArray itemsRequested = (OSDArray)requestmap["items"];
@@ -82,6 +82,7 @@ namespace OpenSim.Capabilities.Handlers
             }
 
             reply = LLSDHelpers.SerialiseLLSDReply(llsdReply);
+			m_log.DebugFormat("[FetchInventory2Handler]: Replied FetchInventory2 request: {0}", reply);
 
             return reply;
         }

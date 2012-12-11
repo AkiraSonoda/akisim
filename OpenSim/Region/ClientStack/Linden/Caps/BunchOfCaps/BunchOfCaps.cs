@@ -115,6 +115,8 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public BunchOfCaps(Scene scene, Caps caps)
         {
+			m_log.Debug("[BunchOfCaps]: BunchOfCaps( scene, caps)");
+
             m_Scene = scene;
             m_HostCapsObj = caps;
             IConfigSource config = m_Scene.Config;
@@ -149,6 +151,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </summary>
         public void RegisterHandlers()
         {
+			m_log.Debug("[BunchOfCaps]: RegisterHandlers()");
+
             string capsBase = "/CAPS/" + m_HostCapsObj.CapsObjectPath;
 
             RegisterRegionServiceHandlers(capsBase);
@@ -157,6 +161,8 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterRegionServiceHandlers(string capsBase)
         {
+			m_log.DebugFormat("[BunchOfCaps]: RegisterRegionServiceHandlers( capsBase: {0} )", capsBase);
+
             try
             {
                 // the root of all evil
@@ -185,7 +191,8 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterInventoryServiceHandlers(string capsBase)
         {
-            try
+			m_log.DebugFormat("[BunchOfCaps]: RegisterInventoryServiceHandlers( capsBase: {0} )", capsBase);
+			try
             {
                 // I don't think this one works...
                 m_HostCapsObj.RegisterHandler(
@@ -255,7 +262,9 @@ namespace OpenSim.Region.ClientStack.Linden
                                   IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
             m_log.DebugFormat(
-                "[CAPS]: Received SEED caps request in {0} for agent {1}", m_regionName, m_HostCapsObj.AgentID);
+				"[BunchOfCaps]: SeedCapRequest(request: {0}, path: {1}, param: {2} )  in {3} for agent {4}",
+				request, path, param, m_regionName, m_HostCapsObj.AgentID
+			);
 
             if (!m_Scene.CheckClient(m_HostCapsObj.AgentID, httpRequest.RemoteIPEndPoint))
             {
@@ -274,7 +283,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
             string result = LLSDHelpers.SerialiseLLSDReply(caps);
 
-            //m_log.DebugFormat("[CAPS] CapsRequest {0}", result);
+            m_log.DebugFormat("[BunchOfCaps] SeedCapsRequest -- result: {0}", result);
 
             return result;
         }
@@ -291,11 +300,9 @@ namespace OpenSim.Region.ClientStack.Linden
         public string ScriptTaskInventory(string request, string path, string param,
                                           IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            try
+			m_log.DebugFormat("[BunchOfCaps]: ScriptTaskInventory( request: {0}, path: {1}, param: {2} ) Request in region: {3}", request, path, param, m_regionName);
+			try
             {
-//                m_log.Debug("[CAPS]: ScriptTaskInventory Request in region: " + m_regionName);
-                //m_log.DebugFormat("[CAPS]: request: {0}, path: {1}, param: {2}", request, path, param);
-
                 Hashtable hash = (Hashtable)LLSD.LLSDDeserialize(Utils.StringToBytes(request));
                 LLSDTaskScriptUpdate llsdUpdateRequest = new LLSDTaskScriptUpdate();
                 LLSDHelpers.DeserialiseOSDMap(hash, llsdUpdateRequest);
@@ -352,7 +359,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <param name="data">New asset data</param>
         public void TaskScriptUpdated(UUID itemID, UUID primID, bool isScriptRunning, byte[] data, ref ArrayList errors)
         {
-            if (TaskScriptUpdatedCall != null)
+			m_log.Debug("[BunchOfCaps]: TaskScriptUpdated()" );
+			if (TaskScriptUpdatedCall != null)
             {
                 ArrayList e = TaskScriptUpdatedCall(m_HostCapsObj.AgentID, itemID, primID, isScriptRunning, data);
                 foreach (Object item in e)
@@ -368,7 +376,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         public UUID ItemUpdated(UUID itemID, byte[] data)
         {
-            if (ItemUpdatedCall != null)
+			m_log.Debug("[BunchOfCaps]: TaskScriptUpdated()" );
+			if (ItemUpdatedCall != null)
             {
                 return ItemUpdatedCall(m_HostCapsObj.AgentID, itemID, data);
             }
@@ -383,8 +392,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         public LLSDAssetUploadResponse NewAgentInventoryRequest(LLSDAssetUploadRequest llsdRequest)
         {
-            //m_log.Debug("[CAPS]: NewAgentInventoryRequest Request is: " + llsdRequest.ToString());
-            //m_log.Debug("asset upload request via CAPS" + llsdRequest.inventory_type + " , " + llsdRequest.asset_type);
+            m_log.Debug("[BunchOfCaps]: NewAgentInventoryRequest Request is: " + llsdRequest.ToString());
+            m_log.Debug("[BunchOfCaps]: asset upload request via CAPS" + llsdRequest.inventory_type + " , " + llsdRequest.asset_type);
 
             if (llsdRequest.asset_type == "texture" ||
                 llsdRequest.asset_type == "animation" ||
@@ -477,7 +486,7 @@ namespace OpenSim.Region.ClientStack.Linden
                                           string assetType)
         {
             m_log.DebugFormat(
-                "[BUNCH OF CAPS]: Uploaded asset {0} for inventory item {1}, inv type {2}, asset type {3}",
+                "[BunchOfCaps]: Uploaded asset {0} for inventory item {1}, inv type {2}, asset type {3}",
                 assetID, inventoryItem, inventoryType, assetType);
 
             sbyte assType = 0;
@@ -704,7 +713,7 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         public LLSDMapLayerResponse GetMapLayer(LLSDMapRequest mapReq)
         {
-            m_log.Debug("[CAPS]: MapLayer Request in region: " + m_regionName);
+			m_log.Debug("[BunchOfCaps]: GetMapLayer( LLSDMapRequest ) in region: " + m_regionName);
             LLSDMapLayerResponse mapResponse = new LLSDMapLayerResponse();
             mapResponse.LayerData.Array.Add(GetOSDMapLayerResponse());
             return mapResponse;
@@ -716,7 +725,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         protected static OSDMapLayer GetOSDMapLayerResponse()
         {
-            OSDMapLayer mapLayer = new OSDMapLayer();
+			m_log.Debug("[BunchOfCaps]: GetOSDMapLayerResponse()" );
+			OSDMapLayer mapLayer = new OSDMapLayer();
             mapLayer.Right = 5000;
             mapLayer.Top = 5000;
             mapLayer.ImageID = new UUID("00000000-0000-1111-9999-000000000006");
@@ -749,8 +759,7 @@ namespace OpenSim.Region.ClientStack.Linden
         public string NoteCardAgentInventory(string request, string path, string param,
                                              IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            //m_log.Debug("[CAPS]: NoteCardAgentInventory Request in region: " + m_regionName + "\n" + request);
-            //m_log.Debug("[CAPS]: NoteCardAgentInventory Request is: " + request);
+			m_log.DebugFormat("[BunchOfCaps]: NoteCardAgentInventory(request: {0}, path: {1}, param: {2}) Request in region: {3}",request, path, param, m_regionName);
 
             //OpenMetaverse.StructuredData.OSDMap hash = (OpenMetaverse.StructuredData.OSDMap)OpenMetaverse.StructuredData.LLSDParser.DeserializeBinary(Utils.StringToBytes(request));
             Hashtable hash = (Hashtable)LLSD.LLSDDeserialize(Utils.StringToBytes(request));
@@ -780,9 +789,9 @@ namespace OpenSim.Region.ClientStack.Linden
             uploadResponse.uploader = uploaderURL;
             uploadResponse.state = "upload";
 
-            //            m_log.InfoFormat("[CAPS]: " +
-            //                             "NoteCardAgentInventory response: {0}",
-            //                             LLSDHelpers.SerialiseLLSDReply(uploadResponse)));
+            m_log.InfoFormat("[BunchOfCaps]: " +
+                             "NoteCardAgentInventory response: {0}",
+                             LLSDHelpers.SerialiseLLSDReply(uploadResponse));
 
             return LLSDHelpers.SerialiseLLSDReply(uploadResponse);
         }
@@ -796,7 +805,8 @@ namespace OpenSim.Region.ClientStack.Linden
         public string CopyInventoryFromNotecard(string request, string path, string param,
                                              IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            Hashtable response = new Hashtable();
+			m_log.DebugFormat("[BunchOfCaps]: CopyInventoryFromNotecard(request: {0}, path: {1}, param: {2}) Request in region: {3}",request, path, param, m_regionName);
+			Hashtable response = new Hashtable();
             response["int_response_code"] = 404;
             response["content_type"] = "text/plain";
             response["keepalive"] = false;
@@ -859,6 +869,9 @@ namespace OpenSim.Region.ClientStack.Linden
 
     public class AssetUploader
     {
+		private static readonly ILog m_log =
+			LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         public event UpLoadedAsset OnUpLoad;
         private UpLoadedAsset handlerUpLoad = null;
 
@@ -899,7 +912,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         public string uploaderCaps(byte[] data, string path, string param)
         {
-            UUID inv = inventoryItemID;
+			m_log.DebugFormat("[AssetUploader]: uploaderCaps(path: {0}, param: {1}) ", path, param );
+			UUID inv = inventoryItemID;
             string res = String.Empty;
             LLSDAssetUploadComplete uploadComplete = new LLSDAssetUploadComplete();
             uploadComplete.new_asset = newAssetID.ToString();
@@ -942,7 +956,8 @@ namespace OpenSim.Region.ClientStack.Linden
 
         private static void SaveAssetToFile(string filename, byte[] data)
         {
-            string assetPath = "UserAssets";
+			m_log.DebugFormat("[AssetUploader]: SaveAssetToFile(filename: {0}) ", filename );
+			string assetPath = "UserAssets";
             if (!Directory.Exists(assetPath))
             {
                 Directory.CreateDirectory(assetPath);
@@ -961,7 +976,10 @@ namespace OpenSim.Region.ClientStack.Linden
     /// </summary>
     public class ItemUpdater
     {
-        public event UpdateItem OnUpLoad;
+		private static readonly ILog m_log =
+			LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+		public event UpdateItem OnUpLoad;
 
         private UpdateItem handlerUpdateItem = null;
 
@@ -988,7 +1006,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         public string uploaderCaps(byte[] data, string path, string param)
         {
-            UUID inv = inventoryItemID;
+			m_log.DebugFormat("[ItemUpdater]: uploaderCaps(path: {0}, param: {1}) ", path, param );
+			UUID inv = inventoryItemID;
             string res = String.Empty;
             LLSDAssetUploadComplete uploadComplete = new LLSDAssetUploadComplete();
             UUID assetID = UUID.Zero;
@@ -1026,7 +1045,8 @@ namespace OpenSim.Region.ClientStack.Linden
 
         private static void SaveAssetToFile(string filename, byte[] data)
         {
-            string assetPath = "UserAssets";
+			m_log.DebugFormat("[ItemUpdater]: SaveAssetToFile(filename: {0}) ", filename );
+			string assetPath = "UserAssets";
             if (!Directory.Exists(assetPath))
             {
                 Directory.CreateDirectory(assetPath);
@@ -1083,7 +1103,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         public string uploaderCaps(byte[] data, string path, string param)
         {
-            try
+			m_log.DebugFormat("[TaskInventoryScriptUpdater]: uploaderCaps(path: {0}, param: {1}) ", path, param );
+			try
             {
                 //                    m_log.InfoFormat("[CAPS]: " +
                 //                                     "TaskInventoryScriptUpdater received data: {0}, path: {1}, param: {2}",
@@ -1120,7 +1141,7 @@ namespace OpenSim.Region.ClientStack.Linden
             }
             catch (Exception e)
             {
-                m_log.Error("[CAPS]: " + e.ToString());
+				m_log.Error("[TaskInventoryScriptUpdater]: " + e.ToString());
             }
 
             // XXX Maybe this should be some meaningful error packet
@@ -1138,7 +1159,8 @@ namespace OpenSim.Region.ClientStack.Linden
         //}
         private static void SaveAssetToFile(string filename, byte[] data)
         {
-            string assetPath = "UserAssets";
+			m_log.DebugFormat("[TaskInventoryScriptUpdater]: SaveAssetToFile(filename: {0}) ", filename );
+			string assetPath = "UserAssets";
             if (!Directory.Exists(assetPath))
             {
                 Directory.CreateDirectory(assetPath);

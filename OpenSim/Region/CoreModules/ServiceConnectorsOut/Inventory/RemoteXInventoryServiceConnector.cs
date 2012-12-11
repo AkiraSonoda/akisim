@@ -66,7 +66,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
                     if (m_UserManager == null)
                         m_log.ErrorFormat(
-                            "[XINVENTORY CONNECTOR]: Could not retrieve IUserManagement module from {0}",
+							"[RemoteXInventoryServicesConnector]: Could not retrieve IUserManagement module from {0}",
                             Scene.RegionInfo.RegionName);
                 }
 
@@ -116,7 +116,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                     Init(source);
                     m_Enabled = true;
 
-                    m_log.Info("[XINVENTORY CONNECTOR]: Remote XInventory enabled");
+					m_log.Info("[RemoteXInventoryServicesConnector]: Remote XInventory enabled");
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             if (!m_Enabled)
                 return;
 
-            m_log.InfoFormat("[XINVENTORY CONNECTOR]: Enabled remote XInventory for region {0}", scene.RegionInfo.RegionName);
+			m_log.InfoFormat("[RemoteXInventoryServicesConnector]: Enabled remote XInventory for region {0}", scene.RegionInfo.RegionName);
 
         }
 
@@ -296,18 +296,18 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public  InventoryItemBase GetItem(InventoryItemBase item)
         {
-            //m_log.DebugFormat("[XINVENTORY CONNECTOR]: GetItem {0}", item.ID);
+			m_log.DebugFormat("[RemoteXInventoryServicesConnector]: GetItem {0}", item.ID);
             if (item == null)
                 return null;
 
             if (m_RemoteConnector == null)
-                m_log.DebugFormat("[XINVENTORY CONNECTOR]: connector stub is null!!!");
+				m_log.DebugFormat("[RemoteXInventoryServicesConnector]: connector stub is null!!!");
             return m_RemoteConnector.GetItem(item);
         }
 
         public  InventoryFolderBase GetFolder(InventoryFolderBase folder)
         {
-            //m_log.DebugFormat("[XINVENTORY CONNECTOR]: GetFolder {0}", folder.ID);
+			m_log.DebugFormat("[RemoteXInventoryServicesConnector]: GetFolder {0}", folder.ID);
             if (folder == null)
                 return null;
 

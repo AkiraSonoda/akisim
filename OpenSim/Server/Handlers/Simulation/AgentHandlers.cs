@@ -235,12 +235,21 @@ namespace OpenSim.Server.Handlers.Simulation
         public override byte[] Handle (string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
+			m_log.DebugFormat("[AgentHandlers] path: {0}", path);
 
             Hashtable keysvals = new Hashtable ();
             Hashtable headervals = new Hashtable ();
 
             string[] querystringkeys = httpRequest.QueryString.AllKeys;
             string[] rHeaders = httpRequest.Headers.AllKeys;
+
+			for(int i=0; i<querystringkeys.Length; i++) {
+				m_log.DebugFormat("[AgentHandlers] querystringkey[{0}]: {1}", i, querystringkeys[i]);
+			}
+
+			for(int i=0; i<rHeaders.Length; i++) {
+				m_log.DebugFormat("[AgentHandlers] rHeaders[{0}]: {1}", i, rHeaders[i]);
+			}
 
             keysvals.Add ("uri", httpRequest.RawUrl);
             keysvals.Add ("content-type", httpRequest.ContentType);

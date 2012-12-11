@@ -156,11 +156,9 @@ namespace OpenSim.Framework
         {
             int reqnum = RequestNumber++;
 
-            if (DebugLevel >= 3) {
-                m_log.InfoFormat (
+                m_log.DebugFormat (
                     "[WEB UTIL]: HTTP OUT {0} ServiceOSD {1} {2} (timeout {3}, compressed {4})",
                     reqnum, method, url, timeout, compressed);
-            }
 
             string errorMessage = "unknown error";
             int tickstart = Util.EnvironmentTickCount ();
@@ -324,11 +322,9 @@ namespace OpenSim.Framework
             int reqnum = RequestNumber++;
             string method = (data != null && data ["RequestMethod"] != null) ? data ["RequestMethod"] : "unknown";
 
-            if (DebugLevel >= 3) {
-                m_log.InfoFormat (
-                    "[WEB UTIL]: HTTP OUT {0} ServiceForm {1} {2} (timeout {3})",
-                    reqnum, method, url, timeout);
-            }
+            m_log.DebugFormat (
+            	"[WEB UTIL]: HTTP OUT {0} ServiceForm {1} {2} (timeout {3})",
+                reqnum, method, url, timeout);
             
             string errorMessage = "unknown error";
             int tickstart = Util.EnvironmentTickCount ();
@@ -714,11 +710,9 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3) {
-                m_log.InfoFormat (
-                    "[WEB UTIL]: HTTP OUT {0} AsynchronousRequestObject {1} {2}",
-                    reqnum, verb, requestUrl);
-            }
+            m_log.DebugFormat (
+            	"[WEB UTIL]: HTTP OUT {0} AsynchronousRequestObject {1} {2}",
+                 reqnum, verb, requestUrl);
 
             int tickstart = Util.EnvironmentTickCount ();
             int tickdata = 0;
@@ -880,11 +874,9 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3) {
-                m_log.InfoFormat (
-                    "[WEB UTIL]: HTTP OUT {0} SynchronousRestForms {1} {2}",
-                    reqnum, verb, requestUrl);
-            }
+            m_log.InfoFormat (
+              	"[WEB UTIL]: HTTP OUT {0} SynchronousRestForms {1} {2}",
+                reqnum, verb, requestUrl);
 
             int tickstart = Util.EnvironmentTickCount ();
             int tickdata = 0;
@@ -994,11 +986,9 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3) {
-                m_log.InfoFormat (
-                    "[WEB UTIL]: HTTP OUT {0} SynchronousRestObject {1} {2}",
-                    reqnum, verb, requestUrl);
-            }
+            m_log.DebugFormat (
+            	"[WEB UTIL]: HTTP OUT {0} SynchronousRestObject {1} {2}",
+                reqnum, verb, requestUrl);
 
             int tickstart = Util.EnvironmentTickCount ();
             int tickdata = 0;

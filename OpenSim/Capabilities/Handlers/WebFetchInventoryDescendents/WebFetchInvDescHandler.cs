@@ -61,7 +61,7 @@ namespace OpenSim.Capabilities.Handlers
         {
 //            lock (m_fetchLock)
 //            {
-//                m_log.DebugFormat("[WEB FETCH INV DESC HANDLER]: Received request {0}", request);
+				m_log.DebugFormat("[WebFetchInvDescHandler]: Received request {0}", request);
     
                 // nasty temporary hack here, the linden client falsely
                 // identifies the uuid 00000000-0000-0000-0000-000000000000
@@ -85,7 +85,7 @@ namespace OpenSim.Capabilities.Handlers
                 }
                 catch (LLSD.LLSDParseException e)
                 {
-                    m_log.ErrorFormat("[WEB FETCH INV DESC HANDLER]: Fetch error: {0}{1}" + e.Message, e.StackTrace);
+				m_log.ErrorFormat("[WebFetchInvDescHandler]: Fetch error: {0}{1}" + e.Message, e.StackTrace);
                     m_log.Error("Request: " + request);
                 }
     
@@ -106,7 +106,7 @@ namespace OpenSim.Capabilities.Handlers
                     }
                     catch (Exception e)
                     {
-                        m_log.Debug("[WEB FETCH INV DESC HANDLER]: caught exception doing OSD deserialize" + e);
+						m_log.Debug("[WebFetchInvDescHandler]: caught exception doing OSD deserialize" + e);
                     }
                     LLSDInventoryDescendents reply = FetchInventoryReply(llsdRequest);
 
@@ -130,8 +130,8 @@ namespace OpenSim.Capabilities.Handlers
                     response = "<llsd><map><key>folders</key><array>" + response + "</array></map></llsd>";
                 }
 
-//                m_log.DebugFormat("[WEB FETCH INV DESC HANDLER]: Replying to CAPS fetch inventory request");
-                //m_log.Debug("[WEB FETCH INV DESC HANDLER] "+response);
+				m_log.DebugFormat("[WebFetchInvDescHandler]: Replying to CAPS fetch inventory request");
+				m_log.DebugFormat("[WebFetchInvDescHandler]: "+response);
 
                 return response;
 
