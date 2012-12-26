@@ -875,8 +875,8 @@ namespace OpenSim.Framework
             int reqnum = WebUtil.RequestNumber++;
 
             m_log.InfoFormat (
-              	"[WEB UTIL]: HTTP OUT {0} SynchronousRestForms {1} {2}",
-                reqnum, verb, requestUrl);
+				"[WEB UTIL]: HTTP OUT {0} SynchronousRestForms {1} {2} {3}",
+                reqnum, verb, requestUrl, obj);
 
             int tickstart = Util.EnvironmentTickCount ();
             int tickdata = 0;
@@ -964,7 +964,9 @@ namespace OpenSim.Framework
                     reqnum, tickdiff, tickdata);
             }
 
-            return respstring;
+			m_log.DebugFormat("[WebUtil]: SynchronousRestForms respstring: {0}", respstring);
+
+			return respstring;
         }
     }
 

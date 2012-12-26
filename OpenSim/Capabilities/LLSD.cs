@@ -41,6 +41,9 @@ namespace OpenSim.Framework.Capabilities
     /// </summary>
     public static class LLSD
     {
+		private static readonly log4net.ILog m_log
+			= log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         /// <summary>
         ///
         /// </summary>

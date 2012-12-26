@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -283,9 +284,23 @@ namespace OpenSim.Region.ClientStack.Linden
 
             string result = LLSDHelpers.SerialiseLLSDReply(caps);
 
-            m_log.DebugFormat("[BunchOfCaps] SeedCapsRequest -- result: {0}", result);
+			StringBuilder sb = new StringBuilder();
 
-            return result;
+			Match match = Regex.Match(result, @"^<llsd><map>(.*)</map></llsd>",RegexOptions.IgnoreCase);
+			if (match.Success) {
+				// Finally, we get the Group value and display it.
+				string capsFromSim = match.Groups[1].Value;
+				sb.Append("<llsd><map>");
+				sb.Append(capsFromSim);
+				sb.Append("<key>FetchInventoryDescendents2</key><string>http://localhost:8080/CAPS/FID/8a4ebd90-4c35-11e2-bcfd-0800200c9a660000/</string>");
+				sb.Append("<key>FetchInventory2</key><string>http://localhost:8080/CAPS/FINV/30491b70-4c48-11e2-bcfd-0800200c9a660000/</string>");
+				sb.Append("<key>GetTexture</key><string>http://localhost:8080/CAPS/GTEX/9e097a00-4f2d-11e2-bcfd-0800200c9a660000/</string>");
+				sb.Append("</map></llsd>");
+			}
+
+            m_log.DebugFormat("[BunchOfCaps] SeedCapsRequest -- result: {0}", sb.ToString());
+
+            return (sb.ToString());
         }
 
         /// <summary>
