@@ -113,6 +113,7 @@ namespace OpenSim.Region.ClientStack.Linden
         private bool m_dumpAssetsToFile = false;
         private string m_regionName;
         private int m_levelUpload = 0;
+		private string surabayaServerURI = string.Empty;
 
         public BunchOfCaps(Scene scene, Caps caps)
         {
@@ -134,6 +135,15 @@ namespace OpenSim.Region.ClientStack.Linden
                 {
                     m_persistBakedTextures = appearanceConfig.GetBoolean("PersistBakedTextures", m_persistBakedTextures);
                 }
+
+				IConfig surabayaConfig = config.Configs["SurabayaServer"];
+				if (surabayaConfig != null) {
+					surabayaServerURI = surabayaConfig.GetString("SurabayaServerURI");
+					m_log.DebugFormat("[BunchOfCaps]: Surabaya ServerURI: {0}", surabayaServerURI);
+				} else {
+					m_log.Warn("Surabaya Config is missing, defaulting to http://localhost:8080");
+					surabayaServerURI = "http://localhost:8080";
+				}
             }
 
             m_assetService = m_Scene.AssetService;
@@ -286,6 +296,26 @@ namespace OpenSim.Region.ClientStack.Linden
 
 			StringBuilder sb = new StringBuilder();
 
+			OSDMap surabayaCaps = new OSDMap();
+			surabayaCaps.Add("FetchInventoryDescendents2", UUID.Random());
+			surabayaCaps.Add("FetchInventory2", UUID.Random());
+			surabayaCaps.Add("GetTexture", UUID.Random());
+			surabayaCaps.Add("GetMesh", UUID.Random());
+			surabayaCaps.Add("AgentID",m_HostCapsObj.AgentID.ToString());
+			surabayaCaps.Add("Host",m_HostCapsObj.HostName);
+			surabayaCaps.Add("Port",m_HostCapsObj.Port.ToString());
+			surabayaCaps.Add("RegionName",m_HostCapsObj.RegionName);
+
+			OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/agent", surabayaCaps, 3000);
+			if(surabayaAnswer != null) {
+				string answer = surabayaAnswer["result"];
+				if(!answer.Equals("ok")) {
+					m_log.ErrorFormat("Error Posting Agent Data: {0}", surabayaAnswer["reason"]);
+				}
+			} else {
+				m_log.Error("[BunchOfCaps] Result from Surabaya Server is empty");
+			}
+
 			Match match = Regex.Match(result, @"^<llsd><map>(.*)</map></llsd>",RegexOptions.IgnoreCase);
 			if (match.Success) {
 				// Finally, we get the Group value and display it.
@@ -295,6 +325,7 @@ namespace OpenSim.Region.ClientStack.Linden
 				sb.Append("<key>FetchInventoryDescendents2</key><string>http://localhost:8080/CAPS/FID/8a4ebd90-4c35-11e2-bcfd-0800200c9a660000/</string>");
 				sb.Append("<key>FetchInventory2</key><string>http://localhost:8080/CAPS/FINV/30491b70-4c48-11e2-bcfd-0800200c9a660000/</string>");
 				sb.Append("<key>GetTexture</key><string>http://localhost:8080/CAPS/GTEX/9e097a00-4f2d-11e2-bcfd-0800200c9a660000/</string>");
+				sb.Append("<key>GetMesh</key><string>http://localhost:8080/CAPS/MESH/50e820e0-5244-11e2-bcfd-0800200c9a660000/</string>");
 				sb.Append("</map></llsd>");
 			}
 
