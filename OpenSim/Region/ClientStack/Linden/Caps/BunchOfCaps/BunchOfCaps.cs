@@ -295,37 +295,70 @@ namespace OpenSim.Region.ClientStack.Linden
             string result = LLSDHelpers.SerialiseLLSDReply(caps);
 
 			StringBuilder sb = new StringBuilder();
-
-			OSDMap surabayaCaps = new OSDMap();
-			surabayaCaps.Add("FetchInventoryDescendents2", UUID.Random());
-			surabayaCaps.Add("FetchInventory2", UUID.Random());
-			surabayaCaps.Add("GetTexture", UUID.Random());
-			surabayaCaps.Add("GetMesh", UUID.Random());
-			surabayaCaps.Add("AgentID",m_HostCapsObj.AgentID.ToString());
-			surabayaCaps.Add("Host",m_HostCapsObj.HostName);
-			surabayaCaps.Add("Port",m_HostCapsObj.Port.ToString());
-			surabayaCaps.Add("RegionName",m_HostCapsObj.RegionName);
-
-			OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/agent", surabayaCaps, 3000);
-			if(surabayaAnswer != null) {
-				string answer = surabayaAnswer["result"];
-				if(!answer.Equals("ok")) {
-					m_log.ErrorFormat("Error Posting Agent Data: {0}", surabayaAnswer["reason"]);
-				}
-			} else {
-				m_log.Error("[BunchOfCaps] Result from Surabaya Server is empty");
-			}
-
 			Match match = Regex.Match(result, @"^<llsd><map>(.*)</map></llsd>",RegexOptions.IgnoreCase);
 			if (match.Success) {
 				// Finally, we get the Group value and display it.
 				string capsFromSim = match.Groups[1].Value;
 				sb.Append("<llsd><map>");
 				sb.Append(capsFromSim);
-				sb.Append("<key>FetchInventoryDescendents2</key><string>http://localhost:8080/CAPS/FID/8a4ebd90-4c35-11e2-bcfd-0800200c9a660000/</string>");
-				sb.Append("<key>FetchInventory2</key><string>http://localhost:8080/CAPS/FINV/30491b70-4c48-11e2-bcfd-0800200c9a660000/</string>");
-				sb.Append("<key>GetTexture</key><string>http://localhost:8080/CAPS/GTEX/9e097a00-4f2d-11e2-bcfd-0800200c9a660000/</string>");
-				sb.Append("<key>GetMesh</key><string>http://localhost:8080/CAPS/MESH/50e820e0-5244-11e2-bcfd-0800200c9a660000/</string>");
+			} else {
+				sb.Append(result);
+			}
+
+			OSDMap surabayaCaps = new OSDMap();
+			surabayaCaps.Add("FetchInventoryDescendents2", UUID.Random().ToString());
+			surabayaCaps.Add("FetchInventory2", UUID.Random().ToString());
+			surabayaCaps.Add("GetTexture", UUID.Random().ToString());
+			surabayaCaps.Add("GetMesh", UUID.Random().ToString());
+			surabayaCaps.Add("AgentID",m_HostCapsObj.AgentID.ToString());
+			surabayaCaps.Add("Host",m_HostCapsObj.HostName);
+			surabayaCaps.Add("Port",m_HostCapsObj.Port.ToString());
+			surabayaCaps.Add("RegionName",m_HostCapsObj.RegionName);
+			surabayaCaps.Add("AgentClose", UUID.Random().ToString());
+
+			OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/agent", surabayaCaps, 3000);
+			if(surabayaAnswer != null) {
+				OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
+				string successString = answer["result"];
+				if(!successString.Equals("ok")) {
+					m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
+				} else {
+					String data;
+					// FetchInventoryDescendents
+					sb.Append("<key>FetchInventoryDescendents2</key><string>");
+					sb.Append(surabayaServerURI);
+					sb.Append("/CAPS/FID/");
+					data = surabayaCaps["FetchInventoryDescendents2"];
+					sb.Append(data);
+					sb.Append("0000/</string>");
+					// Fetchinventory
+					sb.Append("<key>FetchInventory2</key><string>");
+					sb.Append(surabayaServerURI);
+					sb.Append("/CAPS/FINV/");
+					data = surabayaCaps["FetchInventory2"];
+					sb.Append(data);
+					sb.Append("0000/</string>");
+					// Texture
+					sb.Append("<key>GetTexture</key><string>");
+					sb.Append(surabayaServerURI);
+					sb.Append("/CAPS/GTEX/");
+					data = surabayaCaps["GetTexture"];
+					sb.Append(data);
+					sb.Append("0000/</string>");
+					// Mesh
+					sb.Append("<key>GetMesh</key><string>");
+					sb.Append(surabayaServerURI);
+					sb.Append("/CAPS/MESH/");
+					data = surabayaCaps["GetMesh"];
+					sb.Append(data);
+					sb.Append("0000/</string>");
+					data = surabayaCaps["AgentClose"];
+				}
+			} else {
+				m_log.Error("[BunchOfCaps] Result from Surabaya Server is empty");
+			}
+
+			if (match.Success) {
 				sb.Append("</map></llsd>");
 			}
 

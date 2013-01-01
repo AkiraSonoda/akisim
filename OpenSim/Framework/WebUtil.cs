@@ -964,8 +964,6 @@ namespace OpenSim.Framework
                     reqnum, tickdiff, tickdata);
             }
 
-			m_log.DebugFormat("[WebUtil]: SynchronousRestForms respstring: {0}", respstring);
-
 			return respstring;
         }
     }
