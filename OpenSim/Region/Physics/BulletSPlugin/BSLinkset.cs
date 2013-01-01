@@ -32,6 +32,15 @@ using OMV = OpenMetaverse;
 
 namespace OpenSim.Region.Physics.BulletSPlugin
 {
+
+// A BSPrim can get individual information about its linkedness attached
+//    to it through an instance of a subclass of LinksetInfo.
+// Each type of linkset will define the information needed for its type.
+public abstract class BSLinksetInfo
+{
+    public virtual void Clear() { }
+}
+
 public abstract class BSLinkset
 {
     // private static string LogHeader = "[BULLETSIM LINKSET]";
@@ -47,7 +56,7 @@ public abstract class BSLinkset
     {
         BSLinkset ret = null;
 
-        switch ((int)physScene.Params.linksetImplementation)
+        switch ((int)BSParam.LinksetImplementation)
         {
             case (int)LinksetImplementation.Constraint:
                 ret = new BSLinksetConstraints(physScene, parent);
@@ -87,22 +96,8 @@ public abstract class BSLinkset
         return BSPhysicsShapeType.SHAPE_UNKNOWN;
     }
 
-    // Linksets move around the children so the linkset might need to compute the child position
-    public virtual OMV.Vector3 Position(BSPhysObject member)
-        { return member.RawPosition; }
-    public virtual OMV.Quaternion Orientation(BSPhysObject member)
-        { return member.RawOrientation; }
-    // TODO: does this need to be done for Velocity and RotationalVelocityy?
-    
     // We keep the prim's mass in the linkset structure since it could be dependent on other prims
-    protected float m_mass;
-    public float LinksetMass
-    {
-        get
-        {
-            return m_mass;
-        }
-    }
+    public float LinksetMass { get; protected set; }
 
     public virtual bool LinksetIsColliding { get { return false; } }
 
@@ -116,7 +111,7 @@ public abstract class BSLinkset
         get { return ComputeLinksetGeometricCenter(); }
     }
 
-    protected void Initialize(BSScene scene, BSPhysObject parent)
+    protected BSLinkset(BSScene scene, BSPhysObject parent)
     {
         // A simple linkset of one (no children)
         LinksetID = m_nextLinksetID++;
@@ -126,7 +121,8 @@ public abstract class BSLinkset
         PhysicsScene = scene;
         LinksetRoot = parent;
         m_children = new HashSet<BSPhysObject>();
-        m_mass = parent.RawMass;
+        LinksetMass = parent.RawMass;
+        Rebuilding = false;
     }
 
     // Link to a linkset where the child knows the parent.
@@ -140,7 +136,7 @@ public abstract class BSLinkset
             // Don't add the root to its own linkset
             if (!IsRoot(child))
                 AddChildToLinkset(child);
-            m_mass = ComputeLinksetMass();
+            LinksetMass = ComputeLinksetMass();
         }
         return this;
     }
@@ -159,7 +155,7 @@ public abstract class BSLinkset
                 return this;
             }
             RemoveChildFromLinkset(child);
-            m_mass = ComputeLinksetMass();
+            LinksetMass = ComputeLinksetMass();
         }
 
         // The child is down to a linkset of just itself
@@ -219,7 +215,7 @@ public abstract class BSLinkset
     // I am the root of a linkset and a new child is being added
     // Called while LinkActivity is locked.
     protected abstract void AddChildToLinkset(BSPhysObject child);
-
+    
     // I am the root of a linkset and one of my children is being removed.
     // Safe to call even if the child is not really in my linkset.
     protected abstract void RemoveChildFromLinkset(BSPhysObject child);
@@ -227,7 +223,14 @@ public abstract class BSLinkset
     // When physical properties are changed the linkset needs to recalculate
     //   its internal properties.
     // May be called at runtime or taint-time.
-    public abstract void Refresh(BSPhysObject requestor);
+    public virtual void Refresh(BSPhysObject requestor)
+    {
+        LinksetMass = ComputeLinksetMass();
+    }
+
+    // Flag denoting the linkset is in the process of being rebuilt.
+    // Used to know not the schedule a rebuild in the middle of a rebuild.
+    protected bool Rebuilding { get; set; }
 
     // The object is going dynamic (physical). Do any setup necessary
     //     for a dynamic linkset.
@@ -245,8 +248,9 @@ public abstract class BSLinkset
 
     // Called when a parameter update comes from the physics engine for any object
     //      of the linkset is received.
+    // Passed flag is update came from physics engine (true) or the user (false).
     // Called at taint-time!!
-    public abstract void UpdateProperties(BSPhysObject physObject);
+    public abstract void UpdateProperties(BSPhysObject physObject, bool physicalUpdate);
 
     // Routine used when rebuilding the body of the root of the linkset
     // Destroy all the constraints have have been made to root.

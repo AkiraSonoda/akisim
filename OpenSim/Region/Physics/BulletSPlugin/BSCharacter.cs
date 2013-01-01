@@ -66,8 +66,9 @@ public sealed class BSCharacter : BSPhysObject
     private float _buoyancy;
 
     // The friction and velocity of the avatar is modified depending on whether walking or not.
-    private OMV.Vector3 _appliedVelocity;   // the last velocity applied to the avatar
     private float _currentFriction;         // the friction currently being used (changed by setVelocity).
+
+    private BSVMotor _velocityMotor;
 
     private OMV.Vector3 _PIDTarget;
     private bool _usePID;
@@ -83,34 +84,36 @@ public sealed class BSCharacter : BSPhysObject
         _physicsActorType = (int)ActorTypes.Agent;
         _position = pos;
 
-        // Old versions of ScenePresence passed only the height. If width and/or depth are zero,
-        //     replace with the default values.
-        _size = size;
-        if (_size.X == 0f) _size.X = PhysicsScene.Params.avatarCapsuleDepth;
-        if (_size.Y == 0f) _size.Y = PhysicsScene.Params.avatarCapsuleWidth;
-
         _flying = isFlying;
         _orientation = OMV.Quaternion.Identity;
         _velocity = OMV.Vector3.Zero;
-        _appliedVelocity = OMV.Vector3.Zero;
         _buoyancy = ComputeBuoyancyFromFlying(isFlying);
-        _currentFriction = PhysicsScene.Params.avatarStandingFriction;
-        _avatarDensity = PhysicsScene.Params.avatarDensity;
+        _currentFriction = BSParam.AvatarStandingFriction;
+        _avatarDensity = BSParam.AvatarDensity;
 
-        // The dimensions of the avatar capsule are kept in the scale.
+        // Old versions of ScenePresence passed only the height. If width and/or depth are zero,
+        //     replace with the default values.
+        _size = size;
+        if (_size.X == 0f) _size.X = BSParam.AvatarCapsuleDepth;
+        if (_size.Y == 0f) _size.Y = BSParam.AvatarCapsuleWidth;
+
+        // The dimensions of the physical capsule are kept in the scale.
         // Physics creates a unit capsule which is scaled by the physics engine.
-        ComputeAvatarScale(_size);
+        Scale = ComputeAvatarScale(_size);
         // set _avatarVolume and _mass based on capsule size, _density and Scale
         ComputeAvatarVolumeAndMass();
+
+        SetupMovementMotor();
+
         DetailLog("{0},BSCharacter.create,call,size={1},scale={2},density={3},volume={4},mass={5}",
                             LocalID, _size, Scale, _avatarDensity, _avatarVolume, RawMass);
 
-        // do actual create at taint time
+        // do actual creation in taint time
         PhysicsScene.TaintedObject("BSCharacter.create", delegate()
         {
             DetailLog("{0},BSCharacter.create,taint", LocalID);
             // New body and shape into PhysBody and PhysShape
-            PhysicsScene.Shapes.GetBodyAndShape(true, PhysicsScene.World, this, null, null);
+            PhysicsScene.Shapes.GetBodyAndShape(true, PhysicsScene.World, this);
 
             SetPhysicalProperties();
         });
@@ -120,54 +123,116 @@ public sealed class BSCharacter : BSPhysObject
     // called when this character is being destroyed and the resources should be released
     public override void Destroy()
     {
+        base.Destroy();
+
         DetailLog("{0},BSCharacter.Destroy", LocalID);
         PhysicsScene.TaintedObject("BSCharacter.destroy", delegate()
         {
             PhysicsScene.Shapes.DereferenceBody(PhysBody, true, null);
+            PhysBody.Clear();
             PhysicsScene.Shapes.DereferenceShape(PhysShape, true, null);
+            PhysShape.Clear();
         });
     }
 
     private void SetPhysicalProperties()
     {
-        BulletSimAPI.RemoveObjectFromWorld2(PhysicsScene.World.ptr, PhysBody.ptr);
+        PhysicsScene.PE.RemoveObjectFromWorld(PhysicsScene.World, PhysBody);
 
         ZeroMotion(true);
         ForcePosition = _position;
+
         // Set the velocity and compute the proper friction
+        _velocityMotor.Reset();
+        _velocityMotor.SetTarget(_velocity);
+        _velocityMotor.SetCurrent(_velocity);
         ForceVelocity = _velocity;
 
         // This will enable or disable the flying buoyancy of the avatar.
         // Needs to be reset especially when an avatar is recreated after crossing a region boundry.
         Flying = _flying;
 
-        BulletSimAPI.SetRestitution2(PhysBody.ptr, PhysicsScene.Params.avatarRestitution);
-        BulletSimAPI.SetMargin2(PhysShape.ptr, PhysicsScene.Params.collisionMargin);
-        BulletSimAPI.SetLocalScaling2(PhysShape.ptr, Scale);
-        BulletSimAPI.SetContactProcessingThreshold2(PhysBody.ptr, PhysicsScene.Params.contactProcessingThreshold);
-        if (PhysicsScene.Params.ccdMotionThreshold > 0f)
+        PhysicsScene.PE.SetRestitution(PhysBody, BSParam.AvatarRestitution);
+        PhysicsScene.PE.SetMargin(PhysShape, PhysicsScene.Params.collisionMargin);
+        PhysicsScene.PE.SetLocalScaling(PhysShape, Scale);
+        PhysicsScene.PE.SetContactProcessingThreshold(PhysBody, BSParam.ContactProcessingThreshold);
+        if (BSParam.CcdMotionThreshold > 0f)
         {
-            BulletSimAPI.SetCcdMotionThreshold2(PhysBody.ptr, PhysicsScene.Params.ccdMotionThreshold);
-            BulletSimAPI.SetCcdSweptSphereRadius2(PhysBody.ptr, PhysicsScene.Params.ccdSweptSphereRadius);
+            PhysicsScene.PE.SetCcdMotionThreshold(PhysBody, BSParam.CcdMotionThreshold);
+            PhysicsScene.PE.SetCcdSweptSphereRadius(PhysBody, BSParam.CcdSweptSphereRadius);
         }
 
-        UpdatePhysicalMassProperties(RawMass);
+        UpdatePhysicalMassProperties(RawMass, false);
 
         // Make so capsule does not fall over
-        BulletSimAPI.SetAngularFactorV2(PhysBody.ptr, OMV.Vector3.Zero);
+        PhysicsScene.PE.SetAngularFactorV(PhysBody, OMV.Vector3.Zero);
 
-        BulletSimAPI.AddToCollisionFlags2(PhysBody.ptr, CollisionFlags.CF_CHARACTER_OBJECT);
+        PhysicsScene.PE.AddToCollisionFlags(PhysBody, CollisionFlags.CF_CHARACTER_OBJECT);
 
-        BulletSimAPI.AddObjectToWorld2(PhysicsScene.World.ptr, PhysBody.ptr);
+        PhysicsScene.PE.AddObjectToWorld(PhysicsScene.World, PhysBody);
 
-        // BulletSimAPI.ForceActivationState2(BSBody.ptr, ActivationState.ACTIVE_TAG);
-        BulletSimAPI.ForceActivationState2(PhysBody.ptr, ActivationState.DISABLE_DEACTIVATION);
-        BulletSimAPI.UpdateSingleAabb2(PhysicsScene.World.ptr, PhysBody.ptr);
+        // PhysicsScene.PE.ForceActivationState(PhysBody, ActivationState.ACTIVE_TAG);
+        PhysicsScene.PE.ForceActivationState(PhysBody, ActivationState.DISABLE_DEACTIVATION);
+        PhysicsScene.PE.UpdateSingleAabb(PhysicsScene.World, PhysBody);
 
         // Do this after the object has been added to the world
-        BulletSimAPI.SetCollisionGroupMask2(PhysBody.ptr,
-                        (uint)CollisionFilterGroups.AvatarGroup,
-                        (uint)CollisionFilterGroups.AvatarMask);
+        PhysBody.collisionType = CollisionType.Avatar;
+        PhysBody.ApplyCollisionMask(PhysicsScene);
+    }
+
+    // The avatar's movement is controlled by this motor that speeds up and slows down
+    //    the avatar seeking to reach the motor's target speed.
+    // This motor runs as a prestep action for the avatar so it will keep the avatar
+    //    standing as well as moving. Destruction of the avatar will destroy the pre-step action.
+    private void SetupMovementMotor()
+    {
+
+        // Someday, use a PID motor for asymmetric speed up and slow down
+        // _velocityMotor = new BSPIDVMotor("BSCharacter.Velocity", 3f, 5f, BSMotor.InfiniteVector, 1f);
+
+        // Infinite decay and timescale values so motor only changes current to target values.
+        _velocityMotor = new BSVMotor("BSCharacter.Velocity", 
+                                            0.2f,                       // time scale
+                                            BSMotor.Infinite,           // decay time scale
+                                            BSMotor.InfiniteVector,     // friction timescale
+                                            1f                          // efficiency
+        );
+        // _velocityMotor.PhysicsScene = PhysicsScene; // DEBUG DEBUG so motor will output detail log messages.
+
+        RegisterPreStepAction("BSCharactor.Movement", LocalID, delegate(float timeStep)
+        {
+            // TODO: Decide if the step parameters should be changed depending on the avatar's
+            //     state (flying, colliding, ...). There is code in ODE to do this.
+
+            OMV.Vector3 stepVelocity = _velocityMotor.Step(timeStep);
+
+            // If falling, we keep the world's downward vector no matter what the other axis specify.
+            if (!Flying && !IsColliding)
+            {
+                stepVelocity.Z = _velocity.Z;
+                // DetailLog("{0},BSCharacter.MoveMotor,taint,overrideStepZWithWorldZ,stepVel={1}", LocalID, stepVelocity);
+            }
+
+            // 'stepVelocity' is now the speed we'd like the avatar to move in. Turn that into an instantanous force.
+            OMV.Vector3 moveForce = (stepVelocity - _velocity) * Mass / PhysicsScene.LastTimeStep;
+
+            /*
+            // If moveForce is very small, zero things so we don't keep sending microscopic updates to the user
+            float moveForceMagnitudeSquared = moveForce.LengthSquared();
+            if (moveForceMagnitudeSquared < 0.0001)
+            {
+                DetailLog("{0},BSCharacter.MoveMotor,zeroMovement,stepVel={1},vel={2},mass={3},magSq={4},moveForce={5}",
+                                        LocalID, stepVelocity, _velocity, Mass, moveForceMagnitudeSquared, moveForce);
+                ForceVelocity = OMV.Vector3.Zero;
+            }
+            else
+            {
+                AddForce(moveForce, false, true);
+            }
+            */
+            // DetailLog("{0},BSCharacter.MoveMotor,move,stepVel={1},vel={2},mass={3},moveForce={4}", LocalID, stepVelocity, _velocity, Mass, moveForce);
+            AddForce(moveForce, false, true);
+        });
     }
 
     public override void RequestPhysicsterseUpdate()
@@ -185,23 +250,30 @@ public sealed class BSCharacter : BSPhysObject
         }
 
         set {
-            // When an avatar's size is set, only the height is changed.
             _size = value;
-            ComputeAvatarScale(_size);
+            // Old versions of ScenePresence passed only the height. If width and/or depth are zero,
+            //     replace with the default values.
+            if (_size.X == 0f) _size.X = BSParam.AvatarCapsuleDepth;
+            if (_size.Y == 0f) _size.Y = BSParam.AvatarCapsuleWidth;
+
+            Scale = ComputeAvatarScale(_size);
             ComputeAvatarVolumeAndMass();
             DetailLog("{0},BSCharacter.setSize,call,size={1},scale={2},density={3},volume={4},mass={5}",
                             LocalID, _size, Scale, _avatarDensity, _avatarVolume, RawMass);
 
             PhysicsScene.TaintedObject("BSCharacter.setSize", delegate()
             {
-                BulletSimAPI.SetLocalScaling2(PhysShape.ptr, Scale);
-                UpdatePhysicalMassProperties(RawMass);
+                if (PhysBody.HasPhysicalBody && PhysShape.HasPhysicalShape)
+                {
+                    PhysicsScene.PE.SetLocalScaling(PhysShape, Scale);
+                    UpdatePhysicalMassProperties(RawMass, true);
+                    // Make sure this change appears as a property update event
+                    PhysicsScene.PE.PushUpdate(PhysBody);
+                }
             });
 
         }
     }
-
-    public override OMV.Vector3 Scale { get; set; }
 
     public override PrimitiveBaseShape Shape
     {
@@ -236,7 +308,8 @@ public sealed class BSCharacter : BSPhysObject
         // Zero some other properties directly into the physics engine
         PhysicsScene.TaintedObject(inTaintTime, "BSCharacter.ZeroMotion", delegate()
         {
-            BulletSimAPI.ClearAllForces2(PhysBody.ptr);
+            if (PhysBody.HasPhysicalBody)
+                PhysicsScene.PE.ClearAllForces(PhysBody);
         });
     }
     public override void ZeroAngularMotion(bool inTaintTime)
@@ -245,10 +318,13 @@ public sealed class BSCharacter : BSPhysObject
 
         PhysicsScene.TaintedObject(inTaintTime, "BSCharacter.ZeroMotion", delegate()
         {
-            BulletSimAPI.SetInterpolationAngularVelocity2(PhysBody.ptr, OMV.Vector3.Zero);
-            BulletSimAPI.SetAngularVelocity2(PhysBody.ptr, OMV.Vector3.Zero);
-            // The next also get rid of applied linear force but the linear velocity is untouched.
-            BulletSimAPI.ClearForces2(PhysBody.ptr);
+            if (PhysBody.HasPhysicalBody)
+            {
+                PhysicsScene.PE.SetInterpolationAngularVelocity(PhysBody, OMV.Vector3.Zero);
+                PhysicsScene.PE.SetAngularVelocity(PhysBody, OMV.Vector3.Zero);
+                // The next also get rid of applied linear force but the linear velocity is untouched.
+                PhysicsScene.PE.ClearForces(PhysBody);
+            }
         });
     }
 
@@ -263,7 +339,7 @@ public sealed class BSCharacter : BSPhysObject
     public override OMV.Vector3 Position {
         get {
             // Don't refetch the position because this function is called a zillion times
-            // _position = BulletSimAPI.GetObjectPosition2(Scene.World.ptr, LocalID);
+            // _position = PhysicsScene.PE.GetObjectPosition(Scene.World, LocalID);
             return _position;
         }
         set {
@@ -273,19 +349,20 @@ public sealed class BSCharacter : BSPhysObject
             PhysicsScene.TaintedObject("BSCharacter.setPosition", delegate()
             {
                 DetailLog("{0},BSCharacter.SetPosition,taint,pos={1},orient={2}", LocalID, _position, _orientation);
-                BulletSimAPI.SetTranslation2(PhysBody.ptr, _position, _orientation);
+                if (PhysBody.HasPhysicalBody)
+                    PhysicsScene.PE.SetTranslation(PhysBody, _position, _orientation);
             });
         }
     }
     public override OMV.Vector3 ForcePosition {
         get {
-            _position = BulletSimAPI.GetPosition2(PhysBody.ptr);
+            _position = PhysicsScene.PE.GetPosition(PhysBody);
             return _position;
         }
         set {
             _position = value;
             PositionSanityCheck();
-            BulletSimAPI.SetTranslation2(PhysBody.ptr, _position, _orientation);
+            PhysicsScene.PE.SetTranslation(PhysBody, _position, _orientation);
         }
     }
 
@@ -296,6 +373,15 @@ public sealed class BSCharacter : BSPhysObject
     private bool PositionSanityCheck()
     {
         bool ret = false;
+
+        // TODO: check for out of bounds
+        if (!PhysicsScene.TerrainManager.IsWithinKnownTerrain(_position))
+        {
+            // The character is out of the known/simulated area.
+            // Upper levels of code will handle the transition to other areas so, for
+            //     the time, we just ignore the position.
+            return ret;
+        }
 
         // If below the ground, move the avatar up
         float terrainHeight = PhysicsScene.TerrainManager.GetTerrainHeightAtXYZ(_position);
@@ -315,7 +401,6 @@ public sealed class BSCharacter : BSPhysObject
             }
         }
 
-        // TODO: check for out of bounds
         return ret;
     }
 
@@ -332,7 +417,8 @@ public sealed class BSCharacter : BSPhysObject
             PhysicsScene.TaintedObject(inTaintTime, "BSCharacter.PositionSanityCheck", delegate()
             {
                 DetailLog("{0},BSCharacter.PositionSanityCheck,taint,pos={1},orient={2}", LocalID, _position, _orientation);
-                BulletSimAPI.SetTranslation2(PhysBody.ptr, _position, _orientation);
+                if (PhysBody.HasPhysicalBody)
+                    PhysicsScene.PE.SetTranslation(PhysBody, _position, _orientation);
             });
             ret = true;
         }
@@ -345,10 +431,10 @@ public sealed class BSCharacter : BSPhysObject
     public override float RawMass { 
         get {return _mass; }
     }
-    public override void UpdatePhysicalMassProperties(float physMass)
+    public override void UpdatePhysicalMassProperties(float physMass, bool inWorld)
     {
-        OMV.Vector3 localInertia = BulletSimAPI.CalculateLocalInertia2(PhysShape.ptr, physMass);
-        BulletSimAPI.SetMassProps2(PhysBody.ptr, physMass, localInertia);
+        OMV.Vector3 localInertia = PhysicsScene.PE.CalculateLocalInertia(PhysShape, physMass);
+        PhysicsScene.PE.SetMassProps(PhysBody, physMass, localInertia);
     }
 
     public override OMV.Vector3 Force {
@@ -359,7 +445,8 @@ public sealed class BSCharacter : BSPhysObject
             PhysicsScene.TaintedObject("BSCharacter.SetForce", delegate()
             {
                 DetailLog("{0},BSCharacter.setForce,taint,force={1}", LocalID, _force);
-                BulletSimAPI.SetObjectForce2(PhysBody.ptr, _force);
+                if (PhysBody.HasPhysicalBody)
+                    PhysicsScene.PE.SetObjectForce(PhysBody, _force);
             });
         }
     }
@@ -376,6 +463,31 @@ public sealed class BSCharacter : BSPhysObject
 
     public override OMV.Vector3 GeometricCenter { get { return OMV.Vector3.Zero; } }
     public override OMV.Vector3 CenterOfMass { get { return OMV.Vector3.Zero; } }
+
+    // Sets the target in the motor. This starts the changing of the avatar's velocity.
+    public override OMV.Vector3 TargetVelocity
+    {
+        get
+        {
+            return _velocityMotor.TargetValue;
+        }
+        set
+        {
+            DetailLog("{0},BSCharacter.setTargetVelocity,call,vel={1}", LocalID, value);
+            OMV.Vector3 targetVel = value;
+            if (_setAlwaysRun)
+                targetVel *= BSParam.AvatarAlwaysRunFactor;
+
+            PhysicsScene.TaintedObject("BSCharacter.setTargetVelocity", delegate()
+            {
+                _velocityMotor.Reset();
+                _velocityMotor.SetTarget(targetVel);
+                _velocityMotor.SetCurrent(_velocity);
+                _velocityMotor.Enabled = true;
+            });
+        }
+    }
+    // Directly setting velocity means this is what the user really wants now.
     public override OMV.Vector3 Velocity {
         get { return _velocity; }
         set {
@@ -383,6 +495,12 @@ public sealed class BSCharacter : BSPhysObject
             // m_log.DebugFormat("{0}: set velocity = {1}", LogHeader, _velocity);
             PhysicsScene.TaintedObject("BSCharacter.setVelocity", delegate()
             {
+                _velocityMotor.Reset();
+                _velocityMotor.SetCurrent(_velocity);
+                _velocityMotor.SetTarget(_velocity);
+                // Even though the motor is initialized, it's not used and the velocity goes straight into the avatar.
+                _velocityMotor.Enabled = false;
+
                 DetailLog("{0},BSCharacter.setVelocity,taint,vel={1}", LocalID, _velocity);
                 ForceVelocity = _velocity;
             });
@@ -391,30 +509,32 @@ public sealed class BSCharacter : BSPhysObject
     public override OMV.Vector3 ForceVelocity {
         get { return _velocity; }
         set {
+            PhysicsScene.AssertInTaintTime("BSCharacter.ForceVelocity");
+
+            _velocity = value;
             // Depending on whether the avatar is moving or not, change the friction
             //    to keep the avatar from slipping around
             if (_velocity.Length() == 0)
             {
-                if (_currentFriction != PhysicsScene.Params.avatarStandingFriction)
+                if (_currentFriction != BSParam.AvatarStandingFriction)
                 {
-                    _currentFriction = PhysicsScene.Params.avatarStandingFriction;
-                    BulletSimAPI.SetFriction2(PhysBody.ptr, _currentFriction);
+                    _currentFriction = BSParam.AvatarStandingFriction;
+                    if (PhysBody.HasPhysicalBody)
+                        PhysicsScene.PE.SetFriction(PhysBody, _currentFriction);
                 }
             }
             else
             {
-                if (_currentFriction != PhysicsScene.Params.avatarFriction)
+                if (_currentFriction != BSParam.AvatarFriction)
                 {
-                    _currentFriction = PhysicsScene.Params.avatarFriction;
-                    BulletSimAPI.SetFriction2(PhysBody.ptr, _currentFriction);
+                    _currentFriction = BSParam.AvatarFriction;
+                    if (PhysBody.HasPhysicalBody)
+                        PhysicsScene.PE.SetFriction(PhysBody, _currentFriction);
                 }
             }
-            _velocity = value;
-            // Remember the set velocity so we can suppress the reduction by friction, ...
-            _appliedVelocity = value;
 
-            BulletSimAPI.SetLinearVelocity2(PhysBody.ptr, _velocity);
-            BulletSimAPI.Activate2(PhysBody.ptr, true);
+            PhysicsScene.PE.SetLinearVelocity(PhysBody, _velocity);
+            PhysicsScene.PE.Activate(PhysBody, true);
         }
     }
     public override OMV.Vector3 Torque {
@@ -439,13 +559,16 @@ public sealed class BSCharacter : BSPhysObject
     public override OMV.Quaternion Orientation {
         get { return _orientation; }
         set {
-            _orientation = value;
-            // m_log.DebugFormat("{0}: set orientation to {1}", LogHeader, _orientation);
-            PhysicsScene.TaintedObject("BSCharacter.setOrientation", delegate()
+            // Orientation is set zillions of times when an avatar is walking. It's like
+            //      the viewer doesn't trust us.
+            if (_orientation != value)
             {
-                // _position = BulletSimAPI.GetPosition2(BSBody.ptr);
-                BulletSimAPI.SetTranslation2(PhysBody.ptr, _position, _orientation);
-            });
+                _orientation = value;
+                PhysicsScene.TaintedObject("BSCharacter.setOrientation", delegate()
+                {
+                    ForceOrientation = _orientation;
+                });
+            }
         }
     }
     // Go directly to Bullet to get/set the value.
@@ -453,13 +576,17 @@ public sealed class BSCharacter : BSPhysObject
     {
         get
         {
-            _orientation = BulletSimAPI.GetOrientation2(PhysBody.ptr);
+            _orientation = PhysicsScene.PE.GetOrientation(PhysBody);
             return _orientation;
         }
         set
         {
             _orientation = value;
-            BulletSimAPI.SetTranslation2(PhysBody.ptr, _position, _orientation);
+            if (PhysBody.HasPhysicalBody)
+            {
+                // _position = PhysicsScene.PE.GetPosition(BSBody);
+                PhysicsScene.PE.SetTranslation(PhysBody, _position, _orientation);
+            }
         }
     }
     public override int PhysicsActorType {
@@ -482,6 +609,7 @@ public sealed class BSCharacter : BSPhysObject
         get { return _flying; }
         set {
             _flying = value;
+
             // simulate flying by changing the effect of gravity
             Buoyancy = ComputeBuoyancyFromFlying(_flying);
         }
@@ -500,27 +628,18 @@ public sealed class BSCharacter : BSPhysObject
         get { return _throttleUpdates; }
         set { _throttleUpdates = value; }
     }
-    public override bool IsColliding {
-        get { return (CollidingStep == PhysicsScene.SimulationStep); }
-        set { _isColliding = value; }
-    }
-    public override bool CollidingGround {
-        get { return (CollidingGroundStep == PhysicsScene.SimulationStep); }
-        set { CollidingGround = value; }
-    }
-    public override bool CollidingObj {
-        get { return _collidingObj; }
-        set { _collidingObj = value; }
-    }
     public override bool FloatOnWater {
         set {
             _floatOnWater = value;
             PhysicsScene.TaintedObject("BSCharacter.setFloatOnWater", delegate()
             {
-                if (_floatOnWater)
-                    CurrentCollisionFlags = BulletSimAPI.AddToCollisionFlags2(PhysBody.ptr, CollisionFlags.BS_FLOATS_ON_WATER);
-                else
-                    CurrentCollisionFlags = BulletSimAPI.RemoveFromCollisionFlags2(PhysBody.ptr, CollisionFlags.BS_FLOATS_ON_WATER);
+                if (PhysBody.HasPhysicalBody)
+                {
+                    if (_floatOnWater)
+                        CurrentCollisionFlags = PhysicsScene.PE.AddToCollisionFlags(PhysBody, CollisionFlags.BS_FLOATS_ON_WATER);
+                    else
+                        CurrentCollisionFlags = PhysicsScene.PE.RemoveFromCollisionFlags(PhysBody, CollisionFlags.BS_FLOATS_ON_WATER);
+                }
             });
         }
     }
@@ -549,11 +668,15 @@ public sealed class BSCharacter : BSPhysObject
     }
     public override float ForceBuoyancy {
         get { return _buoyancy; }
-        set { _buoyancy = value;
+        set { 
+            PhysicsScene.AssertInTaintTime("BSCharacter.ForceBuoyancy");
+
+            _buoyancy = value;
             DetailLog("{0},BSCharacter.setForceBuoyancy,taint,buoy={1}", LocalID, _buoyancy);
             // Buoyancy is faked by changing the gravity applied to the object
             float grav = PhysicsScene.Params.gravity * (1f - _buoyancy);
-            BulletSimAPI.SetGravity2(PhysBody.ptr, new OMV.Vector3(0f, 0f, grav));
+            if (PhysBody.HasPhysicalBody)
+                PhysicsScene.PE.SetGravity(PhysBody, new OMV.Vector3(0f, 0f, grav));
         }
     }
 
@@ -589,24 +712,40 @@ public sealed class BSCharacter : BSPhysObject
     public override float APIDStrength { set { return; } }
     public override float APIDDamping { set { return; } }
 
-    public override void AddForce(OMV.Vector3 force, bool pushforce) {
+    public override void AddForce(OMV.Vector3 force, bool pushforce)
+    {
+        // Since this force is being applied in only one step, make this a force per second.
+        OMV.Vector3 addForce = force / PhysicsScene.LastTimeStep;
+        AddForce(addForce, pushforce, false);
+    }
+    private void AddForce(OMV.Vector3 force, bool pushforce, bool inTaintTime) {
         if (force.IsFinite())
         {
-            _force.X += force.X;
-            _force.Y += force.Y;
-            _force.Z += force.Z;
-            // m_log.DebugFormat("{0}: AddForce. adding={1}, newForce={2}", LogHeader, force, _force);
-            PhysicsScene.TaintedObject("BSCharacter.AddForce", delegate()
+            float magnitude = force.Length();
+            if (magnitude > BSParam.MaxAddForceMagnitude)
             {
-                DetailLog("{0},BSCharacter.setAddForce,taint,addedForce={1}", LocalID, _force);
-                BulletSimAPI.SetObjectForce2(PhysBody.ptr, _force);
+                // Force has a limit
+                force = force / magnitude * BSParam.MaxAddForceMagnitude;
+            }
+
+            OMV.Vector3 addForce = force;
+            // DetailLog("{0},BSCharacter.addForce,call,force={1}", LocalID, addForce);
+
+            PhysicsScene.TaintedObject(inTaintTime, "BSCharacter.AddForce", delegate()
+            {
+                // Bullet adds this central force to the total force for this tick
+                // DetailLog("{0},BSCharacter.addForce,taint,force={1}", LocalID, addForce);
+                if (PhysBody.HasPhysicalBody)
+                {
+                    PhysicsScene.PE.ApplyCentralForce(PhysBody, addForce);
+                }
             });
         }
         else
         {
-            m_log.ErrorFormat("{0}: Got a NaN force applied to a Character", LogHeader);
+            m_log.WarnFormat("{0}: Got a NaN force applied to a character. LocalID={1}", LogHeader, LocalID);
+            return;
         }
-        //m_lastUpdateSent = false;
     }
 
     public override void AddAngularForce(OMV.Vector3 force, bool pushforce) {
@@ -614,24 +753,31 @@ public sealed class BSCharacter : BSPhysObject
     public override void SetMomentum(OMV.Vector3 momentum) {
     }
 
-    private void ComputeAvatarScale(OMV.Vector3 size)
+    private OMV.Vector3 ComputeAvatarScale(OMV.Vector3 size)
     {
-        // The 'size' given by the simulator is the mid-point of the avatar
-        //    and X and Y are unspecified.
+        OMV.Vector3 newScale;
+        
+        // Bullet's capsule total height is the "passed height + radius * 2";
+        // The base capsule is 1 diameter and 2 height (passed radius=0.5, passed height = 1)
+        // The number we pass in for 'scaling' is the multiplier to get that base
+        //     shape to be the size desired.
+        // So, when creating the scale for the avatar height, we take the passed height
+        //     (size.Z) and remove the caps.
+        // Another oddity of the Bullet capsule implementation is that it presumes the Y
+        //     dimension is the radius of the capsule. Even though some of the code allows
+        //     for a asymmetrical capsule, other parts of the code presume it is cylindrical.
 
-        OMV.Vector3 newScale = size;
-        // newScale.X = PhysicsScene.Params.avatarCapsuleWidth;
-        // newScale.Y = PhysicsScene.Params.avatarCapsuleDepth;
-
-        // From the total height, remove the capsule half spheres that are at each end
-        // The 1.15f came from ODE. Not sure what this factors in.
-        // newScale.Z = (size.Z * 1.15f) - (newScale.X + newScale.Y);
+        // Scale is multiplier of radius with one of "0.5"
+        newScale.X = size.X / 2f;
+        newScale.Y = size.Y / 2f;
 
         // The total scale height is the central cylindar plus the caps on the two ends.
-        newScale.Z = size.Z + (Math.Min(size.X, size.Y) * 2f);
+        newScale.Z = (size.Z + (Math.Min(size.X, size.Y) * 2)) / 2f;
+        // If smaller than the endcaps, just fake like we're almost that small
+        if (newScale.Z < 0)
+            newScale.Z = 0.1f;
 
-        // Convert diameters to radii and height to half height -- the way Bullet expects it.
-        Scale = newScale / 2f;
+        return newScale;
     }
 
     // set _avatarVolume and _mass based on capsule size, _density and Scale
@@ -639,14 +785,14 @@ public sealed class BSCharacter : BSPhysObject
     {
         _avatarVolume = (float)(
                         Math.PI
-                        * Scale.X
-                        * Scale.Y    // the area of capsule cylinder
-                        * Scale.Z    // times height of capsule cylinder
+                        * Size.X / 2f
+                        * Size.Y / 2f    // the area of capsule cylinder
+                        * Size.Z         // times height of capsule cylinder
                       + 1.33333333f
                         * Math.PI
-                        * Scale.X
-                        * Math.Min(Scale.X, Scale.Y)
-                        * Scale.Y    // plus the volume of the capsule end caps
+                        * Size.X / 2f
+                        * Math.Min(Size.X, Size.Y) / 2
+                        * Size.Y / 2f    // plus the volume of the capsule end caps
                         );
         _mass = _avatarDensity * _avatarVolume;
     }
@@ -660,6 +806,7 @@ public sealed class BSCharacter : BSPhysObject
         _velocity = entprop.Velocity;
         _acceleration = entprop.Acceleration;
         _rotationalVelocity = entprop.RotationalVelocity;
+
         // Do some sanity checking for the avatar. Make sure it's above ground and inbounds.
         PositionSanityCheck(true);
 
@@ -667,17 +814,8 @@ public sealed class BSCharacter : BSPhysObject
         LastEntityProperties = CurrentEntityProperties;
         CurrentEntityProperties = entprop;
 
-        if (entprop.Velocity != LastEntityProperties.Velocity)
-        {
-            // Changes in the velocity are suppressed in avatars.
-            // That's just the way they are defined.
-            OMV.Vector3 avVel = new OMV.Vector3(_appliedVelocity.X, _appliedVelocity.Y, entprop.Velocity.Z);
-            _velocity = avVel;
-            BulletSimAPI.SetLinearVelocity2(PhysBody.ptr, avVel);
-        }
-
         // Tell the linkset about value changes
-        Linkset.UpdateProperties(this);
+        Linkset.UpdateProperties(this, true);
 
         // Avatars don't report their changes the usual way. Changes are checked for in the heartbeat loop.
         // base.RequestPhysicsterseUpdate();

@@ -99,6 +99,15 @@ namespace OpenSim.Region.Framework.Scenes
     /// </summary>
     public partial class SceneObjectGroup : EntityBase, ISceneObject
     {
+        // Axis selection bitmask used by SetAxisRotation()
+        // Just happen to be the same bits used by llSetStatus() and defined in ScriptBaseClass.
+        public enum axisSelect : int
+        {
+            STATUS_ROTATE_X = 0x002,
+            STATUS_ROTATE_Y = 0x004,
+            STATUS_ROTATE_Z = 0x008,
+        }
+
         // private PrimCountTaintedDelegate handlerPrimCountTainted = null;
 
         /// <summary>
@@ -430,8 +439,19 @@ namespace OpenSim.Region.Framework.Scenes
 
                 if (Scene != null)
                 {
-                    if ((Scene.TestBorderCross(val - Vector3.UnitX, Cardinals.E) || Scene.TestBorderCross(val + Vector3.UnitX, Cardinals.W)
-                        || Scene.TestBorderCross(val - Vector3.UnitY, Cardinals.N) || Scene.TestBorderCross(val + Vector3.UnitY, Cardinals.S)) 
+                    if (
+                        // (Scene.TestBorderCross(val - Vector3.UnitX, Cardinals.E)
+                        //     || Scene.TestBorderCross(val + Vector3.UnitX, Cardinals.W)
+                        //     || Scene.TestBorderCross(val - Vector3.UnitY, Cardinals.N)
+                        //     || Scene.TestBorderCross(val + Vector3.UnitY, Cardinals.S))
+                        // Experimental change for better border crossings.
+                        //    The commented out original lines above would, it seems, trigger
+                        //    a border crossing a little early or late depending on which
+                        //    direction the object was moving.
+                        (Scene.TestBorderCross(val, Cardinals.E)
+                            || Scene.TestBorderCross(val, Cardinals.W)
+                            || Scene.TestBorderCross(val, Cardinals.N)
+                            || Scene.TestBorderCross(val, Cardinals.S))
                         && !IsAttachmentCheckFull() && (!Scene.LoadingPrims))
                     {
                         m_scene.CrossPrimGroupIntoNewRegion(val, this, true);

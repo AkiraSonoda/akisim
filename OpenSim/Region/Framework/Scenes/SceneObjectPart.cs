@@ -1918,11 +1918,11 @@ namespace OpenSim.Region.Framework.Scenes
         public int GetAxisRotation(int axis)
         {
             //Cannot use ScriptBaseClass constants as no referance to it currently.
-            if (axis == 2)//STATUS_ROTATE_X
+            if (axis == (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_X)
                 return STATUS_ROTATE_X;
-            if (axis == 4)//STATUS_ROTATE_Y
+            if (axis == (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Y)
                 return STATUS_ROTATE_Y;
-            if (axis == 8)//STATUS_ROTATE_Z
+            if (axis == (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Z)
                 return STATUS_ROTATE_Z;
 
             return 0;
@@ -2266,11 +2266,14 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void PhysicsOutOfBounds(Vector3 pos)
         {
-            m_log.Error("[PHYSICS]: Physical Object went out of bounds.");
+            // Note: This is only being called on the root prim at this time.
+
+            m_log.ErrorFormat(
+                "[SCENE OBJECT PART]: Physical object {0}, localID {1} went out of bounds at {2} in {3}.  Stopping at {4} and making non-physical.", 
+                Name, LocalId, pos, ParentGroup.Scene.Name, AbsolutePosition);
             
             RemFlag(PrimFlags.Physics);
             DoPhysicsPropertyUpdate(false, true);
-            //ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(PhysActor);
         }
 
         public void PhysicsRequestingTerseUpdate()
@@ -2668,13 +2671,13 @@ namespace OpenSim.Region.Framework.Scenes
             ParentGroup.SetAxisRotation(axis, rotate);
 
             //Cannot use ScriptBaseClass constants as no referance to it currently.
-            if (axis == 2)//STATUS_ROTATE_X
+            if ((axis & (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_X) != 0)
                 STATUS_ROTATE_X = rotate;
 
-            if (axis == 4)//STATUS_ROTATE_Y
+            if ((axis & (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Y) != 0)
                 STATUS_ROTATE_Y = rotate;
 
-            if (axis == 8)//STATUS_ROTATE_Z
+            if ((axis & (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Z) != 0)
                 STATUS_ROTATE_Z = rotate;
         }
 
@@ -3993,13 +3996,14 @@ namespace OpenSim.Region.Framework.Scenes
                     VolumeDetectActive = true;
                 }
             }
-            else
+            else if (SetVD != wasVD)
             {
                 // Remove VolumeDetect in any case. Note, it's safe to call SetVolumeDetect as often as you like
                 // (mumbles, well, at least if you have infinte CPU powers :-))
                 if (pa != null)
                     pa.SetVolumeDetect(0);
 
+                RemFlag(PrimFlags.Phantom);
                 VolumeDetectActive = false;
             }
 

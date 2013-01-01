@@ -364,6 +364,13 @@ namespace OpenSim.Framework
                 x;
         }
 
+        // Inclusive, within range test (true if equal to the endpoints)
+        public static bool InRange<T>(T x, T min, T max)
+            where T : IComparable<T>
+        {
+            return x.CompareTo(max) <= 0 && x.CompareTo(min) >= 0;
+        }
+
         public static uint GetNextXferID()
         {
             uint id = 0;
@@ -1966,6 +1973,12 @@ namespace OpenSim.Framework
         /// </summary>
         public static void PrintCallStack()
         {
+            PrintCallStack(m_log.DebugFormat);
+        }
+
+        public delegate void DebugPrinter(string msg, params Object[] parm);
+        public static void PrintCallStack(DebugPrinter printer)
+        {
             StackTrace stackTrace = new StackTrace(true);           // get call stack
             StackFrame[] stackFrames = stackTrace.GetFrames();  // get method calls (frames)
 
@@ -1973,7 +1986,7 @@ namespace OpenSim.Framework
             foreach (StackFrame stackFrame in stackFrames)
             {
                 MethodBase mb = stackFrame.GetMethod();
-                m_log.DebugFormat("{0}.{1}:{2}", mb.DeclaringType, mb.Name, stackFrame.GetFileLineNumber()); // write method name
+                printer("{0}.{1}:{2}", mb.DeclaringType, mb.Name, stackFrame.GetFileLineNumber()); // write method name
             }
         }
 

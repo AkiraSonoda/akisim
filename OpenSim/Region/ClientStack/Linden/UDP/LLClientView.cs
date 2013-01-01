@@ -10854,14 +10854,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP {
 
                 if (logPacket) {
                     m_log.DebugFormat(
-                        "[LLClientView]: PACKET IN  from {0} ({1}) in {2} - {3}",
-                        Name, SceneAgent.IsChildAgent ? "child" : "root ", m_scene.RegionInfo.RegionName, packet.Type);
-                }
+                        "[CLIENT]: PACKET IN  from {0} ({1}) in {2} - {3}",
+                        Name, SceneAgent.IsChildAgent ? "child" : "root ", Scene.Name, packet.Type);
             }
 
-            if (!ProcessPacketMethod(packet)) {
-                m_log.DebugFormat("[LLClientView]: unhandled packet {0}", packet.Type);
-            }
+            if (!ProcessPacketMethod(packet))
+                m_log.WarnFormat(
+                    "[CLIENT]: Unhandled packet {0} from {1} ({2}) in {3}.  Ignoring.",
+                    packet.Type, Name, SceneAgent.IsChildAgent ? "child" : "root ", Scene.Name);
+        }
 
             PacketPool.Instance.ReturnPacket(packet);
         }

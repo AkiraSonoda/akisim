@@ -98,7 +98,7 @@ public sealed class BSShapeCollection : IDisposable
     //    higher level dependencies on the shape or body. Mostly used for LinkSets to
     //    remove the physical constraints before the body is destroyed.
     // Called at taint-time!!
-    public bool GetBodyAndShape(bool forceRebuild, BulletSim sim, BSPhysObject prim,
+    public bool GetBodyAndShape(bool forceRebuild, BulletWorld sim, BSPhysObject prim,
                     ShapeDestructionCallback shapeCallback, BodyDestructionCallback bodyCallback)
     {
         PhysicsScene.AssertInTaintTime("BSShapeCollection.GetBodyAndShape");
@@ -126,6 +126,11 @@ public sealed class BSShapeCollection : IDisposable
         return ret;
     }
 
+    public bool GetBodyAndShape(bool forceRebuild, BulletWorld sim, BSPhysObject prim)
+    {
+        return GetBodyAndShape(forceRebuild, sim, prim, null, null);
+    }
+
     // Track another user of a body.
     // We presume the caller has allocated the body.
     // Bodies only have one user so the body is just put into the world if not already there.
@@ -136,9 +141,9 @@ public sealed class BSShapeCollection : IDisposable
             if (DDetail) DetailLog("{0},BSShapeCollection.ReferenceBody,newBody,body={1}", body.ID, body);
             PhysicsScene.TaintedObject(inTaintTime, "BSShapeCollection.ReferenceBody", delegate()
             {
-                if (!BulletSimAPI.IsInWorld2(body.ptr))
+                if (!PhysicsScene.PE.IsInWorld(body))
                 {
-                    BulletSimAPI.AddObjectToWorld2(PhysicsScene.World.ptr, body.ptr);
+                    PhysicsScene.PE.AddObjectToWorld(PhysicsScene.World, body);
                     if (DDetail) DetailLog("{0},BSShapeCollection.ReferenceBody,addedToWorld,ref={1}", body.ID, body);
                 }
             });
@@ -149,7 +154,7 @@ public sealed class BSShapeCollection : IDisposable
     // Called when releasing use of a BSBody. BSShape is handled separately.
     public void DereferenceBody(BulletBody body, bool inTaintTime, BodyDestructionCallback bodyCallback )
     {
-        if (body.ptr == IntPtr.Zero)
+        if (!body.HasPhysicalBody)
             return;
 
         lock (m_collectionActivityLock)
@@ -161,15 +166,15 @@ public sealed class BSShapeCollection : IDisposable
                 // If the caller needs to know the old body is going away, pass the event up.
                 if (bodyCallback != null) bodyCallback(body);
 
-                if (BulletSimAPI.IsInWorld2(body.ptr))
+                if (PhysicsScene.PE.IsInWorld(body))
                 {
-                    BulletSimAPI.RemoveObjectFromWorld2(PhysicsScene.World.ptr, body.ptr);
+                    PhysicsScene.PE.RemoveObjectFromWorld(PhysicsScene.World, body);
                     if (DDetail) DetailLog("{0},BSShapeCollection.DereferenceBody,removingFromWorld. Body={1}", body.ID, body);
                 }
 
                 // Zero any reference to the shape so it is not freed when the body is deleted.
-                BulletSimAPI.SetCollisionShape2(PhysicsScene.World.ptr, body.ptr, IntPtr.Zero);
-                BulletSimAPI.DestroyObject2(PhysicsScene.World.ptr, body.ptr);
+                PhysicsScene.PE.SetCollisionShape(PhysicsScene.World, body, new BulletShape());
+                PhysicsScene.PE.DestroyObject(PhysicsScene.World, body);
             });
         }
     }
@@ -243,20 +248,20 @@ public sealed class BSShapeCollection : IDisposable
     // Release the usage of a shape.
     public void DereferenceShape(BulletShape shape, bool inTaintTime, ShapeDestructionCallback shapeCallback)
     {
-        if (shape.ptr == IntPtr.Zero)
+        if (!shape.HasPhysicalShape)
             return;
 
         PhysicsScene.TaintedObject(inTaintTime, "BSShapeCollection.DereferenceShape", delegate()
         {
-            if (shape.ptr != IntPtr.Zero)
+            if (shape.HasPhysicalShape)
             {
                 if (shape.isNativeShape)
                 {
                     // Native shapes are not tracked and are released immediately
                     if (DDetail) DetailLog("{0},BSShapeCollection.DereferenceShape,deleteNativeShape,ptr={1},taintTime={2}",
-                                    BSScene.DetailLogZero, shape.ptr.ToString("X"), inTaintTime);
+                                    BSScene.DetailLogZero, shape.AddrString, inTaintTime);
                     if (shapeCallback != null) shapeCallback(shape);
-                    BulletSimAPI.DeleteCollisionShape2(PhysicsScene.World.ptr, shape.ptr);
+                    PhysicsScene.PE.DeleteCollisionShape(PhysicsScene.World, shape);
                 }
                 else
                 {
@@ -327,36 +332,36 @@ public sealed class BSShapeCollection : IDisposable
     // Called at taint-time.
     private void DereferenceCompound(BulletShape shape, ShapeDestructionCallback shapeCallback)
     {
-        if (!BulletSimAPI.IsCompound2(shape.ptr))
+        if (!PhysicsScene.PE.IsCompound(shape))
         {
             // Failed the sanity check!!
             PhysicsScene.Logger.ErrorFormat("{0} Attempt to free a compound shape that is not compound!! type={1}, ptr={2}",
-                                        LogHeader, shape.type, shape.ptr.ToString("X"));
+                                        LogHeader, shape.type, shape.AddrString);
             if (DDetail) DetailLog("{0},BSShapeCollection.DereferenceCompound,notACompoundShape,type={1},ptr={2}",
-                                        BSScene.DetailLogZero, shape.type, shape.ptr.ToString("X"));
+                                        BSScene.DetailLogZero, shape.type, shape.AddrString);
             return;
         }
 
-        int numChildren = BulletSimAPI.GetNumberOfCompoundChildren2(shape.ptr);
+        int numChildren = PhysicsScene.PE.GetNumberOfCompoundChildren(shape);
         if (DDetail) DetailLog("{0},BSShapeCollection.DereferenceCompound,shape={1},children={2}", BSScene.DetailLogZero, shape, numChildren);
 
         for (int ii = numChildren - 1; ii >= 0; ii--)
         {
-            IntPtr childShape = BulletSimAPI.RemoveChildShapeFromCompoundShapeIndex2(shape.ptr, ii);
+            BulletShape childShape = PhysicsScene.PE.RemoveChildShapeFromCompoundShapeIndex(shape, ii);
             DereferenceAnonCollisionShape(childShape);
         }
-        BulletSimAPI.DeleteCollisionShape2(PhysicsScene.World.ptr, shape.ptr);
+        PhysicsScene.PE.DeleteCollisionShape(PhysicsScene.World, shape);
     }
 
     // Sometimes we have a pointer to a collision shape but don't know what type it is.
     // Figure out type and call the correct dereference routine.
     // Called at taint-time.
-    private void DereferenceAnonCollisionShape(IntPtr cShape)
+    private void DereferenceAnonCollisionShape(BulletShape shapeInfo)
     {
         MeshDesc meshDesc;
         HullDesc hullDesc;
 
-        BulletShape shapeInfo = new BulletShape(cShape);
+        IntPtr cShape = shapeInfo.ptr;
         if (TryGetMeshByPtr(cShape, out meshDesc))
         {
             shapeInfo.type = BSPhysicsShapeType.SHAPE_MESH;
@@ -371,13 +376,13 @@ public sealed class BSShapeCollection : IDisposable
             }
             else
             {
-                if (BulletSimAPI.IsCompound2(cShape))
+                if (PhysicsScene.PE.IsCompound(shapeInfo))
                 {
                     shapeInfo.type = BSPhysicsShapeType.SHAPE_COMPOUND;
                 }
                 else
                 {
-                    if (BulletSimAPI.IsNativeShape2(cShape))
+                    if (PhysicsScene.PE.IsNativeShape(shapeInfo))
                     {
                         shapeInfo.isNativeShape = true;
                         shapeInfo.type = BSPhysicsShapeType.SHAPE_BOX; // (technically, type doesn't matter)
@@ -395,7 +400,7 @@ public sealed class BSShapeCollection : IDisposable
         else
         {
             PhysicsScene.Logger.ErrorFormat("{0} Could not decypher shape type. Region={1}, addr={2}",
-                                    LogHeader, PhysicsScene.RegionName, cShape.ToString("X"));
+                                    LogHeader, PhysicsScene.RegionName, shapeInfo.AddrString);
         }
     }
 
@@ -415,8 +420,7 @@ public sealed class BSShapeCollection : IDisposable
         if (!haveShape && prim.PreferredPhysicalShape == BSPhysicsShapeType.SHAPE_CAPSULE)
         {
             // an avatar capsule is close to a native shape (it is not shared)
-            GetReferenceToNativeShape(prim, BSPhysicsShapeType.SHAPE_CAPSULE,
-                            FixedShapeKey.KEY_CAPSULE, shapeCallback);
+            GetReferenceToNativeShape(prim, BSPhysicsShapeType.SHAPE_CAPSULE, FixedShapeKey.KEY_CAPSULE, shapeCallback);
             if (DDetail) DetailLog("{0},BSShapeCollection.CreateGeom,avatarCapsule,shape={1}", prim.LocalID, prim.PhysShape);
             ret = true;
             haveShape = true;
@@ -440,7 +444,7 @@ public sealed class BSShapeCollection : IDisposable
     }
 
     // Create a mesh/hull shape or a native shape if 'nativeShapePossible' is 'true'.
-    private bool CreateGeomNonSpecial(bool forceRebuild, BSPhysObject prim, ShapeDestructionCallback shapeCallback)
+    public bool CreateGeomNonSpecial(bool forceRebuild, BSPhysObject prim, ShapeDestructionCallback shapeCallback)
     {
         bool ret = false;
         bool haveShape = false;
@@ -451,7 +455,7 @@ public sealed class BSShapeCollection : IDisposable
         if (!haveShape
                 && pbs != null
                 && nativeShapePossible
-                && ((pbs.SculptEntry && !PhysicsScene.ShouldMeshSculptedPrim)
+                && ((pbs.SculptEntry && !BSParam.ShouldMeshSculptedPrim)
                     || (pbs.ProfileBegin == 0 && pbs.ProfileEnd == 0
                         && pbs.ProfileHollow == 0
                         && pbs.PathTwist == 0 && pbs.PathTwistBegin == 0
@@ -460,6 +464,11 @@ public sealed class BSShapeCollection : IDisposable
                         && pbs.PathScaleX == 100 && pbs.PathScaleY == 100
                         && pbs.PathShearX == 0 && pbs.PathShearY == 0) ) )
         {
+            // Get the scale of any existing shape so we can see if the new shape is same native type and same size.
+            OMV.Vector3 scaleOfExistingShape = OMV.Vector3.Zero;
+            if (prim.PhysShape.HasPhysicalShape)
+                scaleOfExistingShape = PhysicsScene.PE.GetLocalScaling(prim.PhysShape);
+
             if (DDetail) DetailLog("{0},BSShapeCollection.CreateGeom,maybeNative,force={1},primScale={2},primSize={3},primShape={4}",
                         prim.LocalID, forceRebuild, prim.Scale, prim.Size, prim.PhysShape.type);
 
@@ -469,7 +478,7 @@ public sealed class BSShapeCollection : IDisposable
             {
                 haveShape = true;
                 if (forceRebuild
-                        || prim.Scale != prim.Size
+                        || prim.Scale != scaleOfExistingShape
                         || prim.PhysShape.type != BSPhysicsShapeType.SHAPE_SPHERE
                         )
                 {
@@ -483,7 +492,7 @@ public sealed class BSShapeCollection : IDisposable
             {
                 haveShape = true;
                 if (forceRebuild
-                        || prim.Scale != prim.Size
+                        || prim.Scale != scaleOfExistingShape
                         || prim.PhysShape.type != BSPhysicsShapeType.SHAPE_BOX
                         )
                 {
@@ -510,7 +519,7 @@ public sealed class BSShapeCollection : IDisposable
         bool ret = false;
         // Note that if it's a native shape, the check for physical/non-physical is not
         //     made. Native shapes work in either case.
-        if (prim.IsPhysical && PhysicsScene.ShouldUseHullsForPhysicalObjects)
+        if (prim.IsPhysical && BSParam.ShouldUseHullsForPhysicalObjects)
         {
             // Update prim.BSShape to reference a hull of this shape.
             ret = GetReferenceToHull(prim,shapeCallback);
@@ -542,7 +551,6 @@ public sealed class BSShapeCollection : IDisposable
                                 prim.LocalID, newShape, prim.Scale);
 
         // native shapes are scaled by Bullet
-        prim.Scale = prim.Size;
         prim.PhysShape = newShape;
         return true;
     }
@@ -555,25 +563,24 @@ public sealed class BSShapeCollection : IDisposable
         ShapeData nativeShapeData = new ShapeData();
         nativeShapeData.Type = shapeType;
         nativeShapeData.ID = prim.LocalID;
-        nativeShapeData.Scale = prim.Size;
-        nativeShapeData.Size = prim.Size;  // unneeded, I think.
+        nativeShapeData.Scale = prim.Scale;
+        nativeShapeData.Size = prim.Scale;  // unneeded, I think.
         nativeShapeData.MeshKey = (ulong)shapeKey;
         nativeShapeData.HullKey = (ulong)shapeKey;
 
         if (shapeType == BSPhysicsShapeType.SHAPE_CAPSULE)
         {
-            // The proper scale has been calculated in the prim.
-            newShape = new BulletShape(
-                        BulletSimAPI.BuildCapsuleShape2(PhysicsScene.World.ptr, 1f, 1f, prim.Scale)
-                        , shapeType);
+
+            newShape = PhysicsScene.PE.BuildCapsuleShape(PhysicsScene.World, 1f, 1f, prim.Scale);
             if (DDetail) DetailLog("{0},BSShapeCollection.BuiletPhysicalNativeShape,capsule,scale={1}", prim.LocalID, prim.Scale);
         }
         else
         {
             // Native shapes are scaled in Bullet so set the scaling to the size
-            newShape = new BulletShape(BulletSimAPI.BuildNativeShape2(PhysicsScene.World.ptr, nativeShapeData), shapeType);
+            newShape = PhysicsScene.PE.BuildNativeShape(PhysicsScene.World, nativeShapeData);
+
         }
-        if (newShape.ptr == IntPtr.Zero)
+        if (!newShape.HasPhysicalShape)
         {
             PhysicsScene.Logger.ErrorFormat("{0} BuildPhysicalNativeShape failed. ID={1}, shape={2}",
                                     LogHeader, prim.LocalID, shapeType);
@@ -590,7 +597,7 @@ public sealed class BSShapeCollection : IDisposable
     // Called at taint-time!
     private bool GetReferenceToMesh(BSPhysObject prim, ShapeDestructionCallback shapeCallback)
     {
-        BulletShape newShape = new BulletShape(IntPtr.Zero);
+        BulletShape newShape = new BulletShape();
 
         float lod;
         System.UInt64 newMeshKey = ComputeShapeKey(prim.Size, prim.BaseShape, out lod);
@@ -611,8 +618,6 @@ public sealed class BSShapeCollection : IDisposable
 
         ReferenceShape(newShape);
 
-        // meshes are already scaled by the meshmerizer
-        prim.Scale = new OMV.Vector3(1f, 1f, 1f);
         prim.PhysShape = newShape;
 
         return true;        // 'true' means a new shape has been added to this prim
@@ -620,13 +625,14 @@ public sealed class BSShapeCollection : IDisposable
 
     private BulletShape CreatePhysicalMesh(string objName, System.UInt64 newMeshKey, PrimitiveBaseShape pbs, OMV.Vector3 size, float lod)
     {
+        BulletShape newShape = new BulletShape();
         IMesh meshData = null;
-        IntPtr meshPtr = IntPtr.Zero;
+
         MeshDesc meshDesc;
         if (Meshes.TryGetValue(newMeshKey, out meshDesc))
         {
             // If the mesh has already been built just use it.
-            meshPtr = meshDesc.ptr;
+            newShape = new BulletShape(meshDesc.ptr, BSPhysicsShapeType.SHAPE_MESH);
         }
         else
         {
@@ -649,11 +655,10 @@ public sealed class BSShapeCollection : IDisposable
                 // m_log.DebugFormat("{0}: BSShapeCollection.CreatePhysicalMesh: calling CreateMesh. lid={1}, key={2}, indices={3}, vertices={4}",
                 //                  LogHeader, prim.LocalID, newMeshKey, indices.Length, vertices.Count);
 
-                meshPtr = BulletSimAPI.CreateMeshShape2(PhysicsScene.World.ptr,
+                newShape = PhysicsScene.PE.CreateMeshShape(PhysicsScene.World,
                                     indices.GetLength(0), indices, vertices.Count, verticesAsFloats);
             }
         }
-        BulletShape newShape = new BulletShape(meshPtr, BSPhysicsShapeType.SHAPE_MESH);
         newShape.shapeKey = newMeshKey;
 
         return newShape;
@@ -683,8 +688,6 @@ public sealed class BSShapeCollection : IDisposable
 
         ReferenceShape(newShape);
 
-        // hulls are already scaled by the meshmerizer
-        prim.Scale = new OMV.Vector3(1f, 1f, 1f);
         prim.PhysShape = newShape;
         return true;        // 'true' means a new shape has been added to this prim
     }
@@ -693,12 +696,14 @@ public sealed class BSShapeCollection : IDisposable
     private BulletShape CreatePhysicalHull(string objName, System.UInt64 newHullKey, PrimitiveBaseShape pbs, OMV.Vector3 size, float lod)
     {
 
+        BulletShape newShape = new BulletShape();
         IntPtr hullPtr = IntPtr.Zero;
+
         HullDesc hullDesc;
         if (Hulls.TryGetValue(newHullKey, out hullDesc))
         {
             // If the hull shape already is created, just use it.
-            hullPtr = hullDesc.ptr;
+            newShape = new BulletShape(hullDesc.ptr, BSPhysicsShapeType.SHAPE_HULL);
         }
         else
         {
@@ -786,14 +791,13 @@ public sealed class BSShapeCollection : IDisposable
                     }
                 }
                 // create the hull data structure in Bullet
-                hullPtr = BulletSimAPI.CreateHullShape2(PhysicsScene.World.ptr, hullCount, convHulls);
+                newShape = PhysicsScene.PE.CreateHullShape(PhysicsScene.World, hullCount, convHulls);
             }
         }
 
-        BulletShape newShape = new BulletShape(hullPtr, BSPhysicsShapeType.SHAPE_HULL);
         newShape.shapeKey = newHullKey;
 
-        return newShape;        // 'true' means a new shape has been added to this prim
+        return newShape;
     }
 
     // Callback from convex hull creater with a newly created hull.
@@ -812,12 +816,12 @@ public sealed class BSShapeCollection : IDisposable
         // Don't need to do this as the shape is freed when the new root shape is created below.
         // DereferenceShape(prim.PhysShape, true, shapeCallback);
 
-        BulletShape cShape = new BulletShape(
-            BulletSimAPI.CreateCompoundShape2(PhysicsScene.World.ptr, false), BSPhysicsShapeType.SHAPE_COMPOUND);
+
+        BulletShape cShape = PhysicsScene.PE.CreateCompoundShape(PhysicsScene.World, false);
 
         // Create the shape for the root prim and add it to the compound shape. Cannot be a native shape.
         CreateGeomMeshOrHull(prim, shapeCallback);
-        BulletSimAPI.AddChildShapeToCompoundShape2(cShape.ptr, prim.PhysShape.ptr, OMV.Vector3.Zero, OMV.Quaternion.Identity);
+        PhysicsScene.PE.AddChildShapeToCompoundShape(cShape, prim.PhysShape, OMV.Vector3.Zero, OMV.Quaternion.Identity);
         if (DDetail) DetailLog("{0},BSShapeCollection.GetReferenceToCompoundShape,addRootPrim,compShape={1},rootShape={2}",
                                     prim.LocalID, cShape, prim.PhysShape);
 
@@ -831,14 +835,14 @@ public sealed class BSShapeCollection : IDisposable
     private System.UInt64 ComputeShapeKey(OMV.Vector3 size, PrimitiveBaseShape pbs, out float retLod)
     {
         // level of detail based on size and type of the object
-        float lod = PhysicsScene.MeshLOD;
+        float lod = BSParam.MeshLOD;
         if (pbs.SculptEntry)
-            lod = PhysicsScene.SculptLOD;
+            lod = BSParam.SculptLOD;
 
         // Mega prims usually get more detail because one can interact with shape approximations at this size.
         float maxAxis = Math.Max(size.X, Math.Max(size.Y, size.Z));
-        if (maxAxis > PhysicsScene.MeshMegaPrimThreshold)
-            lod = PhysicsScene.MeshMegaPrimLOD;
+        if (maxAxis > BSParam.MeshMegaPrimThreshold)
+            lod = BSParam.MeshMegaPrimLOD;
 
         retLod = lod;
         return pbs.GetMeshKey(size, lod);
@@ -860,7 +864,7 @@ public sealed class BSShapeCollection : IDisposable
     private BulletShape VerifyMeshCreated(BulletShape newShape, BSPhysObject prim)
     {
         // If the shape was successfully created, nothing more to do
-        if (newShape.ptr != IntPtr.Zero)
+        if (newShape.HasPhysicalShape)
             return newShape;
 
         // If this mesh has an underlying asset and we have not failed getting it before, fetch the asset
@@ -913,19 +917,19 @@ public sealed class BSShapeCollection : IDisposable
     // Updates prim.BSBody with the information about the new body if one is created.
     // Returns 'true' if an object was actually created.
     // Called at taint-time.
-    private bool CreateBody(bool forceRebuild, BSPhysObject prim, BulletSim sim, BulletShape shape,
+    private bool CreateBody(bool forceRebuild, BSPhysObject prim, BulletWorld sim, BulletShape shape,
                             BodyDestructionCallback bodyCallback)
     {
         bool ret = false;
 
         // the mesh, hull or native shape must have already been created in Bullet
-        bool mustRebuild = (prim.PhysBody.ptr == IntPtr.Zero);
+        bool mustRebuild = !prim.PhysBody.HasPhysicalBody;
 
         // If there is an existing body, verify it's of an acceptable type.
         // If not a solid object, body is a GhostObject. Otherwise a RigidBody.
         if (!mustRebuild)
         {
-            CollisionObjectTypes bodyType = (CollisionObjectTypes)BulletSimAPI.GetBodyType2(prim.PhysBody.ptr);
+            CollisionObjectTypes bodyType = (CollisionObjectTypes)PhysicsScene.PE.GetBodyType(prim.PhysBody);
             if (prim.IsSolid && bodyType != CollisionObjectTypes.CO_RIGID_BODY
                 || !prim.IsSolid && bodyType != CollisionObjectTypes.CO_GHOST_OBJECT)
             {
@@ -940,20 +944,16 @@ public sealed class BSShapeCollection : IDisposable
             DereferenceBody(prim.PhysBody, true, bodyCallback);
 
             BulletBody aBody;
-            IntPtr bodyPtr = IntPtr.Zero;
             if (prim.IsSolid)
             {
-                bodyPtr = BulletSimAPI.CreateBodyFromShape2(sim.ptr, shape.ptr,
-                                        prim.LocalID, prim.RawPosition, prim.RawOrientation);
-                if (DDetail) DetailLog("{0},BSShapeCollection.CreateBody,mesh,ptr={1}", prim.LocalID, bodyPtr.ToString("X"));
+                aBody = PhysicsScene.PE.CreateBodyFromShape(sim, shape, prim.LocalID, prim.RawPosition, prim.RawOrientation);
+                if (DDetail) DetailLog("{0},BSShapeCollection.CreateBody,mesh,body={1}", prim.LocalID, aBody);
             }
             else
             {
-                bodyPtr = BulletSimAPI.CreateGhostFromShape2(sim.ptr, shape.ptr,
-                                        prim.LocalID, prim.RawPosition, prim.RawOrientation);
-                if (DDetail) DetailLog("{0},BSShapeCollection.CreateBody,ghost,ptr={1}", prim.LocalID, bodyPtr.ToString("X"));
+                aBody = PhysicsScene.PE.CreateGhostFromShape(sim, shape, prim.LocalID, prim.RawPosition, prim.RawOrientation);
+                if (DDetail) DetailLog("{0},BSShapeCollection.CreateBody,ghost,body={1}", prim.LocalID, aBody);
             }
-            aBody = new BulletBody(prim.LocalID, bodyPtr);
 
             ReferenceBody(aBody, true);
 
