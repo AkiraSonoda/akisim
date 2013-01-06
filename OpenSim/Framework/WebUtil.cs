@@ -874,7 +874,7 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            m_log.InfoFormat (
+            m_log.DebugFormat (
 				"[WEB UTIL]: HTTP OUT {0} SynchronousRestForms {1} {2} {3}",
                 reqnum, verb, requestUrl, obj);
 
