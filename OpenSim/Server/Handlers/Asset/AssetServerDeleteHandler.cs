@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using Nini.Config;
 using log4net;
 using System;
@@ -70,7 +71,8 @@ namespace OpenSim.Server.Handlers.Asset
         }
 
         public override byte[] Handle(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+        {
             bool result = false;
 
             string[] p = SplitParams(path);

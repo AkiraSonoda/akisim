@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -55,7 +56,7 @@ namespace OpenSim.Framework.Servers
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
-        
+
         /// <summary>
         /// This will control a periodic log printout of the current 'show stats' (if they are active) for this
         /// server.
@@ -104,8 +105,7 @@ namespace OpenSim.Framework.Servers
         /// <summary>
         /// Should be overriden and referenced by descendents if they need to perform extra shutdown processing
         /// </summary>
-        public virtual void ShutdownSpecific() {
-        }
+        public virtual void ShutdownSpecific() {}
         
         /// <summary>
         /// Provides a list of help topics that are available.  Overriding classes should append their topics to the
@@ -115,14 +115,13 @@ namespace OpenSim.Framework.Servers
         /// <returns>
         /// A list of strings that represent different help topics on which more information is available
         /// </returns>
-        protected virtual List<string> GetHelpTopics() {
-            return new List<string>();
-        }
+        protected virtual List<string> GetHelpTopics() { return new List<string>(); }
 
         /// <summary>
         /// Print statistics to the logfile, if they are active
         /// </summary>
-        protected void LogDiagnostics(object source, ElapsedEventArgs e) {
+        protected void LogDiagnostics(object source, ElapsedEventArgs e)
+        {
             StringBuilder sb = new StringBuilder("DIAGNOSTICS\n\n");
             sb.Append(GetUptimeReport());
             sb.Append(StatsManager.SimExtraStats.Report());
@@ -135,7 +134,8 @@ namespace OpenSim.Framework.Servers
         /// <summary>
         /// Performs initialisation of the scene, such as loading configuration from disk.
         /// </summary>
-        public virtual void Startup() {
+        public virtual void Startup()
+        {
             m_log.Info("[STARTUP]: Beginning startup processing");
             
             m_log.Info("[STARTUP]: OpenSimulator version: " + m_version + Environment.NewLine);
@@ -158,7 +158,8 @@ namespace OpenSim.Framework.Servers
         /// <summary>
         /// Should be overriden and referenced by descendents if they need to perform extra shutdown processing
         /// </summary>
-        public virtual void Shutdown() {
+        public virtual void Shutdown()
+        {
             ShutdownSpecific();
             
             m_log.Info("[SHUTDOWN]: Shutdown processing on main thread complete.  Exiting...");
@@ -167,7 +168,8 @@ namespace OpenSim.Framework.Servers
             Environment.Exit(0);
         }
 
-        private void HandleQuit(string module, string[] args) {
+        private void HandleQuit(string module, string[] args)
+        {
             Shutdown();
         }      
         
@@ -176,7 +178,8 @@ namespace OpenSim.Framework.Servers
             get { return m_osSecret; }            
         }
 
-        public string StatReport(IOSHttpRequest httpRequest) {
+        public string StatReport(IOSHttpRequest httpRequest)
+        {
             // If we catch a request for "callback", wrap the response in the value for jsonp
             if (httpRequest.Query.ContainsKey("callback"))
             {

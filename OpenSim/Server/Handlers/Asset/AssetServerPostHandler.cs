@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using Nini.Config;
 using log4net;
 using System;
@@ -39,13 +40,17 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 
-namespace OpenSim.Server.Handlers.Asset {
-    public class AssetServerPostHandler : BaseStreamHandler {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+namespace OpenSim.Server.Handlers.Asset
+{
+    public class AssetServerPostHandler : BaseStreamHandler
+    {
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         private IAssetService m_AssetService;
 
         public AssetServerPostHandler(IAssetService service) :
-                base("POST", "/assets") {
+                base("POST", "/assets")
+        {
             m_AssetService = service;
         }
 
@@ -75,6 +80,7 @@ namespace OpenSim.Server.Handlers.Asset {
             }
 
             string id = m_AssetService.Store(asset);
+
             xs = new XmlSerializer(typeof(string));
             return ServerUtils.SerializeResult(xs, id);
         }

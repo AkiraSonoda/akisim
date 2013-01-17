@@ -56,7 +56,6 @@ namespace OpenSim.Services.Connectors
 
         public XInventoryServicesConnector(string serverURI)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: XInventoryServicesConnector( serverURI: {0})",serverURI);
             m_ServerURI = serverURI.TrimEnd('/');
         }
 
@@ -70,7 +69,7 @@ namespace OpenSim.Services.Connectors
             IConfig assetConfig = source.Configs["InventoryService"];
             if (assetConfig == null)
             {
-				m_log.Error("[XInventoryServicesConnector]: InventoryService missing from OpenSim.ini");
+                m_log.Error("[INVENTORY CONNECTOR]: InventoryService missing from OpenSim.ini");
                 throw new Exception("Inventory connector init error");
             }
 
@@ -79,7 +78,7 @@ namespace OpenSim.Services.Connectors
 
             if (serviceURI == String.Empty)
             {
-				m_log.Error("[XInventoryServicesConnector]: No Server URI named in section InventoryService");
+                m_log.Error("[INVENTORY CONNECTOR]: No Server URI named in section InventoryService");
                 throw new Exception("Inventory connector init error");
             }
             m_ServerURI = serviceURI;
@@ -87,8 +86,6 @@ namespace OpenSim.Services.Connectors
 
         public bool CreateUserInventory(UUID principalID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: CreateUserInventory( principalID: {0})",principalID.ToString());
-
             Dictionary<string,object> ret = MakeRequest("CREATEUSERINVENTORY",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() }
@@ -104,8 +101,7 @@ namespace OpenSim.Services.Connectors
 
         public List<InventoryFolderBase> GetInventorySkeleton(UUID principalID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetInventorySkeleton( principalID: {0})",principalID.ToString());
-			Dictionary<string,object> ret = MakeRequest("GETINVENTORYSKELETON",
+            Dictionary<string,object> ret = MakeRequest("GETINVENTORYSKELETON",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() }
                     });
@@ -126,7 +122,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.Error("[XInventoryServicesConnector]: Exception unwrapping folder list: ", e);
+                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception unwrapping folder list: ", e);
             }
 
             return fldrs;
@@ -134,8 +130,7 @@ namespace OpenSim.Services.Connectors
 
         public InventoryFolderBase GetRootFolder(UUID principalID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetRootFolder( principalID: {0})",principalID.ToString());
-			Dictionary<string,object> ret = MakeRequest("GETROOTFOLDER",
+            Dictionary<string,object> ret = MakeRequest("GETROOTFOLDER",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() }
                     });
@@ -150,8 +145,7 @@ namespace OpenSim.Services.Connectors
 
         public InventoryFolderBase GetFolderForType(UUID principalID, AssetType type)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetFolderForType( principalID: {0})",principalID.ToString());
-			Dictionary<string,object> ret = MakeRequest("GETFOLDERFORTYPE",
+            Dictionary<string,object> ret = MakeRequest("GETFOLDERFORTYPE",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() },
                         { "TYPE", ((int)type).ToString() }
@@ -167,8 +161,7 @@ namespace OpenSim.Services.Connectors
 
         public InventoryCollection GetFolderContent(UUID principalID, UUID folderID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetFolderContent( principalID: {0})",principalID.ToString());
-			InventoryCollection inventory = new InventoryCollection();
+            InventoryCollection inventory = new InventoryCollection();
             inventory.Folders = new List<InventoryFolderBase>();
             inventory.Items = new List<InventoryItemBase>();
             inventory.UserID = principalID;
@@ -198,7 +191,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.WarnFormat("[XInventoryServicesConnector]: Exception in GetFolderContent: {0}", e.Message);
+                m_log.WarnFormat("[XINVENTORY SERVICES CONNECTOR]: Exception in GetFolderContent: {0}", e.Message);
             }
 
             return inventory;
@@ -206,8 +199,7 @@ namespace OpenSim.Services.Connectors
 
         public List<InventoryItemBase> GetFolderItems(UUID principalID, UUID folderID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetFolderItems( principalID: {0}, folderID: {1})",principalID.ToString(), folderID.ToString());
-			Dictionary<string,object> ret = MakeRequest("GETFOLDERITEMS",
+            Dictionary<string,object> ret = MakeRequest("GETFOLDERITEMS",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() },
                         { "FOLDER", folderID.ToString() }
@@ -228,8 +220,7 @@ namespace OpenSim.Services.Connectors
 
         public bool AddFolder(InventoryFolderBase folder)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetFolderContent( InventoryFolderBase: {0})",folder.Name);
-			Dictionary<string,object> ret = MakeRequest("ADDFOLDER",
+            Dictionary<string,object> ret = MakeRequest("ADDFOLDER",
                     new Dictionary<string,object> {
                         { "ParentID", folder.ParentID.ToString() },
                         { "Type", folder.Type.ToString() },
@@ -247,8 +238,7 @@ namespace OpenSim.Services.Connectors
 
         public bool UpdateFolder(InventoryFolderBase folder)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: UpdateFolder( InventoryFolderBase: {0})",folder.Name);
-			Dictionary<string,object> ret = MakeRequest("UPDATEFOLDER",
+            Dictionary<string,object> ret = MakeRequest("UPDATEFOLDER",
                     new Dictionary<string,object> {
                         { "ParentID", folder.ParentID.ToString() },
                         { "Type", folder.Type.ToString() },
@@ -266,8 +256,7 @@ namespace OpenSim.Services.Connectors
 
         public bool MoveFolder(InventoryFolderBase folder)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: MoveFolder( InventoryFolderBase: {0})",folder.Name);
-			Dictionary<string,object> ret = MakeRequest("MOVEFOLDER",
+            Dictionary<string,object> ret = MakeRequest("MOVEFOLDER",
                     new Dictionary<string,object> {
                         { "ParentID", folder.ParentID.ToString() },
                         { "ID", folder.ID.ToString() },
@@ -282,8 +271,7 @@ namespace OpenSim.Services.Connectors
 
         public bool DeleteFolders(UUID principalID, List<UUID> folderIDs)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: DeleteFolders( principalID: {0})",principalID.ToString());
-			List<string> slist = new List<string>();
+            List<string> slist = new List<string>();
 
             foreach (UUID f in folderIDs)
                 slist.Add(f.ToString());
@@ -302,8 +290,7 @@ namespace OpenSim.Services.Connectors
 
         public bool PurgeFolder(InventoryFolderBase folder)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: PurgeFolder( InventoryFolderBase: {0})", folder.Name);
-			Dictionary<string,object> ret = MakeRequest("PURGEFOLDER",
+            Dictionary<string,object> ret = MakeRequest("PURGEFOLDER",
                     new Dictionary<string,object> {
                         { "ID", folder.ID.ToString() }
                     });
@@ -316,8 +303,7 @@ namespace OpenSim.Services.Connectors
 
         public bool AddItem(InventoryItemBase item)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: AddItem( InventoryItemBase: {0})", item.Name);
-			if (item.CreatorData == null)
+            if (item.CreatorData == null)
                 item.CreatorData = String.Empty;
             Dictionary<string,object> ret = MakeRequest("ADDITEM",
                     new Dictionary<string,object> {
@@ -352,8 +338,7 @@ namespace OpenSim.Services.Connectors
 
         public bool UpdateItem(InventoryItemBase item)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: UpdateItem( InventoryItemBase: {0})", item.Name);
-			if (item.CreatorData == null)
+            if (item.CreatorData == null)
                 item.CreatorData = String.Empty;
             Dictionary<string,object> ret = MakeRequest("UPDATEITEM",
                     new Dictionary<string,object> {
@@ -388,8 +373,7 @@ namespace OpenSim.Services.Connectors
 
         public bool MoveItems(UUID principalID, List<InventoryItemBase> items)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: MoveItems( principalID: {0})", principalID.ToString());
-			List<string> idlist = new List<string>();
+            List<string> idlist = new List<string>();
             List<string> destlist = new List<string>();
 
             foreach (InventoryItemBase item in items)
@@ -413,8 +397,7 @@ namespace OpenSim.Services.Connectors
 
         public bool DeleteItems(UUID principalID, List<UUID> itemIDs)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: DeleteItems( principalID: {0})", principalID.ToString());
-			List<string> slist = new List<string>();
+            List<string> slist = new List<string>();
 
             foreach (UUID f in itemIDs)
                 slist.Add(f.ToString());
@@ -433,8 +416,7 @@ namespace OpenSim.Services.Connectors
 
         public InventoryItemBase GetItem(InventoryItemBase item)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetItem( InventoryItemBase: {0})", item.Name);
-			try
+            try
             {
                 Dictionary<string, object> ret = MakeRequest("GETITEM",
                         new Dictionary<string, object> {
@@ -450,7 +432,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.Error("[XInventoryServicesConnector]: Exception in GetItem: ", e);
+                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception in GetItem: ", e);
             }
 
             return null;
@@ -458,8 +440,7 @@ namespace OpenSim.Services.Connectors
 
         public InventoryFolderBase GetFolder(InventoryFolderBase folder)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetFolder( InventoryFolderBase: {0})", folder.Name);
-			try
+            try
             {
                 Dictionary<string, object> ret = MakeRequest("GETFOLDER",
                         new Dictionary<string, object> {
@@ -475,7 +456,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.Error("[XInventoryServicesConnector]: Exception in GetFolder: ", e);
+                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception in GetFolder: ", e);
             }
 
             return null;
@@ -483,8 +464,7 @@ namespace OpenSim.Services.Connectors
 
         public List<InventoryItemBase> GetActiveGestures(UUID principalID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetActiveGestures( principalID: {0})", principalID.ToString());
-			Dictionary<string,object> ret = MakeRequest("GETACTIVEGESTURES",
+            Dictionary<string,object> ret = MakeRequest("GETACTIVEGESTURES",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() }
                     });
@@ -494,7 +474,7 @@ namespace OpenSim.Services.Connectors
 
             List<InventoryItemBase> items = new List<InventoryItemBase>();
 
-            foreach (Object o in ret.Values) // getting the values directly, we don't care about the keys item_i
+            foreach (Object o in ((Dictionary<string,object>)ret["ITEMS"]).Values)
                 items.Add(BuildItem((Dictionary<string, object>)o));
 
             return items;
@@ -502,8 +482,7 @@ namespace OpenSim.Services.Connectors
 
         public int GetAssetPermissions(UUID principalID, UUID assetID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetAssetPermissions( principalID: {0}, assetID: {1})", principalID.ToString(), assetID.ToString());
-			Dictionary<string,object> ret = MakeRequest("GETASSETPERMISSIONS",
+            Dictionary<string,object> ret = MakeRequest("GETASSETPERMISSIONS",
                     new Dictionary<string,object> {
                         { "PRINCIPAL", principalID.ToString() },
                         { "ASSET", assetID.ToString() }
@@ -517,8 +496,7 @@ namespace OpenSim.Services.Connectors
 
         public InventoryCollection GetUserInventory(UUID principalID)
         {
-			m_log.DebugFormat("[XInventoryServicesConnector]: GetUserInventory( principalID: {0})", principalID.ToString());
-			InventoryCollection inventory = new InventoryCollection();
+            InventoryCollection inventory = new InventoryCollection();
             inventory.Folders = new List<InventoryFolderBase>();
             inventory.Items = new List<InventoryItemBase>();
             inventory.UserID = principalID;
@@ -547,7 +525,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.Error("[XInventoryServicesConnector]: Exception in GetUserInventory: ", e);
+                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception in GetUserInventory: ", e);
             }
 
             return inventory;
@@ -583,8 +561,7 @@ namespace OpenSim.Services.Connectors
 
         private InventoryFolderBase BuildFolder(Dictionary<string,object> data)
         {
-			m_log.Debug("[XInventoryServicesConnector]: BuildFolder( data)");
-			InventoryFolderBase folder = new InventoryFolderBase();
+            InventoryFolderBase folder = new InventoryFolderBase();
 
             try
             {
@@ -597,7 +574,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.Error("[XInventoryServicesConnector]: Exception building folder: ", e);
+                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception building folder: ", e);
             }
 
             return folder;
@@ -605,8 +582,7 @@ namespace OpenSim.Services.Connectors
 
         private InventoryItemBase BuildItem(Dictionary<string,object> data)
         {
-			m_log.Debug("[XInventoryServicesConnector]: BuildItem( data)");
-			InventoryItemBase item = new InventoryItemBase();
+            InventoryItemBase item = new InventoryItemBase();
 
             try
             {
@@ -637,7 +613,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-				m_log.Error("[XInventoryServicesConnector]: Exception building item: ", e);
+                m_log.Error("[XINVENTORY CONNECTOR]: Exception building item: ", e);
             }
 
             return item;

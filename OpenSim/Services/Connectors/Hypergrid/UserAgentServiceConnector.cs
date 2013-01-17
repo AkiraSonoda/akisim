@@ -113,7 +113,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
             if (destination == null)
             {
                 reason = "Destination is null";
-                m_log.Warn("[USER AGENT CONNECTOR]: Given destination is null");
+                m_log.Debug("[USER AGENT CONNECTOR]: Given destination is null");
                 return false;
             }
 
@@ -125,6 +125,8 @@ namespace OpenSim.Services.Connectors.Hypergrid
             AgentCreateRequest.Method = "POST";
             AgentCreateRequest.ContentType = "application/json";
             AgentCreateRequest.Timeout = 10000;
+            //AgentCreateRequest.KeepAlive = false;
+            //AgentCreateRequest.Headers.Add("Authorization", authKey);
 
             // Fill it in
             OSDMap args = PackCreateAgentArguments(aCircuit, gatekeeper, destination, ipaddress);
@@ -150,12 +152,13 @@ namespace OpenSim.Services.Connectors.Hypergrid
                 AgentCreateRequest.ContentLength = buffer.Length;   //Count bytes to send
                 os = AgentCreateRequest.GetRequestStream();
                 os.Write(buffer, 0, strBuffer.Length);         //Send it
-                m_log.DebugFormat("[USER AGENT CONNECTOR]: Posted CreateAgent request to remote sim {0}, region {1}, x={2} y={3}",
+                m_log.InfoFormat("[USER AGENT CONNECTOR]: Posted CreateAgent request to remote sim {0}, region {1}, x={2} y={3}",
                     uri, destination.RegionName, destination.RegionLocX, destination.RegionLocY);
             }
             //catch (WebException ex)
             catch
             {
+                //m_log.InfoFormat("[USER AGENT CONNECTOR]: Bad send on ChildAgentUpdate {0}", ex.Message);
                 reason = "cannot contact remote region";
                 return false;
             }
@@ -166,7 +169,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
             }
 
             // Let's wait for the response
-            m_log.Debug("[USER AGENT CONNECTOR]: Waiting for a reply after DoCreateChildAgentCall");
+            //m_log.Info("[USER AGENT CONNECTOR]: Waiting for a reply after DoCreateChildAgentCall");
 
             WebResponse webResponse = null;
             StreamReader sr = null;
@@ -175,14 +178,14 @@ namespace OpenSim.Services.Connectors.Hypergrid
                 webResponse = AgentCreateRequest.GetResponse();
                 if (webResponse == null)
                 {
-                    m_log.Warn("[USER AGENT CONNECTOR]: Null reply on DoCreateChildAgentCall post");
+                    m_log.Info("[USER AGENT CONNECTOR]: Null reply on DoCreateChildAgentCall post");
                 }
                 else
                 {
 
                     sr = new StreamReader(webResponse.GetResponseStream());
                     string response = sr.ReadToEnd().Trim();
-                    m_log.DebugFormat("[USER AGENT CONNECTOR]: DoCreateChildAgentCall reply was {0} ", response);
+                    m_log.InfoFormat("[USER AGENT CONNECTOR]: DoCreateChildAgentCall reply was {0} ", response);
 
                     if (!String.IsNullOrEmpty(response))
                     {
@@ -196,7 +199,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
                         }
                         catch (NullReferenceException e)
                         {
-                            m_log.WarnFormat("[USER AGENT CONNECTOR]: exception on reply of DoCreateChildAgentCall {0}", e.Message);
+                            m_log.InfoFormat("[USER AGENT CONNECTOR]: exception on reply of DoCreateChildAgentCall {0}", e.Message);
 
                             // check for old style response
                             if (response.ToLower().StartsWith("true"))
@@ -209,7 +212,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
             }
             catch (WebException ex)
             {
-                m_log.WarnFormat("[USER AGENT CONNECTOR]: exception on reply of DoCreateChildAgentCall {0}", ex.Message);
+                m_log.InfoFormat("[USER AGENT CONNECTOR]: exception on reply of DoCreateChildAgentCall {0}", ex.Message);
                 reason = "Destination did not reply";
                 return false;
             }

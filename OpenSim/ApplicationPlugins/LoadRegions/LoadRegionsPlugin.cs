@@ -98,6 +98,15 @@ namespace OpenSim.ApplicationPlugins.LoadRegions
             regionLoader.SetIniConfigSource(m_openSim.ConfigSource.Source);
             RegionInfo[] regionsToLoad = regionLoader.LoadRegions();
 
+            m_log.Info("[LOAD REGIONS PLUGIN]: Loading specific shared modules...");
+            //m_log.Info("[LOAD REGIONS PLUGIN]: DynamicTextureModule...");
+            //m_openSim.ModuleLoader.LoadDefaultSharedModule(new DynamicTextureModule());
+            //m_log.Info("[LOAD REGIONS PLUGIN]: LoadImageURLModule...");
+            //m_openSim.ModuleLoader.LoadDefaultSharedModule(new LoadImageURLModule());
+            //m_log.Info("[LOAD REGIONS PLUGIN]: XMLRPCModule...");
+            //m_openSim.ModuleLoader.LoadDefaultSharedModule(new XMLRPCModule());
+//            m_log.Info("[LOADREGIONSPLUGIN]: AssetTransactionModule...");
+//            m_openSim.ModuleLoader.LoadDefaultSharedModule(new AssetTransactionModule());
             m_log.Info("[LOAD REGIONS PLUGIN]: Done.");
 
             if (!CheckRegionsForSanity(regionsToLoad))
@@ -116,7 +125,7 @@ namespace OpenSim.ApplicationPlugins.LoadRegions
                 bool changed = m_openSim.PopulateRegionEstateInfo(regionsToLoad[i]);
                 m_openSim.CreateRegion(regionsToLoad[i], true, out scene);
                 if (changed)
-		 			regionsToLoad[i].EstateSettings.Save();
+		  regionsToLoad[i].EstateSettings.Save();
                 
                 if (scene != null)
                 {

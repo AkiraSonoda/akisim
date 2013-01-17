@@ -2228,16 +2228,16 @@ namespace OpenSim.Region.Framework.Scenes
 
                     //Quaternion result = (sitTargetOrient * vq) * nq;
 
-					// SitTarget Compatibility Workaround 
-					if (m_scene.m_useWrongSitTarget) {
-						if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-					    	m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
-						} else {
-					    	m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
-						}
-					} else {
-						m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
-					}
+                                        // SitTarget Compatibility Workaround 
+                                        if (m_scene.m_useWrongSitTarget) {
+                                                if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
+                                                m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
+                                                } else {
+                                                m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
+                                                }
+                                        } else {
+                    m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
+                                        }
 
                     Rotation = sitTargetOrient;
                     ParentPosition = part.AbsolutePosition;
@@ -4075,7 +4075,7 @@ namespace OpenSim.Region.Framework.Scenes
             if((m_teleportFlags & TeleportFlags.ViaHGLogin) == TeleportFlags.ViaHGLogin)
                 HG = true;
     
-            m_log.DebugFormat("[SCENE PRESENCE]: TELEPORT ******************");
+            m_log.InfoFormat("[SCENE PRESENCE]: TELEPORT ******************");
     
             uint i = 0u;
             for (int x = 0; x <= 30 ; x++, i = 1u << x)
@@ -4084,12 +4084,12 @@ namespace OpenSim.Region.Framework.Scenes
     
                 if((m_teleportFlags & (TeleportFlags)i) == (TeleportFlags)i)
                     if (HG == false)
-                        m_log.DebugFormat("[SCENE PRESENCE]: Teleport Flags include {0}", ((TeleportFlags) i).ToString());
+                        m_log.InfoFormat("[SCENE PRESENCE]: Teleport Flags include {0}", ((TeleportFlags) i).ToString());
                     else
-                        m_log.DebugFormat("[SCENE PRESENCE]: HG Teleport Flags include {0}", ((TeleportFlags)i).ToString());
+                        m_log.InfoFormat("[SCENE PRESENCE]: HG Teleport Flags include {0}", ((TeleportFlags)i).ToString());
             }
     
-            m_log.DebugFormat("[SCENE PRESENCE]: TELEPORT ******************");
+            m_log.InfoFormat("[SCENE PRESENCE]: TELEPORT ******************");
     
         }
 

@@ -83,7 +83,8 @@ namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
             {
                 if ((m_config = config.Configs["JsonStore"]) == null)
                 {
-                    m_log.InfoFormat("[JsonStoreScripts] no configuration info");
+                    // There is no configuration, the module is disabled
+                    // m_log.InfoFormat("[JsonStoreScripts] no configuration info");
                     return;
                 }
 
