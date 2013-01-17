@@ -246,19 +246,19 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
         {
             if ((Boolean)args[0] && !m_active_trees)
             {
-                m_log.DebugFormat("[TREES]: Activating Trees");
+                m_log.InfoFormat("[TREES]: Activating Trees");
                 m_active_trees = true;
                 activeizeTreeze(m_active_trees);
             }
             else if (!(Boolean)args[0] && m_active_trees)
             {
-                m_log.DebugFormat("[TREES]: Trees module is no longer active");
+                m_log.InfoFormat("[TREES]: Trees module is no longer active");
                 m_active_trees = false;
                 activeizeTreeze(m_active_trees);
             }
             else
             {
-                m_log.DebugFormat("[TREES]: Trees module is already in the required state");
+                m_log.InfoFormat("[TREES]: Trees module is already in the required state");
             }
         }
 
@@ -279,12 +279,12 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
                         sop.ParentGroup.HasGroupChanged = true;
                     }
 
-                    m_log.DebugFormat("[TREES]: Activity for copse {0} is frozen {1}", copsename, freezeState);
+                    m_log.InfoFormat("[TREES]: Activity for copse {0} is frozen {1}", copsename, freezeState);
                     return;
                 }
                 else if (cp.m_name == copsename && (cp.m_frozen && freezeState || !cp.m_frozen && !freezeState))
                 {
-                    m_log.DebugFormat("[TREES]: Copse {0} is already in the requested freeze state", copsename);
+                    m_log.InfoFormat("[TREES]: Copse {0} is already in the requested freeze state", copsename);
                     return;
                 }
             }
@@ -295,7 +295,7 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
         {
             Copse copse;
 
-            m_log.DebugFormat("[TREES]: Loading copse definition....");
+            m_log.InfoFormat("[TREES]: Loading copse definition....");
 
             copse = new Copse(((string)args[0]), false);
             foreach (Copse cp in m_copse)
@@ -308,14 +308,14 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
             }
 
             m_copse.Add(copse);
-            m_log.DebugFormat("[TREES]: Loaded copse: {0}", copse.ToString());
+            m_log.InfoFormat("[TREES]: Loaded copse: {0}", copse.ToString());
         }
 
         private void HandleTreePlant(Object[] args)
         {
             string copsename = ((string)args[0]).Trim();
 
-            m_log.DebugFormat("[TREES]: New tree planting for copse {0}", copsename);
+            m_log.InfoFormat("[TREES]: New tree planting for copse {0}", copsename);
             UUID uuid = m_scene.RegionInfo.EstateSettings.EstateOwner;
 
             foreach (Copse copse in m_copse)
@@ -348,7 +348,7 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
                     activeizeTreeze(false);
                     activeizeTreeze(true);
                 }
-                m_log.DebugFormat("[TREES]: Update rate set to {0} mSec", m_update_ms);
+                m_log.InfoFormat("[TREES]: Update rate set to {0} mSec", m_update_ms);
             }
             else
             {
@@ -401,7 +401,7 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
                 }
                 copseIdentity.m_trees = new List<UUID>();
                 m_copse.Remove(copseIdentity);
-                m_log.DebugFormat("[TREES]: Copse {0} has been removed", copsename);
+                m_log.InfoFormat("[TREES]: Copse {0} has been removed", copsename);
             }
             else
             {
@@ -411,7 +411,7 @@ namespace OpenSim.Region.OptionalModules.World.TreePopulator
 
         private void HandleTreeStatistics(Object[] args)
         {
-            m_log.DebugFormat("[TREES]: Activity State: {0};  Update Rate: {1}", m_active_trees, m_update_ms);
+            m_log.InfoFormat("[TREES]: Activity State: {0};  Update Rate: {1}", m_active_trees, m_update_ms);
             foreach (Copse cp in m_copse)
             {
                 m_log.InfoFormat("[TREES]: Copse {0}; {1} trees; frozen {2}", cp.m_name, cp.m_trees.Count, cp.m_frozen);

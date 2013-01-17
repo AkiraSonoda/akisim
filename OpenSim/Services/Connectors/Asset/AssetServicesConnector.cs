@@ -47,12 +47,14 @@ namespace OpenSim.Services.Connectors
 
         private string m_ServerURI = String.Empty;
         private IImprovedAssetCache m_Cache = null;
+        private int m_maxAssetRequestConcurrency = 30;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
-
+                private List<AssetRetrievedEx> AssetRetrievedExList;
+                
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
-        private Dictionary<string, AssetRetrievedEx> m_AssetHandlers = new Dictionary<string, AssetRetrievedEx>();
+        private Dictionary<string, List<AssetRetrievedEx>> m_AssetHandlers = new Dictionary<string, List<AssetRetrievedEx>>();
 
 
         public AssetServicesConnector()
@@ -71,21 +73,28 @@ namespace OpenSim.Services.Connectors
 
         public virtual void Initialise(IConfigSource source)
         {
+            IConfig netconfig = source.Configs["Network"];
+            if (netconfig != null)
+                m_maxAssetRequestConcurrency = netconfig.GetInt("MaxRequestConcurrency",m_maxAssetRequestConcurrency);
+
             IConfig assetConfig = source.Configs["AssetService"];
-            if (assetConfig == null) {
+            if (assetConfig == null)
+            {
                 m_log.Error("[ASSET CONNECTOR]: AssetService missing from OpenSim.ini");
                 throw new Exception("Asset connector init error");
             }
 
-            string serviceURI = assetConfig.GetString("AssetServerURI",String.Empty);
+            string serviceURI = assetConfig.GetString("AssetServerURI",
+                    String.Empty);
 
-            if (serviceURI == String.Empty) {
+            if (serviceURI == String.Empty)
+            {
                 m_log.Error("[ASSET CONNECTOR]: No Server URI named in section AssetService");
                 throw new Exception("Asset connector init error");
             }
 
             m_ServerURI = serviceURI;
-		}
+        }
 
         protected void SetCache(IImprovedAssetCache cache)
         {
@@ -105,7 +114,7 @@ namespace OpenSim.Services.Connectors
             if (asset == null)
             {
                 asset = SynchronousRestObjectRequester.
-                        MakeRequest<int, AssetBase>("GET", uri, 0);
+                        MakeRequest<int, AssetBase>("GET", uri, 0, m_maxAssetRequestConcurrency);
 
                 if (m_Cache != null)
                     m_Cache.Cache(asset);
@@ -189,16 +198,17 @@ namespace OpenSim.Services.Connectors
                 {
                     AssetRetrievedEx handlerEx = new AssetRetrievedEx(delegate(AssetBase _asset) { handler(id, sender, _asset); });
 
-                    AssetRetrievedEx handlers;
+                    List<AssetRetrievedEx> handlers;
                     if (m_AssetHandlers.TryGetValue(id, out handlers))
                     {
                         // Someone else is already loading this asset. It will notify our handler when done.
-                        handlers += handlerEx;
+                        handlers.Add(handlerEx);
                         return true;
                     }
 
                     // Load the asset ourselves
-                    handlers += handlerEx;
+                    handlers = new List<AssetRetrievedEx>();
+                                        handlers.Add(handlerEx);
                     m_AssetHandlers.Add(id, handlers);
                 }
 
@@ -211,14 +221,15 @@ namespace OpenSim.Services.Connectors
                             if (m_Cache != null)
                                 m_Cache.Cache(a);
 
-                            AssetRetrievedEx handlers;
+                            List<AssetRetrievedEx> handlers;
                             lock (m_AssetHandlers)
                             {
                                 handlers = m_AssetHandlers[id];
                                 m_AssetHandlers.Remove(id);
                             }
-                            handlers.Invoke(a);
-                        });
+                            foreach(AssetRetrievedEx h in handlers)
+                                                                h.Invoke(a);
+                        }, m_maxAssetRequestConcurrency);
                     
                     success = true;
                 }

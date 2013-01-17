@@ -193,6 +193,8 @@ namespace OpenSim.Services.Connectors.SimianGrid
 
         public bool StoreUserAccount(UserAccount data)
         {
+//            m_log.InfoFormat("[SIMIAN ACCOUNT CONNECTOR]: Storing user account for " + data.Name);
+
             NameValueCollection requestArgs = new NameValueCollection
             {
                 { "RequestMethod", "AddUser" },
@@ -206,7 +208,7 @@ namespace OpenSim.Services.Connectors.SimianGrid
             
             if (response["Success"].AsBoolean())
             {
-                m_log.DebugFormat("[SIMIAN ACCOUNT CONNECTOR]: Storing user account data for " + data.Name);
+                m_log.InfoFormat("[SIMIAN ACCOUNT CONNECTOR]: Storing user account data for " + data.Name);
 
                 requestArgs = new NameValueCollection
                 {
