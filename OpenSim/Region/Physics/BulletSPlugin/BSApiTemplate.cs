@@ -6,7 +6,7 @@
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyrightD
+ *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
  *     * Neither the name of the OpenSimulator Project nor the
@@ -198,7 +198,7 @@ public struct ConfigurationParameters
     public float XlinkConstraintCFM;
     public float XlinkConstraintSolverIterations;
 
-    public float physicsLoggingFrames;
+    public float XphysicsLoggingFrames;
 
     public const float numericTrue = 1f;
     public const float numericFalse = 0f;
@@ -342,14 +342,15 @@ public abstract BulletShape RemoveChildShapeFromCompoundShapeIndex(BulletShape c
 
 public abstract void RemoveChildShapeFromCompoundShape(BulletShape cShape, BulletShape removeShape);
 
+public abstract void UpdateChildTransform(BulletShape pShape, int childIndex, Vector3 pos, Quaternion rot, bool shouldRecalculateLocalAabb);
+
 public abstract void RecalculateCompoundShapeLocalAabb(BulletShape cShape);
 
 public abstract BulletShape DuplicateCollisionShape(BulletWorld sim, BulletShape srcShape, uint id);
 
-
 public abstract bool DeleteCollisionShape(BulletWorld world, BulletShape shape);
 
-public abstract int GetBodyType(BulletBody obj);
+public abstract CollisionObjectTypes GetBodyType(BulletBody obj);
 
 public abstract BulletBody CreateBodyFromShape(BulletWorld sim, BulletShape shape, uint id, Vector3 pos, Quaternion rot);
 
@@ -416,6 +417,7 @@ public abstract void SetForceUpdateAllAabbs(BulletWorld world, bool force);
 
 // =====================================================================================
 // btDynamicsWorld entries
+// public abstract bool AddObjectToWorld(BulletWorld world, BulletBody obj, Vector3 pos, Quaternion rot);
 public abstract bool AddObjectToWorld(BulletWorld world, BulletBody obj);
 
 public abstract bool RemoveObjectFromWorld(BulletWorld world, BulletBody obj);
@@ -597,7 +599,7 @@ public abstract void SetAngularFactorV(BulletBody obj, Vector3 factor);
 
 public abstract Vector3 GetAngularFactor(BulletBody obj);
 
-public abstract bool IsInWorld(BulletBody obj);
+public abstract bool IsInWorld(BulletWorld world, BulletBody obj);
 
 public abstract void AddConstraintRef(BulletBody obj, BulletConstraint constrain);
 
@@ -646,17 +648,21 @@ public abstract float GetMargin(BulletShape shape);
 
 // =====================================================================================
 // Debugging
-public abstract void DumpRigidBody(BulletWorld sim, BulletBody collisionObject);
+public virtual void DumpRigidBody(BulletWorld sim, BulletBody collisionObject) { }
 
-public abstract void DumpCollisionShape(BulletWorld sim, BulletShape collisionShape);
+public virtual void DumpCollisionShape(BulletWorld sim, BulletShape collisionShape) { }
 
-public abstract void DumpConstraint(BulletWorld sim, BulletConstraint constrain);
+public virtual void DumpConstraint(BulletWorld sim, BulletConstraint constrain) { }
 
-public abstract void DumpActivationInfo(BulletWorld sim);
+public virtual void DumpActivationInfo(BulletWorld sim) { }
 
-public abstract void DumpAllInfo(BulletWorld sim);
+public virtual void DumpAllInfo(BulletWorld sim) { }
 
-public abstract void DumpPhysicsStatistics(BulletWorld sim);
+public virtual void DumpPhysicsStatistics(BulletWorld sim) { }
+
+public virtual void ResetBroadphasePool(BulletWorld sim) { }
+
+public virtual void ResetConstraintSolver(BulletWorld sim) { }
 
 };
 }

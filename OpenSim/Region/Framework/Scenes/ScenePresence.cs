@@ -1955,6 +1955,9 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if (ParentID != 0)
             {
+                if (ParentPart.UUID == targetID)
+                    return; // already sitting here, ignore
+
                 StandUp();
             }
 
@@ -2267,7 +2270,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void HandleStopAnim(IClientAPI remoteClient, UUID animID)
         {
-            Animator.RemoveAnimation(animID);
+            Animator.RemoveAnimation(animID, false);
         }
 
         /// <summary>

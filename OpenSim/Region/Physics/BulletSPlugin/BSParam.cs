@@ -75,8 +75,12 @@ public static class BSParam
     public static float AvatarCapsuleDepth { get; private set; }
     public static float AvatarCapsuleHeight { get; private set; }
 	public static float AvatarContactProcessingThreshold { get; private set; }
+	public static float AvatarStepHeight { get; private set; }
+	public static float AvatarStepApproachFactor { get; private set; }
+	public static float AvatarStepForceFactor { get; private set; }
 
     public static float VehicleAngularDamping { get; private set; }
+    public static float VehicleDebuggingEnabled { get; private set; }
 
     public static float LinksetImplementation { get; private set; }
     public static float LinkConstraintUseFrameOffset { get; private set; }
@@ -90,16 +94,16 @@ public static class BSParam
     public static float PID_D { get; private set; }    // derivative
     public static float PID_P { get; private set; }    // proportional
 
-    // Various constants that come from that other virtual world that shall not be named
+    // Various constants that come from that other virtual world that shall not be named.
     public const float MinGravityZ = -1f;
     public const float MaxGravityZ = 28f;
     public const float MinFriction = 0f;
     public const float MaxFriction = 255f;
-    public const float MinDensity = 0f;
+    public const float MinDensity = 0.01f;
     public const float MaxDensity = 22587f;
     public const float MinRestitution = 0f;
     public const float MaxRestitution = 1f;
-    public const float MaxAddForceMagnitude = 20000f;
+    public const float MaxAddForceMagnitude = 20f;
 
     // ===========================================================================
     public delegate void ParamUser(BSScene scene, IConfig conf, string paramName, float val);
@@ -314,13 +318,13 @@ public static class BSParam
             (s,p,l,v) => { s.UpdateParameterObject((x)=>{AngularSleepingThreshold=x;}, p, l, v); },
             (s,o,v) => { s.PE.SetSleepingThresholds(o.PhysBody, v, v); } ),
         new ParameterDefn("CcdMotionThreshold", "Continuious collision detection threshold (0 means no CCD)" ,
-            0f,     // set to zero to disable
+            0.3f,     // set to zero to disable
             (s,cf,p,v) => { CcdMotionThreshold = cf.GetFloat(p, v); },
             (s) => { return CcdMotionThreshold; },
             (s,p,l,v) => { s.UpdateParameterObject((x)=>{CcdMotionThreshold=x;}, p, l, v); },
             (s,o,v) => { s.PE.SetCcdMotionThreshold(o.PhysBody, v); } ),
         new ParameterDefn("CcdSweptSphereRadius", "Continuious collision detection test radius" ,
-            0f,
+            0.2f,
             (s,cf,p,v) => { CcdSweptSphereRadius = cf.GetFloat(p, v); },
             (s) => { return CcdSweptSphereRadius; },
             (s,p,l,v) => { s.UpdateParameterObject((x)=>{CcdSweptSphereRadius=x;}, p, l, v); },
@@ -403,12 +407,32 @@ public static class BSParam
             (s,cf,p,v) => { AvatarContactProcessingThreshold = cf.GetFloat(p, v); },
             (s) => { return AvatarContactProcessingThreshold; },
             (s,p,l,v) => { s.UpdateParameterObject((x)=>{AvatarContactProcessingThreshold=x;}, p, l, v); } ),
+	    new ParameterDefn("AvatarStepHeight", "Height of a step obstacle to consider step correction",
+            0.3f,
+            (s,cf,p,v) => { AvatarStepHeight = cf.GetFloat(p, v); },
+            (s) => { return AvatarStepHeight; },
+            (s,p,l,v) => { AvatarStepHeight = v; } ),
+	    new ParameterDefn("AvatarStepApproachFactor", "Factor to control angle of approach to step (0=straight on)",
+            0.6f,
+            (s,cf,p,v) => { AvatarStepApproachFactor = cf.GetFloat(p, v); },
+            (s) => { return AvatarStepApproachFactor; },
+            (s,p,l,v) => { AvatarStepApproachFactor = v; } ),
+	    new ParameterDefn("AvatarStepForceFactor", "Controls the amount of force up applied to step up onto a step",
+            2.0f,
+            (s,cf,p,v) => { AvatarStepForceFactor = cf.GetFloat(p, v); },
+            (s) => { return AvatarStepForceFactor; },
+            (s,p,l,v) => { AvatarStepForceFactor = v; } ),
 
         new ParameterDefn("VehicleAngularDamping", "Factor to damp vehicle angular movement per second (0.0 - 1.0)",
             0.95f,
             (s,cf,p,v) => { VehicleAngularDamping = cf.GetFloat(p, v); },
             (s) => { return VehicleAngularDamping; },
             (s,p,l,v) => { VehicleAngularDamping = v; } ),
+        new ParameterDefn("VehicleDebuggingEnable", "Turn on/off vehicle debugging",
+            ConfigurationParameters.numericFalse,
+            (s,cf,p,v) => { VehicleDebuggingEnabled = BSParam.NumericBool(cf.GetBoolean(p, BSParam.BoolNumeric(v))); },
+            (s) => { return VehicleDebuggingEnabled; },
+            (s,p,l,v) => { VehicleDebuggingEnabled = v; } ),
 
 	    new ParameterDefn("MaxPersistantManifoldPoolSize", "Number of manifolds pooled (0 means default of 4096)",
             0f,
@@ -441,7 +465,7 @@ public static class BSParam
             (s) => { return s.UnmanagedParams[0].shouldSplitSimulationIslands; },
             (s,p,l,v) => { s.UnmanagedParams[0].shouldSplitSimulationIslands = v; } ),
 	    new ParameterDefn("ShouldEnableFrictionCaching", "Enable friction computation caching",
-            ConfigurationParameters.numericFalse,
+            ConfigurationParameters.numericTrue,
             (s,cf,p,v) => { s.UnmanagedParams[0].shouldEnableFrictionCaching = BSParam.NumericBool(cf.GetBoolean(p, BSParam.BoolNumeric(v))); },
             (s) => { return s.UnmanagedParams[0].shouldEnableFrictionCaching; },
             (s,p,l,v) => { s.UnmanagedParams[0].shouldEnableFrictionCaching = v; } ),
@@ -492,11 +516,21 @@ public static class BSParam
             (s) => { return LinkConstraintSolverIterations; },
             (s,p,l,v) => { LinkConstraintSolverIterations = v; } ),
 
-        new ParameterDefn("LogPhysicsStatisticsFrames", "Frames between outputting detailed phys stats. (0 is off)",
+        new ParameterDefn("PhysicsMetricFrames", "Frames between outputting detailed phys metrics. (0 is off)",
             0f,
-            (s,cf,p,v) => { s.UnmanagedParams[0].physicsLoggingFrames = cf.GetInt(p, (int)v); },
-            (s) => { return (float)s.UnmanagedParams[0].physicsLoggingFrames; },
-            (s,p,l,v) => { s.UnmanagedParams[0].physicsLoggingFrames = (int)v; } ),
+            (s,cf,p,v) => { s.PhysicsMetricDumpFrames = cf.GetFloat(p, (int)v); },
+            (s) => { return (float)s.PhysicsMetricDumpFrames; },
+            (s,p,l,v) => { s.PhysicsMetricDumpFrames = (int)v; } ),
+        new ParameterDefn("ResetBroadphasePool", "Setting this is any value resets the broadphase collision pool",
+            0f,
+            (s,cf,p,v) => { ; },
+            (s) => { return 0f; },
+            (s,p,l,v) => { BSParam.ResetBroadphasePoolTainted(s, v); } ),
+        new ParameterDefn("ResetConstraintSolver", "Setting this is any value resets the constraint solver",
+            0f,
+            (s,cf,p,v) => { ; },
+            (s) => { return 0f; },
+            (s,p,l,v) => { BSParam.ResetConstraintSolverTainted(s, v); } ),
     };
 
     // Convert a boolean to our numeric true and false values
@@ -509,6 +543,24 @@ public static class BSParam
     public static bool BoolNumeric(float b)
     {
         return (b == ConfigurationParameters.numericTrue ? true : false);
+    }
+
+    private static void ResetBroadphasePoolTainted(BSScene pPhysScene, float v)
+    {
+        BSScene physScene = pPhysScene;
+        physScene.TaintedObject("BSParam.ResetBroadphasePoolTainted", delegate()
+        {
+            physScene.PE.ResetBroadphasePool(physScene.World);
+        });
+    }
+
+    private static void ResetConstraintSolverTainted(BSScene pPhysScene, float v)
+    {
+        BSScene physScene = pPhysScene;
+        physScene.TaintedObject("BSParam.ResetConstraintSolver", delegate()
+        {
+            physScene.PE.ResetConstraintSolver(physScene.World);
+        });
     }
 
     // Search through the parameter definitions and return the matching

@@ -1588,7 +1588,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             if (localIDs.Count == 1 && m_scene.GetScenePresence(localIDs[0]) != null)
             {
-                OutPacket(kill, ThrottleOutPacketType.State);
+                OutPacket(kill, ThrottleOutPacketType.Task);
             }
             else
             {
@@ -6427,6 +6427,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 #endregion
 
                 AgentRequestSit handlerAgentRequestSit = OnAgentRequestSit;
+
                 if (handlerAgentRequestSit != null)
                     handlerAgentRequestSit(this, agentRequestSit.AgentData.AgentID,
                                            agentRequestSit.TargetObject.TargetID, agentRequestSit.TargetObject.Offset);

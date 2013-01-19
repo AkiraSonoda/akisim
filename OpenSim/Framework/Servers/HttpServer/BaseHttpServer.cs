@@ -76,6 +76,7 @@ namespace OpenSim.Framework.Servers.HttpServer
         // protected HttpListener m_httpListener;
         protected CoolHTTPListener m_httpListener2;
         protected Dictionary<string, XmlRpcMethod> m_rpcHandlers        = new Dictionary<string, XmlRpcMethod>();
+        protected Dictionary<string, JsonRPCMethod> jsonRpcHandlers     = new Dictionary<string, JsonRPCMethod>();
         protected Dictionary<string, bool> m_rpcHandlersKeepAlive       = new Dictionary<string, bool>();
         protected DefaultLLSDMethod m_defaultLlsdHandler = null; // <--   Moving away from the monolithic..  and going to /registered/
         protected Dictionary<string, LLSDMethod> m_llsdHandlers         = new Dictionary<string, LLSDMethod>();
@@ -214,6 +215,37 @@ namespace OpenSim.Framework.Servers.HttpServer
         {
             lock (m_rpcHandlers)
                 return new List<string>(m_rpcHandlers.Keys);
+        }
+
+        // JsonRPC 
+        public bool AddJsonRPCHandler(string method, JsonRPCMethod handler)
+        {
+            lock(jsonRpcHandlers)
+            {
+                jsonRpcHandlers.Add(method, handler);
+            }
+            return true;
+        }
+
+        public JsonRPCMethod GetJsonRPCHandler(string method)
+        {
+            lock (jsonRpcHandlers)
+            {
+                if (jsonRpcHandlers.ContainsKey(method))
+                {
+                    return jsonRpcHandlers[method];
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+        public List<string> GetJsonRpcHandlerKeys()
+        {
+            lock (jsonRpcHandlers)
+                return new List<string>(jsonRpcHandlers.Keys);
         }
 
         public bool AddHTTPHandler(string methodName, GenericHTTPMethod handler)
@@ -555,10 +587,18 @@ namespace OpenSim.Framework.Servers.HttpServer
     
                             buffer = HandleLLSDRequests(request, response);
                             break;
+
+                        case "application/json-rpc":
+                            if (DebugLevel >= 3)
+                                LogIncomingToContentTypeHandler(request);
+
+                            buffer = HandleJsonRpcRequests(request, response);
+                            break;
     
                         case "text/xml":
                         case "application/xml":
                         case "application/json":
+
                         default:
                             //m_log.Info("[Debug BASE HTTP SERVER]: in default handler");
                             // Point of note..  the DoWeHaveA methods check for an EXACT path
@@ -981,6 +1021,74 @@ namespace OpenSim.Framework.Servers.HttpServer
             response.ContentLength64 = buffer.Length;
             response.ContentEncoding = Encoding.UTF8;
 
+            return buffer;
+        }
+
+        // JsonRpc (v2.0 only)
+        private byte[] HandleJsonRpcRequests(OSHttpRequest request, OSHttpResponse response)
+        {
+            Stream requestStream = request.InputStream;
+            JsonRpcResponse jsonRpcResponse = new JsonRpcResponse();
+            OSDMap jsonRpcRequest = null;
+
+            try
+            {
+                jsonRpcRequest = (OSDMap)OSDParser.DeserializeJson(requestStream);
+            }
+            catch (LitJson.JsonException e)
+            {
+                jsonRpcResponse.Error.Code = ErrorCode.InternalError;
+                jsonRpcResponse.Error.Message = e.Message;
+            }
+            
+            requestStream.Close();
+
+            if (jsonRpcRequest != null)
+            {
+                if (jsonRpcRequest.ContainsKey("jsonrpc") || jsonRpcRequest["jsonrpc"].AsString() == "2.0")
+                {
+                    jsonRpcResponse.JsonRpc = "2.0";
+
+                    // If we have no id, then it's a "notification"
+                    if (jsonRpcRequest.ContainsKey("id"))
+                    {
+                        jsonRpcResponse.Id = jsonRpcRequest["id"].AsString();
+                    }
+
+                    string methodname = jsonRpcRequest["method"];
+                    JsonRPCMethod method;
+
+                    if (jsonRpcHandlers.ContainsKey(methodname))
+                    {
+                        lock(jsonRpcHandlers)
+                        {
+                            jsonRpcHandlers.TryGetValue(methodname, out method);
+                        }
+
+                        method(jsonRpcRequest, ref jsonRpcResponse);
+                    }
+                    else // Error no hanlder defined for requested method
+                    {
+                        jsonRpcResponse.Error.Code = ErrorCode.InvalidRequest;
+                        jsonRpcResponse.Error.Message = string.Format ("No handler defined for {0}", methodname);
+                    }
+                }
+                else // not json-rpc 2.0 could be v1
+                {
+                    jsonRpcResponse.Error.Code = ErrorCode.InvalidRequest;
+                    jsonRpcResponse.Error.Message = "Must be valid json-rpc 2.0 see: http://www.jsonrpc.org/specification";
+
+                    if (jsonRpcRequest.ContainsKey("id"))
+                        jsonRpcResponse.Id = jsonRpcRequest["id"].AsString();
+                }
+            }
+
+            response.KeepAlive = true;
+            string responseData = string.Empty;
+
+            responseData = jsonRpcResponse.Serialize();
+       
+            byte[] buffer = Encoding.UTF8.GetBytes(responseData);
             return buffer;
         }
 
@@ -1622,6 +1730,7 @@ namespace OpenSim.Framework.Servers.HttpServer
 
                 // Long Poll Service Manager with 3 worker threads a 25 second timeout for no events
                 m_PollServiceManager = new PollServiceRequestManager(this, 3, 25000);
+                m_PollServiceManager.Start();
                 HTTPDRunning = true;
 
                 //HttpListenerContext context;
@@ -1672,6 +1781,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             HTTPDRunning = false;
             try
             {
+                m_PollServiceManager.Stop();
+
                 m_httpListener2.ExceptionThrown -= httpServerException;
                 //m_httpListener2.DisconnectHandler = null;
 
