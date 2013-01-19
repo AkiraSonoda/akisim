@@ -91,10 +91,8 @@ public sealed class BSTerrainMesh : BSTerrainPhys
         PhysicsScene.DetailLog("{0},BSTerrainMesh.create,meshed,indices={1},indSz={2},vertices={3},vertSz={4}", 
                                 ID, indicesCount, indices.Length, verticesCount, vertices.Length);
 
-        m_terrainShape = new BulletShape(BulletSimAPI.CreateMeshShape2(PhysicsScene.World.ptr,
-                                                    indicesCount, indices, verticesCount, vertices),
-                                        BSPhysicsShapeType.SHAPE_MESH);
-        if (m_terrainShape.ptr == IntPtr.Zero)
+        m_terrainShape = PhysicsScene.PE.CreateMeshShape(PhysicsScene.World, indicesCount, indices, verticesCount, vertices);
+        if (!m_terrainShape.HasPhysicalShape)
         {
             // DISASTER!!
             PhysicsScene.DetailLog("{0},BSTerrainMesh.create,failedCreationOfShape", ID);
@@ -106,8 +104,8 @@ public sealed class BSTerrainMesh : BSTerrainPhys
         Vector3 pos = regionBase;
         Quaternion rot = Quaternion.Identity;
 
-        m_terrainBody = new BulletBody(id, BulletSimAPI.CreateBodyWithDefaultMotionState2( m_terrainShape.ptr, ID, pos, rot));
-        if (m_terrainBody.ptr == IntPtr.Zero)
+        m_terrainBody = PhysicsScene.PE.CreateBodyWithDefaultMotionState(m_terrainShape, ID, pos, rot);
+        if (!m_terrainBody.HasPhysicalBody)
         {
             // DISASTER!!
             physicsScene.Logger.ErrorFormat("{0} Failed creation of terrain body! base={1}", LogHeader, TerrainBase);
@@ -116,35 +114,36 @@ public sealed class BSTerrainMesh : BSTerrainPhys
         }
 
         // Set current terrain attributes
-        BulletSimAPI.SetFriction2(m_terrainBody.ptr, PhysicsScene.Params.terrainFriction);
-        BulletSimAPI.SetHitFraction2(m_terrainBody.ptr, PhysicsScene.Params.terrainHitFraction);
-        BulletSimAPI.SetRestitution2(m_terrainBody.ptr, PhysicsScene.Params.terrainRestitution);
-        BulletSimAPI.SetCollisionFlags2(m_terrainBody.ptr, CollisionFlags.CF_STATIC_OBJECT);
+        PhysicsScene.PE.SetFriction(m_terrainBody, BSParam.TerrainFriction);
+        PhysicsScene.PE.SetHitFraction(m_terrainBody, BSParam.TerrainHitFraction);
+        PhysicsScene.PE.SetRestitution(m_terrainBody, BSParam.TerrainRestitution);
+        PhysicsScene.PE.SetCollisionFlags(m_terrainBody, CollisionFlags.CF_STATIC_OBJECT);
 
         // Static objects are not very massive.
-        BulletSimAPI.SetMassProps2(m_terrainBody.ptr, 0f, Vector3.Zero);
+        PhysicsScene.PE.SetMassProps(m_terrainBody, 0f, Vector3.Zero);
 
         // Put the new terrain to the world of physical objects
-        BulletSimAPI.AddObjectToWorld2(PhysicsScene.World.ptr, m_terrainBody.ptr);
+        PhysicsScene.PE.AddObjectToWorld(PhysicsScene.World, m_terrainBody);
 
         // Redo its bounding box now that it is in the world
-        BulletSimAPI.UpdateSingleAabb2(PhysicsScene.World.ptr, m_terrainBody.ptr);
+        PhysicsScene.PE.UpdateSingleAabb(PhysicsScene.World, m_terrainBody);
 
-        BulletSimAPI.SetCollisionGroupMask2(m_terrainBody.ptr,
-                            (uint)CollisionFilterGroups.TerrainGroup,
-                            (uint)CollisionFilterGroups.TerrainMask);
+        m_terrainBody.collisionType = CollisionType.Terrain;
+        m_terrainBody.ApplyCollisionMask(PhysicsScene);
 
         // Make it so the terrain will not move or be considered for movement.
-        BulletSimAPI.ForceActivationState2(m_terrainBody.ptr, ActivationState.DISABLE_SIMULATION);
+        PhysicsScene.PE.ForceActivationState(m_terrainBody, ActivationState.DISABLE_SIMULATION);
     }
 
     public override void Dispose()
     {
-        if (m_terrainBody.ptr != IntPtr.Zero)
+        if (m_terrainBody.HasPhysicalBody)
         {
-            BulletSimAPI.RemoveObjectFromWorld2(PhysicsScene.World.ptr, m_terrainBody.ptr);
+            PhysicsScene.PE.RemoveObjectFromWorld(PhysicsScene.World, m_terrainBody);
             // Frees both the body and the shape.
-            BulletSimAPI.DestroyObject2(PhysicsScene.World.ptr, m_terrainBody.ptr);
+            PhysicsScene.PE.DestroyObject(PhysicsScene.World, m_terrainBody);
+            m_terrainBody.Clear();
+            m_terrainShape.Clear();
         }
     }
 

@@ -67,7 +67,7 @@ public abstract class BSTerrainPhys : IDisposable
 }
 
 // ==========================================================================================
-public sealed class BSTerrainManager
+public sealed class BSTerrainManager : IDisposable
 {
     static string LogHeader = "[BULLETSIM TERRAIN MANAGER]";
 
@@ -122,26 +122,28 @@ public sealed class BSTerrainManager
         MegaRegionParentPhysicsScene = null;
     }
 
+    public void Dispose()
+    {
+        ReleaseGroundPlaneAndTerrain();
+    }
+
     // Create the initial instance of terrain and the underlying ground plane.
     // This is called from the initialization routine so we presume it is
     //    safe to call Bullet in real time. We hope no one is moving prims around yet.
     public void CreateInitialGroundPlaneAndTerrain()
     {
         // The ground plane is here to catch things that are trying to drop to negative infinity
-        BulletShape groundPlaneShape = new BulletShape(
-                    BulletSimAPI.CreateGroundPlaneShape2(BSScene.GROUNDPLANE_ID, 1f, 
-                                    PhysicsScene.Params.terrainCollisionMargin),
-                    BSPhysicsShapeType.SHAPE_GROUNDPLANE);
-        m_groundPlane = new BulletBody(BSScene.GROUNDPLANE_ID,
-                        BulletSimAPI.CreateBodyWithDefaultMotionState2(groundPlaneShape.ptr, BSScene.GROUNDPLANE_ID,
-                                                            Vector3.Zero, Quaternion.Identity));
-        BulletSimAPI.AddObjectToWorld2(PhysicsScene.World.ptr, m_groundPlane.ptr);
-        BulletSimAPI.UpdateSingleAabb2(PhysicsScene.World.ptr, m_groundPlane.ptr);
+        BulletShape groundPlaneShape = PhysicsScene.PE.CreateGroundPlaneShape(BSScene.GROUNDPLANE_ID, 1f, BSParam.TerrainCollisionMargin);
+        m_groundPlane = PhysicsScene.PE.CreateBodyWithDefaultMotionState(groundPlaneShape, 
+                                        BSScene.GROUNDPLANE_ID, Vector3.Zero, Quaternion.Identity);
+
+        PhysicsScene.PE.AddObjectToWorld(PhysicsScene.World, m_groundPlane);
+        PhysicsScene.PE.UpdateSingleAabb(PhysicsScene.World, m_groundPlane);
         // Ground plane does not move
-        BulletSimAPI.ForceActivationState2(m_groundPlane.ptr, ActivationState.DISABLE_SIMULATION);
+        PhysicsScene.PE.ForceActivationState(m_groundPlane, ActivationState.DISABLE_SIMULATION);
         // Everything collides with the ground plane.
-        BulletSimAPI.SetCollisionGroupMask2(m_groundPlane.ptr,
-                        (uint)CollisionFilterGroups.GroundPlaneGroup, (uint)CollisionFilterGroups.GroundPlaneMask);
+        m_groundPlane.collisionType = CollisionType.Groundplane;
+        m_groundPlane.ApplyCollisionMask(PhysicsScene);
 
         // Build an initial terrain and put it in the world. This quickly gets replaced by the real region terrain.
         BSTerrainPhys initialTerrain = new BSTerrainHeightmap(PhysicsScene, Vector3.Zero, BSScene.TERRAIN_ID, DefaultRegionSize);
@@ -151,13 +153,13 @@ public sealed class BSTerrainManager
     // Release all the terrain structures we might have allocated
     public void ReleaseGroundPlaneAndTerrain()
     {
-        if (m_groundPlane.ptr != IntPtr.Zero)
+        if (m_groundPlane.HasPhysicalBody)
         {
-            if (BulletSimAPI.RemoveObjectFromWorld2(PhysicsScene.World.ptr, m_groundPlane.ptr))
+            if (PhysicsScene.PE.RemoveObjectFromWorld(PhysicsScene.World, m_groundPlane))
             {
-                BulletSimAPI.DestroyObject2(PhysicsScene.World.ptr, m_groundPlane.ptr);
+                PhysicsScene.PE.DestroyObject(PhysicsScene.World, m_groundPlane);
             }
-            m_groundPlane.ptr = IntPtr.Zero;
+            m_groundPlane.Clear();
         }
 
         ReleaseTerrain();
@@ -304,9 +306,9 @@ public sealed class BSTerrainManager
     {
         PhysicsScene.Logger.DebugFormat("{0} Terrain for {1}/{2} created with {3}", 
                                             LogHeader, PhysicsScene.RegionName, terrainRegionBase, 
-                                            (BSTerrainPhys.TerrainImplementation)PhysicsScene.Params.terrainImplementation);
+                                            (BSTerrainPhys.TerrainImplementation)BSParam.TerrainImplementation);
         BSTerrainPhys newTerrainPhys = null;
-        switch ((int)PhysicsScene.Params.terrainImplementation)
+        switch ((int)BSParam.TerrainImplementation)
         {
             case (int)BSTerrainPhys.TerrainImplementation.Heightmap:
                 newTerrainPhys = new BSTerrainHeightmap(PhysicsScene, terrainRegionBase, id,
@@ -319,14 +321,21 @@ public sealed class BSTerrainManager
             default:
                 PhysicsScene.Logger.ErrorFormat("{0} Bad terrain implementation specified. Type={1}/{2},Region={3}/{4}",
                                             LogHeader, 
-                                            (int)PhysicsScene.Params.terrainImplementation, 
-                                            PhysicsScene.Params.terrainImplementation,
+                                            (int)BSParam.TerrainImplementation, 
+                                            BSParam.TerrainImplementation,
                                             PhysicsScene.RegionName, terrainRegionBase);
                 break;
         }
         return newTerrainPhys;
     }
 
+    // Return 'true' of this position is somewhere in known physical terrain space
+    public bool IsWithinKnownTerrain(Vector3 pos)
+    {
+        Vector3 terrainBaseXYZ;
+        BSTerrainPhys physTerrain;
+        return GetTerrainPhysicalAtXYZ(pos, out physTerrain, out terrainBaseXYZ);
+    }
 
     // Given an X and Y, find the height of the terrain.
     // Since we could be handling multiple terrains for a mega-region,
@@ -337,13 +346,13 @@ public sealed class BSTerrainManager
     private float lastHeightTX = 999999f;
     private float lastHeightTY = 999999f;
     private float lastHeight = HEIGHT_INITIAL_LASTHEIGHT;
-    public float GetTerrainHeightAtXYZ(Vector3 loc)
+    public float GetTerrainHeightAtXYZ(Vector3 pos)
     {
-        float tX = loc.X;
-        float tY = loc.Y;
+        float tX = pos.X;
+        float tY = pos.Y;
         // You'd be surprized at the number of times this routine is called
         //    with the same parameters as last time.
-        if (!m_terrainModified && lastHeightTX == tX && lastHeightTY == tY)
+        if (!m_terrainModified && (lastHeightTX == tX) && (lastHeightTY == tY))
             return lastHeight;
         m_terrainModified = false;
 
@@ -351,23 +360,20 @@ public sealed class BSTerrainManager
         lastHeightTY = tY;
         float ret = HEIGHT_GETHEIGHT_RET;
 
-        int offsetX = ((int)(tX / (int)DefaultRegionSize.X)) * (int)DefaultRegionSize.X;
-        int offsetY = ((int)(tY / (int)DefaultRegionSize.Y)) * (int)DefaultRegionSize.Y;
-        Vector3 terrainBaseXYZ = new Vector3(offsetX, offsetY, 0f);
-
-        lock (m_terrains)
+        Vector3 terrainBaseXYZ;
+        BSTerrainPhys physTerrain;
+        if (GetTerrainPhysicalAtXYZ(pos, out physTerrain, out terrainBaseXYZ))
         {
-            BSTerrainPhys physTerrain;
-            if (m_terrains.TryGetValue(terrainBaseXYZ, out physTerrain))
-            {
-                ret = physTerrain.GetTerrainHeightAtXYZ(loc - terrainBaseXYZ);
-            }
-            else
-            {
-                PhysicsScene.Logger.ErrorFormat("{0} GetTerrainHeightAtXY: terrain not found: region={1}, x={2}, y={3}",
-                        LogHeader, PhysicsScene.RegionName, tX, tY);
-            }
+            ret = physTerrain.GetTerrainHeightAtXYZ(pos - terrainBaseXYZ);
         }
+        else
+        {
+            PhysicsScene.Logger.ErrorFormat("{0} GetTerrainHeightAtXY: terrain not found: region={1}, x={2}, y={3}",
+                    LogHeader, PhysicsScene.RegionName, tX, tY);
+            DetailLog("{0},BSTerrainManager.GetTerrainHeightAtXYZ,terrainNotFound,pos={1},base={2}",
+                                BSScene.DetailLogZero, pos, terrainBaseXYZ);
+        }
+
         lastHeight = ret;
         return ret;
     }
@@ -376,27 +382,36 @@ public sealed class BSTerrainManager
     {
         float ret = WATER_HEIGHT_GETHEIGHT_RET;
 
-        float tX = pos.X;
-        float tY = pos.Y;
-
-        Vector3 terrainBaseXYZ = Vector3.Zero;
-        terrainBaseXYZ.X = ((int)(tX / (int)DefaultRegionSize.X)) * (int)DefaultRegionSize.X;
-        terrainBaseXYZ.Y = ((int)(tY / (int)DefaultRegionSize.Y)) * (int)DefaultRegionSize.Y;
-
-        lock (m_terrains)
+        Vector3 terrainBaseXYZ;
+        BSTerrainPhys physTerrain;
+        if (GetTerrainPhysicalAtXYZ(pos, out physTerrain, out terrainBaseXYZ))
         {
-            BSTerrainPhys physTerrain;
-            if (m_terrains.TryGetValue(terrainBaseXYZ, out physTerrain))
-            {
-                ret = physTerrain.GetWaterLevelAtXYZ(pos);
-            }
-            else
-            {
-                PhysicsScene.Logger.ErrorFormat("{0} GetWaterHeightAtXY: terrain not found: region={1}, x={2}, y={3}",
-                        LogHeader, PhysicsScene.RegionName, tX, tY);
-            }
+            ret = physTerrain.GetWaterLevelAtXYZ(pos);
+        }
+        else
+        {
+            PhysicsScene.Logger.ErrorFormat("{0} GetWaterHeightAtXY: terrain not found: pos={1}, terrainBase={2}, height={3}",
+                    LogHeader, PhysicsScene.RegionName, pos, terrainBaseXYZ, ret);
         }
         return ret;
+    }
+
+    // Given an address, return 'true' of there is a description of that terrain and output
+    //    the descriptor class and the 'base' fo the addresses therein.
+    private bool GetTerrainPhysicalAtXYZ(Vector3 pos, out BSTerrainPhys outPhysTerrain, out Vector3 outTerrainBase)
+    {
+        int offsetX = ((int)(pos.X / (int)DefaultRegionSize.X)) * (int)DefaultRegionSize.X;
+        int offsetY = ((int)(pos.Y / (int)DefaultRegionSize.Y)) * (int)DefaultRegionSize.Y;
+        Vector3 terrainBaseXYZ = new Vector3(offsetX, offsetY, 0f);
+
+        BSTerrainPhys physTerrain = null;
+        lock (m_terrains)
+        {
+            m_terrains.TryGetValue(terrainBaseXYZ, out physTerrain);
+        }
+        outTerrainBase = terrainBaseXYZ;
+        outPhysTerrain = physTerrain;
+        return (physTerrain != null);
     }
 
     // Although no one seems to check this, I do support combining.

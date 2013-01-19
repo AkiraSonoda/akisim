@@ -28,22 +28,54 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using OpenSim.Framework;
+
 using OMV = OpenMetaverse;
 
 namespace OpenSim.Region.Physics.BulletSPlugin
 {
+
+// When a child is linked, the relationship position of the child to the parent
+//    is remembered so the child's world position can be recomputed when it is
+//    removed from the linkset.
+sealed class BSLinksetCompoundInfo : BSLinksetInfo
+{
+    public OMV.Vector3 OffsetPos;
+    public OMV.Quaternion OffsetRot;
+    public BSLinksetCompoundInfo(OMV.Vector3 p, OMV.Quaternion r)
+    {
+        OffsetPos = p;
+        OffsetRot = r;
+    }
+    public override void Clear()
+    {
+        OffsetPos = OMV.Vector3.Zero;
+        OffsetRot = OMV.Quaternion.Identity;
+    }
+    public override string ToString()
+    {
+        StringBuilder buff = new StringBuilder();
+        buff.Append("<p=");
+        buff.Append(OffsetPos.ToString());
+        buff.Append(",r=");
+        buff.Append(OffsetRot.ToString());
+        buff.Append(">");
+        return buff.ToString();
+    }
+};
+
 public sealed class BSLinksetCompound : BSLinkset
 {
     private static string LogHeader = "[BULLETSIM LINKSET COMPOUND]";
 
-    public BSLinksetCompound(BSScene scene, BSPhysObject parent)
+    public BSLinksetCompound(BSScene scene, BSPhysObject parent) : base(scene, parent)
     {
-        base.Initialize(scene, parent);
     }
 
     // For compound implimented linksets, if there are children, use compound shape for the root.
     public override BSPhysicsShapeType PreferredPhysicalShape(BSPhysObject requestor)
     { 
+        // Returning 'unknown' means we don't have a preference.
         BSPhysicsShapeType ret = BSPhysicsShapeType.SHAPE_UNKNOWN;
         if (IsRoot(requestor) && HasAnyChildren)
         {
@@ -55,27 +87,33 @@ public sealed class BSLinksetCompound : BSLinkset
 
     // When physical properties are changed the linkset needs to recalculate
     //   its internal properties.
-    // This is queued in the 'post taint' queue so the
-    //   refresh will happen once after all the other taints are applied.
     public override void Refresh(BSPhysObject requestor)
     {
-        // External request for Refresh (from BSPrim) doesn't need to do anything
-        // InternalRefresh(requestor);
+        base.Refresh(requestor);
+
+        // Something changed so do the rebuilding thing
+        // ScheduleRebuild();
     }
 
-    private void InternalRefresh(BSPhysObject requestor)
+    // Schedule a refresh to happen after all the other taint processing.
+    private void ScheduleRebuild(BSPhysObject requestor)
     {
-        DetailLog("{0},BSLinksetCompound.Refresh,schedulingRefresh,requestor={1}", LinksetRoot.LocalID, requestor.LocalID);
-        // Queue to happen after all the other taint processing
-        PhysicsScene.PostTaintObject("BSLinksetCompound.Refresh", requestor.LocalID, delegate()
+        DetailLog("{0},BSLinksetCompound.ScheduleRebuild,,rebuilding={1},hasChildren={2}", 
+                            requestor.LocalID, Rebuilding, HasAnyChildren);
+        // When rebuilding, it is possible to set properties that would normally require a rebuild.
+        //    If already rebuilding, don't request another rebuild.
+        //    If a linkset with just a root prim (simple non-linked prim) don't bother rebuilding.
+        if (!Rebuilding && HasAnyChildren)
         {
-            if (IsRoot(requestor) && HasAnyChildren)
-                RecomputeLinksetCompound();
-        });
+            PhysicsScene.PostTaintObject("BSLinksetCompound.ScheduleRebuild", LinksetRoot.LocalID, delegate()
+            {
+                if (HasAnyChildren)
+                    RecomputeLinksetCompound();
+            });
+        }
     }
 
-    // The object is going dynamic (physical). Do any setup necessary
-    //     for a dynamic linkset.
+    // The object is going dynamic (physical). Do any setup necessary for a dynamic linkset.
     // Only the state of the passed object can be modified. The rest of the linkset
     //     has not yet been fully constructed.
     // Return 'true' if any properties updated on the passed object.
@@ -84,12 +122,22 @@ public sealed class BSLinksetCompound : BSLinkset
     {
         bool ret = false;
         DetailLog("{0},BSLinksetCompound.MakeDynamic,call,IsRoot={1}", child.LocalID, IsRoot(child));
-        if (!IsRoot(child))
+        if (IsRoot(child))
+        {
+            // The root is going dynamic. Rebuild the linkset so parts and mass get computed properly.
+            ScheduleRebuild(LinksetRoot);
+        }
+        else
         {
             // The origional prims are removed from the world as the shape of the root compound
             //     shape takes over.
-            BulletSimAPI.AddToCollisionFlags2(child.PhysBody.ptr, CollisionFlags.CF_NO_CONTACT_RESPONSE);
-            BulletSimAPI.ForceActivationState2(child.PhysBody.ptr, ActivationState.DISABLE_SIMULATION);
+            PhysicsScene.PE.AddToCollisionFlags(child.PhysBody, CollisionFlags.CF_NO_CONTACT_RESPONSE);
+            PhysicsScene.PE.ForceActivationState(child.PhysBody, ActivationState.DISABLE_SIMULATION);
+            // We don't want collisions from the old linkset children.
+            PhysicsScene.PE.RemoveFromCollisionFlags(child.PhysBody, CollisionFlags.BS_SUBSCRIBE_COLLISION_EVENTS);
+
+            child.PhysBody.collisionType = CollisionType.LinksetChild;
+
             ret = true;
         }
         return ret;
@@ -104,33 +152,39 @@ public sealed class BSLinksetCompound : BSLinkset
     {
         bool ret = false;
         DetailLog("{0},BSLinksetCompound.MakeStatic,call,IsRoot={1}", child.LocalID, IsRoot(child));
-        if (!IsRoot(child))
+        if (IsRoot(child))
+        {
+            ScheduleRebuild(LinksetRoot);
+        }
+        else
         {
             // The non-physical children can come back to life.
-            BulletSimAPI.RemoveFromCollisionFlags2(child.PhysBody.ptr, CollisionFlags.CF_NO_CONTACT_RESPONSE);
-            // Don't force activation so setting of DISABLE_SIMULATION can stay.
-            BulletSimAPI.Activate2(child.PhysBody.ptr, false);
+            PhysicsScene.PE.RemoveFromCollisionFlags(child.PhysBody, CollisionFlags.CF_NO_CONTACT_RESPONSE);
+
+            child.PhysBody.collisionType = CollisionType.LinksetChild;
+
+            // Don't force activation so setting of DISABLE_SIMULATION can stay if used.
+            PhysicsScene.PE.Activate(child.PhysBody, false);
             ret = true;
         }
         return ret;
     }
 
-    // Called at taint-time!!
-    public override void UpdateProperties(BSPhysObject updated)
+    public override void UpdateProperties(BSPhysObject updated, bool physicalUpdate)
     {
-        // Nothing to do for compound linksets on property updates
-    }
-
-    // The children move around in relationship to the root.
-    // Just grab the current values of wherever it is right now.
-    public override OMV.Vector3 Position(BSPhysObject member)
-    {
-        return BulletSimAPI.GetPosition2(member.PhysBody.ptr);
-    }
-
-    public override OMV.Quaternion Orientation(BSPhysObject member)
-    {
-        return BulletSimAPI.GetOrientation2(member.PhysBody.ptr);
+        // The user moving a child around requires the rebuilding of the linkset compound shape
+        // One problem is this happens when a border is crossed -- the simulator implementation
+        //    is to store the position into the group which causes the move of the object
+        //    but it also means all the child positions get updated.
+        //    What would cause an unnecessary rebuild so we make sure the linkset is in a
+        //    region before bothering to do a rebuild.
+        if (!IsRoot(updated) 
+                && !physicalUpdate 
+                && PhysicsScene.TerrainManager.IsWithinKnownTerrain(LinksetRoot.RawPosition))
+        {
+            updated.LinksetInfo = null;
+            ScheduleRebuild(updated);
+        }
     }
 
     // Routine called when rebuilding the body of some member of the linkset.
@@ -142,24 +196,62 @@ public sealed class BSLinksetCompound : BSLinkset
         bool ret = false;
 
         DetailLog("{0},BSLinksetCompound.RemoveBodyDependencies,refreshIfChild,rID={1},rBody={2},isRoot={3}",
-                        child.LocalID, LinksetRoot.LocalID, LinksetRoot.PhysBody.ptr.ToString("X"), IsRoot(child));
+                        child.LocalID, LinksetRoot.LocalID, LinksetRoot.PhysBody.AddrString, IsRoot(child));
 
         if (!IsRoot(child))
         {
-            // Cause the current shape to be freed and the new one to be built.
-            InternalRefresh(LinksetRoot);
-            ret = true;
+            // Because it is a convenient time, recompute child world position and rotation based on
+            //    its position in the linkset.
+            RecomputeChildWorldPosition(child, true);
         }
+
+        // Cannot schedule a refresh/rebuild here because this routine is called when
+        //     the linkset is being rebuilt.
+        // InternalRefresh(LinksetRoot);
 
         return ret;
     }
 
     // Companion to RemoveBodyDependencies(). If RemoveBodyDependencies() returns 'true',
-    // this routine will restore the removed constraints.
+    //     this routine will restore the removed constraints.
     // Called at taint-time!!
     public override void RestoreBodyDependencies(BSPrim child)
     {
-        // The Refresh operation queued by RemoveBodyDependencies() will build any missing constraints.
+    }
+
+    // When the linkset is built, the child shape is added to the compound shape relative to the
+    //    root shape. The linkset then moves around but this does not move the actual child
+    //    prim. The child prim's location must be recomputed based on the location of the root shape.
+    private void RecomputeChildWorldPosition(BSPhysObject child, bool inTaintTime)
+    {
+        BSLinksetCompoundInfo lci = child.LinksetInfo as BSLinksetCompoundInfo;
+        if (lci != null)
+        {
+            if (inTaintTime)
+            {
+                OMV.Vector3 oldPos = child.RawPosition;
+                child.ForcePosition = LinksetRoot.RawPosition + lci.OffsetPos;
+                child.ForceOrientation = LinksetRoot.RawOrientation * lci.OffsetRot;
+                DetailLog("{0},BSLinksetCompound.RecomputeChildWorldPosition,oldPos={1},lci={2},newPos={3}",
+                                            child.LocalID, oldPos, lci, child.RawPosition);
+            }
+            else
+            {
+                // TaintedObject is not used here so the raw position is set now and not at taint-time.
+                child.Position = LinksetRoot.RawPosition + lci.OffsetPos;
+                child.Orientation = LinksetRoot.RawOrientation * lci.OffsetRot;
+            }
+        }
+        else
+        {
+            // This happens when children have been added to the linkset but the linkset
+            //     has not been constructed yet. So like, at taint time, adding children to a linkset
+            //     and then changing properties of the children (makePhysical, for instance)
+            //     but the post-print action of actually rebuilding the linkset has not yet happened.
+            // PhysicsScene.Logger.WarnFormat("{0} Restoring linkset child position failed because of no relative position computed. ID={1}",
+            //                                 LogHeader, child.LocalID);
+            DetailLog("{0},BSLinksetCompound.recomputeChildWorldPosition,noRelativePositonInfo", child.LocalID);
+        }
     }
 
     // ================================================================
@@ -174,26 +266,25 @@ public sealed class BSLinksetCompound : BSLinkset
 
             DetailLog("{0},BSLinksetCompound.AddChildToLinkset,call,child={1}", LinksetRoot.LocalID, child.LocalID);
 
-            // Cause constraints and assorted properties to be recomputed before the next simulation step.
-            InternalRefresh(LinksetRoot);
+            // Rebuild the compound shape with the new child shape included
+            ScheduleRebuild(child);
         }
         return;
     }
 
     // Remove the specified child from the linkset.
-    // Safe to call even if the child is not really in my linkset.
+    // Safe to call even if the child is not really in the linkset.
     protected override void RemoveChildFromLinkset(BSPhysObject child)
     {
         if (m_children.Remove(child))
         {
             DetailLog("{0},BSLinksetCompound.RemoveChildFromLinkset,call,rID={1},rBody={2},cID={3},cBody={4}",
                             child.LocalID,
-                            LinksetRoot.LocalID, LinksetRoot.PhysBody.ptr.ToString("X"),
-                            child.LocalID, child.PhysBody.ptr.ToString("X"));
+                            LinksetRoot.LocalID, LinksetRoot.PhysBody.AddrString,
+                            child.LocalID, child.PhysBody.AddrString);
 
             // Cause the child's body to be rebuilt and thus restored to normal operation
-            // TODO: position and rotation must be restored because the child could have moved
-            //    based on the linkset.
+            RecomputeChildWorldPosition(child, false);
             child.ForceBodyShapeRebuild(false);
 
             if (!HasAnyChildren)
@@ -203,8 +294,8 @@ public sealed class BSLinksetCompound : BSLinkset
             }
             else
             {
-                // Schedule a rebuild of the linkset  before the next simulation tick.
-                InternalRefresh(LinksetRoot);
+                // Rebuild the compound shape with the child removed
+                ScheduleRebuild(child);
             }
         }
         return;
@@ -217,67 +308,85 @@ public sealed class BSLinksetCompound : BSLinkset
     // Called at taint time!!
     private void RecomputeLinksetCompound()
     {
-        // Cause the root shape to be rebuilt as a compound object with just the root in it
-        LinksetRoot.ForceBodyShapeRebuild(true);
-
-        DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,start,rBody={1},rShape={2},numChildren={3}",
-                        LinksetRoot.LocalID, LinksetRoot.PhysBody, LinksetRoot.PhysShape, NumberOfChildren);
-
-        // Add a shape for each of the other children in the linkset
-        ForEachMember(delegate(BSPhysObject cPrim)
+        try
         {
-            if (!IsRoot(cPrim))
+            // Suppress rebuilding while rebuilding
+            Rebuilding = true;
+
+            // Cause the root shape to be rebuilt as a compound object with just the root in it
+            LinksetRoot.ForceBodyShapeRebuild(true);
+
+            DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,start,rBody={1},rShape={2},numChildren={3}",
+                            LinksetRoot.LocalID, LinksetRoot.PhysBody, LinksetRoot.PhysShape, NumberOfChildren);
+
+            // Add a shape for each of the other children in the linkset
+            ForEachMember(delegate(BSPhysObject cPrim)
             {
-                // Each child position and rotation is given relative to the root.
-                OMV.Quaternion invRootOrientation = OMV.Quaternion.Inverse(LinksetRoot.RawOrientation);
-                OMV.Vector3 displacementPos = (cPrim.RawPosition - LinksetRoot.RawPosition) * invRootOrientation;
-                OMV.Quaternion displacementRot = cPrim.RawOrientation * invRootOrientation;
-
-                DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,addMemberToShape,mID={1},mShape={2},dispPos={3},dispRot={4}",
-                    LinksetRoot.LocalID, cPrim.LocalID, cPrim.PhysShape, displacementPos, displacementRot);
-
-                if (cPrim.PhysShape.isNativeShape)
+                if (!IsRoot(cPrim))
                 {
-                    // A native shape is turning into a null collision shape because native
-                    //    shapes are not shared so we have to hullify it so it will be tracked
-                    //    and freed at the correct time. This also solves the scaling problem
-                    //    (native shapes scaled but hull/meshes are assumed to not be).
-                    BulletShape saveShape = cPrim.PhysShape;
-                    cPrim.PhysShape.ptr = IntPtr.Zero;  // Don't let the create free the child's shape
-                    PhysicsScene.Shapes.CreateGeomMeshOrHull(cPrim, null);
-                    BulletShape newShape = cPrim.PhysShape;
-                    cPrim.PhysShape = saveShape;
-                    BulletSimAPI.AddChildShapeToCompoundShape2(LinksetRoot.PhysShape.ptr, newShape.ptr, displacementPos, displacementRot);
-                }
-                else
-                {
-                    // For the shared shapes (meshes and hulls), just use the shape in the child.
-                    if (PhysicsScene.Shapes.ReferenceShape(cPrim.PhysShape))
+                    // Compute the displacement of the child from the root of the linkset.
+                    // This info is saved in the child prim so the relationship does not
+                    //    change over time and the new child position can be computed
+                    //    when the linkset is being disassembled (the linkset may have moved).
+                    BSLinksetCompoundInfo lci = cPrim.LinksetInfo as BSLinksetCompoundInfo;
+                    if (lci == null)
                     {
-                        PhysicsScene.Logger.ErrorFormat("{0} Rebuilt sharable shape when building linkset! Region={1}, primID={2}, shape={3}",
-                                            LogHeader, PhysicsScene.RegionName, cPrim.LocalID, cPrim.PhysShape);
+                        // Each child position and rotation is given relative to the root.
+                        OMV.Quaternion invRootOrientation = OMV.Quaternion.Inverse(LinksetRoot.RawOrientation);
+                        OMV.Vector3 displacementPos = (cPrim.RawPosition - LinksetRoot.RawPosition) * invRootOrientation;
+                        OMV.Quaternion displacementRot = cPrim.RawOrientation * invRootOrientation;
+
+                        // Save relative position for recomputing child's world position after moving linkset.
+                        lci = new BSLinksetCompoundInfo(displacementPos, displacementRot);
+                        cPrim.LinksetInfo = lci;
+                        DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,creatingRelPos,lci={1}", cPrim.LocalID, lci);
                     }
-                    BulletSimAPI.AddChildShapeToCompoundShape2(LinksetRoot.PhysShape.ptr, cPrim.PhysShape.ptr, displacementPos, displacementRot);
+
+                    DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,addMemberToShape,mID={1},mShape={2},dispPos={3},dispRot={4}",
+                        LinksetRoot.LocalID, cPrim.LocalID, cPrim.PhysShape, lci.OffsetPos, lci.OffsetRot);
+
+                    if (cPrim.PhysShape.isNativeShape)
+                    {
+                        // A native shape is turning into a hull collision shape because native
+                        //    shapes are not shared so we have to hullify it so it will be tracked
+                        //    and freed at the correct time. This also solves the scaling problem
+                        //    (native shapes scaled but hull/meshes are assumed to not be).
+                        // TODO: decide of the native shape can just be used in the compound shape.
+                        //    Use call to CreateGeomNonSpecial().
+                        BulletShape saveShape = cPrim.PhysShape;
+                        cPrim.PhysShape.Clear();        // Don't let the create free the child's shape
+                        // PhysicsScene.Shapes.CreateGeomNonSpecial(true, cPrim, null);
+                        PhysicsScene.Shapes.CreateGeomMeshOrHull(cPrim, null);
+                        BulletShape newShape = cPrim.PhysShape;
+                        cPrim.PhysShape = saveShape;
+                        PhysicsScene.PE.AddChildShapeToCompoundShape(LinksetRoot.PhysShape, newShape, lci.OffsetPos, lci.OffsetRot);
+                    }
+                    else
+                    {
+                        // For the shared shapes (meshes and hulls), just use the shape in the child.
+                        // The reference count added here will be decremented when the compound shape
+                        //     is destroyed in BSShapeCollection (the child shapes are looped over and dereferenced).
+                        if (PhysicsScene.Shapes.ReferenceShape(cPrim.PhysShape))
+                        {
+                            PhysicsScene.Logger.ErrorFormat("{0} Rebuilt sharable shape when building linkset! Region={1}, primID={2}, shape={3}",
+                                                LogHeader, PhysicsScene.RegionName, cPrim.LocalID, cPrim.PhysShape);
+                        }
+                        PhysicsScene.PE.AddChildShapeToCompoundShape(LinksetRoot.PhysShape, cPrim.PhysShape, lci.OffsetPos, lci.OffsetRot);
+                    }
                 }
-            }
+                return false;   // 'false' says to move onto the next child in the list
+            });
 
-            // TODO: need to phantomize the child prims left behind.
-            //     Maybe just destroy the children bodies and shapes and have them rebuild on unlink.
-            //     Selection/deselection might cause way too many build/destructions esp. for LARGE linksets.
+            // With all of the linkset packed into the root prim, it has the mass of everyone.
+            LinksetMass = ComputeLinksetMass();
+            LinksetRoot.UpdatePhysicalMassProperties(LinksetMass, true);
+        }
+        finally
+        {
+            Rebuilding = false;
+        }
 
-            return false;   // 'false' says to move onto the next child in the list
-        });
-
-        // With all of the linkset packed into the root prim, it has the mass of everyone.
-        float linksetMass = LinksetMass;
-        LinksetRoot.UpdatePhysicalMassProperties(linksetMass);
-
-        BulletSimAPI.RecalculateCompoundShapeLocalAabb2(LinksetRoot.PhysShape.ptr);
-
-        // DEBUG: see of inter-linkset collisions are causing problems for constraint linksets.
-        // BulletSimAPI.SetCollisionFilterMask2(LinksetRoot.BSBody.ptr, 
-        //                     (uint)CollisionFilterGroups.LinksetFilter, (uint)CollisionFilterGroups.LinksetMask);
-
+        PhysicsScene.PE.RecalculateCompoundShapeLocalAabb(LinksetRoot.PhysShape);
     }
 }
 }
