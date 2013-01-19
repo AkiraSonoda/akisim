@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -112,9 +113,12 @@ namespace OpenSim.Region.ClientStack.Linden
         private bool m_dumpAssetsToFile = false;
         private string m_regionName;
         private int m_levelUpload = 0;
+                private string surabayaServerURI = string.Empty;
 
         public BunchOfCaps(Scene scene, Caps caps)
         {
+                        m_log.Debug("[BunchOfCaps]: BunchOfCaps( scene, caps)");
+
             m_Scene = scene;
             m_HostCapsObj = caps;
             IConfigSource config = m_Scene.Config;
@@ -131,6 +135,15 @@ namespace OpenSim.Region.ClientStack.Linden
                 {
                     m_persistBakedTextures = appearanceConfig.GetBoolean("PersistBakedTextures", m_persistBakedTextures);
                 }
+
+                                IConfig surabayaConfig = config.Configs["SurabayaServer"];
+                                if (surabayaConfig != null) {
+                                        surabayaServerURI = surabayaConfig.GetString("SurabayaServerURI");
+                                        m_log.DebugFormat("[BunchOfCaps]: Surabaya ServerURI: {0}", surabayaServerURI);
+                                } else {
+                                        m_log.Warn("Surabaya Config is missing, defaulting to http://localhost:8080");
+                                        surabayaServerURI = "http://localhost:8080";
+                                }
             }
 
             m_assetService = m_Scene.AssetService;
@@ -149,6 +162,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </summary>
         public void RegisterHandlers()
         {
+                        m_log.Debug("[BunchOfCaps]: RegisterHandlers()");
+
             string capsBase = "/CAPS/" + m_HostCapsObj.CapsObjectPath;
 
             RegisterRegionServiceHandlers(capsBase);
@@ -157,14 +172,16 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterRegionServiceHandlers(string capsBase)
         {
+                        m_log.DebugFormat("[BunchOfCaps]: RegisterRegionServiceHandlers( capsBase: {0} )", capsBase);
+
             try
             {
                 // the root of all evil
                 m_HostCapsObj.RegisterHandler(
                     "SEED", new RestStreamHandler("POST", capsBase + m_requestPath, SeedCapRequest, "SEED", null));
 
-                m_log.DebugFormat(
-                    "[CAPS]: Registered seed capability {0} for {1}", capsBase + m_requestPath, m_HostCapsObj.AgentID);
+//                m_log.DebugFormat(
+//                    "[CAPS]: Registered seed capability {0} for {1}", capsBase + m_requestPath, m_HostCapsObj.AgentID);
 
                 //m_capsHandlers["MapLayer"] =
                 //    new LLSDStreamhandler<OSDMapRequest, OSDMapLayerResponse>("POST",
@@ -185,6 +202,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterInventoryServiceHandlers(string capsBase)
         {
+                        m_log.DebugFormat("[BunchOfCaps]: RegisterInventoryServiceHandlers( capsBase: {0} )", capsBase);
             try
             {
                 // I don't think this one works...
@@ -254,11 +272,14 @@ namespace OpenSim.Region.ClientStack.Linden
         public string SeedCapRequest(string request, string path, string param,
                                   IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-//            m_log.Debug("[CAPS]: Seed Caps Request in region: " + m_regionName);
+            m_log.DebugFormat(
+                                "[BunchOfCaps]: SeedCapRequest(request: {0}, path: {1}, param: {2} )  in {3} for agent {4}",
+                                request, path, param, m_regionName, m_HostCapsObj.AgentID
+                        );
 
             if (!m_Scene.CheckClient(m_HostCapsObj.AgentID, httpRequest.RemoteIPEndPoint))
             {
-                m_log.DebugFormat(
+                m_log.WarnFormat(
                     "[CAPS]: Unauthorized CAPS client {0} from {1}",
                     m_HostCapsObj.AgentID, httpRequest.RemoteIPEndPoint);
 
@@ -273,9 +294,81 @@ namespace OpenSim.Region.ClientStack.Linden
 
             string result = LLSDHelpers.SerialiseLLSDReply(caps);
 
-            //m_log.DebugFormat("[CAPS] CapsRequest {0}", result);
+                        StringBuilder sb = new StringBuilder();
+                        Match match = Regex.Match(result, @"^<llsd><map>(.*)</map></llsd>",RegexOptions.IgnoreCase);
+                        if (match.Success) {
+                                // Finally, we get the Group value and display it.
+                                string capsFromSim = match.Groups[1].Value;
+                                sb.Append("<llsd><map>");
+                                sb.Append(capsFromSim);
+                        } else {
+                                sb.Append(result);
+                        }
 
-            return result;
+//                        OSDMap surabayaCaps = new OSDMap();
+//                        surabayaCaps.Add("FetchInventoryDescendents2", UUID.Random().ToString());
+//                        surabayaCaps.Add("FetchInventory2", UUID.Random().ToString());
+//                        surabayaCaps.Add("GetTexture", UUID.Random().ToString());
+//                        surabayaCaps.Add("GetMesh", UUID.Random().ToString());
+//                        surabayaCaps.Add("AgentID",m_HostCapsObj.AgentID.ToString());
+//                        surabayaCaps.Add("Host",m_HostCapsObj.HostName);
+//                        surabayaCaps.Add("Port",m_HostCapsObj.Port.ToString());
+//                        surabayaCaps.Add("RegionName",m_HostCapsObj.RegionName);
+//                        surabayaCaps.Add("AgentClose", UUID.Random().ToString());
+
+//                        OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/agent", surabayaCaps, 3000);
+//                        if(surabayaAnswer != null) {
+//                                OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
+//                                string successString = answer["result"];
+//                                if(!successString.Equals("ok")) {
+//                                        m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
+//                                } else {
+                                        String data;
+                                        // FetchInventoryDescendents
+                                        sb.Append("<key>FetchInventoryDescendents2</key><string>");
+                                        sb.Append(surabayaServerURI);
+                                        sb.Append("/CAPS/FID/");
+                                        // data = surabayaCaps["FetchInventoryDescendents2"];
+                                        // sb.Append(data);
+                                        sb.Append("237f10b7-7eac-4991-8860-8c48d8e83032"); // Workaround for profiling purposes
+                                        sb.Append("0000/</string>");
+                                        // Fetchinventory
+                                        sb.Append("<key>FetchInventory2</key><string>");
+                                        sb.Append(surabayaServerURI);
+                                        sb.Append("/CAPS/FINV/");
+                                        //data = surabayaCaps["FetchInventory2"];
+                                        //sb.Append(data);
+                                        sb.Append("d842b7fe-f26b-4fec-ac84-19b5c5900e2f"); // Workaround for profiling purposes
+                                        sb.Append("0000/</string>");
+                                        // Texture
+                                        sb.Append("<key>GetTexture</key><string>");
+                                        sb.Append(surabayaServerURI);
+                                        sb.Append("/CAPS/GTEX/");
+                                        // data = surabayaCaps["GetTexture"];
+                                        // sb.Append(data);
+                                        sb.Append("b94708e1-b0c2-4206-9d6f-2ec876512249"); // Workaround for profiling purposes
+                                        sb.Append("0000/</string>");
+                                        // Mesh
+                                        sb.Append("<key>GetMesh</key><string>");
+                                        sb.Append(surabayaServerURI);
+                                        sb.Append("/CAPS/MESH/");
+                                        // data = surabayaCaps["GetMesh"];
+                                        //sb.Append(data);
+                                        sb.Append("dd88455c-64d3-4d78-8490-9109ca00bff8"); // Workaround for profiling purposes
+                                        sb.Append("0000/</string>");
+                                        // data = surabayaCaps["AgentClose"];
+//                                }
+//                        } else {
+//                                m_log.Error("[BunchOfCaps] Result from Surabaya Server is empty");
+//                        }
+
+                        if (match.Success) {
+                                sb.Append("</map></llsd>");
+                        }
+
+            m_log.DebugFormat("[BunchOfCaps] SeedCapsRequest -- result: {0}", sb.ToString());
+
+            return (sb.ToString());
         }
 
         /// <summary>
