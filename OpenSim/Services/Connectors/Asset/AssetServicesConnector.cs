@@ -30,12 +30,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Xml;
+using System.Xml.Serialization;
 using Nini.Config;
+using OpenSim.Server.Base;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Communications;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Services.Connectors
 {
@@ -55,7 +59,8 @@ namespace OpenSim.Services.Connectors
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
         private Dictionary<string, List<AssetRetrievedEx>> m_AssetHandlers = new Dictionary<string, List<AssetRetrievedEx>>();
-
+		
+		private string surabayaServerURI = String.Empty;
 
         public AssetServicesConnector()
         {
@@ -94,6 +99,16 @@ namespace OpenSim.Services.Connectors
             }
 
             m_ServerURI = serviceURI;
+			
+            IConfig surabayaConfig = source.Configs["SurabayaServer"];
+            if (surabayaConfig != null) {
+                surabayaServerURI = surabayaConfig.GetString("SurabayaServerURI");
+                m_log.DebugFormat("[AssetServicesConnector]: Surabaya ServerURI: {0}", surabayaServerURI);
+            } else {
+                m_log.Warn("[AssetServicesConnector]: Surabaya Config is missing, defaulting to http://localhost:8080");
+                surabayaServerURI = "http://localhost:8080";
+            }
+			
         }
 
         protected void SetCache(IImprovedAssetCache cache)
@@ -258,7 +273,32 @@ namespace OpenSim.Services.Connectors
             {
                 if (m_Cache != null)
                     m_Cache.Cache(asset);
-
+				
+				// Create an XML of the Texture in order to transport the Asset to Surabaya.
+				if (asset.Type == (sbyte) AssetType.Texture) {
+					XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
+					byte[] result = ServerUtils.SerializeResult(xs, asset);
+					string resultString = Util.UTF8.GetString(result);
+					m_log.DebugFormat("Dump of XML: {0}", resultString);
+                    OSDMap serializedAssetCaps = new OSDMap();
+                    serializedAssetCaps.Add("assetID", asset.ID);
+					if(asset.Temporary) {
+						serializedAssetCaps.Add("temporary", "true");
+					} else {
+						serializedAssetCaps.Add("temporary", "false");
+					}
+                    serializedAssetCaps.Add("serializedAsset", resultString);
+					
+                    OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
+                    if(surabayaAnswer != null) {
+                       OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
+                       string successString = answer["result"];
+                       if(!successString.Equals("ok")) {
+                          m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
+                       } 
+					}
+				}
+				
                 return asset.ID;
             }
 

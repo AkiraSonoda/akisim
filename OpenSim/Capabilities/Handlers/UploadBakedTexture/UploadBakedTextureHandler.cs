@@ -77,6 +77,7 @@ namespace OpenSim.Capabilities.Handlers
         {
             try
             {
+            	m_log.DebugFormat("[UploadBakedTextureHandler]: UploadBakedTexture(request: {0}, path: {1}, param: {2} ...)", request, path, param);
                 string capsBase = "/CAPS/" + m_HostCapsObj.CapsObjectPath;
                 string uploaderPath = Util.RandomClass.Next(5000, 8000).ToString("0000");
 
@@ -104,7 +105,7 @@ namespace OpenSim.Capabilities.Handlers
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("[UPLOAD BAKED TEXTURE HANDLER]: {0}{1}", e.Message, e.StackTrace);
+                m_log.ErrorFormat("[UploadBakedTextureHandler]: {0}{1}", e.Message, e.StackTrace);
             }
 
             return null;
@@ -117,7 +118,7 @@ namespace OpenSim.Capabilities.Handlers
         /// <param name="data"></param>
         private void BakedTextureUploaded(UUID assetID, byte[] data)
         {
-//            m_log.DebugFormat("[UPLOAD BAKED TEXTURE HANDLER]: Received baked texture {0}", assetID.ToString());
+            m_log.DebugFormat("[UploadBakedTextureHandler]: BakedTextureUploaded( assetid: {0}, data ) ", assetID.ToString());
 
             AssetBase asset;
             asset = new AssetBase(assetID, "Baked Texture", (sbyte)AssetType.Texture, m_HostCapsObj.AgentID.ToString());
@@ -130,7 +131,7 @@ namespace OpenSim.Capabilities.Handlers
 
     class BakedTextureUploader
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public event Action<UUID, byte[]> OnUpLoad;
 
@@ -143,7 +144,7 @@ namespace OpenSim.Capabilities.Handlers
             newAssetID = UUID.Random();
             uploaderPath = path;
             httpListener = httpServer;
-            //                m_log.InfoFormat("[CAPS] baked texture upload starting for {0}",newAssetID);
+            m_log.DebugFormat("[BakedTextureUploader]: BakedTextureUploader(path: {0}, httpServer) newAssetID {1}",path,newAssetID);
         }
 
         /// <summary>
@@ -155,6 +156,7 @@ namespace OpenSim.Capabilities.Handlers
         /// <returns></returns>
         public string uploaderCaps(byte[] data, string path, string param)
         {
+			m_log.DebugFormat("[BakedTextureUploader]: uploaderCaps(data, path: {0}, param {1})", path, param);
             Action<UUID, byte[]> handlerUpLoad = OnUpLoad;
 
             // Don't do this asynchronously, otherwise it's possible for the client to send set appearance information
@@ -173,7 +175,7 @@ namespace OpenSim.Capabilities.Handlers
 
             httpListener.RemoveStreamHandler("POST", uploaderPath);
 
-//            m_log.DebugFormat("[BAKED TEXTURE UPLOADER]: baked texture upload completed for {0}", newAssetID);
+            m_log.DebugFormat("[BakedTextureUploader]: uploaderCaps(...): baked texture upload completed for {0}", newAssetID);
 
             return res;
         }
