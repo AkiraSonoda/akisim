@@ -41,25 +41,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         private static readonly PacketPool instance = new PacketPool();
 
-        private bool packetPoolEnabled = true;
-        private bool dataBlockPoolEnabled = true;
-
-        private PercentageStat m_packetsReusedStat = new PercentageStat(
-            "PacketsReused",
-            "Packets reused",
-            "clientstack",
-            "packetpool",
-            StatVerbosity.Debug,
-            "Number of packets reused out of all requests to the packet pool");
-
-        private PercentageStat m_blocksReusedStat = new PercentageStat(
-            "BlocksReused",
-            "Blocks reused",
-            "clientstack",
-            "packetpool",
-            StatVerbosity.Debug,
-            "Number of data blocks reused out of all requests to the packet pool");
-
         /// <summary>
         /// Pool of packets available for reuse.
         /// </summary>
@@ -72,22 +53,59 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             get { return instance; }
         }
 
-        public bool RecyclePackets
+        public bool RecyclePackets { get; set; }
+
+        public bool RecycleDataBlocks { get; set; }
+
+        /// <summary>
+        /// The number of packets pooled
+        /// </summary>
+        public int PacketsPooled
         {
-            set { packetPoolEnabled = value; }
-            get { return packetPoolEnabled; }
+            get 
+            {
+                lock (pool)
+                    return pool.Count;
+            }
         }
 
-        public bool RecycleDataBlocks
+        /// <summary>
+        /// The number of blocks pooled.
+        /// </summary>
+        public int BlocksPooled
         {
-            set { dataBlockPoolEnabled = value; }
-            get { return dataBlockPoolEnabled; }
+            get 
+            {
+                lock (DataBlocks) 
+                    return DataBlocks.Count;
+            }
         }
+
+        /// <summary>
+        /// Number of packets requested.
+        /// </summary>
+        public long PacketsRequested { get; private set; }
+
+        /// <summary>
+        /// Number of packets reused.
+        /// </summary>
+        public long PacketsReused { get; private set; }
+
+        /// <summary>
+        /// Number of packet blocks requested.
+        /// </summary>
+        public long BlocksRequested { get; private set; }
+
+        /// <summary>
+        /// Number of packet blocks reused.
+        /// </summary>
+        public long BlocksReused { get; private set; }
 
         private PacketPool()
         {
-            StatsManager.RegisterStat(m_packetsReusedStat);
-            StatsManager.RegisterStat(m_blocksReusedStat);
+            // defaults
+            RecyclePackets = true;
+            RecycleDataBlocks = true;
         }
 
         /// <summary>
@@ -97,26 +115,30 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <returns>Guaranteed to always return a packet, whether from the pool or newly constructed.</returns>
         public Packet GetPacket(PacketType type)
         {
-            m_packetsReusedStat.Consequent++;
+            PacketsRequested++;
 
             Packet packet;
 
-            if (!packetPoolEnabled)
+            if (!RecyclePackets)
                 return Packet.BuildPacket(type);
 
             lock (pool)
             {
                 if (!pool.ContainsKey(type) || pool[type] == null || (pool[type]).Count == 0)
                 {
+//                    m_log.DebugFormat("[PACKETPOOL]: Building {0} packet", type);
+
                     // Creating a new packet if we cannot reuse an old package
                     packet = Packet.BuildPacket(type);
                 }
                 else
                 {
-                    // Recycle old packages
-                    m_packetsReusedStat.Antecedent++;
+//                    m_log.DebugFormat("[PACKETPOOL]: Pulling {0} packet", type);
 
-                    packet = (pool[type]).Pop();
+                    // Recycle old packages
+                    PacketsReused++;
+
+                    packet = pool[type].Pop();
                 }
             }
 
@@ -183,7 +205,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name="packet"></param>
         public void ReturnPacket(Packet packet)
         {
-            if (dataBlockPoolEnabled)
+            if (RecycleDataBlocks)
             {
                 switch (packet.Type)
                 {
@@ -207,7 +229,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 }
             }
 
-            if (packetPoolEnabled)
+            if (RecyclePackets)
             {
                 switch (packet.Type)
                 {
@@ -227,7 +249,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
                             if ((pool[type]).Count < 50)
                             {
-                                (pool[type]).Push(packet);
+//                                m_log.DebugFormat("[PACKETPOOL]: Pushing {0} packet", type);
+
+                                pool[type].Push(packet);
                             }
                         }
                         break;
@@ -243,7 +267,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             lock (DataBlocks)
             {
-                m_blocksReusedStat.Consequent++;
+                BlocksRequested++;
 
                 Stack<Object> s;
 
@@ -251,7 +275,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 {
                     if (s.Count > 0)
                     {
-                        m_blocksReusedStat.Antecedent++;
+                        BlocksReused++;
                         return (T)s.Pop();
                     }
                 }

@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using Nini.Config;
 using log4net;
 using System;
@@ -39,31 +40,47 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 
-namespace OpenSim.Server.Handlers.Asset {
-    public class AssetServerPostHandler : BaseStreamHandler {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+namespace OpenSim.Server.Handlers.Asset
+{
+    public class AssetServerPostHandler : BaseStreamHandler
+    {
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         private IAssetService m_AssetService;
 
         public AssetServerPostHandler(IAssetService service) :
-                base("POST", "/assets") {
+                base("POST", "/assets")
+        {
             m_AssetService = service;
         }
 
-        public override byte[] Handle(string requestId, string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) {
+        public override byte[] Handle(string path, Stream request,
+                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+        {
+            AssetBase asset;
+            XmlSerializer xs = new XmlSerializer(typeof (AssetBase));
 
-            m_log.DebugFormat("[AssetServerPostHandler] RequestId: {0}", requestId);
-            XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
-            AssetBase asset = (AssetBase)xs.Deserialize(request);
+            try
+            {
+                asset = (AssetBase)xs.Deserialize(request);
+            }
+            catch (XmlException)
+            {
+                httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                return null;
+            }
 
             string[] p = SplitParams(path);
-            if (p.Length > 1) {
-                bool result =m_AssetService.UpdateContent(p [1], asset.Data);
+            if (p.Length > 1)
+            {
+                bool result = m_AssetService.UpdateContent(p[1], asset.Data);
+
                 xs = new XmlSerializer(typeof(bool));
                 return ServerUtils.SerializeResult(xs, result);
             }
 
             string id = m_AssetService.Store(asset);
+
             xs = new XmlSerializer(typeof(string));
             return ServerUtils.SerializeResult(xs, id);
         }

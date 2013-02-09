@@ -24,12 +24,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using System;
 using HttpServer;
 using OpenMetaverse;
 
-namespace OpenSim.Framework.Servers.HttpServer {
-    public class PollServiceHttpRequest {
+namespace OpenSim.Framework.Servers.HttpServer
+{
+    public class PollServiceHttpRequest
+    {
         public readonly PollServiceEventArgs PollServiceArgs;
         public readonly IHttpClientContext HttpContext;
         public readonly IHttpRequest Request;
@@ -37,21 +40,13 @@ namespace OpenSim.Framework.Servers.HttpServer {
         public readonly UUID RequestID;
 
         public PollServiceHttpRequest(
-            PollServiceEventArgs pPollServiceArgs, IHttpClientContext pHttpContext, IHttpRequest pRequest) {
+            PollServiceEventArgs pPollServiceArgs, IHttpClientContext pHttpContext, IHttpRequest pRequest)
+        {
             PollServiceArgs = pPollServiceArgs;
             HttpContext = pHttpContext;
             Request = pRequest;
             RequestTime = System.Environment.TickCount;
             RequestID = UUID.Random();
-        }
-
-        public PollServiceHttpRequest(
-            string requestId, PollServiceEventArgs pPollServiceArgs, IHttpClientContext pHttpContext, IHttpRequest pRequest) {
-            PollServiceArgs = pPollServiceArgs;
-            HttpContext = pHttpContext;
-            Request = pRequest;
-            RequestTime = System.Environment.TickCount;
-            RequestID = UUID.Parse(requestId);
         }
     }
 }

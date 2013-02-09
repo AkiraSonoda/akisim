@@ -105,6 +105,70 @@ namespace OpenSim.Framework
         public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.SmartThreadPool;
         public static FireAndForgetMethod FireAndForgetMethod = DefaultFireAndForgetMethod;
 
+
+			public static string HexDump(byte[] bytes, int bytesPerLine = 16)
+			{
+				if (bytes == null) return "<null>";
+				int bytesLength = bytes.Length;
+				
+				char[] HexChars = "0123456789ABCDEF".ToCharArray();
+				
+				int firstHexColumn =
+					8                   // 8 characters for the address
+						+ 3;                  // 3 spaces
+				
+				int firstCharColumn = firstHexColumn
+					+ bytesPerLine * 3       // - 2 digit for the hexadecimal value and 1 space
+						+ (bytesPerLine - 1) / 8 // - 1 extra space every 8 characters from the 9th
+						+ 2;                  // 2 spaces 
+				
+				int lineLength = firstCharColumn
+					+ bytesPerLine           // - characters to show the ascii value
+						+ Environment.NewLine.Length; // Carriage return and line feed (should normally be 2)
+				
+				char[] line = (new String(' ', lineLength - 2) + Environment.NewLine).ToCharArray();
+				int expectedLines = (bytesLength + bytesPerLine - 1) / bytesPerLine;
+				StringBuilder result = new StringBuilder(expectedLines * lineLength);
+				
+				for (int i = 0; i < bytesLength; i += bytesPerLine)
+				{
+					line[0] = HexChars[(i >> 28) & 0xF];
+					line[1] = HexChars[(i >> 24) & 0xF];
+					line[2] = HexChars[(i >> 20) & 0xF];
+					line[3] = HexChars[(i >> 16) & 0xF];
+					line[4] = HexChars[(i >> 12) & 0xF];
+					line[5] = HexChars[(i >> 8) & 0xF];
+					line[6] = HexChars[(i >> 4) & 0xF];
+					line[7] = HexChars[(i >> 0) & 0xF];
+					
+					int hexColumn = firstHexColumn;
+					int charColumn = firstCharColumn;
+					
+					for (int j = 0; j < bytesPerLine; j++)
+					{
+						if (j > 0 && (j & 7) == 0) hexColumn++;
+						if (i + j >= bytesLength)
+						{
+							line[hexColumn] = ' ';
+							line[hexColumn + 1] = ' ';
+							line[charColumn] = ' ';
+						}
+						else
+						{
+							byte b = bytes[i + j];
+							line[hexColumn] = HexChars[(b >> 4) & 0xF];
+							line[hexColumn + 1] = HexChars[b & 0xF];
+							line[charColumn] = (b < 32 ? '·' : (char)b);
+						}
+						hexColumn += 3;
+						charColumn++;
+					}
+					result.Append(line);
+					result.Append("\n");
+				}
+				return result.ToString();
+			}
+
         /// <summary>
         /// Gets the name of the directory where the current running executable
         /// is located
@@ -298,6 +362,13 @@ namespace OpenSim.Framework
             return x.CompareTo(max) > 0 ? max :
                 x.CompareTo(min) < 0 ? min :
                 x;
+        }
+
+        // Inclusive, within range test (true if equal to the endpoints)
+        public static bool InRange<T>(T x, T min, T max)
+            where T : IComparable<T>
+        {
+            return x.CompareTo(max) <= 0 && x.CompareTo(min) >= 0;
         }
 
         public static uint GetNextXferID()
@@ -537,7 +608,7 @@ namespace OpenSim.Framework
         /// <summary>
         /// Determines whether a point is inside a bounding box.
         /// </summary>
-        /// <param name='v'>/param>
+        /// <param name='v'></param>
         /// <param name='min'></param>
         /// <param name='max'></param>
         /// <returns></returns>
@@ -1641,6 +1712,7 @@ namespace OpenSim.Framework
                 throw new InvalidOperationException("SmartThreadPool is already initialized");
 
             m_ThreadPool = new SmartThreadPool(2000, maxThreads, 2);
+            m_ThreadPool.Name = "Util";
         }
 
         public static int FireAndForgetCount()
@@ -1713,7 +1785,7 @@ namespace OpenSim.Framework
                     break;
                 case FireAndForgetMethod.SmartThreadPool:
                     if (m_ThreadPool == null)
-                        m_ThreadPool = new SmartThreadPool(2000, 15, 2);
+                        InitThreadPool(15); 
                     m_ThreadPool.QueueWorkItem(SmartThreadPoolCallback, new object[] { realCallback, obj });
                     break;
                 case FireAndForgetMethod.Thread:
@@ -1742,12 +1814,16 @@ namespace OpenSim.Framework
             StringBuilder sb = new StringBuilder();
             if (FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
             {
-                threadPoolUsed = "SmartThreadPool";
-                maxThreads = m_ThreadPool.MaxThreads;
-                minThreads = m_ThreadPool.MinThreads;
-                inUseThreads = m_ThreadPool.InUseThreads;
-                allocatedThreads = m_ThreadPool.ActiveThreads;
-                waitingCallbacks = m_ThreadPool.WaitingCallbacks;
+                // ROBUST currently leaves this the FireAndForgetMethod but never actually initializes the threadpool.
+                if (m_ThreadPool != null)
+                {
+                    threadPoolUsed = "SmartThreadPool";
+                    maxThreads = m_ThreadPool.MaxThreads;
+                    minThreads = m_ThreadPool.MinThreads;
+                    inUseThreads = m_ThreadPool.InUseThreads;
+                    allocatedThreads = m_ThreadPool.ActiveThreads;
+                    waitingCallbacks = m_ThreadPool.WaitingCallbacks;
+                }
             }
             else if (
                 FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem
@@ -1898,6 +1974,12 @@ namespace OpenSim.Framework
         /// </summary>
         public static void PrintCallStack()
         {
+            PrintCallStack(m_log.DebugFormat);
+        }
+
+        public delegate void DebugPrinter(string msg, params Object[] parm);
+        public static void PrintCallStack(DebugPrinter printer)
+        {
             StackTrace stackTrace = new StackTrace(true);           // get call stack
             StackFrame[] stackFrames = stackTrace.GetFrames();  // get method calls (frames)
 
@@ -1905,7 +1987,7 @@ namespace OpenSim.Framework
             foreach (StackFrame stackFrame in stackFrames)
             {
                 MethodBase mb = stackFrame.GetMethod();
-                m_log.DebugFormat("{0}.{1}:{2}", mb.DeclaringType, mb.Name, stackFrame.GetFileLineNumber()); // write method name
+                printer("{0}.{1}:{2}", mb.DeclaringType, mb.Name, stackFrame.GetFileLineNumber()); // write method name
             }
         }
 
@@ -2131,5 +2213,16 @@ namespace OpenSim.Framework
             return firstName + "." + lastName + " " + "@" + uri.Authority;
         }
         #endregion
+
+        /// <summary>
+        /// Escapes the special characters used in "LIKE".
+        /// </summary>
+        /// <remarks>
+        /// For example: EscapeForLike("foo_bar%baz") = "foo\_bar\%baz"
+        /// </remarks>
+        public static string EscapeForLike(string str)
+        {
+            return str.Replace("_", "\\_").Replace("%", "\\%");
+        }
     }
 }

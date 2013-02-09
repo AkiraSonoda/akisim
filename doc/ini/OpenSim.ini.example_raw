@@ -1,0 +1,229 @@
+;; OpenSim.ini.example
+[Startup]
+    ConsolePrompt = "Region (\R) "
+    ; save_crashes = false
+    ; crash_dir = "crashes"
+    ; PIDFile = "/tmp/my.pid"
+    startup_console_commands_file = "startup_commands.txt"
+    shutdown_console_commands_file = "shutdown_commands.txt"
+    ; timer_Script = "filename"
+    ; timer_Interval = 1200
+    async_call_method = SmartThreadPool
+    MaxPoolThreads = 15
+    EventQueue = true
+    region_info_source = "filesystem"
+    ; region_info_source = "web"
+    ; regionload_regionsdir="C:\somewhere\xmlfiles\"
+    ; regionload_webserver_url = "http://example.com/regions.xml";
+    allow_regionless = false
+    MaxPrimUndos = 20
+    NonPhysicalPrimMin = 0.001
+    NonPhysicalPrimMax = 256
+    ; PhysicalPrimMin = 0.01
+    PhysicalPrimMax = 10
+    ClampPrimSize = false
+    LinksetPrims = 0
+    ; AllowScriptCrossing = true
+    ; TrustBinaries = false
+    ; CombineContiguousRegions = false
+    ; InworldRestartShutsDown = false
+    ; MinimumTimeBeforePersistenceConsidered = 60
+    ; MaximumTimeBeforePersistenceConsidered = 600
+    ; see_into_this_sim_from_neighbor = true
+    ; physical_prim = true
+    ; meshing = Meshmerizer
+    ; meshing = ZeroMesher
+    ; physics = OpenDynamicsEngine
+    ; physics = BulletSim
+    ; physics = basicphysics
+    ; physics = POS
+    ; permissionmodules = DefaultPermissionsModule
+    ; serverside_object_permissions = true
+    ; allow_grid_gods = false
+    ; region_owner_is_god = true
+    ; region_manager_is_god = false
+    ; parcel_owner_is_god = true
+    ; simple_build_permissions = false
+    ; DefaultScriptEngine = "XEngine"
+    ; GenerateMaptiles = true
+    ; MaptileRefresh = 0
+    ; MaptileStaticUUID = "00000000-0000-0000-0000-000000000000"
+    ; TextureOnMapTile = true
+    ; DrawPrimOnMapTile = true
+    ; HttpProxy = "http://proxy.com:8080"
+    ; HttpProxyExceptions = ".mydomain.com;localhost"
+    ; emailmodule = DefaultEmailModule
+    ; SpawnPointRouting = closest
+    ; TelehubAllowLandmark = false
+    ; AllowedViewerList = 
+    ; BannedViewerList = 
+    ; UseWrongSitTarget = false
+
+[Estates]
+    ; DefaultEstateName = My Estate
+    ; DefaultEstateOwnerName = FirstName LastName
+    ; DefaultEstateOwnerUUID = 00000000-0000-0000-0000-000000000000
+    ; DefaultEstateOwnerEMail = owner@domain.com
+    ; DefaultEstateOwnerPassword = password
+
+[SMTP]
+    ; enabled = false
+    ; internal_object_host = lsl.opensim.local
+    ; host_domain_header_from = "127.0.0.1"
+    ; email_pause_time = 20
+    ; email_max_size = 4096
+    ; SMTP_SERVER_HOSTNAME = "127.0.0.1"
+    ; SMTP_SERVER_PORT = 25
+    ; SMTP_SERVER_LOGIN = ""
+    ; SMTP_SERVER_PASSWORD = ""
+
+[Network]
+    ; ConsoleUser = "Test"
+    ; ConsolePass = "secret"
+    ; console_port = 0
+    ; http_listener_port = 9000
+    ; ExternalHostNameForLSL = "127.0.0.1"
+    shard = "OpenSim"
+    ; user_agent = "OpenSim LSL (Mozilla Compatible)"
+    max_connections = 30;
+    webutil_debug_level = 0;
+
+[ClientStack.LindenUDP]
+    ; DisableFacelights = "false"
+
+[ClientStack.LindenCaps]
+    Cap_GetTexture = "localhost"
+    Cap_GetMesh = "localhost"
+
+[SimulatorFeatures]
+    ;MapImageServerURI = "http://127.0.0.1:9000/"
+    ;SearchServerURI = "http://127.0.0.1:9000/"
+
+[Chat]
+    ; whisper_distance = 10
+    ; say_distance = 20
+    ; shout_distance = 100
+
+[Messaging]
+    ; OfflineMessageModule = OfflineMessageModule
+    ; OfflineMessageURL = http://yourserver/Offline.php
+    ; MuteListModule = MuteListModule
+    ; MuteListURL = http://yourserver/Mute.php
+    ; ForwardOfflineGroupMessages = true
+
+[ODEPhysicsSettings]
+    ; mesh_sculpted_prim = true
+    ; use_NINJA_physics_joints = false
+
+[RemoteAdmin]
+    ; enabled = false
+    ; port = 0
+    ; access_password = ""
+    ; access_ip_addresses =
+    ; create_region_enable_voice = false
+    ; create_region_public = false
+    ; enabled_methods = all
+    ; default_male = Default Male
+    ; default_female = Default Female
+    ; copy_folders = false
+    ; default_appearance = default_appearance.xml
+
+[Wind]
+    ; enabled = true
+    ; wind_update_rate = 150
+    ; wind_plugin = SimpleRandomWind
+    ; avg_strength = 5.0
+    ; avg_direction = 0.0
+    ; var_strength = 5.0
+    ; var_direction = 30.0
+    ; rate_change = 1.0
+    ; strength = 1.0
+
+
+[LightShare]
+    ; enable_windlight = false
+
+[DataSnapshot]
+    ; index_sims = false
+    ; data_exposure = minimum
+    ; gridname = "OSGrid"
+    ; default_snapshot_period = 1200
+    ; snapshot_cache_directory = "DataSnapshot"
+    ; data_services="http://metaverseink.com/cgi-bin/register.py"
+
+[Economy]
+    ; SellEnabled = true
+    ; PriceUpload = 0
+    ; PriceGroupCreate = 0
+
+
+[XEngine]
+    ; Enabled = true
+    ; MinThreads = 2
+    ; MaxThreads = 100
+    ; IdleTimeout = 60
+    ; Priority = "BelowNormal"
+    ; MaxScriptEventQueue = 300
+    ; ThreadStackSize = 262144
+    ; DeleteScriptsOnStartup = true
+    ; AppDomainLoading = true
+    ; DefaultCompileLanguage = "lsl"
+    ; AllowedCompilers = "lsl"
+    ; CompileWithDebugInformation = true
+    ; AllowMODFunctions = false
+    ; AllowOSFunctions = false
+    ; AllowLightShareFunctions = false
+    OSFunctionThreatLevel = VeryLow
+    ; EventLimit = 30
+    ; KillTimedOutScripts = false
+    ; ScriptDelayFactor = 1.0
+    ; ScriptDistanceLimitFactor = 1.0
+    ; NotecardLineReadCharsMax = 255
+    ; SensorMaxResults = 16
+    ; DisableUndergroundMovement = true
+    ; ScriptEnginesPath = "ScriptEngines"
+
+
+[MRM]
+    ; Enabled = false
+    ; Sandboxed = true
+    ; SandboxLevel = "Internet"
+    ; OwnerOnly = true
+
+[FreeSwitchVoice]
+    ; Enabled = false
+    ; LocalServiceModule = OpenSim.Services.FreeswitchService.dll:FreeswitchService
+    ; LocalServiceModule = OpenSim.Services.Connectors.dll:RemoteFreeswitchConnector
+    ; FreeswitchServiceURL = http://my.grid.server:8004/fsapi
+
+[Groups]
+    ; Enabled = false
+    ; Module = Default
+    ; MessagingEnabled = true
+    ; MessagingModule = GroupsMessagingModule
+    ; ServicesConnectorModule = XmlRpcGroupsServicesConnector
+    ; GroupsServerURI = ""
+    ; NoticesEnabled = true
+    ; DebugEnabled = false
+    ; XmlRpcServiceReadKey    = 1234
+    ; XmlRpcServiceWriteKey   = 1234
+
+[InterestManagement]
+     ; UpdatePrioritizationScheme = BestAvatarResponsiveness
+
+[MediaOnAPrim]
+    ; Enabled = true;
+
+[NPC]
+    ; Enabled = false
+
+[Terrain]
+    ; InitialTerrain = "pinhead-island"
+
+[Architecture]
+    ; Include-Architecture = "config-include/Standalone.ini"
+    ; Include-Architecture = "config-include/StandaloneHypergrid.ini"
+    ; Include-Architecture = "config-include/Grid.ini"
+    ; Include-Architecture = "config-include/GridHypergrid.ini"
+    ; Include-Architecture = "config-include/SimianGrid.ini"
+    ; Include-Architecture = "config-include/HyperSimianGrid.ini"

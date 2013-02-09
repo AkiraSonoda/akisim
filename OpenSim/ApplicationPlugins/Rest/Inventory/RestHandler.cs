@@ -24,13 +24,15 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 
-namespace OpenSim.ApplicationPlugins.Rest.Inventory {
+namespace OpenSim.ApplicationPlugins.Rest.Inventory
+{
     /// <remarks>
     /// The class signature reveals the roles that RestHandler plays.
     ///
@@ -47,21 +49,23 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
     ///     processing model. This is the request interface of the
     ///     handler.
     /// </remarks>
-    public class RestHandler : RestPlugin, IRestHandler, IHttpAgentHandler {
+
+    public class RestHandler : RestPlugin, IRestHandler, IHttpAgentHandler
+    {
         // Handler tables: both stream and REST are supported. The path handlers and their
         // respective allocators are stored in separate tables.
 
-        internal Dictionary<string,RestMethodHandler>   pathHandlers = new Dictionary<string,RestMethodHandler>();
+        internal Dictionary<string,RestMethodHandler>   pathHandlers   = new Dictionary<string,RestMethodHandler>();
         internal Dictionary<string,RestMethodAllocator> pathAllocators = new Dictionary<string,RestMethodAllocator>();
         internal Dictionary<string,RestStreamHandler>   streamHandlers = new Dictionary<string,RestStreamHandler>();
 
         #region local static state
 
         private static bool  handlersLoaded = false;
-        private static List<Type>  classes = new List<Type>();
+        private static List<Type>  classes  = new List<Type>();
         private static List<IRest> handlers = new List<IRest>();
         private static Type[]         parms = new Type[0];
-        private static Object[]       args = new Object[0];
+        private static Object[]       args  = new Object[0];
 
         /// <summary>
         /// This static initializer scans the ASSEMBLY for classes that
@@ -76,17 +80,24 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// and RestSkeleton.
         /// </summary>
 
-        static RestHandler() {
+        static RestHandler()
+        {
             Module[] mods = Assembly.GetExecutingAssembly().GetModules();
 
-            foreach (Module m in mods) {
+            foreach (Module m in mods)
+            {
                 Type[] types = m.GetTypes();
-                foreach (Type t in types) {
-                    try {
-                        if (t.GetInterface("IRest") != null) {
+                foreach (Type t in types)
+                {
+                    try
+                    {
+                        if (t.GetInterface("IRest") != null)
+                        {
                             classes.Add(t);
                         }
-                    } catch (Exception) {
+                    }
+                    catch (Exception)
+                    {
                         Rest.Log.WarnFormat("[STATIC-HANDLER]: #0 Error scanning {1}", t);
                         Rest.Log.InfoFormat("[STATIC-HANDLER]: #0 {1} is not included", t);
                     }
@@ -113,18 +124,25 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// so it is isolated within this method.
         /// </summary>
 
-        private void LoadHandlers() {
-            lock (handlers) {
-                if (!handlersLoaded) {
+        private void LoadHandlers()
+        {
+            lock (handlers)
+            {
+                if (!handlersLoaded)
+                {
                     ConstructorInfo ci;
-                    Object ht;
+                    Object          ht;
 
-                    foreach (Type t in classes) {
-                        try {
+                    foreach (Type t in classes)
+                    {
+                        try
+                        {
                             ci = t.GetConstructor(parms);
                             ht = ci.Invoke(args);
                             handlers.Add((IRest)ht);
-                        } catch (Exception e) {
+                        }
+                        catch (Exception e)
+                        {
                             Rest.Log.WarnFormat("{0} Unable to load {1} : {2}", MsgId, t, e.Message);
                         }
                     }
@@ -142,13 +160,15 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 
         // Name is used to differentiate the message header.
 
-        public override string Name {
+        public override string Name
+        {
             get { return "HANDLER"; }
         }
 
         // Used to partition the .ini configuration space.
 
-        public override string ConfigName {
+        public override string ConfigName
+        {
             get { return "RestHandler"; }
         }
 
@@ -157,12 +177,14 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         // classes in our assembly and the base
         // names are protected.
 
-        public string MsgId {
-            get { return base.requestId; }
+        public string MsgId
+        {
+            get { return base.MsgID; }
         }
 
-        public string RequestId {
-            get { return base.requestNum; }
+        public string RequestId
+        {
+            get { return base.RequestID; }
         }
 
         #endregion overriding properties
@@ -178,8 +200,10 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// the plugin can be enabled.
         /// </remarks>
 
-        public override void Initialise(OpenSimBase openSim) {
-            try {
+        public override void Initialise(OpenSimBase openSim)
+        {
+            try
+            {
                 // This plugin will only be enabled if the broader
                 // REST plugin mechanism is enabled.
 
@@ -190,7 +214,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
                 // IsEnabled is implemented by the base class and
                 // reflects an overall RestPlugin status
 
-                if (!IsEnabled) {
+                if (!IsEnabled)
+                {
                     //Rest.Log.WarnFormat("{0} Plugins are disabled", MsgId);
                     return;
                 }
@@ -201,24 +226,23 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
                 // These are stored in static variables to make
                 // them easy to reach from anywhere in the assembly.
 
-                Rest.main = openSim;
-                if (Rest.main == null) {
+                Rest.main              = openSim;
+                if (Rest.main == null)
                     throw new Exception("OpenSim base pointer is null");
-                }
 
-                Rest.Plugin = this;
-                Rest.Config = Config;
-                Rest.Prefix = Prefix;
-                Rest.GodKey = GodKey;
-                Rest.Authenticate = Rest.Config.GetBoolean("authenticate", Rest.Authenticate);
-                Rest.Scheme = Rest.Config.GetString("auth-scheme", Rest.Scheme);
-                Rest.Secure = Rest.Config.GetBoolean("secured", Rest.Secure);
-                Rest.ExtendedEscape = Rest.Config.GetBoolean("extended-escape", Rest.ExtendedEscape);
-                Rest.Realm = Rest.Config.GetString("realm", Rest.Realm);
-                Rest.DumpAsset = Rest.Config.GetBoolean("dump-asset", Rest.DumpAsset);
-                Rest.Fill = Rest.Config.GetBoolean("path-fill", Rest.Fill);
-                Rest.DumpLineSize = Rest.Config.GetInt("dump-line-size", Rest.DumpLineSize);
-                Rest.FlushEnabled = Rest.Config.GetBoolean("flush-on-error", Rest.FlushEnabled);
+                Rest.Plugin            = this;
+                Rest.Config            = Config;
+                Rest.Prefix            = Prefix;
+                Rest.GodKey            = GodKey;
+                Rest.Authenticate      = Rest.Config.GetBoolean("authenticate", Rest.Authenticate);
+                Rest.Scheme            = Rest.Config.GetString("auth-scheme", Rest.Scheme);
+                Rest.Secure            = Rest.Config.GetBoolean("secured", Rest.Secure);
+                Rest.ExtendedEscape    = Rest.Config.GetBoolean("extended-escape", Rest.ExtendedEscape);
+                Rest.Realm             = Rest.Config.GetString("realm", Rest.Realm);
+                Rest.DumpAsset         = Rest.Config.GetBoolean("dump-asset", Rest.DumpAsset);
+                Rest.Fill              = Rest.Config.GetBoolean("path-fill", Rest.Fill);
+                Rest.DumpLineSize      = Rest.Config.GetInt("dump-line-size", Rest.DumpLineSize);
+                Rest.FlushEnabled      = Rest.Config.GetBoolean("flush-on-error", Rest.FlushEnabled);
 
                 // Note: Odd spacing is required in the following strings
 
@@ -236,7 +260,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 
                 // The supplied prefix MUST be absolute
 
-                if (Rest.Prefix.Substring(0, 1) != Rest.UrlPathSeparator) {
+                if (Rest.Prefix.Substring(0,1) != Rest.UrlPathSeparator)
+                {
                     Rest.Log.WarnFormat("{0} Prefix <{1}> is not absolute and must be", MsgId, Rest.Prefix);
                     Rest.Log.InfoFormat("{0} Prefix changed to </{1}>", MsgId, Rest.Prefix);
                     Rest.Prefix = String.Format("{0}{1}", Rest.UrlPathSeparator, Rest.Prefix);
@@ -245,7 +270,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
                 // If data dumping is requested, report on the chosen line
                 // length.
 
-                if (Rest.DumpAsset) {
+                if (Rest.DumpAsset)
+                {
                     Rest.Log.InfoFormat("{0} Dump {1} bytes per line", MsgId, Rest.DumpLineSize);
                 }
 
@@ -271,10 +297,14 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
                 // is to allow for setup that is dependent upon other
                 // activities outside of the agency.
 
-                foreach (IRest handler in handlers) {
-                    try {
+                foreach (IRest handler in handlers)
+                {
+                    try
+                    {
                         handler.Initialize();
-                    } catch (Exception e) {
+                    }
+                    catch (Exception e)
+                    {
                         Rest.Log.ErrorFormat("{0} initialization error: {1}", MsgId, e.Message);
                     }
                 }
@@ -293,7 +323,9 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 //                    }
 //                }
 
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Rest.Log.ErrorFormat("{0} Plugin initialization has failed: {1}", MsgId, e.Message);
             }
         }
@@ -308,7 +340,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// is disabled by deleting the handler from the HTTP server tables.
         /// </summary>
 
-        public override void Close() {
+        public override void Close()
+        {
             Rest.Log.InfoFormat("{0} Plugin is terminating", MsgId);
 
             // FIXME: If this code is ever to be re-enabled (most of it is disabled already) then this will
@@ -319,7 +352,8 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 //            }
 //            catch (KeyNotFoundException){}
 
-            foreach (IRest handler in handlers) {
+            foreach (IRest handler in handlers)
+            {
                 handler.Close();
             }
         }
@@ -337,21 +371,25 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// Note: The match is case-insensitive.
         /// </summary>
 
-        public bool Match(OSHttpRequest request, OSHttpResponse response) {
+        public bool Match(OSHttpRequest request, OSHttpResponse response)
+        {
 
             string path = request.RawUrl.ToLower();
 
             // Rest.Log.DebugFormat("{0} Match ENTRY", MsgId);
 
-            try {
-                foreach (string key in pathHandlers.Keys) {
+            try
+            {
+                foreach (string key in pathHandlers.Keys)
+                {
                     // Rest.Log.DebugFormat("{0} Match testing {1} against agent prefix <{2}>", MsgId, path, key);
 
                     // Note that Match will not necessarily find the handler that will
                     // actually be used - it does no test for the "closest" fit. It
                     // simply reflects that at least one possible handler exists.
 
-                    if (path.StartsWith(key)) {
+                    if (path.StartsWith(key))
+                    {
                         // Rest.Log.DebugFormat("{0} Matched prefix <{1}>", MsgId, key);
 
                         // This apparently odd evaluation is needed to prevent a match
@@ -359,20 +397,22 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
                         // may match on URL's that were not intended for this handler.
 
                         return (path.Length == key.Length ||
-                            path.Substring(key.Length, 1) == Rest.UrlPathSeparator);
+                                path.Substring(key.Length, 1) == Rest.UrlPathSeparator);
                     }
                 }
 
                 path = String.Format("{0}{1}{2}", request.HttpMethod, Rest.UrlMethodSeparator, path);
 
-                foreach (string key in streamHandlers.Keys) {
+                foreach (string key in streamHandlers.Keys)
+                {
                     // Rest.Log.DebugFormat("{0} Match testing {1} against stream prefix <{2}>", MsgId, path, key);
 
                     // Note that Match will not necessarily find the handler that will
                     // actually be used - it does no test for the "closest" fit. It
                     // simply reflects that at least one possible handler exists.
 
-                    if (path.StartsWith(key)) {
+                    if (path.StartsWith(key))
+                    {
                         // Rest.Log.DebugFormat("{0} Matched prefix <{1}>", MsgId, key);
 
                         // This apparently odd evaluation is needed to prevent a match
@@ -380,10 +420,12 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
                         // may match on URL's that were not intended for this handler.
 
                         return (path.Length == key.Length ||
-                            path.Substring(key.Length, 1) == Rest.UrlPathSeparator);
+                                path.Substring(key.Length, 1) == Rest.UrlPathSeparator);
                     }
                 }
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 Rest.Log.ErrorFormat("{0} matching exception for path <{1}> : {2}", MsgId, path, e.Message);
             }
 
@@ -399,18 +441,21 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// Behavior is undefined if preconditions are not satisfied.
         /// </summary>
 
-        public bool Handle(OSHttpRequest request, OSHttpResponse response) {
+        public bool Handle(OSHttpRequest request, OSHttpResponse response)
+        {
             bool handled;
-            base.requestId = base.requestNum;
+            base.MsgID = base.RequestID;
 
             // Debug only
 
-            if (Rest.DEBUG) {
+            if (Rest.DEBUG)
+            {
                 Rest.Log.DebugFormat("{0} ENTRY", MsgId);
                 Rest.Log.DebugFormat("{0}  Agent: {1}", MsgId, request.UserAgent);
                 Rest.Log.DebugFormat("{0} Method: {1}", MsgId, request.HttpMethod);
 
-                for (int i = 0; i < request.Headers.Count; i++) {
+                for (int i = 0; i < request.Headers.Count; i++)
+                {
                     Rest.Log.DebugFormat("{0} Header [{1}] : <{2}> = <{3}>",
                                          MsgId, i, request.Headers.GetKey(i), request.Headers.Get(i));
                 }
@@ -420,10 +465,13 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
             // If a path handler worked we're done, otherwise try any
             // available stream handlers too.
 
-            try {
+            try
+            {
                 handled = (FindPathHandler(request, response) ||
-                    FindStreamHandler(requestId, request, response));
-            } catch (Exception e) {
+                    FindStreamHandler(request, response));
+            }
+            catch (Exception e)
+            {
                 // A raw exception indicates that something we weren't expecting has
                 // happened. This should always reflect a shortcoming in the plugin,
                 // or a failure to satisfy the preconditions. It should not reflect
@@ -449,21 +497,26 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// Note: The selection is case-insensitive
         /// </summary>
 
-        private bool FindStreamHandler(string requestId, OSHttpRequest request, OSHttpResponse response) {
+        private bool FindStreamHandler(OSHttpRequest request, OSHttpResponse response)
+        {
             RequestData rdata = new RequestData(request, response, String.Empty);
 
             string bestMatch = String.Empty;
-            string path = String.Format("{0}:{1}", rdata.method, rdata.path).ToLower();
+            string path      = String.Format("{0}:{1}", rdata.method, rdata.path).ToLower();
 
-            Rest.Log.DebugFormat("RequestID:{0} MsgId: {1} Checking for stream handler for <{1}>", requestId, MsgId, path);
+            Rest.Log.DebugFormat("{0} Checking for stream handler for <{1}>", MsgId, path);
 
-            if (!IsEnabled) {
+            if (!IsEnabled)
+            {
                 return false;
             }
 
-            foreach (string pattern in streamHandlers.Keys) {
-                if (path.StartsWith(pattern)) {
-                    if (pattern.Length > bestMatch.Length) {
+            foreach (string pattern in streamHandlers.Keys)
+            {
+                if (path.StartsWith(pattern))
+                {
+                    if (pattern.Length > bestMatch.Length)
+                    {
                         bestMatch = pattern;
                     }
                 }
@@ -471,11 +524,12 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 
             // Handle using the best match available
 
-            if (bestMatch.Length > 0) {
+            if (bestMatch.Length > 0)
+            {
                 Rest.Log.DebugFormat("{0} Stream-based handler matched with <{1}>", MsgId, bestMatch);
-                RestStreamHandler handler = streamHandlers [bestMatch];
-                rdata.buffer = handler.Handle(requestId, rdata.path, rdata.request.InputStream, rdata.request, rdata.response);
-                rdata.AddHeader(rdata.response.ContentType, handler.ContentType);
+                RestStreamHandler handler = streamHandlers[bestMatch];
+                rdata.buffer = handler.Handle(rdata.path, rdata.request.InputStream, rdata.request, rdata.response);
+                rdata.AddHeader(rdata.response.ContentType,handler.ContentType);
                 rdata.Respond("FindStreamHandler Completion");
             }
 
@@ -489,12 +543,15 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// path has not already been registered, the method is added to the active
         /// handler table.
         /// </summary>
-        public void AddStreamHandler(string httpMethod, string path, RestMethod method) {
-            if (!IsEnabled) {
+        public void AddStreamHandler(string httpMethod, string path, RestMethod method)
+        {
+            if (!IsEnabled)
+            {
                 return;
             }
 
-            if (!path.StartsWith(Rest.Prefix)) {
+            if (!path.StartsWith(Rest.Prefix))
+            {
                 path = String.Format("{0}{1}", Rest.Prefix, path);
             }
 
@@ -502,10 +559,13 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 
             // Conditionally add to the list
 
-            if (!streamHandlers.ContainsKey(path)) {
+            if (!streamHandlers.ContainsKey(path))
+            {
                 streamHandlers.Add(path, new RestStreamHandler(httpMethod, path, method));
                 Rest.Log.DebugFormat("{0} Added handler for {1}", MsgId, path);
-            } else {
+            }
+            else
+            {
                 Rest.Log.WarnFormat("{0} Ignoring duplicate handler for {1}", MsgId, path);
             }
         }
@@ -521,11 +581,13 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// Note: The selection process is case-insensitive
         /// </summary>
 
-        internal bool FindPathHandler(OSHttpRequest request, OSHttpResponse response) {
+        internal bool FindPathHandler(OSHttpRequest request, OSHttpResponse response)
+        {
             RequestData rdata = null;
             string bestMatch = null;
 
-            if (!IsEnabled) {
+            if (!IsEnabled)
+            {
                 return false;
             }
 
@@ -533,27 +595,33 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
 
             Rest.Log.DebugFormat("{0} Checking for path handler for <{1}>", MsgId, request.RawUrl);
 
-            foreach (string pattern in pathHandlers.Keys) {
-                if (request.RawUrl.ToLower().StartsWith(pattern)) {
-                    if (String.IsNullOrEmpty(bestMatch) || pattern.Length > bestMatch.Length) {
+            foreach (string pattern in pathHandlers.Keys)
+            {
+                if (request.RawUrl.ToLower().StartsWith(pattern))
+                {
+                    if (String.IsNullOrEmpty(bestMatch) || pattern.Length > bestMatch.Length)
+                    {
                         bestMatch = pattern;
                     }
                 }
             }
 
-            if (!String.IsNullOrEmpty(bestMatch)) {
-                rdata = pathAllocators [bestMatch](request, response, bestMatch);
+            if (!String.IsNullOrEmpty(bestMatch))
+            {
+                rdata = pathAllocators[bestMatch](request, response, bestMatch);
 
                 Rest.Log.DebugFormat("{0} Path based REST handler matched with <{1}>", MsgId, bestMatch);
 
-                try {
-                    pathHandlers [bestMatch](rdata);
+                try
+                {
+                    pathHandlers[bestMatch](rdata);
                 }
 
                 // A plugin generated error indicates a request-related error
                 // that has been handled by the plugin.
 
-                catch (RestException r) {
+                catch (RestException r)
+                {
                     Rest.Log.WarnFormat("{0} Request failed: {1}", MsgId, r.Message);
                 }
             }
@@ -566,17 +634,21 @@ namespace OpenSim.ApplicationPlugins.Rest.Inventory {
         /// path as a key. If an entry already exists, it is replaced by the new one.
         /// </summary>
 
-        public void AddPathHandler(RestMethodHandler mh, string path, RestMethodAllocator ra) {
-            if (!IsEnabled) {
+        public void AddPathHandler(RestMethodHandler mh, string path, RestMethodAllocator ra)
+        {
+            if (!IsEnabled)
+            {
                 return;
             }
 
-            if (pathHandlers.ContainsKey(path)) {
+            if (pathHandlers.ContainsKey(path))
+            {
                 Rest.Log.DebugFormat("{0} Replacing handler for <${1}>", MsgId, path);
                 pathHandlers.Remove(path);
             }
 
-            if (pathAllocators.ContainsKey(path)) {
+            if (pathAllocators.ContainsKey(path))
+            {
                 Rest.Log.DebugFormat("{0} Replacing allocator for <${1}>", MsgId, path);
                 pathAllocators.Remove(path);
             }

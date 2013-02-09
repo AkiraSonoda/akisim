@@ -1014,9 +1014,9 @@ namespace OpenSim.Region.Framework.Scenes
                             {
                                 actor.Size = m_shape.Scale;
 
-                                if (Shape.SculptEntry)
-                                    CheckSculptAndLoad();
-                                else
+//                                if (Shape.SculptEntry)
+//                                    CheckSculptAndLoad();
+//                                else
                                     ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(actor);
                             }
                         }
@@ -1256,7 +1256,7 @@ namespace OpenSim.Region.Framework.Scenes
         public UUID SitTargetAvatar { get; set; }
 
         /// <summary>
-        /// IDs of all avatars start on this object part.
+        /// IDs of all avatars sat on this part.
         /// </summary>
         /// <remarks>
         /// We need to track this so that we can stop sat upon prims from being attached.
@@ -1620,12 +1620,13 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (userExposed)
             {
+/*
                 if (dupe.m_shape.SculptEntry && dupe.m_shape.SculptTexture != UUID.Zero)
                 {
                     ParentGroup.Scene.AssetService.Get(
                         dupe.m_shape.SculptTexture.ToString(), dupe, dupe.AssetReceived);
                 }
-                
+*/                
                 bool UsePhysics = ((dupe.Flags & PrimFlags.Physics) != 0);
                 dupe.DoPhysicsPropertyUpdate(UsePhysics, true);
             }
@@ -1643,6 +1644,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="id">ID of asset received</param>
         /// <param name="sender">Register</param>
         /// <param name="asset"></param>
+/*        
         protected void AssetReceived(string id, Object sender, AssetBase asset)
         {
             if (asset != null)
@@ -1652,7 +1654,7 @@ namespace OpenSim.Region.Framework.Scenes
                     "[SCENE OBJECT PART]: Part {0} {1} requested mesh/sculpt data for asset id {2} from asset service but received no data",
                     Name, UUID, id);
         }
-
+*/
         /// <summary>
         /// Do a physics property update for a NINJA joint.
         /// </summary>
@@ -1833,9 +1835,9 @@ namespace OpenSim.Region.Framework.Scenes
 
                     // If this part is a sculpt then delay the physics update until we've asynchronously loaded the
                     // mesh data.
-                    if (Shape.SculptEntry)
-                        CheckSculptAndLoad();
-                    else
+//                    if (Shape.SculptEntry)
+//                        CheckSculptAndLoad();
+//                    else
                         ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(pa);
                 }
             }
@@ -1916,11 +1918,11 @@ namespace OpenSim.Region.Framework.Scenes
         public int GetAxisRotation(int axis)
         {
             //Cannot use ScriptBaseClass constants as no referance to it currently.
-            if (axis == 2)//STATUS_ROTATE_X
+            if (axis == (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_X)
                 return STATUS_ROTATE_X;
-            if (axis == 4)//STATUS_ROTATE_Y
+            if (axis == (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Y)
                 return STATUS_ROTATE_Y;
-            if (axis == 8)//STATUS_ROTATE_Z
+            if (axis == (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Z)
                 return STATUS_ROTATE_Z;
 
             return 0;
@@ -2237,7 +2239,15 @@ namespace OpenSim.Region.Framework.Scenes
 
             // play the sound.
             if (startedColliders.Count > 0 && CollisionSound != UUID.Zero && CollisionSoundVolume > 0.0f)
-                SendSound(CollisionSound.ToString(), CollisionSoundVolume, true, (byte)0, 0, false, false);
+            {
+                ISoundModule soundModule = ParentGroup.Scene.RequestModuleInterface<ISoundModule>();
+                if (soundModule != null)
+                {
+                    soundModule.SendSound(UUID, CollisionSound,
+                            CollisionSoundVolume, true, (byte)0, 0, false,
+                            false);
+                }
+            }
 
             SendCollisionEvent(scriptEvents.collision_start, startedColliders, ParentGroup.Scene.EventManager.TriggerScriptCollidingStart);
             SendCollisionEvent(scriptEvents.collision      , m_lastColliders , ParentGroup.Scene.EventManager.TriggerScriptColliding);
@@ -2256,11 +2266,14 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void PhysicsOutOfBounds(Vector3 pos)
         {
-            m_log.Error("[PHYSICS]: Physical Object went out of bounds.");
+            // Note: This is only being called on the root prim at this time.
+
+            m_log.ErrorFormat(
+                "[SCENE OBJECT PART]: Physical object {0}, localID {1} went out of bounds at {2} in {3}.  Stopping at {4} and making non-physical.", 
+                Name, LocalId, pos, ParentGroup.Scene.Name, AbsolutePosition);
             
             RemFlag(PrimFlags.Physics);
             DoPhysicsPropertyUpdate(false, true);
-            //ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(PhysActor);
         }
 
         public void PhysicsRequestingTerseUpdate()
@@ -2283,37 +2296,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
 
             ScheduleTerseUpdate();
-        }
-
-        public void PreloadSound(string sound)
-        {
-            // UUID ownerID = OwnerID;
-            UUID objectID = ParentGroup.RootPart.UUID;
-            UUID soundID = UUID.Zero;
-
-            if (!UUID.TryParse(sound, out soundID))
-            {
-                //Trys to fetch sound id from prim's inventory.
-                //Prim's inventory doesn't support non script items yet
-                
-                lock (TaskInventory)
-                {
-                    foreach (KeyValuePair<UUID, TaskInventoryItem> item in TaskInventory)
-                    {
-                        if (item.Value.Name == sound)
-                        {
-                            soundID = item.Value.ItemID;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            ParentGroup.Scene.ForEachRootScenePresence(delegate(ScenePresence sp)
-            {
-                if (!(Util.GetDistanceTo(sp.AbsolutePosition, AbsolutePosition) >= 100))
-                    sp.ControllingClient.SendPreLoadSound(objectID, objectID, soundID);
-            });
         }
 
         public void RemFlag(PrimFlags flag)
@@ -2511,6 +2493,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// Set sculpt and mesh data, and tell the physics engine to process the change.
         /// </summary>
         /// <param name="texture">The mesh itself.</param>
+/*        
         public void SculptTextureCallback(AssetBase texture)
         {
             if (m_shape.SculptEntry)
@@ -2538,7 +2521,7 @@ namespace OpenSim.Region.Framework.Scenes
                 }
             }
         }
-
+*/
         /// <summary>
         /// Send a full update to the client for the given part
         /// </summary>
@@ -2673,98 +2656,6 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         /// <summary>
-        /// Trigger or play an attached sound in this part's inventory.
-        /// </summary>
-        /// <param name="sound"></param>
-        /// <param name="volume"></param>
-        /// <param name="triggered"></param>
-        /// <param name="flags"></param>
-        public void SendSound(string sound, double volume, bool triggered, byte flags, float radius, bool useMaster, bool isMaster)
-        {
-            if (volume > 1)
-                volume = 1;
-            if (volume < 0)
-                volume = 0;
-
-            UUID ownerID = OwnerID;
-            UUID objectID = ParentGroup.RootPart.UUID;
-            UUID parentID = ParentGroup.UUID;
-
-            UUID soundID = UUID.Zero;
-            Vector3 position = AbsolutePosition; // region local
-            ulong regionHandle = ParentGroup.Scene.RegionInfo.RegionHandle;
-
-            if (!UUID.TryParse(sound, out soundID))
-            {
-                // search sound file from inventory
-                lock (TaskInventory)
-                {
-                    foreach (KeyValuePair<UUID, TaskInventoryItem> item in TaskInventory)
-                    {
-                        if (item.Value.Name == sound && item.Value.Type == (int)AssetType.Sound)
-                        {
-                            soundID = item.Value.ItemID;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (soundID == UUID.Zero)
-                return;
-
-            ISoundModule soundModule = ParentGroup.Scene.RequestModuleInterface<ISoundModule>();
-            if (soundModule != null)
-            {
-                if (useMaster)
-                {
-                    if (isMaster)
-                    {
-                        if (triggered)
-                            soundModule.TriggerSound(soundID, ownerID, objectID, parentID, volume, position, regionHandle, radius);
-                        else
-                            soundModule.PlayAttachedSound(soundID, ownerID, objectID, volume, position, flags, radius);
-                        ParentGroup.PlaySoundMasterPrim = this;
-                        ownerID = OwnerID;
-                        objectID = ParentGroup.RootPart.UUID;
-                        parentID = ParentGroup.UUID;
-                        position = AbsolutePosition; // region local
-                        regionHandle = ParentGroup.Scene.RegionInfo.RegionHandle;
-                        if (triggered)
-                            soundModule.TriggerSound(soundID, ownerID, objectID, parentID, volume, position, regionHandle, radius);
-                        else
-                            soundModule.PlayAttachedSound(soundID, ownerID, objectID, volume, position, flags, radius);
-                        foreach (SceneObjectPart prim in ParentGroup.PlaySoundSlavePrims)
-                        {
-                            ownerID = prim.OwnerID;
-                            objectID = prim.ParentGroup.RootPart.UUID;
-                            parentID = prim.ParentGroup.UUID;
-                            position = prim.AbsolutePosition; // region local
-                            regionHandle = prim.ParentGroup.Scene.RegionInfo.RegionHandle;
-                            if (triggered)
-                                soundModule.TriggerSound(soundID, ownerID, objectID, parentID, volume, position, regionHandle, radius);
-                            else
-                                soundModule.PlayAttachedSound(soundID, ownerID, objectID, volume, position, flags, radius);
-                        }
-                        ParentGroup.PlaySoundSlavePrims.Clear();
-                        ParentGroup.PlaySoundMasterPrim = null;
-                    }
-                    else
-                    {
-                        ParentGroup.PlaySoundSlavePrims.Add(this);
-                    }
-                }
-                else
-                {
-                    if (triggered)
-                        soundModule.TriggerSound(soundID, ownerID, objectID, parentID, volume, position, regionHandle, radius);
-                    else
-                        soundModule.PlayAttachedSound(soundID, ownerID, objectID, volume, position, flags, radius);
-                }
-            }
-        }
-
-        /// <summary>
         /// Send a terse update to all clients
         /// </summary>
         public void SendTerseUpdateToAllClients()
@@ -2780,13 +2671,13 @@ namespace OpenSim.Region.Framework.Scenes
             ParentGroup.SetAxisRotation(axis, rotate);
 
             //Cannot use ScriptBaseClass constants as no referance to it currently.
-            if (axis == 2)//STATUS_ROTATE_X
+            if ((axis & (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_X) != 0)
                 STATUS_ROTATE_X = rotate;
 
-            if (axis == 4)//STATUS_ROTATE_Y
+            if ((axis & (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Y) != 0)
                 STATUS_ROTATE_Y = rotate;
 
-            if (axis == 8)//STATUS_ROTATE_Z
+            if ((axis & (int)SceneObjectGroup.axisSelect.STATUS_ROTATE_Z) != 0)
                 STATUS_ROTATE_Z = rotate;
         }
 
@@ -3783,7 +3674,7 @@ namespace OpenSim.Region.Framework.Scenes
         public void UpdateExtraParam(ushort type, bool inUse, byte[] data)
         {
             m_shape.ReadInUpdateExtraParam(type, inUse, data);
-
+/*
             if (type == 0x30)
             {
                 if (m_shape.SculptEntry && m_shape.SculptTexture != UUID.Zero)
@@ -3791,7 +3682,7 @@ namespace OpenSim.Region.Framework.Scenes
                     ParentGroup.Scene.AssetService.Get(m_shape.SculptTexture.ToString(), this, AssetReceived);
                 }
             }
-
+*/
             if (ParentGroup != null)
             {
                 ParentGroup.HasGroupChanged = true;
@@ -4025,14 +3916,6 @@ namespace OpenSim.Region.Framework.Scenes
                 if (!wasUsingPhysics)
                 {
                     DoPhysicsPropertyUpdate(UsePhysics, false);
-
-                    if (!ParentGroup.IsDeleted)
-                    {
-                        if (LocalId == ParentGroup.RootPart.LocalId)
-                        {
-                            ParentGroup.CheckSculptAndLoad();
-                        }
-                    }
                 }
             }
             else
@@ -4072,14 +3955,6 @@ namespace OpenSim.Region.Framework.Scenes
                         pa.SetMaterial(Material);
                         DoPhysicsPropertyUpdate(UsePhysics, true);
     
-                        if (!ParentGroup.IsDeleted)
-                        {
-                            if (LocalId == ParentGroup.RootPart.LocalId)
-                            {
-                                ParentGroup.CheckSculptAndLoad();
-                            }
-                        }
-    
                         if (
                             ((AggregateScriptEvents & scriptEvents.collision) != 0) ||
                             ((AggregateScriptEvents & scriptEvents.collision_end) != 0) ||
@@ -4104,14 +3979,6 @@ namespace OpenSim.Region.Framework.Scenes
                 else // it already has a physical representation
                 {
                     DoPhysicsPropertyUpdate(UsePhysics, false); // Update physical status. If it's phantom this will remove the prim
-
-                    if (!ParentGroup.IsDeleted)
-                    {
-                        if (LocalId == ParentGroup.RootPart.LocalId)
-                        {
-                            ParentGroup.CheckSculptAndLoad();
-                        }
-                    }
                 }
             }
 
@@ -4129,13 +3996,14 @@ namespace OpenSim.Region.Framework.Scenes
                     VolumeDetectActive = true;
                 }
             }
-            else
+            else if (SetVD != wasVD)
             {
                 // Remove VolumeDetect in any case. Note, it's safe to call SetVolumeDetect as often as you like
                 // (mumbles, well, at least if you have infinte CPU powers :-))
                 if (pa != null)
                     pa.SetVolumeDetect(0);
 
+                RemFlag(PrimFlags.Phantom);
                 VolumeDetectActive = false;
             }
 
@@ -4341,6 +4209,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <remarks>
         /// When the physics engine has finished with it, the sculpt data is discarded to save memory.
         /// </remarks>
+/*
         public void CheckSculptAndLoad()
         {
 //            m_log.DebugFormat("Processing CheckSculptAndLoad for {0} {1}", Name, LocalId);
@@ -4366,7 +4235,7 @@ namespace OpenSim.Region.Framework.Scenes
                 }
             }
         }
-
+*/
         /// <summary>
         /// Update the texture entry for this part.
         /// </summary>
@@ -4604,6 +4473,7 @@ namespace OpenSim.Region.Framework.Scenes
                     }
 
                     Quaternion rot = Quaternion.Slerp(RotationOffset,APIDTarget,1.0f/(float)m_APIDIterations);
+                    rot.Normalize();
                     UpdateRotation(rot);
 
                     m_APIDIterations--;
@@ -4634,18 +4504,22 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name='avatarId'></param>
         protected internal bool AddSittingAvatar(UUID avatarId)
         {
-            if (IsSitTargetSet && SitTargetAvatar == UUID.Zero)
-                SitTargetAvatar = avatarId;
-
-            HashSet<UUID> sittingAvatars = m_sittingAvatars;
-
-            if (sittingAvatars == null)
-                sittingAvatars = new HashSet<UUID>();
-
-            lock (sittingAvatars)
+            lock (ParentGroup.m_sittingAvatars)
             {
-                m_sittingAvatars = sittingAvatars;
-                return m_sittingAvatars.Add(avatarId);
+                if (IsSitTargetSet && SitTargetAvatar == UUID.Zero)
+                    SitTargetAvatar = avatarId;
+
+                if (m_sittingAvatars == null)
+                    m_sittingAvatars = new HashSet<UUID>();
+
+                if (m_sittingAvatars.Add(avatarId))
+                {
+                    ParentGroup.m_sittingAvatars.Add(avatarId);
+
+                    return true;
+                }
+
+                return false;
             }
         }
 
@@ -4659,27 +4533,26 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name='avatarId'></param>
         protected internal bool RemoveSittingAvatar(UUID avatarId)
         {
-            if (SitTargetAvatar == avatarId)
-                SitTargetAvatar = UUID.Zero;
-
-            HashSet<UUID> sittingAvatars = m_sittingAvatars;
-
-            // This can occur under a race condition where another thread
-            if (sittingAvatars == null)
-                return false;
-
-            lock (sittingAvatars)
+            lock (ParentGroup.m_sittingAvatars)
             {
-                if (sittingAvatars.Remove(avatarId))
+                if (SitTargetAvatar == avatarId)
+                    SitTargetAvatar = UUID.Zero;
+
+                if (m_sittingAvatars == null)
+                    return false;
+
+                if (m_sittingAvatars.Remove(avatarId))
                 {
-                    if (sittingAvatars.Count == 0)
+                    if (m_sittingAvatars.Count == 0)
                         m_sittingAvatars = null;
+
+                    ParentGroup.m_sittingAvatars.Remove(avatarId);
 
                     return true;
                 }
-            }
 
-            return false;
+                return false;
+            }
         }
 
         /// <summary>
@@ -4689,16 +4562,12 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>A hashset of the sitting avatars.  Returns null if there are no sitting avatars.</returns>
         public HashSet<UUID> GetSittingAvatars()
         {
-            HashSet<UUID> sittingAvatars = m_sittingAvatars;
-
-            if (sittingAvatars == null)
+            lock (ParentGroup.m_sittingAvatars)
             {
-                return null;
-            }
-            else
-            {
-                lock (sittingAvatars)
-                    return new HashSet<UUID>(sittingAvatars);
+                if (m_sittingAvatars == null)
+                    return null;
+                else
+                    return new HashSet<UUID>(m_sittingAvatars);
             }
         }
 
@@ -4709,13 +4578,13 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns></returns>
         public int GetSittingAvatarsCount()
         {
-            HashSet<UUID> sittingAvatars = m_sittingAvatars;
-
-            if (sittingAvatars == null)
-                return 0;
-
-            lock (sittingAvatars)
-                return sittingAvatars.Count;
+            lock (ParentGroup.m_sittingAvatars)
+            {
+                if (m_sittingAvatars == null)
+                    return 0;
+                else
+                    return m_sittingAvatars.Count;
+            }
         }
     }
 }

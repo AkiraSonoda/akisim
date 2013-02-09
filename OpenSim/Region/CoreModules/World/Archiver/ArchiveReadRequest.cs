@@ -290,7 +290,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             foreach (DearchiveContext sceneContext in sceneContexts.Values)
             {
-                m_log.InfoFormat("[ARCHIVER:] Loading region {0}", sceneContext.Scene.RegionInfo.RegionName);
+                m_log.InfoFormat("[ARCHIVER]: Loading region {0}", sceneContext.Scene.RegionInfo.RegionName);
 
                 if (!m_merge)
                 {
@@ -324,7 +324,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             Util.FireAndForget(delegate(object o)
             {
                 Thread.Sleep(15000);
-                m_log.Info("Starting scripts in scene objects");
+                m_log.Info("[ARCHIVER]: Starting scripts in scene objects");
 
                 foreach (DearchiveContext sceneContext in sceneContexts.Values)
                 {
@@ -552,13 +552,22 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 
                 // Validate User and Group UUID's
 
-                if (!ResolveUserUuid(scene, parcel.OwnerID))
-                    parcel.OwnerID = m_rootScene.RegionInfo.EstateSettings.EstateOwner;
-
-                if (!ResolveGroupUuid(parcel.GroupID))
+                if (parcel.IsGroupOwned)
                 {
-                    parcel.GroupID = UUID.Zero;
-                    parcel.IsGroupOwned = false;
+                    if (!ResolveGroupUuid(parcel.GroupID))
+                    {
+                        parcel.OwnerID = m_rootScene.RegionInfo.EstateSettings.EstateOwner;
+                        parcel.GroupID = UUID.Zero;
+                        parcel.IsGroupOwned = false;
+                    }
+                }
+                else
+                {
+                    if (!ResolveUserUuid(scene, parcel.OwnerID))
+                        parcel.OwnerID = m_rootScene.RegionInfo.EstateSettings.EstateOwner;
+
+                    if (!ResolveGroupUuid(parcel.GroupID))
+                        parcel.GroupID = UUID.Zero;
                 }
 
                 List<LandAccessEntry> accessList = new List<LandAccessEntry>();
@@ -571,8 +580,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 parcel.ParcelAccessList = accessList;
 
 //                m_log.DebugFormat(
-//                    "[ARCHIVER]: Adding parcel {0}, local id {1}, area {2}", 
-//                    parcel.Name, parcel.LocalID, parcel.Area);
+//                    "[ARCHIVER]: Adding parcel {0}, local id {1}, owner {2}, group {3}, isGroupOwned {4}, area {5}", 
+//                    parcel.Name, parcel.LocalID, parcel.OwnerID, parcel.GroupID, parcel.IsGroupOwned, parcel.Area);
                 
                 landData.Add(parcel);
             }
@@ -595,13 +604,18 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <returns></returns>
         private bool ResolveUserUuid(Scene scene, UUID uuid)
         {
-            if (!m_validUserUuids.ContainsKey(uuid))
+            lock (m_validUserUuids)
             {
-                UserAccount account = scene.UserAccountService.GetUserAccount(scene.RegionInfo.ScopeID, uuid);
-                m_validUserUuids.Add(uuid, account != null);
-            }
+                if (!m_validUserUuids.ContainsKey(uuid))
+                {
+                    // Note: we call GetUserAccount() inside the lock because this UserID is likely
+                    // to occur many times, and we only want to query the users service once.
+                    UserAccount account = scene.UserAccountService.GetUserAccount(scene.RegionInfo.ScopeID, uuid);
+                    m_validUserUuids.Add(uuid, account != null);
+                }
 
-            return m_validUserUuids[uuid];
+                return m_validUserUuids[uuid];
+            }
         }
 
         /// <summary>
@@ -614,19 +628,26 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             if (uuid == UUID.Zero)
                 return true;    // this means the object has no group
 
-            if (!m_validGroupUuids.ContainsKey(uuid))
+            lock (m_validGroupUuids)
             {
-                bool exists;
-                
-                if (m_groupsModule == null)
-                    exists = false;
-                else
-                    exists = (m_groupsModule.GetGroupRecord(uuid) != null);
+                if (!m_validGroupUuids.ContainsKey(uuid))
+                {
+                    bool exists;
+                    if (m_groupsModule == null)
+                    {
+                        exists = false;
+                    }
+                    else
+                    {
+                        // Note: we call GetGroupRecord() inside the lock because this GroupID is likely
+                        // to occur many times, and we only want to query the groups service once.
+                        exists = (m_groupsModule.GetGroupRecord(uuid) != null);
+                    }
+                    m_validGroupUuids.Add(uuid, exists);
+                }
 
-                m_validGroupUuids.Add(uuid, exists);
+                return m_validGroupUuids[uuid];
             }
-
-            return m_validGroupUuids[uuid];
         }
 
         /// Load an asset

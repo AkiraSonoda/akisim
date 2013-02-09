@@ -33,7 +33,7 @@ using OpenMetaverse;
 namespace OpenSim.Region.Physics.BulletSPlugin
 {
 
-public class BSConstraintCollection : IDisposable
+public sealed class BSConstraintCollection : IDisposable
 {
     // private static readonly ILog m_log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
     // private static readonly string LogHeader = "[CONSTRAINT COLLECTION]";
@@ -41,9 +41,9 @@ public class BSConstraintCollection : IDisposable
     delegate bool ConstraintAction(BSConstraint constrain);
 
     private List<BSConstraint> m_constraints;
-    private BulletSim m_world;
+    private BulletWorld m_world;
 
-    public BSConstraintCollection(BulletSim world)
+    public BSConstraintCollection(BulletWorld world)
     {
         m_world = world;
         m_constraints = new List<BSConstraint>();
@@ -143,8 +143,6 @@ public class BSConstraintCollection : IDisposable
     // Return 'true' if any constraints were destroyed.
     public bool RemoveAndDestroyConstraint(BulletBody body1)
     {
-        // return BulletSimAPI.RemoveConstraintByID(m_world.ID, obj.ID);
-
         List<BSConstraint> toRemove = new List<BSConstraint>();
         uint lookingID = body1.ID;
         lock (m_constraints)

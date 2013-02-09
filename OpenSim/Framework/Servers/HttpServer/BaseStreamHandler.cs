@@ -24,20 +24,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using System.IO;
 
-namespace OpenSim.Framework.Servers.HttpServer {
-    public abstract class BaseStreamHandler : BaseRequestHandler, IStreamedRequestHandler {
-
-        protected BaseStreamHandler(string httpMethod, string path) : this(httpMethod, path, null, null) {
-        }
-
-        protected BaseStreamHandler(string httpMethod, string path, string name, string description)
-            : base(httpMethod, path, name, description) {
-        }
-
-        public abstract byte[] Handle(string requestId, string path, Stream request,
+namespace OpenSim.Framework.Servers.HttpServer
+{
+    public abstract class BaseStreamHandler : BaseRequestHandler, IStreamedRequestHandler
+    {
+        public abstract byte[] Handle(string path, Stream request,
                                       IOSHttpRequest httpRequest, IOSHttpResponse httpResponse);
 
+        protected BaseStreamHandler(string httpMethod, string path) : this(httpMethod, path, null, null) {}
+
+        protected BaseStreamHandler(string httpMethod, string path, string name, string description)
+            : base(httpMethod, path, name, description) {}
     }
 }

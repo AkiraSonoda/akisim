@@ -46,13 +46,15 @@ using LSL_String = OpenSim.Region.ScriptEngine.Shared.LSL_Types.LSLString;
 namespace OpenSim.Region.ScriptEngine.Shared.Tests
 {
     [TestFixture]
-    public class LSL_ApiListTests
+    public class LSL_ApiListTests : OpenSimTestCase
     {
         private LSL_Api m_lslApi;
 
         [SetUp]
-        public void SetUp()
+        public override void SetUp()
         {
+            base.SetUp();
+
             IConfigSource initConfigSource = new IniConfigSource();
             IConfig config = initConfigSource.AddConfig("XEngine");
             config.Set("Enabled", "true");

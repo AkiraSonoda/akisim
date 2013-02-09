@@ -26,6 +26,7 @@
  */
 
 using log4net;
+using Mono.Addins;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -42,6 +43,7 @@ using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
 {
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RemoteGridServicesConnector")]
     public class RemoteGridServicesConnector : ISharedRegionModule, IGridService
     {
         private static readonly ILog m_log =
@@ -148,6 +150,10 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
 
         public string RegisterRegion(UUID scopeID, GridRegion regionInfo)
         {
+			m_log.DebugFormat("[RemoteGridServiceConnector]: Register Region {0} Server {1} HTTP Port: {2} X:{3} Y:{4}",
+			                  regionInfo.RegionName, regionInfo.ServerURI, regionInfo.HttpPort, 
+			                  regionInfo.RegionCoordX, regionInfo.RegionCoordY);
+
             string msg = m_LocalGridService.RegisterRegion(scopeID, regionInfo);
 
             if (msg == String.Empty)

@@ -167,7 +167,6 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             }
             scenesGroup.CalcSceneLocations();
 
-
             m_archiveWriter = new TarArchiveWriter(m_saveStream);
 
             try
@@ -215,7 +214,6 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 throw;
             }
         }
-
 
         private void ArchiveOneRegion(Scene scene, string regionDir, Dictionary<UUID, AssetType> assetUuids)
         {
@@ -540,7 +538,6 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             xtw.WriteElementString("size_in_meters", string.Format("{0},{1}", size.X, size.Y));
         }
 
-
         protected void Save(Scene scene, List<SceneObjectGroup> sceneObjects, string regionDir)
         {
             if (regionDir != string.Empty)
@@ -560,8 +557,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             foreach (ILandObject lo in landObjects)
             {
                 LandData landData = lo.LandData;
-                string landDataPath = String.Format("{0}{1}{2}.xml",
-                    regionDir, ArchiveConstants.LANDDATA_PATH, landData.GlobalID.ToString());
+                string landDataPath 
+                    = String.Format("{0}{1}", regionDir, ArchiveConstants.CreateOarLandDataPath(landData));
                 m_archiveWriter.WriteFile(landDataPath, LandDataSerializer.Serialize(landData, m_options));
             }
 
@@ -590,21 +587,30 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             }
         }
         
-        protected void ReceivedAllAssets(
-            ICollection<UUID> assetsFoundUuids, ICollection<UUID> assetsNotFoundUuids)
+        protected void ReceivedAllAssets(ICollection<UUID> assetsFoundUuids, ICollection<UUID> assetsNotFoundUuids, bool timedOut)
         {
-            foreach (UUID uuid in assetsNotFoundUuids)
+            string errorMessage;
+            
+            if (timedOut)
             {
-                m_log.DebugFormat("[ARCHIVER]: Could not find asset {0}", uuid);
+                errorMessage = "Loading assets timed out";
             }
+            else
+            {
+                foreach (UUID uuid in assetsNotFoundUuids)
+                {
+                    m_log.DebugFormat("[ARCHIVER]: Could not find asset {0}", uuid);
+                }
 
-            //            m_log.InfoFormat(
-            //                "[ARCHIVER]: Received {0} of {1} assets requested",
-            //                assetsFoundUuids.Count, assetsFoundUuids.Count + assetsNotFoundUuids.Count);
+                //            m_log.InfoFormat(
+                //                "[ARCHIVER]: Received {0} of {1} assets requested",
+                //                assetsFoundUuids.Count, assetsFoundUuids.Count + assetsNotFoundUuids.Count);
 
-            CloseArchive(String.Empty);
+                errorMessage = String.Empty;
+            }
+            
+            CloseArchive(errorMessage);
         }
-
         
         /// <summary>
         /// Closes the archive and notifies that we're done.
@@ -629,6 +635,5 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             m_rootScene.EventManager.TriggerOarFileSaved(m_requestId, errorMessage);
         }
-
     }
 }

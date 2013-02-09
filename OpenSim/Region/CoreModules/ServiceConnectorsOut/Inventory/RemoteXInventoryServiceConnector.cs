@@ -29,6 +29,7 @@ using log4net;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
@@ -40,6 +41,7 @@ using OpenMetaverse;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 {
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RemoteXInventoryServicesConnector")]
     public class RemoteXInventoryServicesConnector : ISharedRegionModule, IInventoryService
     {
         private static readonly ILog m_log =
@@ -64,7 +66,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
                     if (m_UserManager == null)
                         m_log.ErrorFormat(
-                            "[XINVENTORY CONNECTOR]: Could not retrieve IUserManagement module from {0}",
+                                                        "[RemoteXInventoryServicesConnector]: Could not retrieve IUserManagement module from {0}",
                             Scene.RegionInfo.RegionName);
                 }
 
@@ -114,7 +116,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                     Init(source);
                     m_Enabled = true;
 
-                    m_log.Info("[XINVENTORY CONNECTOR]: Remote XInventory enabled");
+                                        m_log.Info("[RemoteXInventoryServicesConnector]: Remote XInventory enabled");
                 }
             }
         }
@@ -152,7 +154,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             if (!m_Enabled)
                 return;
 
-            m_log.InfoFormat("[XINVENTORY CONNECTOR]: Enabled remote XInventory for region {0}", scene.RegionInfo.RegionName);
+                        m_log.InfoFormat("[RemoteXInventoryServicesConnector]: Enabled remote XInventory for region {0}", scene.RegionInfo.RegionName);
 
         }
 
@@ -299,7 +301,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                 return null;
 
             if (m_RemoteConnector == null)
-                m_log.DebugFormat("[XINVENTORY CONNECTOR]: connector stub is null!!!");
+                                m_log.DebugFormat("[RemoteXInventoryServicesConnector]: connector stub is null!!!");
             return m_RemoteConnector.GetItem(item);
         }
 

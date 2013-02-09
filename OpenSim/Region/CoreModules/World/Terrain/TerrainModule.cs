@@ -33,6 +33,7 @@ using System.Net;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
+using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Framework.InterfaceCommander;
 using OpenSim.Region.CoreModules.World.Terrain.FileLoaders;
@@ -43,6 +44,7 @@ using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.CoreModules.World.Terrain
 {
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "TerrainModule")]
     public class TerrainModule : INonSharedRegionModule, ICommandableModule, ITerrainModule
     {
         #region StandardTerrainEffects enum
@@ -478,7 +480,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain
                 else
                 {
                     m_plugineffects[pluginName] = effect;
-                    m_log.Warn("E ... " + pluginName + " (Replaced)");
+                    m_log.Info("E ... " + pluginName + " (Replaced)");
                 }
             }
         }

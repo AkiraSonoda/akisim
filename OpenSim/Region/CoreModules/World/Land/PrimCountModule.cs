@@ -34,6 +34,7 @@ using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
+using Mono.Addins;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
@@ -49,6 +50,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         public Dictionary <UUID, int> Users = new Dictionary <UUID, int>();
     }
 
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "PrimCountModule")]
     public class PrimCountModule : IPrimCountModule, INonSharedRegionModule
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -488,11 +490,14 @@ namespace OpenSim.Region.CoreModules.World.Land
 
             m_Scene.ForEachSOG(AddObject);
 
-            List<UUID> primcountKeys = new List<UUID>(m_PrimCounts.Keys);
-            foreach (UUID k in primcountKeys)
+            lock (m_PrimCounts)
             {
-                if (!m_OwnerMap.ContainsKey(k))
-                    m_PrimCounts.Remove(k);
+                List<UUID> primcountKeys = new List<UUID>(m_PrimCounts.Keys);
+                foreach (UUID k in primcountKeys)
+                {
+                    if (!m_OwnerMap.ContainsKey(k))
+                        m_PrimCounts.Remove(k);
+                }
             }
             
             m_Tainted = false;
