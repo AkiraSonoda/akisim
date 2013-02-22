@@ -11874,9 +11874,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     packet.Type, Name, SceneAgent.IsChildAgent ? "child" : "root ", Scene.Name);
         }
 
-            PacketPool.Instance.ReturnPacket(packet);
-        }
-
         private static PrimitiveBaseShape GetShapeFromAddPacket(ObjectAddPacket addPacket)
         {
             PrimitiveBaseShape shape = new PrimitiveBaseShape();
