@@ -37,6 +37,7 @@ using System.Xml.Serialization;
 using log4net;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
+using OpenMetaverse.StructuredData;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes.Scripting;
@@ -115,7 +116,7 @@ namespace OpenSim.Region.Framework.Scenes
 
     #endregion Enumerations
 
-    public class SceneObjectPart : IScriptHost, ISceneEntity
+    public class SceneObjectPart : ISceneEntity
     {
         /// <value>
         /// Denote all sides of the prim
@@ -124,6 +125,11 @@ namespace OpenSim.Region.Framework.Scenes
         
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
+        /// <summary>
+        /// Dynamic attributes can be created and deleted as required.
+        /// </summary>
+        public DAMap DynAttrs { get; set; }
+        
         /// <value>
         /// Is this a root part?
         /// </value>
@@ -296,6 +302,12 @@ namespace OpenSim.Region.Framework.Scenes
         protected Vector3 m_lastAcceleration;
         protected Vector3 m_lastAngularVelocity;
         protected int m_lastTerseSent;
+
+        protected byte m_physicsShapeType = (byte)PhysShapeType.prim;
+        protected float m_density = 1000.0f; // in kg/m^3
+        protected float m_gravitymod = 1.0f;
+        protected float m_friction = 0.6f; // wood
+        protected float m_bounce = 0.5f; // wood
         
         /// <summary>
         /// Stores media texture data
@@ -335,6 +347,7 @@ namespace OpenSim.Region.Framework.Scenes
             m_particleSystem = Utils.EmptyBytes;
             Rezzed = DateTime.UtcNow;
             Description = String.Empty;
+            DynAttrs = new DAMap();
 
             // Prims currently only contain a single folder (Contents).  From looking at the Second Life protocol,
             // this appears to have the same UUID (!) as the prim.  If this isn't the case, one can't drag items from
@@ -1028,6 +1041,7 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         public UpdateRequired UpdateFlag { get; set; }
+        public bool UpdatePhysRequired { get; set; }
         
         /// <summary>
         /// Used for media on a prim.
@@ -1315,6 +1329,157 @@ namespace OpenSim.Region.Framework.Scenes
             set { m_collisionSoundVolume = value; }
         }
 
+        public byte DefaultPhysicsShapeType()
+        {
+            byte type;
+
+            if (Shape != null && (Shape.SculptType == (byte)SculptType.Mesh))
+                type = (byte)PhysShapeType.convex;
+            else
+                type = (byte)PhysShapeType.prim;
+
+            return type;
+        }
+
+        public byte PhysicsShapeType
+        {
+            get { return m_physicsShapeType; }
+            set
+            {
+                byte oldv = m_physicsShapeType;
+
+                if (value >= 0 && value <= (byte)PhysShapeType.convex)
+                {
+                    if (value == (byte)PhysShapeType.none && ParentGroup != null && ParentGroup.RootPart == this)
+                        m_physicsShapeType = DefaultPhysicsShapeType();
+                    else
+                        m_physicsShapeType = value;
+                }
+                else
+                    m_physicsShapeType = DefaultPhysicsShapeType();
+
+                if (m_physicsShapeType != oldv && ParentGroup != null)
+                {
+                    if (m_physicsShapeType == (byte)PhysShapeType.none)
+                    {
+                        if (PhysActor != null)
+                        {
+                            Velocity = new Vector3(0, 0, 0);
+                            Acceleration = new Vector3(0, 0, 0);
+                            if (ParentGroup.RootPart == this)
+                                AngularVelocity = new Vector3(0, 0, 0);
+                            ParentGroup.Scene.RemovePhysicalPrim(1);
+                            RemoveFromPhysics();
+                        }
+                    }
+                    else if (PhysActor == null)
+                    {
+                        ApplyPhysics((uint)Flags, VolumeDetectActive);
+                    }
+                    else
+                    {
+                        PhysActor.PhysicsShapeType = m_physicsShapeType;
+                    }
+
+                    if (ParentGroup != null)
+                        ParentGroup.HasGroupChanged = true;
+                }
+
+                if (m_physicsShapeType != value)
+                {
+                    UpdatePhysRequired = true;
+                }
+            }
+        }
+
+        public float Density // in kg/m^3
+        {
+            get { return m_density; }
+            set
+            {
+                if (value >=1 && value <= 22587.0)
+                {
+                    m_density = value;
+                    UpdatePhysRequired = true;
+                }
+
+                ScheduleFullUpdateIfNone();
+
+                if (ParentGroup != null)
+                    ParentGroup.HasGroupChanged = true;
+
+                PhysicsActor pa = PhysActor;
+                if (pa != null)
+                    pa.Density = Density;
+            }
+        }
+
+        public float GravityModifier
+        {
+            get { return m_gravitymod; }
+            set
+            {
+                if( value >= -1 && value <=28.0f)
+                {
+                    m_gravitymod = value;
+                    UpdatePhysRequired = true;
+                }
+
+                ScheduleFullUpdateIfNone();
+
+                if (ParentGroup != null)
+                    ParentGroup.HasGroupChanged = true;
+
+                PhysicsActor pa = PhysActor;
+                if (pa != null)
+                    pa.GravModifier = GravityModifier;
+            }
+        }
+
+        public float Friction
+        {
+            get { return m_friction; }
+            set
+            {
+                if (value >= 0 && value <= 255.0f)
+                {
+                    m_friction = value;
+                    UpdatePhysRequired = true;
+                }
+
+                ScheduleFullUpdateIfNone();
+
+                if (ParentGroup != null)
+                    ParentGroup.HasGroupChanged = true;
+
+                PhysicsActor pa = PhysActor;
+                if (pa != null)
+                    pa.Friction = Friction;
+            }
+        }
+
+        public float Restitution
+        {
+            get { return m_bounce; }
+            set
+            {
+                if (value >= 0 && value <= 1.0f)
+                {
+                    m_bounce = value;
+                    UpdatePhysRequired = true;
+                }
+
+                ScheduleFullUpdateIfNone();
+
+                if (ParentGroup != null)
+                    ParentGroup.HasGroupChanged = true;
+
+                PhysicsActor pa = PhysActor;
+                if (pa != null)
+                    pa.Restitution = Restitution;
+            }
+        }
+
         #endregion Public Properties with only Get
 
         private uint ApplyMask(uint val, bool set, uint mask)
@@ -1511,17 +1676,21 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         /// <param name="rootObjectFlags"></param>
         /// <param name="VolumeDetectActive"></param>
-        public void ApplyPhysics(uint rootObjectFlags, bool VolumeDetectActive)
+        public void ApplyPhysics(uint rootObjectFlags, bool _VolumeDetectActive)
         {
+            VolumeDetectActive = _VolumeDetectActive;
+
             if (!ParentGroup.Scene.CollidablePrims)
                 return;
 
-//            m_log.DebugFormat(
-//                "[SCENE OBJECT PART]: Applying physics to {0} {1}, m_physicalPrim {2}",
-//                Name, LocalId, UUID, m_physicalPrim);
+            if (PhysicsShapeType == (byte)PhysShapeType.none)
+                return;
 
             bool isPhysical = (rootObjectFlags & (uint) PrimFlags.Physics) != 0;
             bool isPhantom = (rootObjectFlags & (uint) PrimFlags.Phantom) != 0;
+
+            if (_VolumeDetectActive)
+                isPhantom = true;
 
             if (IsJoint())
             {
@@ -1529,22 +1698,13 @@ namespace OpenSim.Region.Framework.Scenes
             }
             else
             {
-                // Special case for VolumeDetection: If VolumeDetection is set, the phantom flag is locally ignored
-                if (VolumeDetectActive)
-                    isPhantom = false;
-
-                // The only time the physics scene shouldn't know about the prim is if it's phantom or an attachment, which is phantom by definition
-                // or flexible
-                if (!isPhantom && !ParentGroup.IsAttachment && !(Shape.PathCurve == (byte)Extrusion.Flexible))
+                if ((!isPhantom || isPhysical || _VolumeDetectActive) && !ParentGroup.IsAttachment
+                                                && !(Shape.PathCurve == (byte)Extrusion.Flexible))
                 {
-                    // Added clarification..   since A rigid body is an object that you can kick around, etc.
-                    bool rigidBody = isPhysical && !isPhantom;
-
-                    PhysicsActor pa = AddToPhysics(rigidBody);
-
-                    if (pa != null)
-                        pa.SetVolumeDetect(VolumeDetectActive ? 1 : 0);
+                    AddToPhysics(isPhysical, isPhantom, isPhysical);
                 }
+                else
+                    PhysActor = null; // just to be sure
             }
         }
 
@@ -1618,6 +1778,8 @@ namespace OpenSim.Region.Framework.Scenes
             Array.Copy(Shape.ExtraParams, extraP, extraP.Length);
             dupe.Shape.ExtraParams = extraP;
 
+            dupe.DynAttrs.CopyFrom(DynAttrs);
+            
             if (userExposed)
             {
 /*
@@ -1948,6 +2110,16 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         public Vector3 GetGeometricCenter()
+        {
+            PhysicsActor pa = PhysActor;
+
+            if (pa != null)
+                return new Vector3(pa.GeometricCenter.X, pa.GeometricCenter.Y, pa.GeometricCenter.Z);
+            else
+                return new Vector3(0, 0, 0);
+        }
+
+        public Vector3 GetCenterOfMass()
         {
             PhysicsActor pa = PhysActor;
 
@@ -2412,6 +2584,19 @@ namespace OpenSim.Region.Framework.Scenes
         public void StopLookAt()
         {
             APIDTarget = Quaternion.Identity;
+        }
+
+
+
+        public void ScheduleFullUpdateIfNone()
+        {
+            if (ParentGroup == null)
+                return;
+
+// ???            ParentGroup.HasGroupChanged = true;
+
+            if (UpdateFlag != UpdateRequired.FULL)
+                ScheduleFullUpdate();
         }
 
         /// <summary>
@@ -3618,6 +3803,7 @@ namespace OpenSim.Region.Framework.Scenes
                         result.distance = distance2;
                         result.HitTF = true;
                         result.ipoint = q;
+                        result.face = i;
                         //m_log.Info("[FACE]:" + i.ToString());
                         //m_log.Info("[POINT]: " + q.ToString());
                         //m_log.Info("[DIST]: " + distance2.ToString());
@@ -3858,6 +4044,26 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        public void UpdateExtraPhysics(ExtraPhysicsData physdata)
+        {
+            if (physdata.PhysShapeType == PhysShapeType.invalid || ParentGroup == null)
+                return;
+
+            if (PhysicsShapeType != (byte)physdata.PhysShapeType)
+            {
+                PhysicsShapeType = (byte)physdata.PhysShapeType;
+
+            }
+
+            if(Density != physdata.Density)
+                Density = physdata.Density;
+            if(GravityModifier != physdata.GravitationModifier)
+                GravityModifier = physdata.GravitationModifier;
+            if(Friction != physdata.Friction)
+                Friction = physdata.Friction;
+            if(Restitution != physdata.Bounce)
+                Restitution = physdata.Bounce;
+        }
         /// <summary>
         /// Update the flags on this prim.  This covers properties such as phantom, physics and temporary.
         /// </summary>
@@ -3929,6 +4135,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (SetPhantom
                 || ParentGroup.IsAttachment
+                || PhysicsShapeType == (byte)PhysShapeType.none
                 || (Shape.PathCurve == (byte)Extrusion.Flexible)) // note: this may have been changed above in the case of joints
             {
                 AddFlag(PrimFlags.Phantom);
@@ -3948,7 +4155,9 @@ namespace OpenSim.Region.Framework.Scenes
 
                 if (ParentGroup.Scene.CollidablePrims && pa == null)
                 {
-                    pa = AddToPhysics(UsePhysics);
+                    AddToPhysics(UsePhysics, SetPhantom, false);
+                    pa = PhysActor;
+
 
                     if (pa != null)
                     {
@@ -4035,9 +4244,12 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>
         /// The physics actor.  null if there was a failure.
         /// </returns>
-        private PhysicsActor AddToPhysics(bool rigidBody)
+        private void AddToPhysics(bool isPhysical, bool isPhantom, bool applyDynamics)
         {
             PhysicsActor pa;
+
+            Vector3 velocity = Velocity;
+            Vector3 rotationalVelocity = AngularVelocity;;
 
             try
             {
@@ -4046,8 +4258,10 @@ namespace OpenSim.Region.Framework.Scenes
                         Shape,
                         AbsolutePosition,
                         Scale,
-                        RotationOffset,
-                        rigidBody,
+                        GetWorldRotation(),
+                        isPhysical,
+                        isPhantom,
+                        PhysicsShapeType,
                         m_localId);
             }
             catch (Exception e)
@@ -4056,20 +4270,53 @@ namespace OpenSim.Region.Framework.Scenes
                 pa = null;
             }
 
-            // FIXME: Ideally we wouldn't set the property here to reduce situations where threads changing physical
-            // properties can stop on each other.  However, DoPhysicsPropertyUpdate() currently relies on PhysActor
-            // being set.
-            PhysActor = pa;
-
-            // Basic Physics can also return null as well as an exception catch.
             if (pa != null)
             {
                 pa.SOPName = this.Name; // save object into the PhysActor so ODE internals know the joint/body info
                 pa.SetMaterial(Material);
-                DoPhysicsPropertyUpdate(rigidBody, true);
+
+                pa.Density = Density;
+                pa.GravModifier = GravityModifier;
+                pa.Friction = Friction;
+                pa.Restitution = Restitution;
+
+                if (VolumeDetectActive) // change if not the default only
+                    pa.SetVolumeDetect(1);
+                // we are going to tell rest of code about physics so better have this here
+                PhysActor = pa;
+
+                if (isPhysical)
+                {
+                    ParentGroup.Scene.AddPhysicalPrim(1);
+
+                    pa.OnRequestTerseUpdate += PhysicsRequestingTerseUpdate;
+                    pa.OnOutOfBounds += PhysicsOutOfBounds;
+
+                    if (ParentID != 0 && ParentID != LocalId)
+                    {
+                        PhysicsActor parentPa = ParentGroup.RootPart.PhysActor;
+
+                        if (parentPa != null)
+                        {
+                            pa.link(parentPa);
+                        }
+                    }
+                }
+
+                if (applyDynamics)
+                    // do independent of isphysical so parameters get setted (at least some)                   
+                {
+                    Velocity = velocity;
+                    AngularVelocity = rotationalVelocity;
+//                    pa.Velocity = velocity;
+                    pa.RotationalVelocity = rotationalVelocity;
+                }
+
+                ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(pa);
             }
 
-            return pa;
+            PhysActor = pa;
+            ParentGroup.Scene.EventManager.TriggerObjectAddedToPhysicalScene(this);
         }
 
         /// <summary>
@@ -4082,6 +4329,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public void RemoveFromPhysics()
         {
+            ParentGroup.Scene.EventManager.TriggerObjectRemovedFromPhysicalScene(this);
             ParentGroup.Scene.PhysicsScene.RemovePrim(PhysActor);
             PhysActor = null;
         }

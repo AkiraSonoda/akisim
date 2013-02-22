@@ -726,7 +726,6 @@ namespace OpenSim.Region.Framework.Scenes
         public Scene(RegionInfo regInfo, AgentCircuitManager authen,
                      SceneCommunicationService sceneGridService,
                      ISimulationDataService simDataService, IEstateDataService estateDataService,
-                     bool dumpAssetsToFile,
                      IConfigSource config, string simulatorVersion)
             : this(regInfo)
         {
@@ -816,8 +815,6 @@ namespace OpenSim.Region.Framework.Scenes
                     };
 
             RegisterDefaultSceneEvents();
-
-            DumpAssetsToFile = dumpAssetsToFile;
 
             // XXX: Don't set the public property since we don't want to activate here.  This needs to be handled 
             // better in the future.
@@ -923,9 +920,14 @@ namespace OpenSim.Region.Framework.Scenes
                     string tile = startupConfig.GetString("MaptileStaticUUID", UUID.Zero.ToString());
                     UUID tileID;
 
-                    if (UUID.TryParse(tile, out tileID))
+                    if (tile != UUID.Zero.ToString() && UUID.TryParse(tile, out tileID))
                     {
                         RegionInfo.RegionSettings.TerrainImageID = tileID;
+                    }
+                    else
+                    {
+                        RegionInfo.RegionSettings.TerrainImageID = RegionInfo.MaptileStaticUUID;
+                        m_log.InfoFormat("[SCENE]: Region {0}, maptile set to {1}", RegionInfo.RegionName, RegionInfo.MaptileStaticUUID.ToString());
                     }
                 }
 
@@ -1991,6 +1993,19 @@ namespace OpenSim.Region.Framework.Scenes
             EventManager.TriggerPrimsLoaded(this);
         }
 
+        public bool SupportsRayCastFiltered()
+        {
+            if (PhysicsScene == null)
+                return false;
+            return PhysicsScene.SupportsRaycastWorldFiltered();
+        }
+
+        public object RayCastFiltered(Vector3 position, Vector3 direction, float length, int Count, RayFilterFlags filter)
+        {
+            if (PhysicsScene == null)
+                return null;
+            return PhysicsScene.RaycastWorld(position, direction, length, Count,filter);
+        }
 
         /// <summary>
         /// Gets a new rez location based on the raycast and the size of the object that is being rezzed.
@@ -4472,19 +4487,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         #region Script Engine
 
-        private List<ScriptEngineInterface> ScriptEngines = new List<ScriptEngineInterface>();
-        public bool DumpAssetsToFile;
-
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="scriptEngine"></param>
-        public void AddScriptEngine(ScriptEngineInterface scriptEngine)
-        {
-            ScriptEngines.Add(scriptEngine);
-            scriptEngine.InitializeEngine(this);
-        }
-
         private bool ScriptDanger(SceneObjectPart part,Vector3 pos)
         {
             ILandObject parcel = LandChannel.GetLandObject(pos.X, pos.Y);
@@ -5512,8 +5514,13 @@ namespace OpenSim.Region.Framework.Scenes
 
                         if (banned)
                         {
-                            reason = "No suitable landing point found";
-                            return false;
+                            if(Permissions.IsAdministrator(agentID) == false || Permissions.IsGridGod(agentID) == false)
+                            {
+                                reason = "No suitable landing point found";
+                                return false;
+                            }
+                            reason = "Administrative access only";
+                            return true;
                         }
                     }
                 }

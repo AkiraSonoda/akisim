@@ -25,14 +25,37 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//TODO: WHERE TO PLACE THIS?
+using System;
+using System.Runtime.Remoting;
+using System.Runtime.Remoting.Lifetime;
+using System.Security.Permissions;
+using System.Threading;
+using System.Reflection;
+using System.Collections;
+using System.Collections.Generic;
+using OpenSim.Region.ScriptEngine.Interfaces;
+using OpenSim.Region.ScriptEngine.Shared;
+using OpenSim.Region.ScriptEngine.Shared.ScriptBase;
 
-namespace OpenSim.Region.Framework.Scenes.Scripting
+namespace OpenSim.Region.ScriptEngine.XEngine.ScriptBase
 {
-    public interface ScriptEngineInterface
+    public class XEngineScriptBase : ScriptBaseClass
     {
-        void InitializeEngine(Scene Sceneworld);
-        void Shutdown();
-//        void StartScript(string ScriptID, IScriptHost ObjectID);
+        /// <summary>
+        /// Used for script sleeps when we are using co-operative script termination.
+        /// </summary>
+        /// <remarks>null if co-operative script termination is not active</remarks>  
+        WaitHandle m_coopSleepHandle;
+
+        public XEngineScriptBase(WaitHandle coopSleepHandle) : base()
+        {
+            m_coopSleepHandle = coopSleepHandle;
+        }
+
+        public void opensim_reserved_CheckForCoopTermination()
+        {
+            if (m_coopSleepHandle != null && m_coopSleepHandle.WaitOne(0))
+                throw new ScriptCoopStopException();
+        }
     }
 }

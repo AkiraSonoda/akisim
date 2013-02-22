@@ -549,6 +549,20 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public event ScriptControlEvent OnScriptControlEvent;
 
+        public delegate void ScriptMovingStartEvent(uint localID);
+
+        /// <summary>
+        /// TODO: Should be triggered when a physics object starts moving.
+        /// </summary>
+        public event ScriptMovingStartEvent OnScriptMovingStartEvent;
+   
+        public delegate void ScriptMovingEndEvent(uint localID);
+
+        /// <summary>
+        /// TODO: Should be triggered when a physics object stops moving.
+        /// </summary>
+        public event ScriptMovingEndEvent OnScriptMovingEndEvent;
+
         public delegate void ScriptAtTargetEvent(uint localID, uint handle, Vector3 targetpos, Vector3 atpos);
 
         /// <summary>
@@ -775,6 +789,19 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         /// <param name="obj">The object being removed from the scene</param>
         public delegate void ObjectBeingRemovedFromScene(SceneObjectGroup obj);
+
+        /// <summary>
+        /// Triggered when an object is placed into the physical scene (PhysicsActor created).
+        /// </summary>
+        public event Action<SceneObjectPart> OnObjectAddedToPhysicalScene;
+        /// <summary>
+        /// Triggered when an object is removed from the physical scene (PhysicsActor destroyed).
+        /// </summary>
+        /// <remarks>
+        /// Note: this is triggered just before the PhysicsActor is removed from the
+        /// physics engine so the receiver can do any necessary cleanup before its destruction.
+        /// </remarks>
+        public event Action<SceneObjectPart> OnObjectRemovedFromPhysicalScene;
 
         /// <summary>
         /// Triggered when an object is removed from the scene.
@@ -1502,6 +1529,48 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        public void TriggerObjectAddedToPhysicalScene(SceneObjectPart obj)
+        {
+            Action<SceneObjectPart> handler = OnObjectAddedToPhysicalScene;
+            if (handler != null)
+            {
+                foreach (Action<SceneObjectPart> d in handler.GetInvocationList())
+                {
+                    try
+                    {
+                        d(obj);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat(
+                            "[EVENT MANAGER]: Delegate for TriggerObjectAddedToPhysicalScene failed - continuing.  {0} {1}", 
+                            e.Message, e.StackTrace);
+                    }
+                }
+            }
+        }
+
+        public void TriggerObjectRemovedFromPhysicalScene(SceneObjectPart obj)
+        {
+            Action<SceneObjectPart> handler = OnObjectRemovedFromPhysicalScene;
+            if (handler != null)
+            {
+                foreach (Action<SceneObjectPart> d in handler.GetInvocationList())
+                {
+                    try
+                    {
+                        d(obj);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat(
+                            "[EVENT MANAGER]: Delegate for TriggerObjectRemovedFromPhysicalScene failed - continuing.  {0} {1}", 
+                            e.Message, e.StackTrace);
+                    }
+                }
+            }
+        }
+
         public void TriggerShutdown()
         {
             Action handlerShutdown = OnShutdown;
@@ -2206,6 +2275,48 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         m_log.ErrorFormat(
                             "[EVENT MANAGER]: Delegate for TriggerNotAtRotTargetEvent failed - continuing.  {0} {1}", 
+                            e.Message, e.StackTrace);
+                    }
+                }
+            }
+        }
+
+        public void TriggerMovingStartEvent(uint localID)
+        {
+            ScriptMovingStartEvent handlerScriptMovingStartEvent = OnScriptMovingStartEvent;
+            if (handlerScriptMovingStartEvent != null)
+            {
+                foreach (ScriptMovingStartEvent d in handlerScriptMovingStartEvent.GetInvocationList())
+                {
+                    try
+                    {
+                        d(localID);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat(
+                            "[EVENT MANAGER]: Delegate for TriggerMovingStartEvent failed - continuing.  {0} {1}",
+                            e.Message, e.StackTrace);
+                    }
+                }
+            }
+        }
+
+        public void TriggerMovingEndEvent(uint localID)
+        {
+            ScriptMovingEndEvent handlerScriptMovingEndEvent = OnScriptMovingEndEvent;
+            if (handlerScriptMovingEndEvent != null)
+            {
+                foreach (ScriptMovingEndEvent d in handlerScriptMovingEndEvent.GetInvocationList())
+                {
+                    try
+                    {
+                        d(localID);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat(
+                            "[EVENT MANAGER]: Delegate for TriggerMovingEndEvent failed - continuing.  {0} {1}",
                             e.Message, e.StackTrace);
                     }
                 }

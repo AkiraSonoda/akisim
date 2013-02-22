@@ -45,7 +45,6 @@ public sealed class BSCharacter : BSPhysObject
     private bool _selected;
     private OMV.Vector3 _position;
     private float _mass;
-    private float _avatarDensity;
     private float _avatarVolume;
     private OMV.Vector3 _force;
     private OMV.Vector3 _velocity;
@@ -62,9 +61,6 @@ public sealed class BSCharacter : BSPhysObject
     private OMV.Vector3 _rotationalVelocity;
     private bool _kinematic;
     private float _buoyancy;
-
-    // The friction and velocity of the avatar is modified depending on whether walking or not.
-    private float _currentFriction;         // the friction currently being used (changed by setVelocity).
 
     private BSVMotor _velocityMotor;
 
@@ -86,8 +82,8 @@ public sealed class BSCharacter : BSPhysObject
         _orientation = OMV.Quaternion.Identity;
         _velocity = OMV.Vector3.Zero;
         _buoyancy = ComputeBuoyancyFromFlying(isFlying);
-        _currentFriction = BSParam.AvatarStandingFriction;
-        _avatarDensity = BSParam.AvatarDensity;
+        Friction = BSParam.AvatarStandingFriction;
+        Density = BSParam.AvatarDensity / BSParam.DensityScaleFactor;
 
         // Old versions of ScenePresence passed only the height. If width and/or depth are zero,
         //     replace with the default values.
@@ -104,7 +100,7 @@ public sealed class BSCharacter : BSPhysObject
         SetupMovementMotor();
 
         DetailLog("{0},BSCharacter.create,call,size={1},scale={2},density={3},volume={4},mass={5}",
-                            LocalID, _size, Scale, _avatarDensity, _avatarVolume, RawMass);
+                            LocalID, _size, Scale, Density, _avatarVolume, RawMass);
 
         // do actual creation in taint time
         PhysicsScene.TaintedObject("BSCharacter.create", delegate()
@@ -126,9 +122,9 @@ public sealed class BSCharacter : BSPhysObject
         DetailLog("{0},BSCharacter.Destroy", LocalID);
         PhysicsScene.TaintedObject("BSCharacter.destroy", delegate()
         {
-            PhysicsScene.Shapes.DereferenceBody(PhysBody, true /* inTaintTime */, null /* bodyCallback */);
+            PhysicsScene.Shapes.DereferenceBody(PhysBody, null /* bodyCallback */);
             PhysBody.Clear();
-            PhysicsScene.Shapes.DereferenceShape(PhysShape, true /* inTaintTime */, null /* bodyCallback */);
+            PhysicsScene.Shapes.DereferenceShape(PhysShape, null /* bodyCallback */);
             PhysShape.Clear();
         });
     }
@@ -140,7 +136,7 @@ public sealed class BSCharacter : BSPhysObject
         ZeroMotion(true);
         ForcePosition = _position;
 
-        // Set the velocity and compute the proper friction
+        // Set the velocity
         _velocityMotor.Reset();
         _velocityMotor.SetTarget(_velocity);
         _velocityMotor.SetCurrent(_velocity);
@@ -198,25 +194,83 @@ public sealed class BSCharacter : BSPhysObject
             // TODO: Decide if the step parameters should be changed depending on the avatar's
             //     state (flying, colliding, ...). There is code in ODE to do this.
 
-            OMV.Vector3 stepVelocity = _velocityMotor.Step(timeStep);
+            // COMMENTARY: when the user is making the avatar walk, except for falling, the velocity
+            //   specified for the avatar is the one that should be used. For falling, if the avatar
+            //   is not flying and is not colliding then it is presumed to be falling and the Z
+            //   component is not fooled with (thus allowing gravity to do its thing).
+            // When the avatar is standing, though, the user has specified a velocity of zero and
+            //   the avatar should be standing. But if the avatar is pushed by something in the world
+            //   (raising elevator platform, moving vehicle, ...) the avatar should be allowed to
+            //   move. Thus, the velocity cannot be forced to zero. The problem is that small velocity
+            //   errors can creap in and the avatar will slowly float off in some direction.
+            // So, the problem is that, when an avatar is standing, we cannot tell creaping error
+            //   from real pushing.OMV.Vector3.Zero;
+            // The code below keeps setting the velocity to zero hoping the world will keep pushing.
 
-            // If falling, we keep the world's downward vector no matter what the other axis specify.
-            if (!Flying && !IsColliding)
+            _velocityMotor.Step(timeStep);
+
+            // If we're not supposed to be moving, make sure things are zero.
+            if (_velocityMotor.ErrorIsZero() && _velocityMotor.TargetValue == OMV.Vector3.Zero)
             {
-                stepVelocity.Z = _velocity.Z;
-                // DetailLog("{0},BSCharacter.MoveMotor,taint,overrideStepZWithWorldZ,stepVel={1}", LocalID, stepVelocity);
+                // The avatar shouldn't be moving
+                _velocityMotor.Zero();
+
+                if (IsColliding)
+                {
+                    // If we are colliding with a stationary object, presume we're standing and don't move around
+                    if (!ColliderIsMoving)
+                    {
+                        DetailLog("{0},BSCharacter.MoveMotor,collidingWithStationary,zeroingMotion", LocalID);
+                        ZeroMotion(true /* inTaintTime */);
+                    }
+
+                    // Standing has more friction on the ground
+                    if (Friction != BSParam.AvatarStandingFriction)
+                    {
+                        Friction = BSParam.AvatarStandingFriction;
+                        PhysicsScene.PE.SetFriction(PhysBody, Friction);
+                    }
+                }
+                else
+                {
+                    if (Flying)
+                    {
+                        // Flying and not collising and velocity nearly zero.
+                        ZeroMotion(true /* inTaintTime */);
+                    }
+                }
+
+                DetailLog("{0},BSCharacter.MoveMotor,taint,stopping,target={1},colliding={2}", LocalID, _velocityMotor.TargetValue, IsColliding);
             }
+            else
+            {
+                OMV.Vector3 stepVelocity = _velocityMotor.CurrentValue;
 
-            // 'stepVelocity' is now the speed we'd like the avatar to move in. Turn that into an instantanous force.
-            OMV.Vector3 moveForce = (stepVelocity - _velocity) * Mass;
+                if (Friction != BSParam.AvatarFriction)
+                {
+                    // Probably starting up walking. Set friction to moving friction.
+                    Friction = BSParam.AvatarFriction;
+                    PhysicsScene.PE.SetFriction(PhysBody, Friction);
+                }
 
-            // Should we check for move force being small and forcing velocity to zero?
+                // If falling, we keep the world's downward vector no matter what the other axis specify.
+                if (!Flying && !IsColliding)
+                {
+                    stepVelocity.Z = _velocity.Z;
+                    // DetailLog("{0},BSCharacter.MoveMotor,taint,overrideStepZWithWorldZ,stepVel={1}", LocalID, stepVelocity);
+                }
 
-            // Add special movement force to allow avatars to walk up stepped surfaces.
-            moveForce += WalkUpStairs();
+                // 'stepVelocity' is now the speed we'd like the avatar to move in. Turn that into an instantanous force.
+                OMV.Vector3 moveForce = (stepVelocity - _velocity) * Mass;
 
-            // DetailLog("{0},BSCharacter.MoveMotor,move,stepVel={1},vel={2},mass={3},moveForce={4}", LocalID, stepVelocity, _velocity, Mass, moveForce);
-            PhysicsScene.PE.ApplyCentralImpulse(PhysBody, moveForce);
+                // Should we check for move force being small and forcing velocity to zero?
+
+                // Add special movement force to allow avatars to walk up stepped surfaces.
+                moveForce += WalkUpStairs();
+
+                DetailLog("{0},BSCharacter.MoveMotor,move,stepVel={1},vel={2},mass={3},moveForce={4}", LocalID, stepVelocity, _velocity, Mass, moveForce);
+                PhysicsScene.PE.ApplyCentralImpulse(PhysBody, moveForce);
+            }
         });
     }
 
@@ -229,7 +283,7 @@ public sealed class BSCharacter : BSPhysObject
         // This test is done if moving forward, not flying and is colliding with something.
         // DetailLog("{0},BSCharacter.WalkUpStairs,IsColliding={1},flying={2},targSpeed={3},collisions={4}",
         //                 LocalID, IsColliding, Flying, TargetSpeed, CollisionsLastTick.Count);
-        if (IsColliding && !Flying && TargetSpeed > 0.1f /* && ForwardSpeed < 0.1f */)
+        if (IsColliding && !Flying && TargetVelocitySpeed > 0.1f /* && ForwardSpeed < 0.1f */)
         {
             // The range near the character's feet where we will consider stairs
             float nearFeetHeightMin = RawPosition.Z - (Size.Z / 2f) + 0.05f;
@@ -296,7 +350,7 @@ public sealed class BSCharacter : BSPhysObject
             Scale = ComputeAvatarScale(_size);
             ComputeAvatarVolumeAndMass();
             DetailLog("{0},BSCharacter.setSize,call,size={1},scale={2},density={3},volume={4},mass={5}",
-                            LocalID, _size, Scale, _avatarDensity, _avatarVolume, RawMass);
+                            LocalID, _size, Scale, Density, _avatarVolume, RawMass);
 
             PhysicsScene.TaintedObject("BSCharacter.setSize", delegate()
             {
@@ -511,11 +565,12 @@ public sealed class BSCharacter : BSPhysObject
     {
         get
         {
-            return _velocityMotor.TargetValue;
+            return m_targetVelocity;
         }
         set
         {
             DetailLog("{0},BSCharacter.setTargetVelocity,call,vel={1}", LocalID, value);
+            m_targetVelocity = value;
             OMV.Vector3 targetVel = value;
             if (_setAlwaysRun)
                 targetVel *= BSParam.AvatarAlwaysRunFactor;
@@ -545,7 +600,6 @@ public sealed class BSCharacter : BSPhysObject
                 _velocityMotor.Reset();
                 _velocityMotor.SetCurrent(_velocity);
                 _velocityMotor.SetTarget(_velocity);
-                // Even though the motor is initialized, it's not used and the velocity goes straight into the avatar.
                 _velocityMotor.Enabled = false;
 
                 DetailLog("{0},BSCharacter.setVelocity,taint,vel={1}", LocalID, _velocity);
@@ -559,27 +613,6 @@ public sealed class BSCharacter : BSPhysObject
             PhysicsScene.AssertInTaintTime("BSCharacter.ForceVelocity");
 
             _velocity = value;
-            // Depending on whether the avatar is moving or not, change the friction
-            //    to keep the avatar from slipping around
-            if (_velocity.Length() == 0)
-            {
-                if (_currentFriction != BSParam.AvatarStandingFriction)
-                {
-                    _currentFriction = BSParam.AvatarStandingFriction;
-                    if (PhysBody.HasPhysicalBody)
-                        PhysicsScene.PE.SetFriction(PhysBody, _currentFriction);
-                }
-            }
-            else
-            {
-                if (_currentFriction != BSParam.AvatarFriction)
-                {
-                    _currentFriction = BSParam.AvatarFriction;
-                    if (PhysBody.HasPhysicalBody)
-                        PhysicsScene.PE.SetFriction(PhysBody, _currentFriction);
-                }
-            }
-
             PhysicsScene.PE.SetLinearVelocity(PhysBody, _velocity);
             PhysicsScene.PE.Activate(PhysBody, true);
         }
@@ -724,9 +757,10 @@ public sealed class BSCharacter : BSPhysObject
             _buoyancy = value;
             DetailLog("{0},BSCharacter.setForceBuoyancy,taint,buoy={1}", LocalID, _buoyancy);
             // Buoyancy is faked by changing the gravity applied to the object
-            float grav = PhysicsScene.Params.gravity * (1f - _buoyancy);
+            float  grav = BSParam.Gravity * (1f - _buoyancy);
+            Gravity = new OMV.Vector3(0f, 0f, grav);
             if (PhysBody.HasPhysicalBody)
-                PhysicsScene.PE.SetGravity(PhysBody, new OMV.Vector3(0f, 0f, grav));
+                PhysicsScene.PE.SetGravity(PhysBody, Gravity);
         }
     }
 
@@ -844,7 +878,7 @@ public sealed class BSCharacter : BSPhysObject
                         * Math.Min(Size.X, Size.Y) / 2
                         * Size.Y / 2f    // plus the volume of the capsule end caps
                         );
-        _mass = _avatarDensity * _avatarVolume;
+        _mass = Density * BSParam.DensityScaleFactor * _avatarVolume;
     }
 
     // The physics engine says that properties have updated. Update same and inform
@@ -854,7 +888,7 @@ public sealed class BSCharacter : BSPhysObject
         _position = entprop.Position;
         _orientation = entprop.Rotation;
 
-        // Smooth velocity. OpenSimulator is very sensitive to changes in velocity of the avatar
+        // Smooth velocity. OpenSimulator is VERY sensitive to changes in velocity of the avatar
         //    and will send agent updates to the clients if velocity changes by more than
         //    0.001m/s. Bullet introduces a lot of jitter in the velocity which causes many
         //    extra updates.
@@ -875,7 +909,7 @@ public sealed class BSCharacter : BSPhysObject
         CurrentEntityProperties = entprop;
 
         // Tell the linkset about value changes
-        Linkset.UpdateProperties(this, true);
+        // Linkset.UpdateProperties(UpdatedProperties.EntPropUpdates, this);
 
         // Avatars don't report their changes the usual way. Changes are checked for in the heartbeat loop.
         // base.RequestPhysicsterseUpdate();

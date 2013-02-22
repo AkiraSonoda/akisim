@@ -53,6 +53,16 @@ namespace OpenSim.Framework.Servers.HttpServer
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private HttpServerLogWriter httpserverlog = new HttpServerLogWriter();
 
+
+        /// <summary>
+        /// This is a pending websocket request before it got an sucessful upgrade response.
+        /// The consumer must call handler.HandshakeAndUpgrade() to signal to the handler to 
+        /// start the connection and optionally provide an origin authentication method.
+        /// </summary>
+        /// <param name="servicepath"></param>
+        /// <param name="handler"></param>
+        public delegate void WebSocketRequestDelegate(string servicepath, WebSocketHttpServerHandler handler);
+
         /// <summary>
         /// Gets or sets the debug level.
         /// </summary>
@@ -85,6 +95,9 @@ namespace OpenSim.Framework.Servers.HttpServer
 //        protected Dictionary<string, IHttpAgentHandler> m_agentHandlers = new Dictionary<string, IHttpAgentHandler>();
         protected Dictionary<string, PollServiceEventArgs> m_pollHandlers =
             new Dictionary<string, PollServiceEventArgs>();
+
+        protected Dictionary<string, WebSocketRequestDelegate> m_WebSocketHandlers =
+            new Dictionary<string, WebSocketRequestDelegate>(); 
 
         protected uint m_port;
         protected uint m_sslport;
@@ -167,6 +180,22 @@ namespace OpenSim.Framework.Servers.HttpServer
                     m_streamHandlers.Add(handlerKey, handler);
                 }
             }
+        }
+
+        public void AddWebSocketHandler(string servicepath, WebSocketRequestDelegate handler)
+        {
+            lock (m_WebSocketHandlers)
+            {
+                if (!m_WebSocketHandlers.ContainsKey(servicepath))
+                    m_WebSocketHandlers.Add(servicepath, handler);
+            }
+        }
+
+        public void RemoveWebSocketHandler(string servicepath)
+        {
+            lock (m_WebSocketHandlers)
+                if (m_WebSocketHandlers.ContainsKey(servicepath))
+                    m_WebSocketHandlers.Remove(servicepath);
         }
 
         public List<string> GetStreamHandlerKeys()
@@ -408,9 +437,24 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public void OnHandleRequestIOThread(IHttpClientContext context, IHttpRequest request)
         {
+
             OSHttpRequest req = new OSHttpRequest(context, request);
+            WebSocketRequestDelegate dWebSocketRequestDelegate = null;
+            lock (m_WebSocketHandlers)
+            {
+                if (m_WebSocketHandlers.ContainsKey(req.RawUrl))
+                    dWebSocketRequestDelegate = m_WebSocketHandlers[req.RawUrl];
+            }
+            if (dWebSocketRequestDelegate != null)
+            {
+                dWebSocketRequestDelegate(req.Url.AbsolutePath, new WebSocketHttpServerHandler(req, context, 8192));
+                return;
+            }
+            
             OSHttpResponse resp = new OSHttpResponse(new HttpResponse(context, request),context);
+            
             HandleRequest(req, resp);
+           
 
             // !!!HACK ALERT!!!
             // There seems to be a bug in the underlying http code that makes subsequent requests
@@ -499,7 +543,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                         LogIncomingToStreamHandler(request, requestHandler);
 
                     response.ContentType = requestHandler.ContentType; // Lets do this defaulting before in case handler has varying content type.
-
+                    
                     if (requestHandler is IStreamedRequestHandler)
                     {
                         IStreamedRequestHandler streamedRequestHandler = requestHandler as IStreamedRequestHandler;
@@ -1024,7 +1068,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             return buffer;
         }
 
-        // JsonRpc (v2.0 only)
+        // JsonRpc (v2.0 only) 
+        // Batch requests not yet supported
         private byte[] HandleJsonRpcRequests(OSHttpRequest request, OSHttpResponse response)
         {
             Stream requestStream = request.InputStream;
@@ -1064,8 +1109,26 @@ namespace OpenSim.Framework.Servers.HttpServer
                         {
                             jsonRpcHandlers.TryGetValue(methodname, out method);
                         }
-
-                        method(jsonRpcRequest, ref jsonRpcResponse);
+                        bool res = false;
+                        try
+                        {
+                            res = method(jsonRpcRequest, ref jsonRpcResponse);
+                            if(!res)
+                            {
+                                // The handler sent back an unspecified error
+                                if(jsonRpcResponse.Error.Code == 0)
+                                {
+                                    jsonRpcResponse.Error.Code = ErrorCode.InternalError;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            string ErrorMessage = string.Format("[BASE HTTP SERVER]: Json-Rpc Handler Error method {0} - {1}", methodname, e.Message);
+                            m_log.Error(ErrorMessage);
+                            jsonRpcResponse.Error.Code = ErrorCode.InternalError;
+                            jsonRpcResponse.Error.Message = ErrorMessage;
+                        }
                     }
                     else // Error no hanlder defined for requested method
                     {

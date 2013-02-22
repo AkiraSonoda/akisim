@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) Contributors, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
@@ -6,7 +6,7 @@
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
  *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyrightD
+ *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
  *     * Neither the name of the OpenSimulator Project nor the
@@ -24,58 +24,27 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using System;
-using System.Collections.Generic;
-using OpenSim.Framework;
-using OpenSim.Region.Physics.Manager;
+
 using OpenMetaverse;
 
-namespace OpenSim.Region.Physics.BulletSNPlugin
+namespace OpenSim.Framework
 {
-    /// <summary>
-    /// Entry for a port of Bullet (http://bulletphysics.org/) to OpenSim.
-    /// This module interfaces to an unmanaged C++ library which makes the
-    /// actual calls into the Bullet physics engine.
-    /// The unmanaged library is found in opensim-libs::trunk/unmanaged/BulletSim/.
-    /// The unmanaged library is compiled and linked statically with Bullet
-    /// to create BulletSim.dll and libBulletSim.so (for both 32 and 64 bit).
-    /// </summary>
-public class BSPlugin : IPhysicsPlugin
-{
-    //private static readonly log4net.ILog m_log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
-    private BSScene _mScene;
-
-    public BSPlugin()
+    public enum PhysShapeType : byte
     {
+        prim = 0,
+        none = 1,
+        convex = 2,
+
+        invalid = 255 // use to mark invalid data in ExtraPhysicsData
     }
 
-    public bool Init()
+    public struct ExtraPhysicsData
     {
-        return true;
-    }
+        public float Density;
+        public float GravitationModifier;
+        public float Friction;
+        public float Bounce;
+        public PhysShapeType PhysShapeType;
 
-    public PhysicsScene GetScene(String sceneIdentifier)
-    {
-        if (_mScene == null)
-        {
-           
-            // If not Windows, loading is performed by the
-            // Mono loader as specified in
-            // "bin/Physics/OpenSim.Region.Physics.BulletSNPlugin.dll.config".
-
-            _mScene = new BSScene(sceneIdentifier);
-        }
-        return (_mScene);
     }
-
-    public string GetName()
-    {
-        return ("BulletSimN");
-    }
-
-    public void Dispose()
-    {
-    }
-}
 }

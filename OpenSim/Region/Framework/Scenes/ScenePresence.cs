@@ -201,6 +201,11 @@ namespace OpenSim.Region.Framework.Scenes
 
         private const int LAND_VELOCITYMAG_MAX = 12;
 
+        private const float FLY_ROLL_MAX_RADIANS = 1.1f;
+
+        private const float FLY_ROLL_RADIANS_PER_UPDATE = 0.06f;
+        private const float FLY_ROLL_RESET_RADIANS_PER_UPDATE = 0.02f;
+
         private float m_health = 100f;
 
         protected ulong crossingFromRegion;
@@ -569,6 +574,14 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        // Used for limited viewer 'fake' user rotations.
+        private Vector3 m_AngularVelocity = Vector3.Zero;
+
+        public Vector3 AngularVelocity
+        {
+            get { return m_AngularVelocity; }
+        }
+
         public bool IsChildAgent { get; set; }
 
         /// <summary>
@@ -690,6 +703,8 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         #endregion
+
+
 
         #region Constructor(s)
 
@@ -1033,6 +1048,85 @@ namespace OpenSim.Region.Framework.Scenes
         {
             ControllingClient.StopFlying(this);
         }
+
+        /// <summary>
+        /// Applies a roll accumulator to the avatar's angular velocity for the avatar fly roll effect.
+        /// </summary>
+        /// <param name="amount">Postive or negative roll amount in radians</param>
+        private void ApplyFlyingRoll(float amount, bool PressingUp, bool PressingDown)
+        {
+            
+            float rollAmount = Util.Clamp(m_AngularVelocity.Z + amount, -FLY_ROLL_MAX_RADIANS, FLY_ROLL_MAX_RADIANS);
+            m_AngularVelocity.Z = rollAmount;
+
+            // APPLY EXTRA consideration for flying up and flying down during this time.
+            // if we're turning left
+            if (amount > 0)
+            {
+
+                // If we're at the max roll and pressing up, we want to swing BACK a bit
+                // Automatically adds noise
+                if (PressingUp)
+                {
+                    if (m_AngularVelocity.Z >= FLY_ROLL_MAX_RADIANS - 0.04f)
+                        m_AngularVelocity.Z -= 0.9f;
+                }
+                // If we're at the max roll and pressing down, we want to swing MORE a bit
+                if (PressingDown)
+                {
+                    if (m_AngularVelocity.Z >= FLY_ROLL_MAX_RADIANS && m_AngularVelocity.Z < FLY_ROLL_MAX_RADIANS + 0.6f)
+                        m_AngularVelocity.Z += 0.6f;
+                }
+            }
+            else  // we're turning right.
+            {
+                // If we're at the max roll and pressing up, we want to swing BACK a bit
+                // Automatically adds noise
+                if (PressingUp)
+                {
+                    if (m_AngularVelocity.Z <= (-FLY_ROLL_MAX_RADIANS))
+                        m_AngularVelocity.Z += 0.6f;
+                }
+                // If we're at the max roll and pressing down, we want to swing MORE a bit
+                if (PressingDown)
+                {
+                    if (m_AngularVelocity.Z >= -FLY_ROLL_MAX_RADIANS - 0.6f)
+                        m_AngularVelocity.Z -= 0.6f;
+                }
+            }
+        }
+
+        /// <summary>
+        /// incrementally sets roll amount to zero
+        /// </summary>
+        /// <param name="amount">Positive roll amount in radians</param>
+        /// <returns></returns>
+        private float CalculateFlyingRollResetToZero(float amount)
+        {
+            const float rollMinRadians = 0f;
+
+            if (m_AngularVelocity.Z > 0)
+            {
+                
+                float leftOverToMin = m_AngularVelocity.Z - rollMinRadians;
+                if (amount > leftOverToMin)
+                    return -leftOverToMin;
+                else
+                    return -amount;
+
+            }
+            else
+            {
+                
+                float leftOverToMin = -m_AngularVelocity.Z - rollMinRadians;
+                if (amount > leftOverToMin)
+                    return leftOverToMin;
+                else
+                    return amount;
+            }
+        }
+        
+
 
         // neighbouring regions we have enabled a child agent in
         // holds the seed cap for the child agent in that region
@@ -1514,6 +1608,33 @@ namespace OpenSim.Region.Framework.Scenes
                     bool controlland = (((flags & AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG) != 0) ||
                                         ((flags & AgentManager.ControlFlags.AGENT_CONTROL_NUDGE_UP_NEG) != 0));
 
+
+                   //m_log.Debug("[CONTROL]: " +flags);
+                    // Applies a satisfying roll effect to the avatar when flying.
+                    if (((flags & AgentManager.ControlFlags.AGENT_CONTROL_TURN_LEFT) != 0) && ((flags & AgentManager.ControlFlags.AGENT_CONTROL_YAW_POS) != 0))
+                    {
+
+                        ApplyFlyingRoll(FLY_ROLL_RADIANS_PER_UPDATE, ((flags & AgentManager.ControlFlags.AGENT_CONTROL_UP_POS) != 0), ((flags & AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG) != 0));
+                        
+                        
+                    } 
+                    else if (((flags & AgentManager.ControlFlags.AGENT_CONTROL_TURN_RIGHT) != 0) &&
+                             ((flags & AgentManager.ControlFlags.AGENT_CONTROL_YAW_NEG) != 0))
+                    {
+                        ApplyFlyingRoll(-FLY_ROLL_RADIANS_PER_UPDATE, ((flags & AgentManager.ControlFlags.AGENT_CONTROL_UP_POS) != 0), ((flags & AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG) != 0));
+                       
+
+                    }
+                    else
+                    {
+                        if (m_AngularVelocity.Z != 0)
+                            m_AngularVelocity.Z += CalculateFlyingRollResetToZero(FLY_ROLL_RESET_RADIANS_PER_UPDATE);
+                        
+                    }
+
+                   
+
+
                     if (Flying && IsColliding && controlland)
                     {
                         // nesting this check because LengthSquared() is expensive and we don't 
@@ -1727,7 +1848,11 @@ namespace OpenSim.Region.Framework.Scenes
             // Get terrain height for sub-region in a megaregion if necessary
             int X = (int)((m_scene.RegionInfo.RegionLocX * Constants.RegionSize) + pos.X);
             int Y = (int)((m_scene.RegionInfo.RegionLocY * Constants.RegionSize) + pos.Y);
-            UUID target_regionID = m_scene.GridService.GetRegionByPosition(m_scene.RegionInfo.ScopeID, X, Y).RegionID;
+            GridRegion target_region = m_scene.GridService.GetRegionByPosition(m_scene.RegionInfo.ScopeID, X, Y);
+            // If X and Y is NaN, target_region will be null
+            if (target_region == null)
+                return;
+            UUID target_regionID = target_region.RegionID;
             Scene targetScene = m_scene;
 
             if (!SceneManager.Instance.TryGetScene(target_regionID, out targetScene))
@@ -2232,7 +2357,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 ParentPart = m_scene.GetSceneObjectPart(m_requestedSitTargetID);
                 ParentID = m_requestedSitTargetID;
-
+                m_AngularVelocity = Vector3.Zero;
                 Velocity = Vector3.Zero;
                 RemoveFromPhysicalScene();
 
@@ -2248,7 +2373,8 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void HandleAgentSitOnGround()
         {
-//            m_updateCount = 0;  // Kill animation update burst so that the SIT_G.. will stick.
+//            m_updateCount = 0;  // Kill animation update burst so that the SIT_G.. will stick..
+            m_AngularVelocity = Vector3.Zero;
             Animator.TrySetMovementAnimation("SIT_GROUND_CONSTRAINED");
             SitGround = true;
             RemoveFromPhysicalScene();
@@ -3910,6 +4036,7 @@ namespace OpenSim.Region.Framework.Scenes
                 (m_teleportFlags & TeleportFlags.ViaLocation) != 0 ||
                 (m_teleportFlags & Constants.TeleportFlags.ViaHGLogin) != 0)
             {
+
                 if (GodLevel < 200 &&
                     ((!m_scene.Permissions.IsGod(m_uuid) &&
                     !m_scene.RegionInfo.EstateSettings.IsEstateManagerOrOwner(m_uuid)) || 
@@ -3918,7 +4045,14 @@ namespace OpenSim.Region.Framework.Scenes
                 {
                     SpawnPoint[] spawnPoints = m_scene.RegionInfo.RegionSettings.SpawnPoints().ToArray();
                     if (spawnPoints.Length == 0)
+                    {
+                        if(m_scene.RegionInfo.EstateSettings.IsEstateManagerOrOwner(m_uuid))
+                        {
+                            pos.X = 128.0f;
+                            pos.Y = 128.0f;
+                        }
                         return;
+                    }
 
                     int index;
                     bool selected = false;
@@ -3927,6 +4061,8 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         case "random":
 
+                            if (spawnPoints.Length == 0)
+                                return;
                             do
                             {
                                 index = Util.RandomClass.Next(spawnPoints.Length - 1);
@@ -3938,6 +4074,7 @@ namespace OpenSim.Region.Framework.Scenes
                                 // SpawnPoint sp = spawnPoints[index];
 
                                 ILandObject land = m_scene.LandChannel.GetLandObject(spawnPosition.X, spawnPosition.Y);
+
                                 if (land == null || land.IsEitherBannedOrRestricted(UUID))
                                     selected = false;
                                 else
