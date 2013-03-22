@@ -84,11 +84,11 @@ namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
         protected static Regex m_PathComponent = new Regex("\\.({[^}]+}|\\[[0-9]+\\]|\\[\\+\\])");
 
         // extract the internals of an array reference
-        protected static Regex m_SimpleArrayPattern = new Regex("\\[([0-9]+)\\]");
-        protected static Regex m_ArrayPattern = new Regex("\\[([0-9]+|\\+)\\]");
+        protected static Regex m_SimpleArrayPattern = new Regex("^\\[([0-9]+)\\]$");
+        protected static Regex m_ArrayPattern = new Regex("^\\[([0-9]+|\\+)\\]$");
 
         // extract the internals of a has reference
-        protected static Regex m_HashPattern = new Regex("{([^}]+)}");
+        protected static Regex m_HashPattern = new Regex("^{([^}]+)}$");
 
         // -----------------------------------------------------------------
         /// <summary>
@@ -145,7 +145,7 @@ namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
         /// 
         /// </summary>
         // -----------------------------------------------------------------
-        public JsonStoreNodeType PathType(string expr)
+        public JsonStoreNodeType GetNodeType(string expr)
         {
             Stack<string> path;
             if (! ParsePathExpression(expr,out path))
@@ -173,21 +173,36 @@ namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
         /// 
         /// </summary>
         // -----------------------------------------------------------------
-        public bool TestPath(string expr, bool useJson)
+        public JsonStoreValueType GetValueType(string expr)
         {
             Stack<string> path;
             if (! ParsePathExpression(expr,out path))
-                return false;
+                return JsonStoreValueType.Undefined;
             
             OSD result = ProcessPathExpression(ValueStore,path);
 
             if (result == null)
-                return false;
+                return JsonStoreValueType.Undefined;
             
-            if (useJson || OSDBaseType(result.Type))
-                return true;
+            if (result is OSDMap)
+                return JsonStoreValueType.Undefined;
             
-            return false;
+            if (result is OSDArray)
+                return JsonStoreValueType.Undefined;
+            
+            if (result is OSDBoolean)
+                return JsonStoreValueType.Boolean;
+
+            if (result is OSDInteger)
+                return JsonStoreValueType.Integer;
+
+            if (result is OSDReal)
+                return JsonStoreValueType.Float;
+
+            if (result is OSDString)
+                return JsonStoreValueType.String;
+
+            return JsonStoreValueType.Undefined;
         }
         
         // -----------------------------------------------------------------

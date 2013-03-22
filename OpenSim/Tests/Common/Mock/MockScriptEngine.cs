@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Nini.Config;
 using OpenMetaverse;
+using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.ScriptEngine.Interfaces;
@@ -40,10 +41,33 @@ namespace OpenSim.Tests.Common
 {
     public class MockScriptEngine : INonSharedRegionModule, IScriptModule, IScriptEngine
     {      
+        public IConfigSource ConfigSource { get; private set; }
+
+        public IConfig Config { get; private set; }
+
         private Scene m_scene;
+
+        /// <summary>
+        /// Expose posted events to tests.
+        /// </summary>
+        public Dictionary<UUID, List<EventParams>> PostedEvents { get; private set; }
+
+        /// <summary>
+        /// A very primitive way of hooking text cose to a posed event.
+        /// </summary>
+        /// <remarks>
+        /// May be replaced with something that uses more original code in the future.
+        /// </remarks>
+        public event Action<UUID, EventParams> PostEventHook;
 
         public void Initialise(IConfigSource source)
         {
+            ConfigSource = source;
+
+            // Can set later on if required
+            Config = new IniConfig("MockScriptEngine", ConfigSource);
+
+            PostedEvents = new Dictionary<UUID, List<EventParams>>();
         }
 
         public void Close()
@@ -85,12 +109,49 @@ namespace OpenSim.Tests.Common
 
         public bool PostScriptEvent(UUID itemID, string name, object[] args)
         {
-            return false;
+//            Console.WriteLine("Posting event {0} for {1}", name, itemID);
+
+            return PostScriptEvent(itemID, new EventParams(name, args, null));
+        }
+
+        public bool PostScriptEvent(UUID itemID, EventParams evParams)
+        {
+            List<EventParams> eventsForItem;
+
+            if (!PostedEvents.ContainsKey(itemID))
+            {
+                eventsForItem = new List<EventParams>();
+                PostedEvents.Add(itemID, eventsForItem);
+            }
+            else
+            {
+                eventsForItem = PostedEvents[itemID];
+            }
+
+            eventsForItem.Add(evParams);
+
+            if (PostEventHook != null)
+                PostEventHook(itemID, evParams);
+
+            return true;
+        }
+
+        public bool PostObjectEvent(uint localID, EventParams evParams)
+        {
+            return PostObjectEvent(m_scene.GetSceneObjectPart(localID), evParams);
         }
 
         public bool PostObjectEvent(UUID itemID, string name, object[] args)
         {
-            throw new System.NotImplementedException ();
+            return PostObjectEvent(m_scene.GetSceneObjectPart(itemID), new EventParams(name, args, null));
+        }
+
+        private bool PostObjectEvent(SceneObjectPart part, EventParams evParams)
+        {
+            foreach (TaskInventoryItem item in part.Inventory.GetInventoryItems(InventoryType.LSL))
+                PostScriptEvent(item.ItemID, evParams);
+
+            return true;
         }
 
         public void SuspendScript(UUID itemID)
@@ -143,16 +204,6 @@ namespace OpenSim.Tests.Common
             throw new System.NotImplementedException ();
         }
 
-        public bool PostScriptEvent(UUID itemID,EventParams parms)
-        {
-            throw new System.NotImplementedException ();
-        }
-
-        public bool PostObjectEvent (uint localID, EventParams parms)
-        {
-            throw new System.NotImplementedException ();
-        }
-
         public DetectParams GetDetectParams(UUID item, int number)
         {
             throw new System.NotImplementedException ();
@@ -195,11 +246,7 @@ namespace OpenSim.Tests.Common
 
         public Scene World { get { return m_scene; } }
 
-        public IScriptModule ScriptModule { get { throw new System.NotImplementedException(); } }
-
-        public IConfig Config { get { throw new System.NotImplementedException (); } }
-
-        public IConfigSource ConfigSource { get { throw new System.NotImplementedException (); } }
+        public IScriptModule ScriptModule { get { return this; } }
 
         public string ScriptEnginePath { get { throw new System.NotImplementedException (); }}
 
@@ -210,5 +257,10 @@ namespace OpenSim.Tests.Common
         public string[] ScriptReferencedAssemblies { get { throw new System.NotImplementedException (); } }
 
         public ParameterInfo[] ScriptBaseClassParameters { get { throw new System.NotImplementedException (); } }       
+
+        public void ClearPostedEvents()
+        {
+            PostedEvents.Clear();
+        }
     }
 }

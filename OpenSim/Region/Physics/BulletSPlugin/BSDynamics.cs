@@ -961,13 +961,13 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             // ==================================================================
             // Clamp high or low velocities
             float newVelocityLengthSq = VehicleVelocity.LengthSquared();
-            if (newVelocityLengthSq > BSParam.VehicleMaxLinearVelocitySq)
+            if (newVelocityLengthSq > BSParam.VehicleMaxLinearVelocitySquared)
             {
                 Vector3 origVelW = VehicleVelocity;         // DEBUG DEBUG
                 VehicleVelocity /= VehicleVelocity.Length();
                 VehicleVelocity *= BSParam.VehicleMaxLinearVelocity;
                 VDetailLog("{0},  MoveLinear,clampMax,origVelW={1},lenSq={2},maxVelSq={3},,newVelW={4}", 
-                            Prim.LocalID, origVelW, newVelocityLengthSq, BSParam.VehicleMaxLinearVelocitySq, VehicleVelocity);
+                            Prim.LocalID, origVelW, newVelocityLengthSq, BSParam.VehicleMaxLinearVelocitySquared, VehicleVelocity);
             }
             else if (newVelocityLengthSq < 0.001f)
                 VehicleVelocity = Vector3.Zero;
@@ -1335,7 +1335,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 Vector3 unscaledContribVerticalErrorV = vertContributionV;     // DEBUG DEBUG
                 vertContributionV /= m_verticalAttractionTimescale;
 
-                VehicleRotationalVelocity += vertContributionV * VehicleOrientation;
+                VehicleRotationalVelocity += vertContributionV;
 
                 VDetailLog("{0},  MoveAngular,verticalAttraction,,origRotVW={1},vertError={2},unscaledV={3},eff={4},ts={5},vertContribV={6}",
                                 Prim.LocalID, origRotVelW, verticalError, unscaledContribVerticalErrorV, 

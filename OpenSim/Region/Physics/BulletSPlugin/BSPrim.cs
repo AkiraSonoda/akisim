@@ -70,6 +70,8 @@ public class BSPrim : BSPhysObject
     private bool _kinematic;
     private float _buoyancy;
 
+    private int CrossingFailures { get; set; }
+
     public BSDynamics VehicleController { get; private set; }
 
     private BSVMotor _targetMotor;
@@ -106,6 +108,9 @@ public class BSPrim : BSPhysObject
         // do the actual object creation at taint time
         PhysicsScene.TaintedObject("BSPrim.create", delegate()
         {
+            // Make sure the object is being created with some sanity.
+            ExtremeSanityCheck(true /* inTaintTime */);
+
             CreateGeomAndObject(true);
 
             CurrentCollisionFlags = PhysicsScene.PE.GetCollisionFlags(PhysBody);
@@ -197,7 +202,20 @@ public class BSPrim : BSPhysObject
     {
         get { return _isSelected; }
     }
-    public override void CrossingFailure() { return; }
+
+    public override void CrossingFailure()
+    {
+        CrossingFailures++;
+        if (CrossingFailures > BSParam.CrossingFailuresBeforeOutOfBounds)
+        {
+            base.RaiseOutOfBounds(RawPosition);
+        }
+        else if (CrossingFailures == BSParam.CrossingFailuresBeforeOutOfBounds)
+        {
+            m_log.WarnFormat("{0} Too many crossing failures for {1}", LogHeader, Name);
+        }
+        return;
+    }
 
     // link me to the specified parent
     public override void link(PhysicsActor obj) {
@@ -435,6 +453,38 @@ public class BSPrim : BSPhysObject
         return ret;
     }
 
+    // Occasionally things will fly off and really get lost.
+    // Find the wanderers and bring them back.
+    // Return 'true' if some parameter need some sanity.
+    private bool ExtremeSanityCheck(bool inTaintTime)
+    {
+        bool ret = false;
+
+        uint wayOutThere = Constants.RegionSize * Constants.RegionSize;
+        // There have been instances of objects getting thrown way out of bounds and crashing
+        //    the border crossing code.
+        if (   _position.X < -Constants.RegionSize || _position.X > wayOutThere
+            || _position.Y < -Constants.RegionSize || _position.Y > wayOutThere
+            || _position.Z < -Constants.RegionSize || _position.Z > wayOutThere)
+        {
+            _position = new OMV.Vector3(10, 10, 50);
+            ZeroMotion(inTaintTime);
+            ret = true;
+        }
+        if (_velocity.LengthSquared() > BSParam.MaxLinearVelocity)
+        {
+            _velocity = Util.ClampV(_velocity, BSParam.MaxLinearVelocity);
+            ret = true;
+        }
+        if (_rotationalVelocity.LengthSquared() > BSParam.MaxAngularVelocitySquared)
+        {
+            _rotationalVelocity = Util.ClampV(_rotationalVelocity, BSParam.MaxAngularVelocity);
+            ret = true;
+        }
+
+        return ret;
+    }
+
     // Return the effective mass of the object.
         // The definition of this call is to return the mass of the prim.
         // If the simulator cares about the mass of the linkset, it will sum it itself.
@@ -455,7 +505,7 @@ public class BSPrim : BSPhysObject
     // Note that this does not change _mass!
     public override void UpdatePhysicalMassProperties(float physMass, bool inWorld)
     {
-        if (PhysBody.HasPhysicalBody)
+        if (PhysBody.HasPhysicalBody && PhysShape.HasPhysicalShape)
         {
             if (IsStatic)
             {
@@ -570,12 +620,12 @@ public class BSPrim : BSPhysObject
                 if (VehicleController.Type == Vehicle.TYPE_NONE)
                 {
                     UnRegisterPreStepAction("BSPrim.Vehicle", LocalID);
-                    PhysicsScene.AfterStep -= VehicleController.PostStep;
+                    UnRegisterPostStepAction("BSPrim.Vehicle", LocalID);
                 }
                 else
                 {
                     RegisterPreStepAction("BSPrim.Vehicle", LocalID, VehicleController.Step);
-                    PhysicsScene.AfterStep += VehicleController.PostStep;
+                    RegisterPostStepAction("BSPrim.Vehicle", LocalID, VehicleController.PostStep);
                 }
             });
         }
@@ -717,7 +767,7 @@ public class BSPrim : BSPhysObject
         set {
             PhysicsScene.AssertInTaintTime("BSPrim.ForceVelocity");
 
-            _velocity = value;
+            _velocity = Util.ClampV(value, BSParam.MaxLinearVelocity);
             if (PhysBody.HasPhysicalBody)
             {
                 DetailLog("{0},BSPrim.ForceVelocity,taint,vel={1}", LocalID, _velocity);
@@ -1083,7 +1133,7 @@ public class BSPrim : BSPhysObject
             return _rotationalVelocity;
         }
         set {
-            _rotationalVelocity = value;
+            _rotationalVelocity = Util.ClampV(value, BSParam.MaxAngularVelocity);
             if (PhysBody.HasPhysicalBody)
             {
                 DetailLog("{0},BSPrim.ForceRotationalVel,taint,rotvel={1}", LocalID, _rotationalVelocity);
@@ -1123,7 +1173,11 @@ public class BSPrim : BSPhysObject
 
     // Used for MoveTo
     public override OMV.Vector3 PIDTarget {
-        set { _PIDTarget = value; }
+        set
+        {
+            // TODO: add a sanity check -- don't move more than a region or something like that.
+            _PIDTarget = value;
+        }
     }
     public override float PIDTau {
         set { _PIDTau = value; }
@@ -1177,7 +1231,9 @@ public class BSPrim : BSPhysObject
                     }
                     else
                     {
-                        ForcePosition = movePosition;
+                        _position = movePosition;
+                        PositionSanityCheck(true /* intaintTime */);
+                        ForcePosition = _position;
                     }
                     DetailLog("{0},BSPrim.PIDTarget,move,fromPos={1},movePos={2}", LocalID, origPosition, movePosition);
                 });
@@ -1209,6 +1265,7 @@ public class BSPrim : BSPhysObject
 
                 RegisterPreStepAction("BSPrim.Hover", LocalID, delegate(float timeStep)
                 {
+                    // Don't do hovering while the object is selected.
                     if (!IsPhysicallyActive)
                         return;
 
@@ -1716,10 +1773,9 @@ public class BSPrim : BSPhysObject
         // Assign directly to the local variables so the normal set actions do not happen
         _position = entprop.Position;
         _orientation = entprop.Rotation;
-        // _velocity = entprop.Velocity;
         // DEBUG DEBUG DEBUG -- smooth velocity changes a bit. The simulator seems to be
         //    very sensitive to velocity changes.
-        if (entprop.Velocity == OMV.Vector3.Zero || !entprop.Velocity.ApproxEquals(_velocity, 0.1f))
+        if (entprop.Velocity == OMV.Vector3.Zero || !entprop.Velocity.ApproxEquals(_velocity, BSParam.UpdateVelocityChangeThreshold))
             _velocity = entprop.Velocity;
         _acceleration = entprop.Acceleration;
         _rotationalVelocity = entprop.RotationalVelocity;

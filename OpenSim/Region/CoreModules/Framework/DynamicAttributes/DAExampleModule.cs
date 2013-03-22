@@ -39,7 +39,7 @@ using OpenSim.Region.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
-namespace OpenSim.Region.Framework.DynamicAttributes.DAExampleModule
+namespace OpenSim.Region.CoreModules.Framework.DynamicAttributes.DAExampleModule
 {
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "DAExampleModule")]
     public class DAExampleModule : INonSharedRegionModule
@@ -47,6 +47,8 @@ namespace OpenSim.Region.Framework.DynamicAttributes.DAExampleModule
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private static readonly bool ENABLED = false;   // enable for testing
+
+        public const string DANamespace = "DAExample Module";
 
         protected Scene m_scene;
         protected IDialogModule m_dialogMod;
@@ -85,19 +87,29 @@ namespace OpenSim.Region.Framework.DynamicAttributes.DAExampleModule
         {
             OSDMap attrs = null;
             SceneObjectPart sop = m_scene.GetSceneObjectPart(groupId);
-            if (!sop.DynAttrs.TryGetValue(Name, out attrs))
+
+            if (sop == null)
+                return true;
+
+            if (!sop.DynAttrs.TryGetValue(DANamespace, out attrs))
                 attrs = new OSDMap();
             
             OSDInteger newValue;
-                
-            if (!attrs.ContainsKey("moves"))
-                newValue = new OSDInteger(1);
-            else
-                newValue = new OSDInteger(((OSDInteger)attrs["moves"]).AsInteger() + 1);
-                    
-            attrs["moves"] = newValue;
 
-            sop.DynAttrs[Name] = attrs;
+            // We have to lock on the entire dynamic attributes map to avoid race conditions with serialization code.
+            lock (sop.DynAttrs)            
+            {
+                if (!attrs.ContainsKey("moves"))
+                    newValue = new OSDInteger(1);
+                else
+                    newValue = new OSDInteger(attrs["moves"].AsInteger() + 1);
+                        
+                attrs["moves"] = newValue;
+
+                sop.DynAttrs[DANamespace] = attrs;
+            }
+
+            sop.ParentGroup.HasGroupChanged = true;
     
             m_dialogMod.SendGeneralAlert(string.Format("{0} {1} moved {2} times", sop.Name, sop.UUID, newValue));
             

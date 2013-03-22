@@ -86,11 +86,14 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         #region INonSharedRegionModule Members
         public virtual void Initialise (IConfigSource config)
         {
-            IConfig startupConfig = config.Configs["Startup"];
-            if (startupConfig.GetString("WorldMapModule", "WorldMap") == "WorldMap")
+            string[] configSections = new string[] { "Map", "Startup" };
+
+            if (Util.GetConfigVarFromSections<string>(
+                config, "WorldMapModule", configSections, "WorldMap") == "WorldMap")
                 m_Enabled = true;
 
-            blacklistTimeout = startupConfig.GetInt("BlacklistTimeout", 10*60) * 1000;
+            blacklistTimeout 
+                = Util.GetConfigVarFromSections<int>(config, "BlacklistTimeout", configSections, 10 * 60) * 1000;
         }
 
         public virtual void AddRegion (Scene scene)
@@ -865,20 +868,22 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             }
 
             string response_mapItems_reply = null;
-            { // get the response
-                StreamReader sr = null;
+            {
                 try
                 {
-                    WebResponse webResponse = mapitemsrequest.GetResponse();
-                    if (webResponse != null)
+                    using (WebResponse webResponse = mapitemsrequest.GetResponse())
                     {
-                        sr = new StreamReader(webResponse.GetResponseStream());
-                        response_mapItems_reply = sr.ReadToEnd().Trim();
-                    }
-                    else
-                    {
-                        return new OSDMap();
-                    }
+                        if (webResponse != null)
+                        {
+                            using (Stream s = webResponse.GetResponseStream())
+                                using (StreamReader sr = new StreamReader(s))
+                                    response_mapItems_reply = sr.ReadToEnd().Trim();
+                        }
+                        else
+                        {
+                            return new OSDMap();
+                        }
+                        }
                 }
                 catch (WebException)
                 {
@@ -905,11 +910,6 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
                     return responseMap;
                 }
-                finally
-                {
-                    if (sr != null)
-                        sr.Close();
-                }
 
                 OSD rezResponse = null;
                 try
@@ -923,6 +923,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 {
                     m_log.InfoFormat("[WORLD MAP]: exception on parse of RequestMapItems reply from {0}: {1}", httpserver, ex.Message);
                     responseMap["connect"] = OSD.FromBoolean(false);
+
                     lock (m_blacklistedregions)
                     {
                         if (!m_blacklistedregions.ContainsKey(regionhandle))

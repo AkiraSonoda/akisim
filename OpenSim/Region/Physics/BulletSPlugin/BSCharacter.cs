@@ -204,8 +204,8 @@ public sealed class BSCharacter : BSPhysObject
             //   move. Thus, the velocity cannot be forced to zero. The problem is that small velocity
             //   errors can creap in and the avatar will slowly float off in some direction.
             // So, the problem is that, when an avatar is standing, we cannot tell creaping error
-            //   from real pushing.OMV.Vector3.Zero;
-            // The code below keeps setting the velocity to zero hoping the world will keep pushing.
+            //   from real pushing.
+            // The code below uses whether the collider is static or moving to decide whether to zero motion.
 
             _velocityMotor.Step(timeStep);
 
@@ -244,6 +244,7 @@ public sealed class BSCharacter : BSPhysObject
             }
             else
             {
+                // Supposed to be moving.
                 OMV.Vector3 stepVelocity = _velocityMotor.CurrentValue;
 
                 if (Friction != BSParam.AvatarFriction)
@@ -254,9 +255,11 @@ public sealed class BSCharacter : BSPhysObject
                 }
 
                 // If falling, we keep the world's downward vector no matter what the other axis specify.
+                // The check for _velocity.Z < 0 makes jumping work (temporary upward force).
                 if (!Flying && !IsColliding)
                 {
-                    stepVelocity.Z = _velocity.Z;
+                    if (_velocity.Z < 0)
+                        stepVelocity.Z = _velocity.Z;
                     // DetailLog("{0},BSCharacter.MoveMotor,taint,overrideStepZWithWorldZ,stepVel={1}", LocalID, stepVelocity);
                 }
 
@@ -274,8 +277,8 @@ public sealed class BSCharacter : BSPhysObject
         });
     }
 
-    // Decide of the character is colliding with a low object and compute a force to pop the
-    //    avatar up so it has a chance of walking up and over the low object.
+    // Decide if the character is colliding with a low object and compute a force to pop the
+    //    avatar up so it can walk up and over the low objects.
     private OMV.Vector3 WalkUpStairs()
     {
         OMV.Vector3 ret = OMV.Vector3.Zero;
@@ -443,6 +446,7 @@ public sealed class BSCharacter : BSPhysObject
             PhysicsScene.TaintedObject("BSCharacter.setPosition", delegate()
             {
                 DetailLog("{0},BSCharacter.SetPosition,taint,pos={1},orient={2}", LocalID, _position, _orientation);
+                PositionSanityCheck();
                 ForcePosition = _position;
             });
         }
@@ -456,7 +460,6 @@ public sealed class BSCharacter : BSPhysObject
             _position = value;
             if (PhysBody.HasPhysicalBody)
             {
-                PositionSanityCheck();
                 PhysicsScene.PE.SetTranslation(PhysBody, _position, _orientation);
             }
         }
@@ -474,17 +477,19 @@ public sealed class BSCharacter : BSPhysObject
         if (!PhysicsScene.TerrainManager.IsWithinKnownTerrain(RawPosition))
         {
             // The character is out of the known/simulated area.
-            // Upper levels of code will handle the transition to other areas so, for
-            //     the time, we just ignore the position.
-            return ret;
+            // Force the avatar position to be within known. ScenePresence will use the position
+            //    plus the velocity to decide if the avatar is moving out of the region.
+            RawPosition = PhysicsScene.TerrainManager.ClampPositionIntoKnownTerrain(RawPosition);
+            DetailLog("{0},BSCharacter.PositionSanityCheck,notWithinKnownTerrain,clampedPos={1}", LocalID, RawPosition);
+            return true;
         }
 
         // If below the ground, move the avatar up
         float terrainHeight = PhysicsScene.TerrainManager.GetTerrainHeightAtXYZ(RawPosition);
         if (Position.Z < terrainHeight)
         {
-            DetailLog("{0},BSCharacter.PositionAdjustUnderGround,call,pos={1},terrain={2}", LocalID, _position, terrainHeight);
-            _position.Z = terrainHeight + 2.0f;
+            DetailLog("{0},BSCharacter.PositionSanityCheck,adjustForUnderGround,pos={1},terrain={2}", LocalID, _position, terrainHeight);
+            _position.Z = terrainHeight + BSParam.AvatarBelowGroundUpCorrectionMeters;
             ret = true;
         }
         if ((CurrentCollisionFlags & CollisionFlags.BS_FLOATS_ON_WATER) != 0)
@@ -513,8 +518,7 @@ public sealed class BSCharacter : BSPhysObject
             PhysicsScene.TaintedObject(inTaintTime, "BSCharacter.PositionSanityCheck", delegate()
             {
                 DetailLog("{0},BSCharacter.PositionSanityCheck,taint,pos={1},orient={2}", LocalID, _position, _orientation);
-                if (PhysBody.HasPhysicalBody)
-                    PhysicsScene.PE.SetTranslation(PhysBody, _position, _orientation);
+                ForcePosition = _position;
             });
             ret = true;
         }
@@ -573,7 +577,7 @@ public sealed class BSCharacter : BSPhysObject
             m_targetVelocity = value;
             OMV.Vector3 targetVel = value;
             if (_setAlwaysRun)
-                targetVel *= BSParam.AvatarAlwaysRunFactor;
+                targetVel *= new OMV.Vector3(BSParam.AvatarAlwaysRunFactor, BSParam.AvatarAlwaysRunFactor, 0f);
 
             PhysicsScene.TaintedObject("BSCharacter.setTargetVelocity", delegate()
             {
@@ -805,14 +809,7 @@ public sealed class BSCharacter : BSPhysObject
     private void AddForce(OMV.Vector3 force, bool pushforce, bool inTaintTime) {
         if (force.IsFinite())
         {
-            float magnitude = force.Length();
-            if (magnitude > BSParam.MaxAddForceMagnitude)
-            {
-                // Force has a limit
-                force = force / magnitude * BSParam.MaxAddForceMagnitude;
-            }
-
-            OMV.Vector3 addForce = force;
+            OMV.Vector3 addForce = Util.ClampV(force, BSParam.MaxAddForceMagnitude);
             // DetailLog("{0},BSCharacter.addForce,call,force={1}", LocalID, addForce);
 
             PhysicsScene.TaintedObject(inTaintTime, "BSCharacter.AddForce", delegate()
@@ -901,6 +898,7 @@ public sealed class BSCharacter : BSPhysObject
         // Do some sanity checking for the avatar. Make sure it's above ground and inbounds.
         if (PositionSanityCheck(true))
         {
+            DetailLog("{0},BSCharacter.UpdateProperties,updatePosForSanity,pos={1}", LocalID, _position);
             entprop.Position = _position;
         }
 

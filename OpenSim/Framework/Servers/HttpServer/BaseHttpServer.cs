@@ -485,7 +485,9 @@ namespace OpenSim.Framework.Servers.HttpServer
             {
                 try
                 {
-                    SendHTML500(response);
+                    byte[] buffer500 = SendHTML500(response);
+                    response.Body.Write(buffer500,0,buffer500.Length);
+                    response.Body.Close();
                 }
                 catch
                 {
@@ -718,7 +720,15 @@ namespace OpenSim.Framework.Servers.HttpServer
             catch (Exception e)
             {
                 m_log.Error(String.Format("[BASE HTTP SERVER]: HandleRequest() threw {0} ", e.StackTrace), e);
-                SendHTML500(response);
+                try
+                {
+                    byte[] buffer500 = SendHTML500(response);
+                    response.Body.Write(buffer500, 0, buffer500.Length);
+                    response.Body.Close();
+                }
+                catch
+                {
+                }
             }
             finally
             {
@@ -1745,7 +1755,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             response.SendChunked = false;
             response.ContentLength64 = buffer.Length;
             response.ContentEncoding = Encoding.UTF8;
-
+            
+                
             return buffer;
         }
 
@@ -1909,6 +1920,12 @@ namespace OpenSim.Framework.Servers.HttpServer
         {
             lock (m_rpcHandlers)
                 m_rpcHandlers.Remove(method);
+        }
+
+        public void RemoveJsonRPCHandler(string method)
+        {
+            lock(jsonRpcHandlers)
+                jsonRpcHandlers.Remove(method);
         }
 
         public bool RemoveLLSDHandler(string path, LLSDMethod handler)

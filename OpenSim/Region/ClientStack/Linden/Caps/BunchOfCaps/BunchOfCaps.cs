@@ -1004,7 +1004,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 string param, IOSHttpRequest httpRequest,
                 IOSHttpResponse httpResponse)
         {
-            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
+//            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
             OSDMap resp = new OSDMap();
 
             OSDMap accessPrefs = new OSDMap();

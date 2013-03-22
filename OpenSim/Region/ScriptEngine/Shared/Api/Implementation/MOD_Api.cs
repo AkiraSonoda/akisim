@@ -29,7 +29,6 @@ using System;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Runtime.Remoting.Lifetime;
 using System.Threading;
 using log4net;
@@ -266,6 +265,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 else if (result[i] is float)
                 {
                     llist[i] = new LSL_Float((float)result[i]);
+                }
+                else if (result[i] is double)
+                {
+                    llist[i] = new LSL_Float((double)result[i]);
                 }
                 else if (result[i] is UUID)
                 {

@@ -186,6 +186,7 @@ namespace OpenSim.Server.Base
                 XmlConfigurator.Configure();
             }
 
+            LogEnvironmentInformation();
             RegisterCommonAppenders(startupConfig);
 
             if (startupConfig.GetString("PIDFile", String.Empty) != String.Empty)
