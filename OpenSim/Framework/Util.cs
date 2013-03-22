@@ -159,7 +159,7 @@ namespace OpenSim.Framework
 							byte b = bytes[i + j];
 							line[hexColumn] = HexChars[(b >> 4) & 0xF];
 							line[hexColumn + 1] = HexChars[b & 0xF];
-							line[charColumn] = (b < 32 ? '·' : (char)b);
+							line[charColumn] = (b < 32 ? '_' : (char)b);
 						}
 						hexColumn += 3;
 						charColumn++;

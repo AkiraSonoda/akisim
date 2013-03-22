@@ -30,11 +30,6 @@ OSBACK="/home/opensim/backup"
 # Uebersteuerung
 test_version=$1
 
-export PATH="/home/opensim/bin/mono19/bin:$PATH"
-export PKG_CONFIG_PATH="/home/opensim/bin/mono19/lib/pkgconfig:$PKG_CONFIG_PATH"
-export MANPATH="/home/opensim/bin/mono19/share/man:$MANPATH"
-export LD_LIBRARY_PATH="/home/opensim/bin/mono19/lib:$LD_LIBRARY_PATH"
-
 mono --version > /tmp/osbuild.mono.txt
 
 cd $OSINS
@@ -117,7 +112,7 @@ fi
 if [ "$test_version" != "" ] ; then
   echo $test_version > $OSINS/$test_version/version.txt
 else
-  echo $new_version > $OSINS/opensim_aki/version.txt
+  echo $new_version > $OSINS/$new_version/version.txt
 fi
 
 cd $OSINS
