@@ -103,3 +103,4 @@ bin/DataSnapshot
 opensim.sln.cache
 doc/html
 doc/doxygen.error.log
+doc/ini/inidb/.metadata
