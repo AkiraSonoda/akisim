@@ -51,6 +51,7 @@ using OpenSim.Region.Physics.Manager;
 using Timer=System.Timers.Timer;
 using TPFlags = OpenSim.Framework.Constants.TeleportFlags;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -2549,7 +2550,6 @@ namespace OpenSim.Region.Framework.Scenes
 
                 }
             }
-            
 
             return null;
         }
@@ -2747,9 +2747,12 @@ namespace OpenSim.Region.Framework.Scenes
 //                        "[ATTACHMENT]: Attach to avatar {0} at position {1}", sp.UUID, grp.AbsolutePosition);
 
                     RootPrim.RemFlag(PrimFlags.TemporaryOnRez);
-                    
+
+                    // We must currently not resume scripts at this stage since AttachmentsModule does not have the 
+                    // information that this is due to a teleport/border cross rather than an ordinary attachment.
+                    // We currently do this in Scene.MakeRootAgent() instead.
                     if (AttachmentsModule != null)
-                        AttachmentsModule.AttachObject(sp, grp, 0, false, false);
+                        AttachmentsModule.AttachObject(sp, grp, 0, false, false, true);
                 }
                 else
                 {
@@ -2828,20 +2831,6 @@ namespace OpenSim.Region.Framework.Scenes
                     m_eventManager.TriggerOnNewPresence(sp);
     
                     sp.TeleportFlags = (TPFlags)aCircuit.teleportFlags;
-    
-                    // The first agent upon login is a root agent by design.
-                    // For this agent we will have to rez the attachments.
-                    // All other AddNewClient calls find aCircuit.child to be true.
-                    if (aCircuit.child == false)
-                    {
-                        // We have to set SP to be a root agent here so that SP.MakeRootAgent() will later not try to
-                        // start the scripts again (since this is done in RezAttachments()).
-                        // XXX: This is convoluted.
-                        sp.IsChildAgent = false;
-    
-                        if (AttachmentsModule != null)
-                            Util.FireAndForget(delegate(object o) { AttachmentsModule.RezAttachments(sp); });
-                    }
                 }
                 else
                 {
@@ -4125,33 +4114,33 @@ namespace OpenSim.Region.Framework.Scenes
 //            }
 //        }
 
-        /// <summary>
-        /// Triggered when an agent crosses into this sim.  Also happens on initial login.
-        /// </summary>
-        /// <param name="agentID"></param>
-        /// <param name="position"></param>
-        /// <param name="isFlying"></param>
-        public virtual void AgentCrossing(UUID agentID, Vector3 position, bool isFlying)
-        {
-            ScenePresence presence = GetScenePresence(agentID);
-            if (presence != null)
-            {
-                try
-                {
-                    presence.MakeRootAgent(position, isFlying);
-                }
-                catch (Exception e)
-                {
-                    m_log.ErrorFormat("[SCENE]: Unable to do agent crossing, exception {0}{1}", e.Message, e.StackTrace);
-                }
-            }
-            else
-            {
-                m_log.ErrorFormat(
-                    "[SCENE]: Could not find presence for agent {0} crossing into scene {1}",
-                    agentID, RegionInfo.RegionName);
-            }
-        }
+//        /// <summary>
+//        /// Triggered when an agent crosses into this sim.  Also happens on initial login.
+//        /// </summary>
+//        /// <param name="agentID"></param>
+//        /// <param name="position"></param>
+//        /// <param name="isFlying"></param>
+//        public virtual void AgentCrossing(UUID agentID, Vector3 position, bool isFlying)
+//        {
+//            ScenePresence presence = GetScenePresence(agentID);
+//            if (presence != null)
+//            {
+//                try
+//                {
+//                    presence.MakeRootAgent(position, isFlying);
+//                }
+//                catch (Exception e)
+//                {
+//                    m_log.ErrorFormat("[SCENE]: Unable to do agent crossing, exception {0}{1}", e.Message, e.StackTrace);
+//                }
+//            }
+//            else
+//            {
+//                m_log.ErrorFormat(
+//                    "[SCENE]: Could not find presence for agent {0} crossing into scene {1}",
+//                    agentID, RegionInfo.RegionName);
+//            }
+//        }
 
         /// <summary>
         /// We've got an update about an agent that sees into this region, 
@@ -5380,12 +5369,12 @@ namespace OpenSim.Region.Framework.Scenes
            List<SceneObjectGroup> objects, 
            out float minX, out float maxX, out float minY, out float maxY, out float minZ, out float maxZ)
         {
-            minX = 256;
-            maxX = -256;
-            minY = 256;
-            maxY = -256;
-            minZ = 8192;
-            maxZ = -256;
+            minX = float.MaxValue;
+            maxX = float.MinValue;
+            minY = float.MaxValue;
+            maxY = float.MinValue;
+            minZ = float.MaxValue;
+            maxZ = float.MinValue;
 
             List<Vector3> offsets = new List<Vector3>();
 

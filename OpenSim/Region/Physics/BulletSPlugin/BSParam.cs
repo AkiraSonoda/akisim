@@ -39,6 +39,20 @@ public static class BSParam
 {
     private static string LogHeader = "[BULLETSIM PARAMETERS]"; 
 
+    // Tuning notes:
+    // From: http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=6575
+    //    Contact points can be added even if the distance is positive. The constraint solver can deal with
+    //    contacts with positive distances as well as negative (penetration). Contact points are discarded
+    //    if the distance exceeds a certain threshold.
+    //    Bullet has a contact processing threshold and a contact breaking threshold.
+    //    If the distance is larger than the contact breaking threshold, it will be removed after one frame.
+    //    If the distance is larger than the contact processing threshold, the constraint solver will ignore it.
+
+    //    This is separate/independent from the collision margin. The collision margin increases the object a bit
+    //    to improve collision detection performance and accuracy.
+    // ===================
+    // From: 
+
     // Level of Detail values kept as float because that's what the Meshmerizer wants
     public static float MeshLOD { get; private set; }
     public static float MeshCircularLOD { get; private set; }
@@ -74,9 +88,11 @@ public static class BSParam
     public static bool ShouldRemoveZeroWidthTriangles { get; private set; }
 
     public static float TerrainImplementation { get; private set; }
+    public static int TerrainMeshMagnification { get; private set; }
     public static float TerrainFriction { get; private set; }
     public static float TerrainHitFraction { get; private set; }
     public static float TerrainRestitution { get; private set; }
+    public static float TerrainContactProcessingThreshold { get; private set; }
     public static float TerrainCollisionMargin { get; private set; }
 
     public static float DefaultFriction { get; private set; }
@@ -123,7 +139,16 @@ public static class BSParam
     public static Vector3 VehicleLinearFactor { get; private set; }
     public static Vector3 VehicleAngularFactor { get; private set; }
     public static float VehicleGroundGravityFudge { get; private set; }
+    public static float VehicleAngularBankingTimescaleFudge { get; private set; }
     public static bool VehicleDebuggingEnabled { get; private set; }
+
+    // Convex Hulls
+    public static int CSHullMaxDepthSplit { get; private set; }
+    public static int CSHullMaxDepthSplitForSimpleShapes { get; private set; }
+    public static float CSHullConcavityThresholdPercent { get; private set; }
+    public static float CSHullVolumeConservationThresholdPercent { get; private set; }
+    public static int CSHullMaxVertices { get; private set; }
+    public static float CSHullMaxSkinWidth { get; private set; }
 
     // Linkset implementation parameters
     public static float LinksetImplementation { get; private set; }
@@ -178,10 +203,10 @@ public static class BSParam
     public delegate void PSetOnObject<T>(BSScene scene, BSPhysObject obj);
     public sealed class ParameterDefn<T> : ParameterDefnBase
     {
-        T defaultValue;
-        PSetValue<T> setter;
-        PGetValue<T> getter;
-        PSetOnObject<T> objectSet;
+        private T defaultValue;
+        private PSetValue<T> setter;
+        private PGetValue<T> getter;
+        private PSetOnObject<T> objectSet;
         public ParameterDefn(string pName, string pDesc, T pDefault, PGetValue<T> pGetter, PSetValue<T> pSetter)
             : base(pName, pDesc)
         {
@@ -198,13 +223,23 @@ public static class BSParam
             getter = pGetter;
             objectSet = pObjSetter;
         }
+        /* Wish I could simplify using this definition but CLR doesn't store references so closure around delegates of references won't work
+        public ParameterDefn(string pName, string pDesc, T pDefault, ref T loc)
+            : base(pName, pDesc)
+        {
+            defaultValue = pDefault;
+            setter = (s, v) => { loc = v; };
+            getter = (s) => { return loc; };
+            objectSet = null;
+        }
+         */
         public override void AssignDefault(BSScene s)
         {
             setter(s, defaultValue);
         }
         public override string GetValue(BSScene s)
         {
-            return String.Format("{0}", getter(s));
+            return getter(s).ToString();
         }
         public override void SetValue(BSScene s, string valAsString)
         {
@@ -227,6 +262,7 @@ public static class BSParam
                 try
                 {
                     T setValue = (T)parser.Invoke(genericType, new Object[] { valAsString });
+                    // Store the parsed value
                     setter(s, setValue);
                     // s.Logger.DebugFormat("{0} Parameter {1} = {2}", LogHeader, name, setValue);
                 }
@@ -445,6 +481,10 @@ public static class BSParam
             (float)BSTerrainPhys.TerrainImplementation.Mesh,
             (s) => { return TerrainImplementation; },
             (s,v) => { TerrainImplementation = v; } ),
+        new ParameterDefn<int>("TerrainMeshMagnification", "Number of times the 256x256 heightmap is multiplied to create the terrain mesh" ,
+            2,
+            (s) => { return TerrainMeshMagnification; },
+            (s,v) => { TerrainMeshMagnification = v; } ),
         new ParameterDefn<float>("TerrainFriction", "Factor to reduce movement against terrain surface" ,
             0.3f,
             (s) => { return TerrainFriction; },
@@ -457,6 +497,10 @@ public static class BSParam
             0f,
             (s) => { return TerrainRestitution; },
             (s,v) => { TerrainRestitution = v;  /* TODO: set on real terrain */ } ),
+        new ParameterDefn<float>("TerrainContactProcessingThreshold", "Distance from terrain to stop processing collisions" ,
+            0.0f,
+            (s) => { return TerrainContactProcessingThreshold; },
+            (s,v) => { TerrainContactProcessingThreshold = v;  /* TODO: set on real terrain */ } ),
         new ParameterDefn<float>("TerrainCollisionMargin", "Margin where collision checking starts" ,
             0.08f,
             (s) => { return TerrainCollisionMargin; },
@@ -543,10 +587,14 @@ public static class BSParam
             0.0f,
             (s) => { return VehicleRestitution; },
             (s,v) => { VehicleRestitution = v; } ),
-        new ParameterDefn<float>("VehicleGroundGravityFudge", "Factor to multiple gravity if a ground vehicle is probably on the ground (0.0 - 1.0)",
+        new ParameterDefn<float>("VehicleGroundGravityFudge", "Factor to multiply gravity if a ground vehicle is probably on the ground (0.0 - 1.0)",
             0.2f,
             (s) => { return VehicleGroundGravityFudge; },
             (s,v) => { VehicleGroundGravityFudge = v; } ),
+        new ParameterDefn<float>("VehicleAngularBankingTimescaleFudge", "Factor to multiple angular banking timescale. Tune to increase realism.",
+            60.0f,
+            (s) => { return VehicleAngularBankingTimescaleFudge; },
+            (s,v) => { VehicleAngularBankingTimescaleFudge = v; } ),
         new ParameterDefn<bool>("VehicleDebuggingEnable", "Turn on/off vehicle debugging",
             false,
             (s) => { return VehicleDebuggingEnabled; },
@@ -593,6 +641,31 @@ public static class BSParam
             0f,
             (s) => { return GlobalContactBreakingThreshold; },
             (s,v) => { GlobalContactBreakingThreshold = v; s.UnmanagedParams[0].globalContactBreakingThreshold = v; } ),
+
+	    new ParameterDefn<int>("CSHullMaxDepthSplit", "CS impl: max depth to split for hull. 1-10 but > 7 is iffy",
+            7,
+            (s) => { return CSHullMaxDepthSplit; },
+            (s,v) => { CSHullMaxDepthSplit = v; } ),
+	    new ParameterDefn<int>("CSHullMaxDepthSplitForSimpleShapes", "CS impl: max depth setting for simple prim shapes",
+            2,
+            (s) => { return CSHullMaxDepthSplitForSimpleShapes; },
+            (s,v) => { CSHullMaxDepthSplitForSimpleShapes = v; } ),
+	    new ParameterDefn<float>("CSHullConcavityThresholdPercent", "CS impl: concavity threshold percent (0-20)",
+            5f,
+            (s) => { return CSHullConcavityThresholdPercent; },
+            (s,v) => { CSHullConcavityThresholdPercent = v; } ),
+	    new ParameterDefn<float>("CSHullVolumeConservationThresholdPercent", "percent volume conservation to collapse hulls (0-30)",
+            5f,
+            (s) => { return CSHullVolumeConservationThresholdPercent; },
+            (s,v) => { CSHullVolumeConservationThresholdPercent = v; } ),
+	    new ParameterDefn<int>("CSHullMaxVertices", "CS impl: maximum number of vertices in output hulls. Keep < 50.",
+            32,
+            (s) => { return CSHullMaxVertices; },
+            (s,v) => { CSHullMaxVertices = v; } ),
+	    new ParameterDefn<float>("CSHullMaxSkinWidth", "CS impl: skin width to apply to output hulls.",
+            0,
+            (s) => { return CSHullMaxSkinWidth; },
+            (s,v) => { CSHullMaxSkinWidth = v; } ),
 
 	    new ParameterDefn<float>("LinksetImplementation", "Type of linkset implementation (0=Constraint, 1=Compound, 2=Manual)",
             (float)BSLinkset.LinksetImplementation.Compound,

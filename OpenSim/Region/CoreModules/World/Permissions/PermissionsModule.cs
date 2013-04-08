@@ -38,6 +38,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 
 using Mono.Addins;
+using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.CoreModules.World.Permissions
 {
@@ -1451,6 +1452,8 @@ namespace OpenSim.Region.CoreModules.World.Permissions
             if (m_bypassPermissions) return m_bypassPermissionsValue;
 
             bool permission = false;
+
+            m_log.DebugFormat("[PERMISSIONS MODULE]: Checking rez object at {0} in {1}", objectPosition, m_scene.Name);
 
             ILandObject land = m_scene.LandChannel.GetLandObject(objectPosition.X, objectPosition.Y);
             if (land == null) return false;

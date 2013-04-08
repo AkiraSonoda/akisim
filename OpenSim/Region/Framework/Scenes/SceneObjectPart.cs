@@ -43,6 +43,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes.Scripting;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Region.Physics.Manager;
+using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -423,8 +424,8 @@ namespace OpenSim.Region.Framework.Scenes
         private uint _category;
         private Int32 _creationDate;
         private uint _parentID = 0;
-        private uint _baseMask = (uint)PermissionMask.All;
-        private uint _ownerMask = (uint)PermissionMask.All;
+        private uint _baseMask = (uint)(PermissionMask.All | PermissionMask.Export);
+        private uint _ownerMask = (uint)(PermissionMask.All | PermissionMask.Export);
         private uint _groupMask = (uint)PermissionMask.None;
         private uint _everyoneMask = (uint)PermissionMask.None;
         private uint _nextOwnerMask = (uint)PermissionMask.All;
@@ -1145,23 +1146,14 @@ namespace OpenSim.Region.Framework.Scenes
         // the mappings more consistant.
         public Vector3 SitTargetPositionLL
         {
-            get { return new Vector3(m_sitTargetPosition.X, m_sitTargetPosition.Y,m_sitTargetPosition.Z); }
+            get { return m_sitTargetPosition; }
             set { m_sitTargetPosition = value; }
         }
 
         public Quaternion SitTargetOrientationLL
         {
-            get
-            {
-                return new Quaternion(
-                                        m_sitTargetOrientation.X,
-                                        m_sitTargetOrientation.Y,
-                                        m_sitTargetOrientation.Z,
-                                        m_sitTargetOrientation.W
-                                        );
-            }
-
-            set { m_sitTargetOrientation = new Quaternion(value.X, value.Y, value.Z, value.W); }
+            get { return m_sitTargetOrientation; }
+            set { m_sitTargetOrientation = value; }
         }
 
         public bool Stopped
@@ -2135,9 +2127,9 @@ namespace OpenSim.Region.Framework.Scenes
             PhysicsActor pa = PhysActor;
 
             if (pa != null)
-                return new Vector3(pa.GeometricCenter.X, pa.GeometricCenter.Y, pa.GeometricCenter.Z);
+                return pa.GeometricCenter;
             else
-                return new Vector3(0, 0, 0);
+                return Vector3.Zero;
         }
 
         public Vector3 GetCenterOfMass()
@@ -2145,9 +2137,9 @@ namespace OpenSim.Region.Framework.Scenes
             PhysicsActor pa = PhysActor;
 
             if (pa != null)
-                return new Vector3(pa.CenterOfMass.X, pa.CenterOfMass.Y, pa.CenterOfMass.Z);
+                return pa.CenterOfMass;
             else
-                return new Vector3(0, 0, 0);
+                return Vector3.Zero;
         }
 
         public float GetMass()
@@ -3202,6 +3194,10 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="events"></param>
         public void SetScriptEvents(UUID scriptid, int events)
         {
+//            m_log.DebugFormat(
+//                "[SCENE OBJECT PART]: Set script events for script with id {0} on {1}/{2} to {3} in {4}", 
+//                scriptid, Name, ParentGroup.Name, events, ParentGroup.Scene.Name);
+
             // scriptEvents oldparts;
             lock (m_scriptEvents)
             {
@@ -3871,10 +3867,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void TrimPermissions()
         {
-            BaseMask &= (uint)PermissionMask.All;
-            OwnerMask &= (uint)PermissionMask.All;
+            BaseMask &= (uint)(PermissionMask.All | PermissionMask.Export);
+            OwnerMask &= (uint)(PermissionMask.All | PermissionMask.Export);
             GroupMask &= (uint)PermissionMask.All;
-            EveryoneMask &= (uint)PermissionMask.All;
+            EveryoneMask &= (uint)(PermissionMask.All | PermissionMask.Export);
             NextOwnerMask &= (uint)PermissionMask.All;
         }
 
@@ -3897,30 +3893,31 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public void UpdateGroupPosition(Vector3 pos)
+        public void UpdateGroupPosition(Vector3 newPos)
         {
-            if ((pos.X != GroupPosition.X) ||
-                (pos.Y != GroupPosition.Y) ||
-                (pos.Z != GroupPosition.Z))
+            Vector3 oldPos = GroupPosition;
+
+            if ((newPos.X != oldPos.X) ||
+                (newPos.Y != oldPos.Y) ||
+                (newPos.Z != oldPos.Z))
             {
-                Vector3 newPos = new Vector3(pos.X, pos.Y, pos.Z);
                 GroupPosition = newPos;
                 ScheduleTerseUpdate();
             }
         }
 
         /// <summary>
-        ///
+        /// Update this part's offset position.
         /// </summary>
         /// <param name="pos"></param>
-        public void UpdateOffSet(Vector3 pos)
+        public void UpdateOffSet(Vector3 newPos)
         {
-            if ((pos.X != OffsetPosition.X) ||
-                (pos.Y != OffsetPosition.Y) ||
-                (pos.Z != OffsetPosition.Z))
-            {
-                Vector3 newPos = new Vector3(pos.X, pos.Y, pos.Z);
+            Vector3 oldPos = OffsetPosition;
 
+            if ((newPos.X != oldPos.X) ||
+                (newPos.Y != oldPos.Y) ||
+                (newPos.Z != oldPos.Z))
+            {
                 if (ParentGroup.RootPart.GetStatusSandbox())
                 {
                     if (Util.GetDistanceTo(ParentGroup.RootPart.StatusSandboxPos, newPos) > 10)
@@ -3977,10 +3974,22 @@ namespace OpenSim.Region.Framework.Scenes
                                 baseMask;
                         break;
                     case 8:
+                        // Trying to set export permissions - extra checks
+                        if (set && (mask & (uint)PermissionMask.Export) != 0)
+                        {
+                            if ((OwnerMask & (uint)PermissionMask.Export) == 0 || (BaseMask & (uint)PermissionMask.Export) == 0 || (NextOwnerMask & (uint)PermissionMask.All) != (uint)PermissionMask.All)
+                                mask &= ~(uint)PermissionMask.Export;
+                        }
                         EveryoneMask = ApplyMask(EveryoneMask, set, mask) &
                                 baseMask;
                         break;
                     case 16:
+                        // Force full perm if export
+                        if ((EveryoneMask & (uint)PermissionMask.Export) != 0)
+                        {
+                            NextOwnerMask = (uint)PermissionMask.All;
+                            break;
+                        }
                         NextOwnerMask = ApplyMask(NextOwnerMask, set, mask) &
                                 baseMask;
                         // Prevent the client from creating no mod, no copy
@@ -4738,9 +4747,12 @@ namespace OpenSim.Region.Framework.Scenes
         
         public void ApplyNextOwnerPermissions()
         {
-            BaseMask &= NextOwnerMask;
+            // Export needs to be preserved in the base and everyone
+            // mask, but removed in the owner mask as a next owner
+            // can never change the export status
+            BaseMask &= NextOwnerMask | (uint)PermissionMask.Export;
             OwnerMask &= NextOwnerMask;
-            EveryoneMask &= NextOwnerMask;
+            EveryoneMask &= NextOwnerMask | (uint)PermissionMask.Export;
 
             Inventory.ApplyNextOwnerPermissions();
         }

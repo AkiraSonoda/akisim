@@ -40,6 +40,7 @@ using OpenSim.Framework.Monitoring;
 using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.OptionalModules.Avatar.Attachments
 {
@@ -183,7 +184,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Attachments
                 hostPart.ParentGroup.RootPart.ScheduleFullUpdate();
             }
 
-            return attachmentsModule.AttachObject(target, hostPart.ParentGroup, (uint)attachmentPoint, false, true) ? 1 : 0;
+            return attachmentsModule.AttachObject(target, hostPart.ParentGroup, (uint)attachmentPoint, false, false, true) ? 1 : 0;
         }
     }
 }
