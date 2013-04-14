@@ -31,6 +31,8 @@ using Nini.Config;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Xml;
+using System.Xml.Serialization;
 using OpenSim.Framework;
 
 using OpenSim.Server.Base;
@@ -38,6 +40,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
 {
@@ -51,6 +54,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
         private IImprovedAssetCache m_Cache = null;
         private IAssetService m_GridService;
         private IAssetService m_HGService;
+
+		private string surabayaServerURI = String.Empty;
+		private bool surabayaServerEnabled = false;
 
         private Scene m_aScene;
         private string m_LocalAssetServiceURI;
@@ -71,6 +77,17 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
 
         public void Initialise(IConfigSource source)
         {
+            IConfig surabayaConfig = source.Configs["SurabayaServer"];
+            if (surabayaConfig != null) {
+                surabayaServerURI = surabayaConfig.GetString("SurabayaServerURI");
+				surabayaServerEnabled = surabayaConfig.GetBoolean("Enabled");
+                m_log.DebugFormat("[AssetServicesConnector]: Surabaya ServerURI: {0}", surabayaServerURI);
+            } else {
+                m_log.Warn("[AssetServicesConnector]: Surabaya Config is missing, defaulting to http://localhost:8080");
+				surabayaServerEnabled = true;
+                surabayaServerURI = "http://localhost:8080";
+            }
+
             IConfig moduleConfig = source.Configs["Modules"];
             if (moduleConfig != null)
             {
@@ -326,6 +343,38 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
             {
                 if (m_Cache != null)
                     m_Cache.Cache(asset);
+
+
+				// it is also possible to disable Surabaya. I'd favor to configure 
+				// Surabaya in the CAPS Section of the OpenSim.ini but right now with still some 
+				// old Viwers which do not support http getTexture() I stick to this hack.
+				if(surabayaServerEnabled) {
+					// Create an XML of the Texture in order to transport the Asset to Surabaya.
+					if (asset.Type == (sbyte) AssetType.Texture) {
+						XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
+						byte[] result = ServerUtils.SerializeResult(xs, asset);
+						string resultString = Util.UTF8.GetString(result);
+						m_log.DebugFormat("Dump of XML: {0}", resultString);
+	                    OSDMap serializedAssetCaps = new OSDMap();
+	                    serializedAssetCaps.Add("assetID", asset.ID);
+						if(asset.Temporary) {
+							serializedAssetCaps.Add("temporary", "true");
+						} else {
+							serializedAssetCaps.Add("temporary", "false");
+						}
+	                    serializedAssetCaps.Add("serializedAsset", resultString);
+					
+	                    OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
+	                    if(surabayaAnswer != null) {
+	                       OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
+	                       string successString = answer["result"];
+	                       if(!successString.Equals("ok")) {
+	                          m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
+	                       } 
+						}
+					}
+				}
+
                 return asset.ID;
             }
 
