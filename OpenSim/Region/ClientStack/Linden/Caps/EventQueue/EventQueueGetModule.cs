@@ -60,11 +60,6 @@ namespace OpenSim.Region.ClientStack.Linden
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        /// <value>
-        /// Debug level.
-        /// </value>
-        public int DebugLevel { get; set; }
-
         protected Scene m_scene;
         
         private Dictionary<UUID, int> m_ids = new Dictionary<UUID, int>();
@@ -86,17 +81,6 @@ namespace OpenSim.Region.ClientStack.Linden
             scene.EventManager.OnClientClosed += ClientClosed;
             scene.EventManager.OnMakeChildAgent += MakeChildAgent;
             scene.EventManager.OnRegisterCaps += OnRegisterCaps;
-
-            MainConsole.Instance.Commands.AddCommand(
-                "Debug",
-                false,
-                "debug eq",
-                "debug eq [0|1|2]",
-                "Turn on event queue debugging\n"
-                    + "  <= 0 - turns off all event queue logging\n"
-                    + "  >= 1 - turns on outgoing event logging\n"
-                    + "  >= 2 - turns on poll notification",
-                HandleDebugEq);
 
             MainConsole.Instance.Commands.AddCommand(
                 "Debug",
@@ -139,22 +123,6 @@ namespace OpenSim.Region.ClientStack.Linden
         }
 
         #endregion
-
-        protected void HandleDebugEq(string module, string[] args)
-        {
-            int debugLevel;
-
-            if (!(args.Length == 3 && int.TryParse(args[2], out debugLevel)))
-            {
-                MainConsole.Instance.OutputFormat("Usage: debug eq [0|1|2]");
-            }
-            else
-            {
-                DebugLevel = debugLevel;
-                MainConsole.Instance.OutputFormat(
-                    "Set event queue debug level to {0} in {1}", DebugLevel, m_scene.RegionInfo.RegionName);
-            }
-        }
 
         protected void HandleShowEq(string module, string[] args)
         {
@@ -420,7 +388,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public Hashtable GetEvents(UUID requestID, UUID pAgentId, string request)
         {
-            if (DebugLevel >= 2)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat("POLLED FOR EQ MESSAGES BY {0} in {1}", pAgentId, m_scene.RegionInfo.RegionName);
 
             Queue<OSD> queue = TryGetQueue(pAgentId);
@@ -445,7 +413,7 @@ namespace OpenSim.Region.ClientStack.Linden
             }
             else
             {
-                if (DebugLevel > 0)
+                if (m_log.IsDebugEnabled)
                     LogOutboundDebugMessage(element, pAgentId);
 
                 array.Add(element);
@@ -456,7 +424,7 @@ namespace OpenSim.Region.ClientStack.Linden
                     {
                         element = queue.Dequeue();
 
-                        if (DebugLevel > 0)
+                        if (m_log.IsDebugEnabled)
                             LogOutboundDebugMessage(element, pAgentId);
 
                         array.Add(element);

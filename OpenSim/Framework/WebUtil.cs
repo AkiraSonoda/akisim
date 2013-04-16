@@ -54,14 +54,6 @@ namespace OpenSim.Framework
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
-        /// Control the printing of certain debug messages.
-        /// </summary>
-        /// <remarks>
-        /// If DebugLevel >= 3 then short notices about outgoing HTTP requests are logged.
-        /// </remarks>
-        public static int DebugLevel { get; set; }
-
-        /// <summary>
         /// Request number for diagnostic purposes.
         /// </summary>
         public static int RequestNumber { get; internal set; }
@@ -155,7 +147,7 @@ namespace OpenSim.Framework
         {
             int reqnum = RequestNumber++;
 
-            if (DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} ServiceOSD {1} {2} (timeout {3}, compressed {4})",
                     reqnum, method, url, timeout, compressed);
@@ -250,7 +242,7 @@ namespace OpenSim.Framework
                         strBuffer != null
                             ? (strBuffer.Length > MaxRequestDiagLength ? strBuffer.Remove(MaxRequestDiagLength) : strBuffer)
                             : "");
-                else if (DebugLevel >= 4)
+                else if (m_log.IsDebugEnabled)
                     m_log.DebugFormat(
                         "[WEB UTIL]: HTTP OUT {0} took {1}ms, {2}ms writing",
                         reqnum, tickdiff, tickdata);
@@ -334,7 +326,7 @@ namespace OpenSim.Framework
             int reqnum = RequestNumber++;
             string method = (data != null && data["RequestMethod"] != null) ? data["RequestMethod"] : "unknown";
 
-            if (DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} ServiceForm {1} {2} (timeout {3})",
                     reqnum, method, url, timeout);
@@ -409,7 +401,7 @@ namespace OpenSim.Framework
                         queryString != null
                             ? (queryString.Length > MaxRequestDiagLength) ? queryString.Remove(MaxRequestDiagLength) : queryString
                             : "");
-                else if (DebugLevel >= 4)
+                else if (m_log.IsDebugEnabled)
                     m_log.DebugFormat(
                         "[WEB UTIL]: HTTP OUT {0} took {1}ms, {2}ms writing",
                         reqnum, tickdiff, tickdata);
@@ -726,7 +718,7 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} AsynchronousRequestObject {1} {2}",
                     reqnum, verb, requestUrl);
@@ -899,7 +891,7 @@ namespace OpenSim.Framework
                     tickdata,
                     originalRequest);
             }
-            else if (WebUtil.DebugLevel >= 4)
+            else if (m_log.IsDebugEnabled)
             {
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} took {1}ms, {2}ms writing",
@@ -926,7 +918,7 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} SynchronousRestForms {1} {2}",
                     reqnum, verb, requestUrl);
@@ -1019,7 +1011,7 @@ namespace OpenSim.Framework
                     tickdiff,
                     tickdata,
                     obj.Length > WebUtil.MaxRequestDiagLength ? obj.Remove(WebUtil.MaxRequestDiagLength) : obj);
-            else if (WebUtil.DebugLevel >= 4)
+            else if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} took {1}ms, {2}ms writing",
                     reqnum, tickdiff, tickdata);
@@ -1058,7 +1050,7 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} SynchronousRestObject {1} {2}",
                     reqnum, verb, requestUrl);
@@ -1188,7 +1180,7 @@ namespace OpenSim.Framework
                     tickdata,
                     originalRequest);
             }
-            else if (WebUtil.DebugLevel >= 4)
+            else if (m_log.IsDebugEnabled)
             {
                 m_log.DebugFormat(
                     "[WEB UTIL]: HTTP OUT {0} took {1}ms, {2}ms writing",

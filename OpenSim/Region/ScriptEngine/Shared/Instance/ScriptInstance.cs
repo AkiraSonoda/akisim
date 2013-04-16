@@ -93,8 +93,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
         private UUID m_CurrentStateHash;
         private UUID m_RegionID;
 
-        public int DebugLevel { get; set; }
-
         public Dictionary<KeyValuePair<int, int>, KeyValuePair<int, int>> LineMap { get; set; }
 
         private Dictionary<string,IScriptApi> m_Apis = new Dictionary<string,IScriptApi>();
@@ -600,7 +598,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 }
                 else
                 {
-                    if (DebugLevel >= 1)
+                    if (m_log.IsDebugEnabled)
                         m_log.DebugFormat(
                             "[SCRIPT INSTANCE]: Co-operatively stopping script {0} {1} in {2} {3}",
                             ScriptName, ItemID, PrimName, ObjectID);
@@ -612,7 +610,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                     // checking is implemented.  May want to allow a shorter timeout option later.
                     if (workItem.Wait(Timeout.Infinite))
                     {
-                        if (DebugLevel >= 1)
+                        if (m_log.IsDebugEnabled)
                             m_log.DebugFormat(
                                 "[SCRIPT INSTANCE]: Co-operatively stopped script {0} {1} in {2} {3}",
                                 ScriptName, ItemID, PrimName, ObjectID);
@@ -791,7 +789,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                         m_CollisionInQueue = false;
                 }
 
-                if (DebugLevel >= 2)
+                if (m_log.IsDebugEnabled)
                     m_log.DebugFormat(
                         "[SCRIPT INSTANCE]: Processing event {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}", 
                         data.EventName, 
@@ -809,7 +807,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 {
                     State = data.Params[0].ToString();
 
-                    if (DebugLevel >= 1)
+                    if (m_log.IsDebugEnabled)
                         m_log.DebugFormat(
                             "[SCRIPT INSTANCE]: Changing state to {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}", 
                             State, 
@@ -926,7 +924,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                             }
                             else if ((e is TargetInvocationException) && (e.InnerException is ScriptCoopStopException))
                             {
-                                if (DebugLevel >= 1)
+                                if (m_log.IsDebugEnabled)
                                     m_log.DebugFormat(
                                         "[SCRIPT INSTANCE]: Script {0}.{1} in event {2}, state {3} stopped co-operatively.",
                                         PrimName, ScriptName, data.EventName, State);

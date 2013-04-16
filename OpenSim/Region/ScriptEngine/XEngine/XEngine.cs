@@ -388,55 +388,12 @@ namespace OpenSim.Region.ScriptEngine.XEngine
                     + "If one or more <script-item-uuid>s are given then only that script will be started.  Otherwise, all suitable scripts are started.",
                 (module, cmdparams) => HandleScriptsAction(cmdparams, HandleStartScript));
 
-            MainConsole.Instance.Commands.AddCommand(
-                "Scripts", false, "debug scripts log", "debug scripts log <item-id> <log-level>", "Extra debug logging for a script",
-                "Activates or deactivates extra debug logging for the given script.\n"
-                    + "Level == 0, deactivate extra debug logging.\n"
-                    + "Level >= 1, log state changes.\n"
-                    + "Level >= 2, log event invocations.\n",
-                HandleDebugScriptLogCommand);
-
 //            MainConsole.Instance.Commands.AddCommand(
 //                "Debug", false, "debug xengine", "debug xengine [<level>]",
 //                "Turn on detailed xengine debugging.",
 //                  "If level <= 0, then no extra logging is done.\n"
 //                + "If level >= 1, then we log every time that a script is started.",
 //                HandleDebugLevelCommand);
-        }
-
-        private void HandleDebugScriptLogCommand(string module, string[] args)
-        {
-            if (!(MainConsole.Instance.ConsoleScene == null || MainConsole.Instance.ConsoleScene == m_Scene))
-                return;
-
-            if (args.Length != 5)
-            {
-                MainConsole.Instance.Output("Usage: debug script log <item-id> <log-level>");
-                return;
-            }
-
-            UUID itemId;
-
-            if (!ConsoleUtil.TryParseConsoleUuid(MainConsole.Instance, args[3], out itemId))
-                return;
-
-            int newLevel;
-
-            if (!ConsoleUtil.TryParseConsoleInt(MainConsole.Instance, args[4], out newLevel))
-                return;
-
-            IScriptInstance si;
-
-            lock (m_Scripts)
-            {
-                // XXX: We can't give the user feedback on a bad item id because this may apply to a different script
-                // engine
-                if (!m_Scripts.TryGetValue(itemId, out si))
-                    return;
-            }
-
-            si.DebugLevel = newLevel;
-            MainConsole.Instance.OutputFormat("Set debug level of {0} {1} to {2}", si.ScriptName, si.ItemID, newLevel);
         }
 
         /// <summary>

@@ -64,14 +64,6 @@ namespace OpenSim.Framework.Servers.HttpServer
         public delegate void WebSocketRequestDelegate(string servicepath, WebSocketHttpServerHandler handler);
 
         /// <summary>
-        /// Gets or sets the debug level.
-        /// </summary>
-        /// <value>
-        /// See MainServer.DebugLevel.
-        /// </value>
-        public int DebugLevel { get; set; }
-
-        /// <summary>
         /// Request number for diagnostic purposes.
         /// </summary>
         /// <remarks>
@@ -541,7 +533,7 @@ namespace OpenSim.Framework.Servers.HttpServer
 
                 if (TryGetStreamHandler(handlerKey, out requestHandler))
                 {
-                    if (DebugLevel >= 3)
+                    if (m_log.IsDebugEnabled)
                         LogIncomingToStreamHandler(request, requestHandler);
 
                     response.ContentType = requestHandler.ContentType; // Lets do this defaulting before in case handler has varying content type.
@@ -619,7 +611,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                     {
                         case null:
                         case "text/html":
-                            if (DebugLevel >= 3)
+                            if (m_log.IsDebugEnabled)
                                 LogIncomingToContentTypeHandler(request);
     
                             buffer = HandleHTTPRequest(request, response);
@@ -628,14 +620,14 @@ namespace OpenSim.Framework.Servers.HttpServer
                         case "application/llsd+xml":
                         case "application/xml+llsd":
                         case "application/llsd+json":
-                            if (DebugLevel >= 3)
+                            if (m_log.IsDebugEnabled)
                                 LogIncomingToContentTypeHandler(request);
     
                             buffer = HandleLLSDRequests(request, response);
                             break;
 
                         case "application/json-rpc":
-                            if (DebugLevel >= 3)
+                            if (m_log.IsDebugEnabled)
                                 LogIncomingToContentTypeHandler(request);
 
                             buffer = HandleJsonRpcRequests(request, response);
@@ -655,7 +647,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                             //m_log.Info("[Debug BASE HTTP SERVER]: Checking for LLSD Handler");
                             if (DoWeHaveALLSDHandler(request.RawUrl))
                             {
-                                if (DebugLevel >= 3)
+                                if (m_log.IsDebugEnabled)
                                     LogIncomingToContentTypeHandler(request);
     
                                 buffer = HandleLLSDRequests(request, response);
@@ -663,14 +655,14 @@ namespace OpenSim.Framework.Servers.HttpServer
     //                        m_log.DebugFormat("[BASE HTTP SERVER]: Checking for HTTP Handler for request {0}", request.RawUrl);
                             else if (DoWeHaveAHTTPHandler(request.RawUrl))
                             {
-                                if (DebugLevel >= 3)
+                                if (m_log.IsDebugEnabled)
                                     LogIncomingToContentTypeHandler(request);
     
                                 buffer = HandleHTTPRequest(request, response);
                             }
                             else
                             {
-                                if (DebugLevel >= 3)
+                                if (m_log.IsDebugEnabled)
                                     LogIncomingToXmlRpcHandler(request);
     
                                 // generic login request.
@@ -747,7 +739,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                         request.RemoteIPEndPoint,
                         tickdiff);
                 }
-                else if (DebugLevel >= 4)
+                else if (m_log.IsDebugEnabled)
                 {
                     m_log.DebugFormat(
                         "[BASE HTTP SERVER]: HTTP IN {0} :{1} took {2}ms",
@@ -770,7 +762,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                 requestHandler.Description,
                 request.RemoteIPEndPoint);
 
-            if (DebugLevel >= 5)
+            if (m_log.IsDebugEnabled)
                 LogIncomingInDetail(request);
         }
 
@@ -785,7 +777,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                 request.Url.PathAndQuery,
                 request.RemoteIPEndPoint);
 
-            if (DebugLevel >= 5)
+            if (m_log.IsDebugEnabled)
                 LogIncomingInDetail(request);
         }
 
@@ -799,7 +791,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                 request.Url.PathAndQuery,
                 request.RemoteIPEndPoint);
 
-            if (DebugLevel >= 5)
+            if (m_log.IsDebugEnabled)
                 LogIncomingInDetail(request);
         }
 
@@ -809,7 +801,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             {
                 string output;
 
-                if (DebugLevel == 5)
+                if (m_log.IsDebugEnabled)
                 {
                     const int sampleLength = 80;
                     char[] sampleChars = new char[sampleLength + 3];
@@ -966,21 +958,9 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             catch (XmlException e)
             {
-                if (DebugLevel >= 1)
-                {
-                    if (DebugLevel >= 2)
-                        m_log.Warn(
-                            string.Format(
-                                "[BASE HTTP SERVER]: Got XMLRPC request with invalid XML from {0}.  XML was '{1}'.  Sending blank response.  Exception ",
-                                request.RemoteIPEndPoint, requestBody),
-                            e);
-                    else
-                    {
-                        m_log.WarnFormat(
-                            "[BASE HTTP SERVER]: Got XMLRPC request with invalid XML from {0}, length {1}.  Sending blank response.",
-                            request.RemoteIPEndPoint, requestBody.Length);
-                    }
-                }
+            	m_log.ErrorFormat(
+                	"[BASE HTTP SERVER]: Got XMLRPC request with invalid XML from {0}, length {1}.  Sending blank response.",
+                    request.RemoteIPEndPoint, requestBody.Length);
             }
 
             if (xmlRprcRequest != null)
