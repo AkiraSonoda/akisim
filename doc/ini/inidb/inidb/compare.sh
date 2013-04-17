@@ -20,8 +20,8 @@ echo ""
 echo ""
 echo ""
 
-# checking Metro inis
-echo "==== check (lstest) OSGrid AkiSim OpenSim.ini against Database ========================"
+# checking OSgrid inis
+echo "==== check (lstest) OSgrid AkiSim OpenSim.ini against Database ========================"
 perl checkAkiOpenSimIniAgainstDatabase.pl "$DevelHome/akisim/doc/osgrid/ini/OpenSim.ini" OSgrid
 echo "==== check (latest) OSgrid Distribution OpenSim.ini against Database ========================"
 perl checkOpenSimIniAgainstDatabase.pl "$DevelHome/osgridsim/bin/OpenSim.ini" OSgrid
