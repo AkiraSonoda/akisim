@@ -51,7 +51,7 @@ namespace OpenSim.Region.ClientStack.Linden
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "NewFileAgentInventoryVariablePriceModule")]
     public class NewFileAgentInventoryVariablePriceModule : INonSharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         
         private Scene m_scene;
 //        private IAssetService m_assetService;
@@ -115,7 +115,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
             UUID capID = UUID.Random();
 
-//            m_log.Debug("[NEW FILE AGENT INVENTORY VARIABLE PRICE]: /CAPS/" + capID);
+			m_log.Debug("[NewFileAgentInventoryVariablePriceModule]: /CAPS/" + capID);
             caps.RegisterHandler(
                 "NewFileAgentInventoryVariablePrice",
                 new LLSDStreamhandler<LLSDAssetUploadRequest, LLSDNewFileAngentInventoryVariablePriceReplyResponse>(
@@ -130,7 +130,8 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public LLSDNewFileAngentInventoryVariablePriceReplyResponse NewAgentInventoryRequest(LLSDAssetUploadRequest llsdRequest, UUID agentID)
         {
-            //TODO:  The Mesh uploader uploads many types of content. If you're going to implement a Money based limit
+			m_log.DebugFormat("[NewFileAgentInventoryVariablePriceModule]: NewAgentInventroryRequest({0},{1})", llsdRequest.name, agentID.ToString() );
+			//TODO:  The Mesh uploader uploads many types of content. If you're going to implement a Money based limit
             // you need to be aware of this
 
             //if (llsdRequest.asset_type == "texture" ||
@@ -233,8 +234,7 @@ namespace OpenSim.Region.ClientStack.Linden
                                           UUID inventoryItem, UUID parentFolder, byte[] data, string inventoryType,
                                           string assetType,UUID AgentID)
         {
-//            m_log.DebugFormat(
-//                "[NEW FILE AGENT INVENTORY VARIABLE PRICE MODULE]: Upload complete for {0}", inventoryItem);
+			m_log.DebugFormat("[NewFileAgentInventoryVariablePriceModule]: Upload complete for {0}", inventoryItem);
 
             sbyte assType = 0;
             sbyte inType = 0;
