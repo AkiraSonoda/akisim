@@ -990,8 +990,8 @@ namespace OpenSim.Framework
                     length = (int)obj.Length;
                     request.ContentLength = length;
 
-                    if (m_log.IsDebugEnabled)
-                        WebUtil.LogOutgoingDetail(buffer);
+//                   if (m_log.IsDebugEnabled) 
+//                        WebUtil.LogOutgoingDetail(buffer);
 
                     Stream requestStream = null;
                     try

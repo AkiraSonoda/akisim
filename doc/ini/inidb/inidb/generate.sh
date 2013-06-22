@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-DevelHome="/mnt/hgfs/MacData/develop"
+DevelHome="/home/opensim/src"
 
 # generating Metro OpenSim.ini
 perl generateOpenSimIni.pl "$DevelHome/akisim/doc/metropolis/ini/OpenSim.ini" Metropolis

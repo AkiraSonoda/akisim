@@ -1963,6 +1963,30 @@ namespace OpenSim.Framework
             return stpi;
         }
 
+		/// <summary>
+		/// Prints out a thread pool report to the SimStats Log.
+		/// </summary>
+		/// <returns></returns>
+		public static void PrintThreadPoolReport() {
+
+			STPInfo stpi = GetSmartThreadPoolInfo();
+
+			if (stpi != null) {
+				s_log.DebugFormat("[THREADS] Thread pool used           : {0}", stpi.Name);
+				s_log.DebugFormat("[THREADS] Max {1} threads                : {0}", stpi.MaxThreads, stpi.Name);
+				s_log.DebugFormat("[THREADS] Min {1} threads                : {0}", stpi.MinThreads, stpi.MinThreads);
+				s_log.DebugFormat("[THREADS] Allocated {1} threads          : {0}", stpi.ActiveThreads < 0 ? "not applicable" : stpi.ActiveThreads.ToString(), stpi.Name);
+				s_log.DebugFormat("[THREADS] In use {1} threads             : {0}", stpi.InUseThreads, stpi.Name);
+				s_log.DebugFormat("[THREADS] Work items waiting         : {0}", stpi.WaitingCallbacks < 0 ? "not available" : stpi.WaitingCallbacks.ToString());
+				s_log.DebugFormat("[THREADS] Max concurrent Work items  : {0}", stpi.MaxConcurrentWorkItems < 0 ? "not available" : stpi.MaxConcurrentWorkItems.ToString());
+			} else {
+				s_log.DebugFormat("[THREADS] Thread pool not used");
+			}
+			
+		}
+
+
+
         #endregion FireAndForget Threading Pattern
 
         /// <summary>
