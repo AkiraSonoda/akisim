@@ -55,6 +55,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         private int m_savetime = 5; // seconds to wait before saving changed appearance
         private int m_sendtime = 2; // seconds to wait before sending changed appearance
+        private bool m_reusetextures = false;
 
         private int m_checkTime = 500; // milliseconds to wait between checks for appearance updates
         private System.Timers.Timer m_updateTimer = new System.Timers.Timer();
@@ -73,6 +74,8 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             {
                 m_savetime = Convert.ToInt32(appearanceConfig.GetString("DelayBeforeAppearanceSave",Convert.ToString(m_savetime)));
                 m_sendtime = Convert.ToInt32(appearanceConfig.GetString("DelayBeforeAppearanceSend",Convert.ToString(m_sendtime)));
+                m_reusetextures = appearanceConfig.GetBoolean("ReuseTextures",m_reusetextures);
+                
                 // m_log.InfoFormat("[AVFACTORY] configured for {0} save and {1} send",m_savetime,m_sendtime);
             }
 
@@ -131,6 +134,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             client.OnRequestWearables += Client_OnRequestWearables;
             client.OnSetAppearance += Client_OnSetAppearance;
             client.OnAvatarNowWearing += Client_OnAvatarNowWearing;
+            client.OnCachedTextureRequest += Client_OnCachedTextureRequest;
         }
 
         #endregion
@@ -143,7 +147,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         /// <param name="visualParam"></param>
         public void SetAppearance(IScenePresence sp, AvatarAppearance appearance)
         {
-            SetAppearance(sp, appearance.Texture, appearance.VisualParams);
+            DoSetAppearance(sp, appearance.Texture, appearance.VisualParams, new List<CachedTextureRequestArg>());
         }
 
         /// <summary>
@@ -154,9 +158,20 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         /// <param name="visualParam"></param>
         public void SetAppearance(IScenePresence sp, Primitive.TextureEntry textureEntry, byte[] visualParams)
         {
-//            m_log.DebugFormat(
-//                "[AVFACTORY]: start SetAppearance for {0}, te {1}, visualParams {2}",
-//                sp.Name, textureEntry, visualParams);
+            DoSetAppearance(sp, textureEntry, visualParams, new List<CachedTextureRequestArg>());
+        }
+        
+        /// <summary>
+        /// Set appearance data (texture asset IDs and slider settings) 
+        /// </summary>
+        /// <param name="sp"></param>
+        /// <param name="texture"></param>
+        /// <param name="visualParam"></param>
+        protected void DoSetAppearance(IScenePresence sp, Primitive.TextureEntry textureEntry, byte[] visualParams, List<CachedTextureRequestArg> hashes)
+        {
+            // m_log.DebugFormat(
+            //     "[AVFACTORY]: start SetAppearance for {0}, te {1}, visualParams {2}",
+            //     sp.Name, textureEntry, visualParams);
 
             // TODO: This is probably not necessary any longer, just assume the
             // textureEntry set implies that the appearance transaction is complete
@@ -186,18 +201,25 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 // Process the baked texture array
                 if (textureEntry != null)
                 {
-//                    m_log.DebugFormat("[AVFACTORY]: Received texture update for {0} {1}", sp.Name, sp.UUID);
-
-//                    WriteBakedTexturesReport(sp, m_log.DebugFormat);
+                    // m_log.DebugFormat("[AVFACTORY]: Received texture update for {0} {1}", sp.Name, sp.UUID); 
+                    // WriteBakedTexturesReport(sp, m_log.DebugFormat);
 
                     changed = sp.Appearance.SetTextureEntries(textureEntry) || changed;
 
-//                    WriteBakedTexturesReport(sp, m_log.DebugFormat);
+                    // WriteBakedTexturesReport(sp, m_log.DebugFormat);
 
                     // If bake textures are missing and this is not an NPC, request a rebake from client
                     if (!ValidateBakedTextureCache(sp) && (((ScenePresence)sp).PresenceType != PresenceType.Npc))
                         RequestRebake(sp, true);
 
+                    // Save the wearble hashes in the appearance
+                    sp.Appearance.ResetTextureHashes();
+                    if (m_reusetextures)
+                    {
+                        foreach (CachedTextureRequestArg arg in hashes)
+                            sp.Appearance.SetTextureHash(arg.BakedTextureIndex,arg.WearableHashID);
+                    }
+                        
                     // This appears to be set only in the final stage of the appearance
                     // update transaction. In theory, we should be able to do an immediate
                     // appearance send and save here.
@@ -231,13 +253,13 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         public bool SendAppearance(UUID agentId)
         {
-//            m_log.DebugFormat("[AVFACTORY]: Sending appearance for {0}", agentId);
+            // m_log.DebugFormat("[AVFACTORY]: Sending appearance for {0}", agentId);
 
             ScenePresence sp = m_scene.GetScenePresence(agentId);
             if (sp == null)
             {
                 // This is expected if the user has gone away.
-//                m_log.DebugFormat("[AVFACTORY]: Agent {0} no longer in the scene", agentId);
+                // m_log.DebugFormat("[AVFACTORY]: Agent {0} no longer in the scene", agentId);
                 return false;
             }
 
@@ -314,7 +336,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         /// <param name="agentId"></param>
         public void QueueAppearanceSend(UUID agentid)
         {
-//            m_log.DebugFormat("[AVFACTORY]: Queue appearance send for {0}", agentid);
+            // m_log.DebugFormat("[AVFACTORY]: Queue appearance send for {0}", agentid);
 
             // 10000 ticks per millisecond, 1000 milliseconds per second
             long timestamp = DateTime.Now.Ticks + Convert.ToInt64(m_sendtime * 1000 * 10000);
@@ -327,7 +349,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         public void QueueAppearanceSave(UUID agentid)
         {
-//            m_log.DebugFormat("[AVFACTORY]: Queueing appearance save for {0}", agentid);
+            // m_log.DebugFormat("[AVFACTORY]: Queueing appearance save for {0}", agentid);
 
             // 10000 ticks per millisecond, 1000 milliseconds per second
             long timestamp = DateTime.Now.Ticks + Convert.ToInt64(m_savetime * 1000 * 10000);
@@ -352,9 +374,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 if (face == null)
                     continue;
 
-//                m_log.DebugFormat(
-//                    "[AVFACTORY]: Looking for texture {0}, id {1} for {2} {3}",
-//                    face.TextureID, idx, client.Name, client.AgentId);
+                // m_log.DebugFormat(
+                //     "[AVFACTORY]: Looking for texture {0}, id {1} for {2} {3}",
+                //     face.TextureID, idx, client.Name, client.AgentId);
 
                 // if the texture is one of the "defaults" then skip it
                 // this should probably be more intelligent (skirt texture doesnt matter
@@ -369,7 +391,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     return false;
             }
 
-//            m_log.DebugFormat("[AVFACTORY]: Completed texture check for {0} {1}", sp.Name, sp.UUID);
+            // m_log.DebugFormat("[AVFACTORY]: Completed texture check for {0} {1}", sp.Name, sp.UUID);
 
             // If we only found default textures, then the appearance is not cached
             return (defonly ? false : true);
@@ -388,9 +410,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 if (face == null)
                     continue;
 
-//                m_log.DebugFormat(
-//                    "[AVFACTORY]: Looking for texture {0}, id {1} for {2} {3}",
-//                    face.TextureID, idx, client.Name, client.AgentId);
+                // m_log.DebugFormat(
+                //     "[AVFACTORY]: Looking for texture {0}, id {1} for {2} {3}",
+                //     face.TextureID, idx, client.Name, client.AgentId);
 
                 // if the texture is one of the "defaults" then skip it
                 // this should probably be more intelligent (skirt texture doesnt matter
@@ -454,9 +476,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 if (bakeType == BakeType.Unknown)
                     continue;
 
-//                m_log.DebugFormat(
-//                    "[AVFACTORY]: NPC avatar {0} has texture id {1} : {2}",
-//                    acd.AgentID, i, acd.Appearance.Texture.FaceTextures[i]);
+                // m_log.DebugFormat(
+                //     "[AVFACTORY]: NPC avatar {0} has texture id {1} : {2}",
+                //     acd.AgentID, i, acd.Appearance.Texture.FaceTextures[i]);
 
                 int ftIndex = (int)AppearanceManager.BakeTypeToAgentTextureIndex(bakeType);
                 Primitive.TextureEntryFace texture = faceTextures[ftIndex];    // this will be null if there's no such baked texture
@@ -480,7 +502,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     UUID avatarID = kvp.Key;
                     long sendTime = kvp.Value;
 
-//                    m_log.DebugFormat("[AVFACTORY]: Handling queued appearance updates for {0}, update delta to now is {1}", avatarID, sendTime - now);
+                    // m_log.DebugFormat("[AVFACTORY]: Handling queued appearance updates for {0}, update delta to now is {1}", avatarID, sendTime - now);
 
                     if (sendTime < now)
                     {
@@ -526,11 +548,11 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             if (sp == null)
             {
                 // This is expected if the user has gone away.
-//                m_log.DebugFormat("[AVFACTORY]: Agent {0} no longer in the scene", agentid);
+                // m_log.DebugFormat("[AVFACTORY]: Agent {0} no longer in the scene", agentid);
                 return;
             }
 
-//            m_log.DebugFormat("[AVFACTORY]: Saving appearance for avatar {0}", agentid);
+            // m_log.DebugFormat("[AVFACTORY]: Saving appearance for avatar {0}", agentid);
 
             // This could take awhile since it needs to pull inventory
             // We need to do it at the point of save so that there is a sufficient delay for any upload of new body part/shape
@@ -618,12 +640,12 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         /// <param name="client"></param>
         /// <param name="texture"></param>
         /// <param name="visualParam"></param>
-        private void Client_OnSetAppearance(IClientAPI client, Primitive.TextureEntry textureEntry, byte[] visualParams)
+        private void Client_OnSetAppearance(IClientAPI client, Primitive.TextureEntry textureEntry, byte[] visualParams, List<CachedTextureRequestArg> hashes)
         {
             // m_log.WarnFormat("[AVFACTORY]: Client_OnSetAppearance called for {0} ({1})", client.Name, client.AgentId);
             ScenePresence sp = m_scene.GetScenePresence(client.AgentId);
             if (sp != null)
-                SetAppearance(sp, textureEntry, visualParams);
+                DoSetAppearance(sp, textureEntry, visualParams, hashes);
             else
                 m_log.WarnFormat("[AVFACTORY]: Client_OnSetAppearance unable to find presence for {0}", client.AgentId);
         }
@@ -671,6 +693,58 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 QueueAppearanceSave(client.AgentId);
             }
         }
+
+        /// <summary>
+        /// Respond to the cached textures request from the client
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="serial"></param>
+        /// <param name="cachedTextureRequest"></param>
+        private void Client_OnCachedTextureRequest(IClientAPI client, int serial, List<CachedTextureRequestArg> cachedTextureRequest)
+        {
+            // m_log.DebugFormat("[AVFACTORY]: Client_OnCachedTextureRequest called for {0} ({1})", client.Name, client.AgentId);
+            ScenePresence sp = m_scene.GetScenePresence(client.AgentId);
+
+            List<CachedTextureResponseArg> cachedTextureResponse = new List<CachedTextureResponseArg>();
+            foreach (CachedTextureRequestArg request in cachedTextureRequest)
+            {
+                UUID texture = UUID.Zero;
+                int index = request.BakedTextureIndex;
+                
+                if (m_reusetextures)
+                {
+                    if (sp.Appearance.GetTextureHash(index) == request.WearableHashID)
+                    {
+                        Primitive.TextureEntryFace face = sp.Appearance.Texture.FaceTextures[index];
+                        if (face != null)
+                            texture = face.TextureID;
+                    }
+                    else
+                    {
+                        // We know that that hash is wrong, null it out
+                        // and wait for the setappearance call
+                        sp.Appearance.SetTextureHash(index,UUID.Zero);
+                    }
+
+                    // m_log.WarnFormat("[AVFACTORY]: use texture {0} for index {1}; hash={2}",texture,index,request.WearableHashID);
+                }
+                
+                CachedTextureResponseArg response = new CachedTextureResponseArg();
+                response.BakedTextureIndex = index;
+                response.BakedTextureID = texture;
+                response.HostName = null;
+
+                cachedTextureResponse.Add(response);
+            }
+            
+            // m_log.WarnFormat("[AVFACTORY]: serial is {0}",serial);
+            // The serial number appears to be used to match requests and responses
+            // in the texture transaction. We just send back the serial number
+            // that was provided in the request. The viewer bumps this for us.
+            client.SendCachedTextureResponse(sp, serial, cachedTextureResponse);
+        }
+
+
         #endregion
 
         public void WriteBakedTexturesReport(IScenePresence sp, ReportOutputAction outputAction)

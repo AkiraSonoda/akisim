@@ -219,6 +219,14 @@ namespace OpenSim.Region.Framework.Scenes
 
         public double SoundRadius;
 
+        /// <summary>
+        /// Should sounds played from this prim be queued?
+        /// </summary>
+        /// <remarks>
+        /// This should only be changed by sound modules.  It is up to sound modules as to how they interpret this setting.
+        /// </remarks>
+        public bool SoundQueueing { get; set; }
+
         public uint TimeStampFull;
 
         public uint TimeStampLastActivity; // Will be used for AutoReturn
@@ -345,6 +353,13 @@ namespace OpenSim.Region.Framework.Scenes
         // TODO: Collision sound should have default.
         private UUID m_collisionSound;
         private float m_collisionSoundVolume;
+
+        private KeyframeMotion m_keyframeMotion = null;
+
+        public KeyframeMotion KeyframeMotion
+        {
+            get; set;
+        }
 
         #endregion Fields
 
@@ -764,7 +779,8 @@ namespace OpenSim.Region.Framework.Scenes
                         }
 
                         // Tell the physics engines that this prim changed.
-                        ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(actor);
+                        if (ParentGroup != null && ParentGroup.Scene != null && ParentGroup.Scene.PhysicsScene != null)
+                            ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(actor);
                     }
                     catch (Exception e)
                     {
@@ -877,7 +893,7 @@ namespace OpenSim.Region.Framework.Scenes
                             //m_log.Info("[PART]: RO2:" + actor.Orientation.ToString());
                         }
 
-                        if (ParentGroup != null)
+                        if (ParentGroup != null && ParentGroup.Scene != null && ParentGroup.Scene.PhysicsScene != null)
                             ParentGroup.Scene.PhysicsScene.AddPhysicsActorTaint(actor);
                         //}
                     }
@@ -1791,6 +1807,10 @@ namespace OpenSim.Region.Framework.Scenes
             Array.Copy(Shape.ExtraParams, extraP, extraP.Length);
             dupe.Shape.ExtraParams = extraP;
 
+            // safeguard  actual copy is done in sog.copy
+            dupe.KeyframeMotion = null;
+            dupe.PayPrice = (int[])PayPrice.Clone();
+
             dupe.DynAttrs.CopyFrom(DynAttrs);
             
             if (userExposed)
@@ -1991,6 +2011,9 @@ namespace OpenSim.Region.Framework.Scenes
                         {
                             if (UsePhysics)
                             {
+                                if (ParentGroup.RootPart.KeyframeMotion != null)
+                                    ParentGroup.RootPart.KeyframeMotion.Stop();
+                                ParentGroup.RootPart.KeyframeMotion = null;
                                 ParentGroup.Scene.AddPhysicalPrim(1);
 
                                 pa.OnRequestTerseUpdate += PhysicsRequestingTerseUpdate;
@@ -2429,7 +2452,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (soundModule != null)
                 {
                     soundModule.SendSound(UUID, CollisionSound,
-                            CollisionSoundVolume, true, (byte)0, 0, false,
+                            CollisionSoundVolume, true, 0, 0, false,
                             false);
                 }
             }
@@ -4317,6 +4340,9 @@ namespace OpenSim.Region.Framework.Scenes
 
                 if (isPhysical)
                 {
+                    if (ParentGroup.RootPart.KeyframeMotion != null)
+                        ParentGroup.RootPart.KeyframeMotion.Stop();
+                    ParentGroup.RootPart.KeyframeMotion = null;
                     ParentGroup.Scene.AddPhysicalPrim(1);
 
                     pa.OnRequestTerseUpdate += PhysicsRequestingTerseUpdate;
@@ -4549,6 +4575,14 @@ namespace OpenSim.Region.Framework.Scenes
                 oldTex.DefaultTexture = fallbackOldFace;
             }
 
+            // Materials capable viewers can send a ObjectImage packet
+            // when nothing in TE has changed. MaterialID should be updated
+            // by the RenderMaterials CAP handler, so updating it here may cause a
+            // race condtion. Therefore, if no non-materials TE fields have changed, 
+            // we should ignore any changes and not update Shape.TextureEntry
+
+            bool otherFieldsChanged = false;
+
             for (int i = 0 ; i < GetNumberOfSides(); i++)
             {
 
@@ -4575,18 +4609,36 @@ namespace OpenSim.Region.Framework.Scenes
                 // Max change, skip the rest of testing
                 if (changeFlags == (Changed.TEXTURE | Changed.COLOR))
                     break;
+
+                if (!otherFieldsChanged)
+                {
+                    if (oldFace.Bump != newFace.Bump) otherFieldsChanged = true;
+                    if (oldFace.Fullbright != newFace.Fullbright) otherFieldsChanged = true;
+                    if (oldFace.Glow != newFace.Glow) otherFieldsChanged = true;
+                    if (oldFace.MediaFlags != newFace.MediaFlags) otherFieldsChanged = true;
+                    if (oldFace.OffsetU != newFace.OffsetU) otherFieldsChanged = true;
+                    if (oldFace.OffsetV != newFace.OffsetV) otherFieldsChanged = true;
+                    if (oldFace.RepeatU != newFace.RepeatU) otherFieldsChanged = true;
+                    if (oldFace.RepeatV != newFace.RepeatV) otherFieldsChanged = true;
+                    if (oldFace.Rotation != newFace.Rotation) otherFieldsChanged = true;
+                    if (oldFace.Shiny != newFace.Shiny) otherFieldsChanged = true;
+                    if (oldFace.TexMapType != newFace.TexMapType) otherFieldsChanged = true;
+                }
             }
 
-            m_shape.TextureEntry = newTex.GetBytes();
-            if (changeFlags != 0)
-                TriggerScriptChangedEvent(changeFlags);
-            UpdateFlag = UpdateRequired.FULL;
-            ParentGroup.HasGroupChanged = true;
+            if (changeFlags != 0 || otherFieldsChanged)
+            {
+                m_shape.TextureEntry = newTex.GetBytes();
+                if (changeFlags != 0)
+                    TriggerScriptChangedEvent(changeFlags);
+                UpdateFlag = UpdateRequired.FULL;
+                ParentGroup.HasGroupChanged = true;
 
-            //This is madness..
-            //ParentGroup.ScheduleGroupForFullUpdate();
-            //This is sparta
-            ScheduleFullUpdate();
+                //This is madness..
+                //ParentGroup.ScheduleGroupForFullUpdate();
+                //This is sparta
+                ScheduleFullUpdate();
+            }
         }
 
         public void aggregateScriptEvents()

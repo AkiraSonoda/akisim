@@ -389,10 +389,12 @@ namespace OpenSim.Region.Framework.Scenes
                 if (value)
                 {
                     if (!m_active)
-                        Start();
+                        Start(false);
                 }
                 else
                 {
+                    // This appears assymetric with Start() above but is not - setting m_active = false stops the loops
+                    // XXX: Possibly this should be in an explicit Stop() method for symmetry.
                     m_active = false;
                 }
             }
@@ -1339,10 +1341,18 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        public override void Start()
+        {
+            Start(true);
+        }
+
         /// <summary>
         /// Start the scene
         /// </summary>
-        public void Start()
+        /// <param name='startScripts'>
+        /// Start the scripts within the scene.
+        /// </param> 
+        public void Start(bool startScripts)
         {
             m_active = true;
 
@@ -1361,6 +1371,8 @@ namespace OpenSim.Region.Framework.Scenes
             m_heartbeatThread
                 = Watchdog.StartThread(
                     Heartbeat, string.Format("Heartbeat ({0})", RegionInfo.RegionName), ThreadPriority.Normal, false, false);
+
+            StartScripts();
         }
 
         /// <summary>
@@ -1513,6 +1525,8 @@ namespace OpenSim.Region.Framework.Scenes
 
                 try
                 {
+                    EventManager.TriggerRegionHeartbeatStart(this);
+
                     // Apply taints in terrain module to terrain in physics scene
                     if (Frame % m_update_terrain == 0)
                     {
@@ -2358,6 +2372,12 @@ namespace OpenSim.Region.Framework.Scenes
 
             foreach (SceneObjectPart part in partList)
             {
+                if (part.KeyframeMotion != null)
+                {
+                    part.KeyframeMotion.Delete();
+                    part.KeyframeMotion = null;
+                }
+
                 if (part.IsJoint() && ((part.Flags & PrimFlags.Physics) != 0))
                 {
                     PhysicsScene.RequestJointDeletion(part.Name); // FIXME: what if the name changed?
@@ -2699,6 +2719,9 @@ namespace OpenSim.Region.Framework.Scenes
                 // before we restart the scripts, or else some functions won't work.
                 newObject.RootPart.ParentGroup.CreateScriptInstances(0, false, DefaultScriptEngine, GetStateSource(newObject));
                 newObject.ResumeScripts();
+
+                if (newObject.RootPart.KeyframeMotion != null)
+                    newObject.RootPart.KeyframeMotion.UpdateSceneObject(newObject);
             }
 
             // Do this as late as possible so that listeners have full access to the incoming object
@@ -2843,7 +2866,9 @@ namespace OpenSim.Region.Framework.Scenes
                 // client is for a root or child agent.
                 client.SceneAgent = sp;
 
-                // Cache the user's name
+                // This is currently also being done earlier in NewUserConnection for real users to see if this 
+                // resolves problems where HG agents are occasionally seen by others as "Unknown user" in chat and other
+                // places.  However, we still need to do it here for NPCs.
                 CacheUserName(sp, aCircuit);
     
                 EventManager.TriggerOnNewClient(client);
@@ -2867,7 +2892,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 string first = aCircuit.firstname, last = aCircuit.lastname;
 
-                if (sp.PresenceType == PresenceType.Npc)
+                if (sp != null && sp.PresenceType == PresenceType.Npc)
                 {
                     UserManagementModule.AddUser(aCircuit.AgentID, first, last);
                 }
@@ -3086,7 +3111,6 @@ namespace OpenSim.Region.Framework.Scenes
         {
             //client.OnNameFromUUIDRequest += HandleUUIDNameRequest;
             client.OnMoneyTransferRequest += ProcessMoneyTransferRequest;
-            client.OnSetStartLocationRequest += SetHomeRezPoint;
             client.OnRegionHandleRequest += RegionHandleRequest;
         }
         
@@ -3211,7 +3235,6 @@ namespace OpenSim.Region.Framework.Scenes
         {
             //client.OnNameFromUUIDRequest -= HandleUUIDNameRequest;
             client.OnMoneyTransferRequest -= ProcessMoneyTransferRequest;
-            client.OnSetStartLocationRequest -= SetHomeRezPoint;
             client.OnRegionHandleRequest -= RegionHandleRequest;
         }
 
@@ -3226,17 +3249,18 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         /// <param name="agentId">The avatar's Unique ID</param>
         /// <param name="client">The IClientAPI for the client</param>
-        public virtual void TeleportClientHome(UUID agentId, IClientAPI client)
+        public virtual bool TeleportClientHome(UUID agentId, IClientAPI client)
         {
             if (EntityTransferModule != null)
             {
-                EntityTransferModule.TeleportHome(agentId, client);
+                return EntityTransferModule.TeleportHome(agentId, client);
             }
             else
             {
                 m_log.DebugFormat("[SCENE]: Unable to teleport user home: no AgentTransferModule is active");
                 client.SendTeleportFailed("Unable to perform teleports on this simulator.");
             }
+            return false;
         }
 
         /// <summary>
@@ -3337,23 +3361,6 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         /// <summary>
-        /// Sets the Home Point.   The LoginService uses this to know where to put a user when they log-in
-        /// </summary>
-        /// <param name="remoteClient"></param>
-        /// <param name="regionHandle"></param>
-        /// <param name="position"></param>
-        /// <param name="lookAt"></param>
-        /// <param name="flags"></param>
-        public virtual void SetHomeRezPoint(IClientAPI remoteClient, ulong regionHandle, Vector3 position, Vector3 lookAt, uint flags)
-        {
-            if (GridUserService != null && GridUserService.SetHome(remoteClient.AgentId.ToString(), RegionInfo.RegionID, position, lookAt))
-                // FUBAR ALERT: this needs to be "Home position set." so the viewer saves a home-screenshot.
-                m_dialogModule.SendAlertToUser(remoteClient, "Home position set.");
-            else
-                m_dialogModule.SendAlertToUser(remoteClient, "Set Home request Failed.");
-        }
-
-        /// <summary>
         /// Get the avatar apperance for the given client.
         /// </summary>
         /// <param name="client"></param>
@@ -3449,15 +3456,12 @@ namespace OpenSim.Region.Framework.Scenes
                     if (closeChildAgents && CapsModule != null)
                         CapsModule.RemoveCaps(agentID);
     
-//                    // REFACTORING PROBLEM -- well not really a problem, but just to point out that whatever
-//                    // this method is doing is HORRIBLE!!!
-                    // Commented pending deletion since this method no longer appears to do anything at all
-//                    avatar.Scene.NeedSceneCacheClear(avatar.UUID);
-    
                     if (closeChildAgents && !isChildAgent)
                     {
                         List<ulong> regions = avatar.KnownRegionHandles;
                         regions.Remove(RegionInfo.RegionHandle);
+
+                        // This ends up being done asynchronously so that a logout isn't held up where there are many present but unresponsive neighbours.
                         m_sceneGridService.SendCloseChildAgentConnections(agentID, regions);
                     }
     
@@ -3475,7 +3479,7 @@ namespace OpenSim.Region.Framework.Scenes
                             delegate(IClientAPI client)
                             {
                                 //We can safely ignore null reference exceptions.  It means the avatar is dead and cleaned up anyway
-                                try { client.SendKillObject(avatar.RegionHandle, new List<uint> { avatar.LocalId }); }
+                                try { client.SendKillObject(new List<uint> { avatar.LocalId }); }
                                 catch (NullReferenceException) { }
                             });
                     }
@@ -3555,7 +3559,8 @@ namespace OpenSim.Region.Framework.Scenes
                 }
                 deleteIDs.Add(localID);
             }
-            ForEachClient(delegate(IClientAPI client) { client.SendKillObject(m_regionHandle, deleteIDs); });
+
+            ForEachClient(c => c.SendKillObject(deleteIDs));
         }
 
         #endregion
@@ -3695,14 +3700,21 @@ namespace OpenSim.Region.Framework.Scenes
                     sp.ControllingClient.Close(true);
                     sp = null;
                 }
-    
+
+                // Optimistic: add or update the circuit data with the new agent circuit data and teleport flags.
+                // We need the circuit data here for some of the subsequent checks. (groups, for example)
+                // If the checks fail, we remove the circuit.
+                agent.teleportFlags = teleportFlags;
+                m_authenticateHandler.AddNewCircuit(agent.circuitcode, agent);
+
                 land = LandChannel.GetLandObject(agent.startpos.X, agent.startpos.Y);
     
-                //On login test land permisions
+                // On login test land permisions
                 if (vialogin)
                 {
-                    if (land != null && !TestLandRestrictions(agent, land, out reason))
+                    if (land != null && !TestLandRestrictions(agent.AgentID, out reason, ref agent.startpos.X, ref agent.startpos.Y))
                     {
+                        m_authenticateHandler.RemoveCircuit(agent.circuitcode);
                         return false;
                     }
                 }
@@ -3714,13 +3726,17 @@ namespace OpenSim.Region.Framework.Scenes
                         try
                         {
                             if (!VerifyUserPresence(agent, out reason))
+                            {
+                                m_authenticateHandler.RemoveCircuit(agent.circuitcode);
                                 return false;
+                            }
                         }
                         catch (Exception e)
                         {
                             m_log.ErrorFormat(
                                 "[SCENE]: Exception verifying presence {0}{1}", e.Message, e.StackTrace);
 
+                            m_authenticateHandler.RemoveCircuit(agent.circuitcode);
                             return false;
                         }
                     }
@@ -3728,13 +3744,17 @@ namespace OpenSim.Region.Framework.Scenes
                     try
                     {
                         if (!AuthorizeUser(agent, out reason))
+                        {
+                            m_authenticateHandler.RemoveCircuit(agent.circuitcode);
                             return false;
+                        }
                     }
                     catch (Exception e)
                     {
                         m_log.ErrorFormat(
                             "[SCENE]: Exception authorizing user {0}{1}", e.Message, e.StackTrace);
 
+                        m_authenticateHandler.RemoveCircuit(agent.circuitcode);
                         return false;
                     }
     
@@ -3767,11 +3787,12 @@ namespace OpenSim.Region.Framework.Scenes
                             CapsModule.SetAgentCapsSeeds(agent);
                     }
                 }
-            }
 
-            // In all cases, add or update the circuit data with the new agent circuit data and teleport flags
-            agent.teleportFlags = teleportFlags;
-            m_authenticateHandler.AddNewCircuit(agent.circuitcode, agent);
+                // Try caching an incoming user name much earlier on to see if this helps with an issue
+                // where HG users are occasionally seen by others as "Unknown User" because their UUIDName
+                // request for the HG avatar appears to trigger before the user name is cached.
+                CacheUserName(null, agent);
+            }
 
             if (vialogin)
             {
@@ -3876,20 +3897,37 @@ namespace OpenSim.Region.Framework.Scenes
             return true;
         }
 
-        private bool TestLandRestrictions(AgentCircuitData agent, ILandObject land,  out string reason)
+        public bool TestLandRestrictions(UUID agentID, out string reason, ref float posX, ref float posY)
         {
-            bool banned = land.IsBannedFromLand(agent.AgentID);
-            bool restricted = land.IsRestrictedFromLand(agent.AgentID);
+            if (posX < 0)
+                posX = 0;
+            else if (posX >= 256)
+                posX = 255.999f;
+            if (posY < 0)
+                posY = 0;
+            else if (posY >= 256)
+                posY = 255.999f;
+
+            reason = String.Empty;
+            if (Permissions.IsGod(agentID))
+                return true;
+
+            ILandObject land = LandChannel.GetLandObject(posX, posY);
+            if (land == null)
+                return false;
+
+            bool banned = land.IsBannedFromLand(agentID);
+            bool restricted = land.IsRestrictedFromLand(agentID);
 
             if (banned || restricted)
             {
-                ILandObject nearestParcel = GetNearestAllowedParcel(agent.AgentID, agent.startpos.X, agent.startpos.Y);
+                ILandObject nearestParcel = GetNearestAllowedParcel(agentID, posX, posY);
                 if (nearestParcel != null)
                 {
                     //Move agent to nearest allowed
                     Vector3 newPosition = GetParcelCenterAtGround(nearestParcel);
-                    agent.startpos.X = newPosition.X;
-                    agent.startpos.Y = newPosition.Y;
+                    posX = newPosition.X;
+                    posY = newPosition.Y;
                 }
                 else
                 {
@@ -4153,8 +4191,6 @@ namespace OpenSim.Region.Framework.Scenes
         {
             m_log.DebugFormat(
                 "[SCENE]: Incoming child agent update for {0} in {1}", cAgentData.AgentID, RegionInfo.RegionName);
-
-            // XPTO: if this agent is not allowed here as root, always return false
 
             // TODO: This check should probably be in QueryAccess().
             ILandObject nearestParcel = GetNearestAllowedParcel(cAgentData.AgentID, Constants.RegionSize / 2, Constants.RegionSize / 2);
@@ -5146,9 +5182,14 @@ namespace OpenSim.Region.Framework.Scenes
             get { return m_allowScriptCrossings; }
         }
 
-        public Vector3? GetNearestAllowedPosition(ScenePresence avatar)
+        public Vector3 GetNearestAllowedPosition(ScenePresence avatar)
         {
-            ILandObject nearestParcel = GetNearestAllowedParcel(avatar.UUID, avatar.AbsolutePosition.X, avatar.AbsolutePosition.Y);
+            return GetNearestAllowedPosition(avatar, null);
+        }
+
+        public Vector3 GetNearestAllowedPosition(ScenePresence avatar, ILandObject excludeParcel)
+        {
+            ILandObject nearestParcel = GetNearestAllowedParcel(avatar.UUID, avatar.AbsolutePosition.X, avatar.AbsolutePosition.Y, excludeParcel);
 
             if (nearestParcel != null)
             {
@@ -5157,10 +5198,7 @@ namespace OpenSim.Region.Framework.Scenes
                 Vector3? nearestPoint = GetNearestPointInParcelAlongDirectionFromPoint(avatar.AbsolutePosition, dir, nearestParcel);
                 if (nearestPoint != null)
                 {
-//                    m_log.DebugFormat(
-//                        "[SCENE]: Found a sane previous position based on velocity for {0}, sending them to {1} in {2}",
-//                        avatar.Name, nearestPoint, nearestParcel.LandData.Name);
-
+                    Debug.WriteLine("Found a sane previous position based on velocity, sending them to: " + nearestPoint.ToString());
                     return nearestPoint.Value;
                 }
 
@@ -5170,24 +5208,27 @@ namespace OpenSim.Region.Framework.Scenes
                 nearestPoint = GetNearestPointInParcelAlongDirectionFromPoint(avatar.AbsolutePosition, dir, nearestParcel);
                 if (nearestPoint != null)
                 {
-//                    m_log.DebugFormat(
-//                        "[SCENE]: {0} had a zero velocity, sending them to {1}", avatar.Name, nearestPoint);
-
+                    Debug.WriteLine("They had a zero velocity, sending them to: " + nearestPoint.ToString());
                     return nearestPoint.Value;
                 }
 
-                //Ultimate backup if we have no idea where they are
-//                m_log.DebugFormat(
-//                    "[SCENE]: No idea where {0} is, sending them to {1}", avatar.Name, avatar.lastKnownAllowedPosition);
+                ILandObject dest = LandChannel.GetLandObject(avatar.lastKnownAllowedPosition.X, avatar.lastKnownAllowedPosition.Y);
+                if (dest !=  excludeParcel)
+                {
+                    // Ultimate backup if we have no idea where they are and
+                    // the last allowed position was in another parcel
+                    Debug.WriteLine("Have no idea where they are, sending them to: " + avatar.lastKnownAllowedPosition.ToString());
+                    return avatar.lastKnownAllowedPosition;
+                }
 
-                return avatar.lastKnownAllowedPosition;
+                // else fall through to region edge
             }
 
             //Go to the edge, this happens in teleporting to a region with no available parcels
             Vector3 nearestRegionEdgePoint = GetNearestRegionEdgePosition(avatar);
 
             //Debug.WriteLine("They are really in a place they don't belong, sending them to: " + nearestRegionEdgePoint.ToString());
-            
+
             return nearestRegionEdgePoint;
         }
 
@@ -5214,13 +5255,18 @@ namespace OpenSim.Region.Framework.Scenes
 
         public ILandObject GetNearestAllowedParcel(UUID avatarId, float x, float y)
         {
+            return GetNearestAllowedParcel(avatarId, x, y, null);
+        }
+
+        public ILandObject GetNearestAllowedParcel(UUID avatarId, float x, float y, ILandObject excludeParcel)
+        {
             List<ILandObject> all = AllParcels();
             float minParcelDistance = float.MaxValue;
             ILandObject nearestParcel = null;
 
             foreach (var parcel in all)
             {
-                if (!parcel.IsEitherBannedOrRestricted(avatarId))
+                if (!parcel.IsEitherBannedOrRestricted(avatarId) && parcel != excludeParcel)
                 {
                     float parcelDistance = GetParcelDistancefromPoint(parcel, x, y);
                     if (parcelDistance < minParcelDistance)
@@ -5464,6 +5510,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns></returns>
         public bool QueryAccess(UUID agentID, Vector3 position, out string reason)
         {
+            reason = "You are banned from the region";
+
             if (EntityTransferModule.IsInTransit(agentID))
             {
                 reason = "Agent is still in transit from this region";
@@ -5473,6 +5521,12 @@ namespace OpenSim.Region.Framework.Scenes
                     agentID, RegionInfo.RegionName);
 
                 return false;
+            }
+
+            if (Permissions.IsGod(agentID))
+            {
+                reason = String.Empty;
+                return true;
             }
 
             // FIXME: Root agent count is currently known to be inaccurate.  This forces a recount before we check.
@@ -5493,6 +5547,41 @@ namespace OpenSim.Region.Framework.Scenes
 
                     return false;
                 }
+            }
+
+            ScenePresence presence = GetScenePresence(agentID);
+            IClientAPI client = null;
+            AgentCircuitData aCircuit = null;
+
+            if (presence != null)
+            {
+                client = presence.ControllingClient;
+                if (client != null)
+                    aCircuit = client.RequestClientInfo();
+            }
+
+            // We may be called before there is a presence or a client.
+            // Fake AgentCircuitData to keep IAuthorizationModule smiling
+            if (client == null)
+            {
+                aCircuit = new AgentCircuitData();
+                aCircuit.AgentID = agentID;
+                aCircuit.firstname = String.Empty;
+                aCircuit.lastname = String.Empty;
+            }
+
+            try
+            {
+                if (!AuthorizeUser(aCircuit, out reason))
+                {
+                    // m_log.DebugFormat("[SCENE]: Denying access for {0}", agentID);
+                    return false;
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.DebugFormat("[SCENE]: Exception authorizing agent: {0} "+ e.StackTrace, e.Message);
+                return false;
             }
 
             if (position == Vector3.Zero) // Teleport
@@ -5528,6 +5617,27 @@ namespace OpenSim.Region.Framework.Scenes
                         }
                     }
                 }
+
+                float posX = 128.0f;
+                float posY = 128.0f;
+
+                if (!TestLandRestrictions(agentID, out reason, ref posX, ref posY))
+                {
+                    // m_log.DebugFormat("[SCENE]: Denying {0} because they are banned on all parcels", agentID);
+                    return false;
+                }
+            }
+            else // Walking
+            {
+                ILandObject land = LandChannel.GetLandObject(position.X, position.Y);
+                if (land == null)
+                    return false;
+
+                bool banned = land.IsBannedFromLand(agentID);
+                bool restricted = land.IsRestrictedFromLand(agentID);
+
+                if (banned || restricted)
+                    return false;
             }
 
             reason = String.Empty;

@@ -186,7 +186,6 @@ namespace OpenSim.Groups
         public UUID CreateGroup(UUID RequestingAgentID, string name, string charter, bool showInList, UUID insigniaID, int membershipFee, bool openEnrollment, 
             bool allowPublish, bool maturePublish, UUID founderID, out string reason)
         {
-            m_log.DebugFormat("[Groups]: Creating group {0}", name);
             reason = string.Empty;
             if (m_UserManagement.IsLocalGridUser(RequestingAgentID))
                 return m_LocalGroupsConnector.CreateGroup(RequestingAgentID, name, charter, showInList, insigniaID, 
@@ -685,6 +684,9 @@ namespace OpenSim.Groups
         {
             serviceLocation = string.Empty;
             name = string.Empty;
+            if (groupID.Equals(UUID.Zero))
+                return true;
+
             ExtendedGroupRecord group = m_LocalGroupsConnector.GetGroupRecord(UUID.Zero.ToString(), groupID, string.Empty);
             if (group == null)
             {

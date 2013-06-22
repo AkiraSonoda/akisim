@@ -130,6 +130,13 @@ namespace OpenSim.Groups
         {
             reason = string.Empty;
 
+            // Check if the group already exists
+            if (m_Database.RetrieveGroup(name) != null)
+            {
+                reason = "A group with that name already exists";
+                return UUID.Zero;
+            }
+
             // Create the group
             GroupData data = new GroupData();
             data.GroupID = UUID.Random();
@@ -723,12 +730,12 @@ namespace OpenSim.Groups
 
         #region Actions without permission checks
 
-        private void _AddAgentToGroup(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
+        protected void _AddAgentToGroup(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
             _AddAgentToGroup(RequestingAgentID, AgentID, GroupID, RoleID, string.Empty);
         }
 
-        public void _RemoveAgentFromGroup(string RequestingAgentID, string AgentID, UUID GroupID)
+        protected void _RemoveAgentFromGroup(string RequestingAgentID, string AgentID, UUID GroupID)
         {
             // 1. Delete membership
             m_Database.DeleteMember(GroupID, AgentID);
@@ -780,7 +787,7 @@ namespace OpenSim.Groups
 
         }
 
-        private bool _AddOrUpdateGroupRole(string RequestingAgentID, UUID groupID, UUID roleID, string name, string description, string title, ulong powers, bool add)
+        protected bool _AddOrUpdateGroupRole(string RequestingAgentID, UUID groupID, UUID roleID, string name, string description, string title, ulong powers, bool add)
         {
             RoleData data = m_Database.RetrieveRole(groupID, roleID);
 
@@ -810,12 +817,12 @@ namespace OpenSim.Groups
             return m_Database.StoreRole(data);
         }
 
-        private void _RemoveGroupRole(UUID groupID, UUID roleID)
+        protected void _RemoveGroupRole(UUID groupID, UUID roleID)
         {
             m_Database.DeleteRole(groupID, roleID);
         }
 
-        private void _AddAgentToGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
+        protected void _AddAgentToGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
             RoleMembershipData data = m_Database.RetrieveRoleMember(GroupID, RoleID, AgentID);
             if (data != null)
@@ -840,7 +847,7 @@ namespace OpenSim.Groups
 
         }
 
-        private List<GroupRolesData> _GetGroupRoles(UUID groupID)
+        protected List<GroupRolesData> _GetGroupRoles(UUID groupID)
         {
             List<GroupRolesData> roles = new List<GroupRolesData>();
 
@@ -865,7 +872,7 @@ namespace OpenSim.Groups
             return roles;
         }
 
-        private List<ExtendedGroupRoleMembersData> _GetGroupRoleMembers(UUID GroupID, bool isInGroup)
+        protected List<ExtendedGroupRoleMembersData> _GetGroupRoleMembers(UUID GroupID, bool isInGroup)
         {
             List<ExtendedGroupRoleMembersData> rmembers = new List<ExtendedGroupRoleMembersData>();
 

@@ -88,8 +88,8 @@ public class BSActorMoveToTarget : BSActor
     // The object's physical representation is being rebuilt so pick up any physical dependencies (constraints, ...).
     //     Register a prestep action to restore physical requirements before the next simulation step.
     // Called at taint-time.
-    // BSActor.RemoveBodyDependencies()
-    public override void RemoveBodyDependencies()
+    // BSActor.RemoveDependencies()
+    public override void RemoveDependencies()
     {
         // Nothing to do for the moveToTarget since it is all software at pre-step action time.
     }
@@ -105,7 +105,6 @@ public class BSActorMoveToTarget : BSActor
             m_targetMotor = new BSVMotor("BSActorMoveToTargget.Activate",
                                         m_controllingPrim.MoveToTargetTau,                    // timeScale
                                         BSMotor.Infinite,           // decay time scale
-                                        BSMotor.InfiniteVector,     // friction timescale
                                         1f                          // efficiency
             );
             m_targetMotor.PhysicsScene = m_physicsScene; // DEBUG DEBUG so motor will output detail log messages.

@@ -455,6 +455,9 @@ namespace OpenSim.Region.Framework.Scenes
                             || Scene.TestBorderCross(val, Cardinals.S))
                         && !IsAttachmentCheckFull() && (!Scene.LoadingPrims))
                     {
+                        if (m_rootPart.KeyframeMotion != null)
+                            m_rootPart.KeyframeMotion.StartCrossingCheck();
+
                         m_scene.CrossPrimGroupIntoNewRegion(val, this, true);
                     }
                 }
@@ -578,6 +581,8 @@ namespace OpenSim.Region.Framework.Scenes
                             childPa.Selected = value;
                     }
                 }
+                if (RootPart.KeyframeMotion != null)
+                    RootPart.KeyframeMotion.Selected = value;
             }
         }
 
@@ -758,6 +763,11 @@ namespace OpenSim.Region.Framework.Scenes
             for (int i = 0; i < parts.Length; i++)
             {
                 SceneObjectPart part = parts[i];
+                if (part.KeyframeMotion != null)
+                {
+                    part.KeyframeMotion.UpdateSceneObject(this);
+                }
+
                 if (Object.ReferenceEquals(part, m_rootPart))
                     continue;
 
@@ -1221,11 +1231,11 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Delete this group from its scene.
         /// </summary>
-        /// 
+        /// <remarks>
         /// This only handles the in-world consequences of deletion (e.g. any avatars sitting on it are forcibly stood
         /// up and all avatars receive notification of its removal.  Removal of the scene object from database backup
         /// must be handled by the caller.
-        /// 
+        /// </remarks>
         /// <param name="silent">If true then deletion is not broadcast to clients</param>
         public void DeleteGroupFromScene(bool silent)
         {
@@ -1234,10 +1244,10 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 SceneObjectPart part = parts[i];
 
-                Scene.ForEachRootScenePresence(delegate(ScenePresence avatar)
+                Scene.ForEachScenePresence(sp =>
                 {
-                    if (avatar.ParentID == LocalId)
-                        avatar.StandUp();
+                    if (!sp.IsChildAgent && sp.ParentID == LocalId)
+                        sp.StandUp();
 
                     if (!silent)
                     {
@@ -1245,9 +1255,9 @@ namespace OpenSim.Region.Framework.Scenes
                         if (part == m_rootPart)
                         {
                             if (!IsAttachment
-                                || AttachedAvatar == avatar.ControllingClient.AgentId
+                                || AttachedAvatar == sp.UUID
                                 || !HasPrivateAttachmentPoint)
-                                avatar.ControllingClient.SendKillObject(m_regionHandle, new List<uint> { part.LocalId });
+                                sp.ControllingClient.SendKillObject(new List<uint> { part.LocalId });
                         }
                     }
                 });
@@ -1499,7 +1509,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (!userExposed)
                 dupe.IsAttachment = true;
 
-            dupe.AbsolutePosition = new Vector3(AbsolutePosition.X, AbsolutePosition.Y, AbsolutePosition.Z);
+            dupe.m_sittingAvatars = new List<UUID>();
 
             if (!userExposed)
             {
@@ -1551,6 +1561,8 @@ namespace OpenSim.Region.Framework.Scenes
     
                     newPart.DoPhysicsPropertyUpdate(originalPartPa.IsPhysical, true);
                 }
+                if (part.KeyframeMotion != null)
+                    newPart.KeyframeMotion = part.KeyframeMotion.Copy(dupe);
             }
             
             if (userExposed)
@@ -1578,6 +1590,12 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void ScriptSetPhysicsStatus(bool usePhysics)
         {
+            if (usePhysics)
+            {
+                if (RootPart.KeyframeMotion != null)
+                    RootPart.KeyframeMotion.Stop();
+                RootPart.KeyframeMotion = null;
+            }
             UpdatePrimFlags(RootPart.LocalId, usePhysics, IsTemporary, IsPhantom, IsVolumeDetect);
         }
 

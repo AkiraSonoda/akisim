@@ -89,9 +89,30 @@ namespace OpenSim.Framework
     }
 
     /// <summary>
+    /// Class for delivering SmartThreadPool statistical information
+    /// </summary>
+    /// <remarks>
+    /// We do it this way so that we do not directly expose STP.
+    /// </remarks>
+    public class STPInfo
+    {
+        public string Name { get; set; }
+        public STPStartInfo STPStartInfo { get; set; }
+        public WIGStartInfo WIGStartInfo { get; set; }
+        public bool IsIdle { get; set; }
+        public bool IsShuttingDown { get; set; }       
+        public int MaxThreads { get; set; }
+        public int MinThreads { get; set; }
+        public int InUseThreads { get; set; }
+        public int ActiveThreads { get; set; }
+        public int WaitingCallbacks { get; set; }
+        public int MaxConcurrentWorkItems { get; set; }
+    }
+
+    /// <summary>
     /// Miscellaneous utility functions
     /// </summary>
-    public class Util
+    public static class Util
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly ILog s_log = LogManager.GetLogger("SimStats");
@@ -1905,7 +1926,7 @@ namespace OpenSim.Framework
                 case FireAndForgetMethod.SmartThreadPool:
                     if (m_ThreadPool == null)
                         InitThreadPool(15); 
-                    m_ThreadPool.QueueWorkItem(SmartThreadPoolCallback, new object[] { realCallback, obj });
+                    m_ThreadPool.QueueWorkItem((cb, o) => cb(o), realCallback, obj);
                     break;
                 case FireAndForgetMethod.Thread:
                     Thread thread = new Thread(delegate(object o) { realCallback(o); });
@@ -1917,118 +1938,29 @@ namespace OpenSim.Framework
         }
 
         /// <summary>
-        /// Get a thread pool report.
+        /// Get information about the current state of the smart thread pool.
         /// </summary>
-        /// <returns></returns>
-        public static string GetThreadPoolReport()
+        /// <returns>
+        /// null if this isn't the pool being used for non-scriptengine threads.
+        /// </returns>
+        public static STPInfo GetSmartThreadPoolInfo()
         {
-            string threadPoolUsed = null;
-            int maxThreads = 0;
-            int minThreads = 0;
-            int allocatedThreads = 0;
-            int inUseThreads = 0;
-            int waitingCallbacks = 0;
-            int completionPortThreads = 0;
+            if (m_ThreadPool == null)
+                return null;
 
-            StringBuilder sb = new StringBuilder();
-            if (FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
-            {
-                // ROBUST currently leaves this the FireAndForgetMethod but never actually initializes the threadpool.
-                if (m_ThreadPool != null)
-                {
-                    threadPoolUsed = "SmartThreadPool";
-                    maxThreads = m_ThreadPool.MaxThreads;
-                    minThreads = m_ThreadPool.MinThreads;
-                    inUseThreads = m_ThreadPool.InUseThreads;
-                    allocatedThreads = m_ThreadPool.ActiveThreads;
-                    waitingCallbacks = m_ThreadPool.WaitingCallbacks;
-                }
-            }
-            else if (
-                FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem
-                    || FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem)
-            {
-                threadPoolUsed = "BuiltInThreadPool";
-                ThreadPool.GetMaxThreads(out maxThreads, out completionPortThreads);
-                ThreadPool.GetMinThreads(out minThreads, out completionPortThreads);
-                int availableThreads;
-                ThreadPool.GetAvailableThreads(out availableThreads, out completionPortThreads);
-                inUseThreads = maxThreads - availableThreads;
-                allocatedThreads = -1;
-                waitingCallbacks = -1;
-            }
+            STPInfo stpi = new STPInfo();
+            stpi.Name = m_ThreadPool.Name;
+            stpi.STPStartInfo = m_ThreadPool.STPStartInfo;
+            stpi.IsIdle = m_ThreadPool.IsIdle;
+            stpi.IsShuttingDown = m_ThreadPool.IsShuttingdown;
+            stpi.MaxThreads = m_ThreadPool.MaxThreads;
+            stpi.MinThreads = m_ThreadPool.MinThreads;
+            stpi.InUseThreads = m_ThreadPool.InUseThreads;
+            stpi.ActiveThreads = m_ThreadPool.ActiveThreads;
+            stpi.WaitingCallbacks = m_ThreadPool.WaitingCallbacks;
+            stpi.MaxConcurrentWorkItems = m_ThreadPool.Concurrency;
 
-            if (threadPoolUsed != null)
-            {
-                sb.AppendFormat("Thread pool used           : {0}\n", threadPoolUsed);
-                sb.AppendFormat("Max threads                : {0}\n", maxThreads);
-                sb.AppendFormat("Min threads                : {0}\n", minThreads);
-                sb.AppendFormat("Allocated threads          : {0}\n", allocatedThreads < 0 ? "not applicable" : allocatedThreads.ToString());
-                sb.AppendFormat("In use threads             : {0}\n", inUseThreads);
-                sb.AppendFormat("Work items waiting         : {0}\n", waitingCallbacks < 0 ? "not available" : waitingCallbacks.ToString());
-            }
-            else
-            {
-                sb.AppendFormat("Thread pool not used\n");
-            }
-
-            return sb.ToString();
-        }
-		
-        /// <summary>
-        /// Prints out a thread pool report to the SimStats Log.
-        /// </summary>
-        /// <returns></returns>
-        public static void PrintThreadPoolReport() {
-            string threadPoolUsed = null;
-            int maxThreads = 0;
-            int minThreads = 0;
-            int allocatedThreads = 0;
-            int inUseThreads = 0;
-            int waitingCallbacks = 0;
-            int completionPortThreads = 0;
-
-            if (FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool) {
-                threadPoolUsed = "SmartThreadPool";
-                maxThreads = m_ThreadPool.MaxThreads;
-                minThreads = m_ThreadPool.MinThreads;
-                inUseThreads = m_ThreadPool.InUseThreads;
-                allocatedThreads = m_ThreadPool.ActiveThreads;
-                waitingCallbacks = m_ThreadPool.WaitingCallbacks;
-            } else if (
-                FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem
-                    || FireAndForgetMethod == FireAndForgetMethod.UnsafeQueueUserWorkItem) {
-                threadPoolUsed = "BuiltInThreadPool";
-                ThreadPool.GetMaxThreads(out maxThreads, out completionPortThreads);
-                ThreadPool.GetMinThreads(out minThreads, out completionPortThreads);
-                int availableThreads;
-                ThreadPool.GetAvailableThreads(out availableThreads, out completionPortThreads);
-                inUseThreads = maxThreads - availableThreads;
-                allocatedThreads = -1;
-                waitingCallbacks = -1;
-            }
-
-            if (threadPoolUsed != null) {
-                s_log.DebugFormat("[THREADS] Thread pool used           : {0}", threadPoolUsed);
-                s_log.DebugFormat("[THREADS] Max {1} threads                : {0}", maxThreads, threadPoolUsed);
-                s_log.DebugFormat("[THREADS] Min {1} threads                : {0}", minThreads, threadPoolUsed);
-                s_log.DebugFormat("[THREADS] Allocated {1} threads          : {0}", allocatedThreads < 0 ? "not applicable" : allocatedThreads.ToString(), threadPoolUsed);
-                s_log.DebugFormat("[THREADS] In use {1} threads             : {0}", inUseThreads, threadPoolUsed);
-                s_log.DebugFormat("[THREADS] Work items waiting         : {0}", waitingCallbacks < 0 ? "not available" : waitingCallbacks.ToString());
-            } else {
-                s_log.DebugFormat("[THREADS] Thread pool not used");
-            }
-
-        }
-
-        private static object SmartThreadPoolCallback(object o)
-        {
-            object[] array = (object[])o;
-            WaitCallback callback = (WaitCallback)array[0];
-            object obj = array[1];
-
-            callback(obj);
-            return null;
+            return stpi;
         }
 
         #endregion FireAndForget Threading Pattern
@@ -2247,7 +2179,7 @@ namespace OpenSim.Framework
         /// <param name="secret">the secret part</param>
         public static bool ParseUniversalUserIdentifier(string value, out UUID uuid, out string url, out string firstname, out string lastname, out string secret)
         {
-            uuid = UUID.Zero; url = string.Empty; firstname = "Unknown"; lastname = "User"; secret = string.Empty;
+            uuid = UUID.Zero; url = string.Empty; firstname = "Unknown"; lastname = "UserUPUUI"; secret = string.Empty;
 
             string[] parts = value.Split(';');
             if (parts.Length >= 1)
@@ -2342,6 +2274,114 @@ namespace OpenSim.Framework
         public static string EscapeForLike(string str)
         {
             return str.Replace("_", "\\_").Replace("%", "\\%");
+        }
+    }
+
+    public class DoubleQueue<T> where T:class
+    {
+        private Queue<T> m_lowQueue = new Queue<T>();
+        private Queue<T> m_highQueue = new Queue<T>();
+
+        private object m_syncRoot = new object();
+        private Semaphore m_s = new Semaphore(0, 1);
+
+        public DoubleQueue()
+        {
+        }
+
+        public virtual int Count
+        {
+            get { return m_highQueue.Count + m_lowQueue.Count; }
+        }
+
+        public virtual void Enqueue(T data)
+        {
+            Enqueue(m_lowQueue, data);
+        }
+
+        public virtual void EnqueueLow(T data)
+        {
+            Enqueue(m_lowQueue, data);
+        }
+
+        public virtual void EnqueueHigh(T data)
+        {
+            Enqueue(m_highQueue, data);
+        }
+
+        private void Enqueue(Queue<T> q, T data)
+        {
+            lock (m_syncRoot)
+            {
+                m_lowQueue.Enqueue(data);
+                m_s.WaitOne(0);
+                m_s.Release();
+            }
+        }
+
+        public virtual T Dequeue()
+        {
+            return Dequeue(Timeout.Infinite);
+        }
+
+        public virtual T Dequeue(int tmo)
+        {
+            return Dequeue(TimeSpan.FromMilliseconds(tmo));
+        }
+
+        public virtual T Dequeue(TimeSpan wait)
+        {
+            T res = null;
+
+            if (!Dequeue(wait, ref res))
+                return null;
+
+            return res;
+        }
+
+        public bool Dequeue(int timeout, ref T res)
+        {
+            return Dequeue(TimeSpan.FromMilliseconds(timeout), ref res);
+        }
+
+        public bool Dequeue(TimeSpan wait, ref T res)
+        {
+            if (!m_s.WaitOne(wait))
+                return false;
+
+            lock (m_syncRoot)
+            {
+                if (m_highQueue.Count > 0)
+                    res = m_highQueue.Dequeue();
+                else
+                    res = m_lowQueue.Dequeue();
+
+                if (m_highQueue.Count == 0 && m_lowQueue.Count == 0)
+                    return true;
+
+                try
+                {
+                    m_s.Release();
+                }
+                catch
+                {
+                }
+
+                return true;
+            }
+        }
+
+        public virtual void Clear()
+        {
+
+            lock (m_syncRoot)
+            {
+                // Make sure sem count is 0
+                m_s.WaitOne(0);
+
+                m_lowQueue.Clear();
+                m_highQueue.Clear();
+            }
         }
     }
 }

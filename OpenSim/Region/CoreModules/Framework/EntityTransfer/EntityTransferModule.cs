@@ -243,7 +243,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
         protected virtual void OnNewClient(IClientAPI client)
         {
-            client.OnTeleportHomeRequest += TeleportHome;
+            client.OnTeleportHomeRequest += TriggerTeleportHome;
             client.OnTeleportLandmarkRequest += RequestTeleportLandmark;
 
             if (!DisableInterRegionTeleportCancellation)
@@ -937,6 +937,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             EnableChildAgents(sp);
 
             // Finally, kill the agent we just created at the destination.
+            // XXX: Possibly this should be done asynchronously.
             Scene.SimulationService.CloseAgent(finalDestination, sp.UUID);
         }
 
@@ -1071,7 +1072,12 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
         #region Teleport Home
 
-        public virtual void TeleportHome(UUID id, IClientAPI client)
+        public virtual void TriggerTeleportHome(UUID id, IClientAPI client)     
+        {                                                                       
+            TeleportHome(id, client);                                           
+        }                                                                       
+                          
+        public virtual bool TeleportHome(UUID id, IClientAPI client)
         {
             m_log.DebugFormat(
                 "[ENTITY TRANSFER MODULE]: Request to teleport {0} {1} home", client.Name, client.AgentId);
@@ -1086,7 +1092,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 {
                     // can't find the Home region: Tell viewer and abort
                     client.SendTeleportFailed("Your home region could not be found.");
-                    return;
+                    return false;
                 }
                 
                 m_log.DebugFormat("[ENTITY TRANSFER MODULE]: Home region of {0} is {1} ({2}-{3})",
@@ -1096,6 +1102,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 ((Scene)(client.Scene)).RequestTeleportLocation(
                     client, regionInfo.RegionHandle, uinfo.HomePosition, uinfo.HomeLookAt,
                     (uint)(Constants.TeleportFlags.SetLastToTarget | Constants.TeleportFlags.ViaHome));
+                return true;
             }
             else
             {
@@ -1103,6 +1110,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                     "[ENTITY TRANSFER MODULE]: No grid user information found for {0} {1}.  Cannot send home.",
                     client.Name, client.AgentId);
             }
+            return false;
         }
 
         #endregion
@@ -1474,9 +1482,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                     return agent;
                 }
 
-                //AgentCircuitData circuitdata = m_controllingClient.RequestClientInfo();
-                agent.ControllingClient.RequestClientInfo();
-
                 //m_log.Debug("BEFORE CROSS");
                 //Scene.DumpChildrenSeeds(UUID);
                 //DumpKnownRegions();
@@ -1536,15 +1541,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 agent.CloseChildAgents(neighbourx, neighboury);
 
                 AgentHasMovedAway(agent, false);
-
-//                // the user may change their profile information in other region,
-//                // so the userinfo in UserProfileCache is not reliable any more, delete it
-//                // REFACTORING PROBLEM. Well, not a problem, but this method is HORRIBLE!
-//                if (agent.Scene.NeedSceneCacheClear(agent.UUID))
-//                {
-//                    m_log.DebugFormat(
-//                        "[ENTITY TRANSFER MODULE]: User {0} is going to another region", agent.UUID);
-//                }
     
                 //m_log.Debug("AFTER CROSS");
                 //Scene.DumpChildrenSeeds(UUID);
@@ -2250,6 +2246,9 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 // Need to turn off the physics flags, otherwise the object will continue to attempt to
                 // move out of the region creating an infinite loop of failed attempts to cross
                 grp.UpdatePrimFlags(grp.RootPart.LocalId,false,grp.IsTemporary,grp.IsPhantom,false);
+
+                if (grp.RootPart.KeyframeMotion != null)
+                    grp.RootPart.KeyframeMotion.CrossingFailure();
 
                 grp.ScheduleGroupForFullUpdate();
             }

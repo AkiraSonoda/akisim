@@ -260,7 +260,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                         return UUID.Zero;
                     }
 
-                    remoteClient.SendAgentAlertMessage("Notecard saved", false);
+                    remoteClient.SendAlertMessage("Notecard saved");
                 }
                 else if ((InventoryType)item.InvType == InventoryType.LSL)
                 {
@@ -270,7 +270,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                         return UUID.Zero;
                     }
 
-                    remoteClient.SendAgentAlertMessage("Script saved", false);
+                    remoteClient.SendAlertMessage("Script saved");
                 }
 
                 AssetBase asset =
@@ -357,6 +357,9 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
 
             foreach (SceneObjectGroup objectGroup in objlist)
             {
+                if (objectGroup.RootPart.KeyframeMotion != null)
+                    objectGroup.RootPart.KeyframeMotion.Stop();
+                objectGroup.RootPart.KeyframeMotion = null;
 //                Vector3 inventoryStoredPosition = new Vector3
 //                            (((objectGroup.AbsolutePosition.X > (int)Constants.RegionSize)
 //                                  ? 250
@@ -646,11 +649,12 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                     }
                     else
                     {
-                        if (remoteClient == null || so.OwnerID != remoteClient.AgentId)
+                        if (remoteClient == null || so.RootPart.OwnerID != remoteClient.AgentId)
                         {
                             // Taking copy of another person's item. Take to
                             // Objects folder.
                             folder = m_Scene.InventoryService.GetFolderForType(userID, AssetType.Object);
+                            so.FromFolderID = UUID.Zero;
                         }
                         else
                         {
@@ -666,10 +670,16 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                 //
                 if (action == DeRezAction.Take || action == DeRezAction.TakeCopy)
                 {
-                    if (so.FromFolderID != UUID.Zero && userID == remoteClient.AgentId)
+                    if (so.FromFolderID != UUID.Zero && so.RootPart.OwnerID == remoteClient.AgentId)
                     {
                         InventoryFolderBase f = new InventoryFolderBase(so.FromFolderID, userID);
                         folder = m_Scene.InventoryService.GetFolder(f);
+
+                        if(folder.Type == 14 || folder.Type == 16)
+                        {
+                            // folder.Type = 6;
+                            folder = m_Scene.InventoryService.GetFolderForType(userID, AssetType.Object);
+                        }
                     }
                 }
 

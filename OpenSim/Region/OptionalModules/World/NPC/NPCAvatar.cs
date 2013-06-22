@@ -391,6 +391,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         public event EstateTeleportAllUsersHomeRequest OnEstateTeleportAllUsersHomeRequest;
         public event EstateChangeInfo OnEstateChangeInfo;
         public event EstateManageTelehub OnEstateManageTelehub;
+        public event CachedTextureRequest OnCachedTextureRequest;
         public event ScriptReset OnScriptReset;
         public event GetScriptRunning OnGetScriptRunning;
         public event SetScriptRunning OnSetScriptRunning;
@@ -569,6 +570,11 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         {
         }
 
+        public void SendCachedTextureResponse(ISceneEntity avatar, int serial, List<CachedTextureResponseArg> cachedTextures)
+        {
+
+        }
+
         public virtual void Kick(string message)
         {
         }
@@ -586,7 +592,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
 
         }
 
-        public virtual void SendKillObject(ulong regionHandle, List<uint> localID)
+        public virtual void SendKillObject(List<uint> localID)
         {
         }
 
@@ -620,12 +626,12 @@ namespace OpenSim.Region.OptionalModules.World.NPC
             
         }
 
-        public void SendGenericMessage(string method, List<string> message)
+        public void SendGenericMessage(string method, UUID invoice, List<string> message)
         {
 
         }
 
-        public void SendGenericMessage(string method, List<byte[]> message)
+        public void SendGenericMessage(string method, UUID invoice, List<byte[]> message)
         {
 
         }
@@ -688,7 +694,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         {
         }
 
-        public virtual void SendMoneyBalance(UUID transaction, bool success, byte[] description, int balance)
+        public virtual void SendMoneyBalance(UUID transaction, bool success, byte[] description, int balance, int transactionType, UUID sourceID, bool sourceIsGroup, UUID destID, bool destIsGroup, int amount, string item)
         {
         }
 
@@ -858,11 +864,6 @@ namespace OpenSim.Region.OptionalModules.World.NPC
 
         public void SendObjectPropertiesReply(ISceneEntity entity)
         {
-        }
-
-        public bool AddMoney(int debit)
-        {
-            return false;
         }
 
         public void SendSunPos(Vector3 sunPos, Vector3 sunVel, ulong time, uint dlen, uint ylen, float phase)

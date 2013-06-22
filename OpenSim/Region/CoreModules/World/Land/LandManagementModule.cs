@@ -74,6 +74,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         
         protected IUserManagement m_userManager;
         protected IPrimCountModule m_primCountModule;
+        protected IDialogModule m_Dialog;
 
         // Minimum for parcels to work is 64m even if we don't actually use them.
         #pragma warning disable 0429
@@ -153,6 +154,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
              m_userManager = m_scene.RequestModuleInterface<IUserManagement>();         
              m_primCountModule = m_scene.RequestModuleInterface<IPrimCountModule>();
+             m_Dialog = m_scene.RequestModuleInterface<IDialogModule>();
         }
 
         public void RemoveRegion(Scene scene)
@@ -210,6 +212,10 @@ namespace OpenSim.Region.CoreModules.World.Land
             client.OnParcelInfoRequest += ClientOnParcelInfoRequest;
             client.OnParcelDeedToGroup += ClientOnParcelDeedToGroup;
             client.OnPreAgentUpdate += ClientOnPreAgentUpdate;
+            client.OnParcelEjectUser += ClientOnParcelEjectUser;
+            client.OnParcelFreezeUser += ClientOnParcelFreezeUser;
+            client.OnSetStartLocationRequest += ClientOnSetHome;
+
 
             EntityBase presenceEntity;
             if (m_scene.Entities.TryGetValue(client.AgentId, out presenceEntity) && presenceEntity is ScenePresence)
@@ -1738,6 +1744,135 @@ namespace OpenSim.Region.CoreModules.World.Land
             UpdateLandObject(localID, land.LandData);
         }
         
+        Dictionary<UUID, System.Threading.Timer> Timers = new Dictionary<UUID, System.Threading.Timer>();
+
+        public void ClientOnParcelFreezeUser(IClientAPI client, UUID parcelowner, uint flags, UUID target)
+        {
+            ScenePresence targetAvatar = null;
+            ((Scene)client.Scene).TryGetScenePresence(target, out targetAvatar);
+            ScenePresence parcelManager = null;
+            ((Scene)client.Scene).TryGetScenePresence(client.AgentId, out parcelManager);
+            System.Threading.Timer Timer;
+
+            if (targetAvatar.UserLevel == 0)
+            {
+                ILandObject land = ((Scene)client.Scene).LandChannel.GetLandObject(targetAvatar.AbsolutePosition.X, targetAvatar.AbsolutePosition.Y);
+                if (!((Scene)client.Scene).Permissions.CanEditParcelProperties(client.AgentId, land, GroupPowers.LandEjectAndFreeze))
+                    return;
+                if (flags == 0)
+                {
+                    targetAvatar.AllowMovement = false;
+                    targetAvatar.ControllingClient.SendAlertMessage(parcelManager.Firstname + " " + parcelManager.Lastname + " has frozen you for 30 seconds.  You cannot move or interact with the world.");
+                    parcelManager.ControllingClient.SendAlertMessage("Avatar Frozen.");
+                    System.Threading.TimerCallback timeCB = new System.Threading.TimerCallback(OnEndParcelFrozen);
+                    Timer = new System.Threading.Timer(timeCB, targetAvatar, 30000, 0);
+                    Timers.Add(targetAvatar.UUID, Timer);
+                }
+                else
+                {
+                    targetAvatar.AllowMovement = true;
+                    targetAvatar.ControllingClient.SendAlertMessage(parcelManager.Firstname + " " + parcelManager.Lastname + " has unfrozen you.");
+                    parcelManager.ControllingClient.SendAlertMessage("Avatar Unfrozen.");
+                    Timers.TryGetValue(targetAvatar.UUID, out Timer);
+                    Timers.Remove(targetAvatar.UUID);
+                    Timer.Dispose();
+                }
+            }
+        }
+
+        private void OnEndParcelFrozen(object avatar)
+        {
+            ScenePresence targetAvatar = (ScenePresence)avatar;
+            targetAvatar.AllowMovement = true;
+            System.Threading.Timer Timer;
+            Timers.TryGetValue(targetAvatar.UUID, out Timer);
+            Timers.Remove(targetAvatar.UUID);
+            targetAvatar.ControllingClient.SendAgentAlertMessage("The freeze has worn off; you may go about your business.", false);
+        }
+
+        public void ClientOnParcelEjectUser(IClientAPI client, UUID parcelowner, uint flags, UUID target)
+        {
+            ScenePresence targetAvatar = null;
+            ScenePresence parcelManager = null;
+
+            // Must have presences
+            if (!m_scene.TryGetScenePresence(target, out targetAvatar) ||
+                !m_scene.TryGetScenePresence(client.AgentId, out parcelManager))
+                return;
+
+            // Cannot eject estate managers or gods
+            if (m_scene.Permissions.IsAdministrator(target))
+                return;
+
+            // Check if you even have permission to do this
+            ILandObject land = m_scene.LandChannel.GetLandObject(targetAvatar.AbsolutePosition.X, targetAvatar.AbsolutePosition.Y);
+            if (!m_scene.Permissions.CanEditParcelProperties(client.AgentId, land, GroupPowers.LandEjectAndFreeze) &&
+                !m_scene.Permissions.IsAdministrator(client.AgentId))
+                return;
+            Vector3 pos = m_scene.GetNearestAllowedPosition(targetAvatar, land);
+
+            targetAvatar.TeleportWithMomentum(pos, null);
+            targetAvatar.ControllingClient.SendAlertMessage("You have been ejected by " + parcelManager.Firstname + " " + parcelManager.Lastname);
+            parcelManager.ControllingClient.SendAlertMessage("Avatar Ejected.");
+
+            if ((flags & 1) != 0) // Ban TODO: Remove magic number
+            {
+                LandAccessEntry entry = new LandAccessEntry();
+                entry.AgentID = targetAvatar.UUID;
+                entry.Flags = AccessList.Ban;
+                entry.Expires = 0; // Perm
+
+                land.LandData.ParcelAccessList.Add(entry);
+            }
+        }
+
+        /// <summary>
+        /// Sets the Home Point.   The LoginService uses this to know where to put a user when they log-in
+        /// </summary>
+        /// <param name="remoteClient"></param>
+        /// <param name="regionHandle"></param>
+        /// <param name="position"></param>
+        /// <param name="lookAt"></param>
+        /// <param name="flags"></param>
+        public virtual void ClientOnSetHome(IClientAPI remoteClient, ulong regionHandle, Vector3 position, Vector3 lookAt, uint flags)
+        {
+            // Let's find the parcel in question
+            ILandObject land = landChannel.GetLandObject(position);
+            if (land == null || m_scene.GridUserService == null)
+            {
+                m_Dialog.SendAlertToUser(remoteClient, "Set Home request failed.");
+                return;
+            }
+
+            // Gather some data
+            ulong gpowers = remoteClient.GetGroupPowers(land.LandData.GroupID);
+            SceneObjectGroup telehub = null;
+            if (m_scene.RegionInfo.RegionSettings.TelehubObject != UUID.Zero)
+                // Does the telehub exist in the scene?
+                telehub = m_scene.GetSceneObjectGroup(m_scene.RegionInfo.RegionSettings.TelehubObject);
+
+            // Can the user set home here?
+            if (// (a) gods and land managers can set home
+                m_scene.Permissions.IsAdministrator(remoteClient.AgentId) || 
+                m_scene.Permissions.IsGod(remoteClient.AgentId) ||
+                // (b) land owners can set home
+                remoteClient.AgentId == land.LandData.OwnerID ||
+                // (c) members of the land-associated group in roles that can set home
+                ((gpowers & (ulong)GroupPowers.AllowSetHome) == (ulong)GroupPowers.AllowSetHome) ||
+                // (d) parcels with telehubs can be the home of anyone
+                (telehub != null && land.ContainsPoint((int)telehub.AbsolutePosition.X, (int)telehub.AbsolutePosition.Y)))
+            {
+                if (m_scene.GridUserService.SetHome(remoteClient.AgentId.ToString(), land.RegionUUID, position, lookAt))
+                    // FUBAR ALERT: this needs to be "Home position set." so the viewer saves a home-screenshot.
+                    m_Dialog.SendAlertToUser(remoteClient, "Home position set.");
+                else
+                    m_Dialog.SendAlertToUser(remoteClient, "Set Home request failed.");
+            }
+            else
+                m_Dialog.SendAlertToUser(remoteClient, "You are not allowed to set your home location in this parcel.");
+        }
+
+
         protected void InstallInterfaces()
         {
             Command clearCommand

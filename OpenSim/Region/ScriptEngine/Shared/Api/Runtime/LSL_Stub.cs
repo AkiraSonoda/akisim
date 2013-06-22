@@ -554,6 +554,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
             return m_LSL_Functions.llGetLinkNumberOfSides(link);
         }
 
+        public void llSetKeyframedMotion(LSL_List frames, LSL_List options)
+        {
+            m_LSL_Functions.llSetKeyframedMotion(frames, options);
+        }
+
         public LSL_Integer llGetListEntryType(LSL_List src, int index)
         {
             return m_LSL_Functions.llGetListEntryType(src, index);
@@ -1521,6 +1526,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public void llSetColor(LSL_Vector color, int face)
         {
             m_LSL_Functions.llSetColor(color, face);
+        }
+
+        public void llSetContentType(LSL_Key id, LSL_Integer type)
+        {
+            m_LSL_Functions.llSetContentType(id, type);
         }
 
         public void llSetDamage(double damage)

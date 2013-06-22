@@ -75,11 +75,11 @@ private sealed class BulletBodyUnman : BulletBody
 private sealed class BulletShapeUnman : BulletShape
 {
     public IntPtr ptr;
-    public BulletShapeUnman(IntPtr xx, BSPhysicsShapeType typ) 
+    public BulletShapeUnman(IntPtr xx, BSPhysicsShapeType typ)
         : base()
     {
         ptr = xx;
-        type = typ;
+        shapeType = typ;
     }
     public override bool HasPhysicalShape
     {
@@ -91,7 +91,7 @@ private sealed class BulletShapeUnman : BulletShape
     }
     public override BulletShape Clone()
     {
-        return new BulletShapeUnman(ptr, type);
+        return new BulletShapeUnman(ptr, shapeType);
     }
     public override bool ReferenceSame(BulletShape other)
     {
@@ -251,11 +251,21 @@ public override BulletShape CreateMeshShape(BulletWorld world,
                     BSPhysicsShapeType.SHAPE_MESH);
 }
 
+public override BulletShape CreateGImpactShape(BulletWorld world,
+                int indicesCount, int[] indices,
+                int verticesCount, float[] vertices)
+{
+    BulletWorldUnman worldu = world as BulletWorldUnman;
+    return new BulletShapeUnman(
+                    BSAPICPP.CreateGImpactShape2(worldu.ptr, indicesCount, indices, verticesCount, vertices),
+                    BSPhysicsShapeType.SHAPE_GIMPACT);
+}
+
 public override BulletShape CreateHullShape(BulletWorld world, int hullCount, float[] hulls)
 {
     BulletWorldUnman worldu = world as BulletWorldUnman;
     return new BulletShapeUnman(
-                    BSAPICPP.CreateHullShape2(worldu.ptr, hullCount, hulls), 
+                    BSAPICPP.CreateHullShape2(worldu.ptr, hullCount, hulls),
                     BSPhysicsShapeType.SHAPE_HULL);
 }
 
@@ -266,6 +276,25 @@ public override BulletShape BuildHullShapeFromMesh(BulletWorld world, BulletShap
     return new BulletShapeUnman(
                     BSAPICPP.BuildHullShapeFromMesh2(worldu.ptr, shapeu.ptr, parms),
                     BSPhysicsShapeType.SHAPE_HULL);
+}
+
+public override BulletShape BuildConvexHullShapeFromMesh(BulletWorld world, BulletShape meshShape)
+{
+    BulletWorldUnman worldu = world as BulletWorldUnman;
+    BulletShapeUnman shapeu = meshShape as BulletShapeUnman;
+    return new BulletShapeUnman(
+                    BSAPICPP.BuildConvexHullShapeFromMesh2(worldu.ptr, shapeu.ptr),
+                    BSPhysicsShapeType.SHAPE_CONVEXHULL);
+}
+
+public override BulletShape CreateConvexHullShape(BulletWorld world,
+                int indicesCount, int[] indices,
+                int verticesCount, float[] vertices)
+{
+    BulletWorldUnman worldu = world as BulletWorldUnman;
+    return new BulletShapeUnman(
+                    BSAPICPP.CreateConvexHullShape2(worldu.ptr, indicesCount, indices, verticesCount, vertices),
+                    BSPhysicsShapeType.SHAPE_CONVEXHULL);
 }
 
 public override BulletShape BuildNativeShape(BulletWorld world, ShapeData shapeData)
@@ -356,7 +385,7 @@ public override BulletShape DuplicateCollisionShape(BulletWorld world, BulletSha
 {
     BulletWorldUnman worldu = world as BulletWorldUnman;
     BulletShapeUnman srcShapeu = srcShape as BulletShapeUnman;
-    return new BulletShapeUnman(BSAPICPP.DuplicateCollisionShape2(worldu.ptr, srcShapeu.ptr, id), srcShape.type);
+    return new BulletShapeUnman(BSAPICPP.DuplicateCollisionShape2(worldu.ptr, srcShapeu.ptr, id), srcShape.shapeType);
 }
 
 public override bool DeleteCollisionShape(BulletWorld world, BulletShape shape)
@@ -1407,11 +1436,24 @@ public static extern IntPtr CreateMeshShape2(IntPtr world,
                 int verticesCount, [MarshalAs(UnmanagedType.LPArray)] float[] vertices );
 
 [DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
+public static extern IntPtr CreateGImpactShape2(IntPtr world,
+                int indicesCount, [MarshalAs(UnmanagedType.LPArray)] int[] indices,
+                int verticesCount, [MarshalAs(UnmanagedType.LPArray)] float[] vertices );
+
+[DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
 public static extern IntPtr CreateHullShape2(IntPtr world,
                 int hullCount, [MarshalAs(UnmanagedType.LPArray)] float[] hulls);
 
 [DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
 public static extern IntPtr BuildHullShapeFromMesh2(IntPtr world, IntPtr meshShape, HACDParams parms);
+
+[DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
+public static extern IntPtr BuildConvexHullShapeFromMesh2(IntPtr world, IntPtr meshShape);
+
+[DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
+public static extern IntPtr CreateConvexHullShape2(IntPtr world,
+                int indicesCount, [MarshalAs(UnmanagedType.LPArray)] int[] indices,
+                int verticesCount, [MarshalAs(UnmanagedType.LPArray)] float[] vertices );
 
 [DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
 public static extern IntPtr BuildNativeShape2(IntPtr world, ShapeData shapeData);
@@ -1476,7 +1518,7 @@ public static extern void DestroyObject2(IntPtr sim, IntPtr obj);
 public static extern IntPtr CreateGroundPlaneShape2(uint id, float height, float collisionMargin);
 
 [DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
-public static extern IntPtr CreateTerrainShape2(uint id, Vector3 size, float minHeight, float maxHeight, 
+public static extern IntPtr CreateTerrainShape2(uint id, Vector3 size, float minHeight, float maxHeight,
                                             [MarshalAs(UnmanagedType.LPArray)] float[] heightMap,
                                             float scaleFactor, float collisionMargin);
 

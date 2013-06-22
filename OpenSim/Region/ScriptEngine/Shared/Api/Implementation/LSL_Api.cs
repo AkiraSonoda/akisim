@@ -1480,6 +1480,73 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             m_host.SetFaceColorAlpha(face, color, null);
         }
 
+        public void llSetContentType(LSL_Key id, LSL_Integer type)
+        {
+            m_host.AddScriptLPS(1);
+
+            if (m_UrlModule == null)
+                return;
+
+            // Make sure the content type is text/plain to start with
+            m_UrlModule.HttpContentType(new UUID(id), "text/plain");
+
+            // Is the object owner online and in the region
+            ScenePresence agent = World.GetScenePresence(m_host.ParentGroup.OwnerID);
+            if (agent == null || agent.IsChildAgent)
+                return;  // Fail if the owner is not in the same region
+
+            // Is it the embeded browser?
+            string userAgent = m_UrlModule.GetHttpHeader(new UUID(id), "user-agent");
+            if (userAgent.IndexOf("SecondLife") < 0)
+                return; // Not the embedded browser. Is this check good enough?
+
+            // Use the IP address of the client and check against the request
+            // seperate logins from the same IP will allow all of them to get non-text/plain as long
+            // as the owner is in the region. Same as SL!
+            string logonFromIPAddress = agent.ControllingClient.RemoteEndPoint.Address.ToString();
+            string requestFromIPAddress = m_UrlModule.GetHttpHeader(new UUID(id), "remote_addr");
+            //m_log.Debug("IP from header='" + requestFromIPAddress + "' IP from endpoint='" + logonFromIPAddress + "'");
+            if (requestFromIPAddress == null || requestFromIPAddress.Trim() == "")
+                return;
+            if (logonFromIPAddress == null || logonFromIPAddress.Trim() == "")
+                return;
+
+            // If the request isnt from the same IP address then the request cannot be from the owner
+            if (!requestFromIPAddress.Trim().Equals(logonFromIPAddress.Trim()))
+                return;
+
+            switch (type)
+            {
+                case ScriptBaseClass.CONTENT_TYPE_HTML:
+                    m_UrlModule.HttpContentType(new UUID(id), "text/html");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_XML:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/xml");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_XHTML:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/xhtml+xml");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_ATOM:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/atom+xml");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_JSON:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/json");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_LLSD:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/llsd+xml");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_FORM:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/x-www-form-urlencoded");
+                    break;
+                case ScriptBaseClass.CONTENT_TYPE_RSS:
+                    m_UrlModule.HttpContentType(new UUID(id), "application/rss+xml");
+                    break;
+                default:
+                    m_UrlModule.HttpContentType(new UUID(id), "text/plain");
+                    break;
+            }
+        }
+
         public void SetTexGen(SceneObjectPart part, int face,int style)
         {
             Primitive.TextureEntry tex = part.Shape.Textures;
@@ -2474,9 +2541,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             // send the sound, once, to all clients in range
             if (m_SoundModule != null)
             {
-                m_SoundModule.SendSound(m_host.UUID,
-                        ScriptUtils.GetAssetIdFromKeyOrItemName(m_host, sound, AssetType.Sound), volume, false, 0,
-                        0, false, false);
+                m_SoundModule.SendSound(
+                    m_host.UUID,
+                    ScriptUtils.GetAssetIdFromKeyOrItemName(m_host, sound, AssetType.Sound), 
+                    volume, false, m_host.SoundQueueing ? (byte)SoundFlags.Queue : (byte)SoundFlags.None,
+                    0, false, false);
             }
         }
 
@@ -4649,6 +4718,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
             s = Math.Cos(angle * 0.5);
             t = Math.Sin(angle * 0.5); // temp value to avoid 2 more sin() calcs
+            axis =  LSL_Vector.Norm(axis);
             x = axis.x * t;
             y = axis.y * t;
             z = axis.z * t;
@@ -4656,41 +4726,29 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             return new LSL_Rotation(x,y,z,s);
         }
 
-
-        // Xantor 29/apr/2008
-        // converts a Quaternion to X,Y,Z axis rotations
+        /// <summary>
+        /// Returns the axis of rotation for a quaternion
+        /// </summary>
+        /// <returns></returns>
+        /// <param name='rot'></param>
         public LSL_Vector llRot2Axis(LSL_Rotation rot)
         {
             m_host.AddScriptLPS(1);
-            double x,y,z;
 
-            if (rot.s > 1) // normalization needed
-            {
-                double length = Math.Sqrt(rot.x * rot.x + rot.y * rot.y +
-                        rot.z * rot.z + rot.s * rot.s);
+            if (Math.Abs(rot.s) > 1) // normalization needed
+                rot.Normalize();
 
-                rot.x /= length;
-                rot.y /= length;
-                rot.z /= length;
-                rot.s /= length;
-
-            }
-
-            // double angle = 2 * Math.Acos(rot.s);
             double s = Math.Sqrt(1 - rot.s * rot.s);
             if (s < 0.001)
             {
-                x = 1;
-                y = z = 0;
+                return new LSL_Vector(1, 0, 0);
             }
             else
             {
-                x = rot.x / s; // normalise axis
-                y = rot.y / s;
-                z = rot.z / s;
+                double invS = 1.0 / s;
+                if (rot.s < 0) invS = -invS;
+                return new LSL_Vector(rot.x * invS, rot.y * invS, rot.z * invS);
             }
-
-            return new LSL_Vector(x,y,z);
         }
 
 
@@ -4699,18 +4757,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         {
             m_host.AddScriptLPS(1);
 
-            if (rot.s > 1) // normalization needed
-            {
-                double length = Math.Sqrt(rot.x * rot.x + rot.y * rot.y +
-                        rot.z * rot.z + rot.s * rot.s);
-
-                rot.x /= length;
-                rot.y /= length;
-                rot.z /= length;
-                rot.s /= length;
-            }
+            if (Math.Abs(rot.s) > 1) // normalization needed
+                rot.Normalize();
 
             double angle = 2 * Math.Acos(rot.s);
+            if (angle > Math.PI) 
+                angle = 2 * Math.PI - angle;
 
             return angle;
         }
@@ -7294,6 +7346,143 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
         }
 
+        public void llSetKeyframedMotion(LSL_List frames, LSL_List options)
+        {
+            SceneObjectGroup group = m_host.ParentGroup;
+
+            if (group.RootPart.PhysActor != null && group.RootPart.PhysActor.IsPhysical)
+                return;
+            if (group.IsAttachment)
+                return;
+
+            if (frames.Data.Length > 0) // We are getting a new motion
+            {
+                if (group.RootPart.KeyframeMotion != null)
+                    group.RootPart.KeyframeMotion.Delete();
+                group.RootPart.KeyframeMotion = null;
+
+                int idx = 0;
+
+                KeyframeMotion.PlayMode mode = KeyframeMotion.PlayMode.Forward;
+                KeyframeMotion.DataFormat data = KeyframeMotion.DataFormat.Translation | KeyframeMotion.DataFormat.Rotation;
+
+                while (idx < options.Data.Length)
+                {
+                    int option = (int)options.GetLSLIntegerItem(idx++);
+                    int remain = options.Data.Length - idx;
+
+                    switch (option)
+                    {
+                        case ScriptBaseClass.KFM_MODE:
+                            if (remain < 1)
+                                break;
+                            int modeval = (int)options.GetLSLIntegerItem(idx++);
+                            switch(modeval)
+                            {
+                                case ScriptBaseClass.KFM_FORWARD:
+                                    mode = KeyframeMotion.PlayMode.Forward;
+                                    break;
+                                case ScriptBaseClass.KFM_REVERSE:
+                                    mode = KeyframeMotion.PlayMode.Reverse;
+                                    break;
+                                case ScriptBaseClass.KFM_LOOP:
+                                    mode = KeyframeMotion.PlayMode.Loop;
+                                    break;
+                                case ScriptBaseClass.KFM_PING_PONG:
+                                    mode = KeyframeMotion.PlayMode.PingPong;
+                                    break;
+                            }
+                            break;
+                        case ScriptBaseClass.KFM_DATA:
+                            if (remain < 1)
+                                break;
+                            int dataval = (int)options.GetLSLIntegerItem(idx++);
+                            data = (KeyframeMotion.DataFormat)dataval;
+                            break;
+                    }
+                }
+
+                group.RootPart.KeyframeMotion = new KeyframeMotion(group, mode, data);
+
+                idx = 0;
+
+                int elemLength = 2;
+                if (data == (KeyframeMotion.DataFormat.Translation | KeyframeMotion.DataFormat.Rotation))
+                    elemLength = 3;
+
+                List<KeyframeMotion.Keyframe> keyframes = new List<KeyframeMotion.Keyframe>();
+                while (idx < frames.Data.Length)
+                {
+                    int remain = frames.Data.Length - idx;
+
+                    if (remain < elemLength)
+                        break;
+
+                    KeyframeMotion.Keyframe frame = new KeyframeMotion.Keyframe();
+                    frame.Position = null;
+                    frame.Rotation = null;
+
+                    if ((data & KeyframeMotion.DataFormat.Translation) != 0)
+                    {
+                        LSL_Types.Vector3 tempv = frames.GetVector3Item(idx++);
+                        frame.Position = new Vector3((float)tempv.x, (float)tempv.y, (float)tempv.z);
+                    }
+                    if ((data & KeyframeMotion.DataFormat.Rotation) != 0)
+                    {
+                        LSL_Types.Quaternion tempq = frames.GetQuaternionItem(idx++);
+                        Quaternion q = new Quaternion((float)tempq.x, (float)tempq.y, (float)tempq.z, (float)tempq.s);
+                        q.Normalize();
+                        frame.Rotation = q;
+                    }
+
+                    float tempf = (float)frames.GetLSLFloatItem(idx++);
+                    frame.TimeMS = (int)(tempf * 1000.0f);
+
+                    keyframes.Add(frame);
+                }
+
+                group.RootPart.KeyframeMotion.SetKeyframes(keyframes.ToArray());
+                group.RootPart.KeyframeMotion.Start();
+            }
+            else
+            {
+                if (group.RootPart.KeyframeMotion == null)
+                    return;
+
+                if (options.Data.Length == 0)
+                {
+                    group.RootPart.KeyframeMotion.Stop();
+                    return;
+                }
+
+                int idx = 0;
+
+                while (idx < options.Data.Length)
+                {
+                    int option = (int)options.GetLSLIntegerItem(idx++);
+
+                    switch (option)
+                    {
+                        case ScriptBaseClass.KFM_COMMAND:
+                            int cmd = (int)options.GetLSLIntegerItem(idx++);
+                            switch (cmd)
+                            {
+                                case ScriptBaseClass.KFM_CMD_PLAY:
+                                    group.RootPart.KeyframeMotion.Start();
+                                    break;
+                                case ScriptBaseClass.KFM_CMD_STOP:
+                                    group.RootPart.KeyframeMotion.Stop();
+                                    break;
+                                case ScriptBaseClass.KFM_CMD_PAUSE:
+                                    group.RootPart.KeyframeMotion.Pause();
+                                    break;
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+
         protected LSL_List SetPrimParams(SceneObjectPart part, LSL_List rules, string originFunc, ref uint rulesParsed)
         {
             int idx = 0;
@@ -7601,7 +7790,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                  return null;
 
                              string ph = rules.Data[idx++].ToString();
-                             m_host.ParentGroup.ScriptSetPhantomStatus(ph.Equals("1"));
+                             part.ParentGroup.ScriptSetPhantomStatus(ph.Equals("1"));
 
                              break;
 
@@ -7640,7 +7829,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 return null;
                             string temp = rules.Data[idx++].ToString();
 
-                            m_host.ParentGroup.ScriptSetTemporaryStatus(temp.Equals("1"));
+                            part.ParentGroup.ScriptSetTemporaryStatus(temp.Equals("1"));
 
                             break;
 
@@ -11822,7 +12011,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         public void llSetSoundQueueing(int queue)
         {
             m_host.AddScriptLPS(1);
-            NotImplemented("llSetSoundQueueing");
+
+            if (m_SoundModule != null)
+                m_SoundModule.SetSoundQueueing(m_host.UUID, queue == ScriptBaseClass.TRUE.value);
         }
 
         public void llCollisionSprite(string impact_sprite)

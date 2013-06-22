@@ -732,9 +732,12 @@ namespace OpenSim.Data.SQLite
                             }
 
                             SceneObjectGroup group = new SceneObjectGroup(prim);
+                            
                             createdObjects.Add(group.UUID, group);
                             retvals.Add(group);
                             LoadItems(prim);
+
+                           
                         }
                     }
                     catch (Exception e)
@@ -1241,6 +1244,7 @@ namespace OpenSim.Data.SQLite
             createCol(prims, "Friction", typeof(Double));
             createCol(prims, "Restitution", typeof(Double));
 
+            createCol(prims, "KeyframeMotion", typeof(Byte[]));
             // Add in contraints
             prims.PrimaryKey = new DataColumn[] { prims.Columns["UUID"] };
 
@@ -1736,6 +1740,20 @@ namespace OpenSim.Data.SQLite
             prim.Friction = Convert.ToSingle(row["Friction"]);
             prim.Restitution = Convert.ToSingle(row["Restitution"]);
 
+            
+            if (!(row["KeyframeMotion"] is DBNull))
+            {
+                Byte[] data = (byte[])row["KeyframeMotion"];
+                if (data.Length > 0)
+                    prim.KeyframeMotion = KeyframeMotion.FromData(null, data);
+                else
+                    prim.KeyframeMotion = null;
+            }
+            else
+            {
+                prim.KeyframeMotion = null;
+            }
+            
             return prim;
         }
 
@@ -2168,6 +2186,13 @@ namespace OpenSim.Data.SQLite
             row["GravityModifier"] = (double)prim.GravityModifier;
             row["Friction"] = (double)prim.Friction;
             row["Restitution"] = (double)prim.Restitution;
+
+            if (prim.KeyframeMotion != null)
+                row["KeyframeMotion"] = prim.KeyframeMotion.Serialize();
+            else
+                row["KeyframeMotion"] = new Byte[0];
+            
+            
         }
 
         /// <summary>

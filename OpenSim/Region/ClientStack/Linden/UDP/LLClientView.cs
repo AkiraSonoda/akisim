@@ -83,6 +83,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event ModifyTerrain OnModifyTerrain;
         public event Action<IClientAPI> OnRegionHandShakeReply;
         public event GenericCall1 OnRequestWearables;
+        public event CachedTextureRequest OnCachedTextureRequest;
         public event SetAppearance OnSetAppearance;
         public event AvatarNowWearing OnAvatarNowWearing;
         public event RezSingleAttachmentFromInv OnRezSingleAttachmentFromInv;
@@ -321,7 +322,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         private readonly byte[] m_channelVersion = Utils.EmptyBytes;
         private readonly IGroupsModule m_GroupsModule;
 
-        private int m_cachedTextureSerial;
         private PriorityQueue m_entityUpdates;
         private PriorityQueue m_entityProps;
         private Prioritizer m_prioritizer;
@@ -345,7 +345,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
 //        protected HashSet<uint> m_attachmentsSent;
 
-        private int m_moneyBalance;
         private int m_animationSequenceNumber = 1;
         private bool m_SendLogoutPacketWhenClosing = true;
 
@@ -420,7 +419,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public string Name { get { return FirstName + " " + LastName; } }
 
         public uint CircuitCode { get { return m_circuitCode; } }
-        public int MoneyBalance { get { return m_moneyBalance; } }
         public int NextAnimationSequenceNumber { get { return m_animationSequenceNumber++; } }
 
         /// <summary>
@@ -483,7 +481,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             m_firstName = sessionInfo.LoginInfo.First;
             m_lastName = sessionInfo.LoginInfo.Last;
             m_startpos = sessionInfo.LoginInfo.StartPos;
-            m_moneyBalance = 1000;
 
             m_udpServer = udpServer;
             m_udpClient = udpClient;
@@ -791,10 +788,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             handshake.RegionInfo3.ColoName = Utils.EmptyBytes;
             handshake.RegionInfo3.ProductName = Util.StringToBytes256(regionInfo.RegionType);
             handshake.RegionInfo3.ProductSKU = Utils.EmptyBytes;
-            handshake.RegionInfo4 = new RegionHandshakePacket.RegionInfo4Block[0];
-            
+
+            handshake.RegionInfo4 = new RegionHandshakePacket.RegionInfo4Block[1];
+            handshake.RegionInfo4[0] = new RegionHandshakePacket.RegionInfo4Block();
+            handshake.RegionInfo4[0].RegionFlagsExtended = args.regionFlags;
+            handshake.RegionInfo4[0].RegionProtocols = 0; // 1 here would indicate that SSB is supported
+
             OutPacket(handshake, ThrottleOutPacketType.Task);
         }
+
 
         public void MoveAgentIntoRegion(RegionInfo regInfo, Vector3 pos, Vector3 look)
         {
@@ -895,9 +897,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
         }
 
-        public void SendGenericMessage(string method, List<string> message)
+        public void SendGenericMessage(string method, UUID invoice, List<string> message)
         {
             GenericMessagePacket gmp = new GenericMessagePacket();
+
+            gmp.AgentData.AgentID = AgentId;
+            gmp.AgentData.SessionID = m_sessionId;
+            gmp.AgentData.TransactionID = invoice;
+
             gmp.MethodData.Method = Util.StringToBytes256(method);
             gmp.ParamList = new GenericMessagePacket.ParamListBlock[message.Count];
             int i = 0;
@@ -910,9 +917,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             OutPacket(gmp, ThrottleOutPacketType.Task);
         }
 
-        public void SendGenericMessage(string method, List<byte[]> message)
+        public void SendGenericMessage(string method, UUID invoice, List<byte[]> message)
         {
             GenericMessagePacket gmp = new GenericMessagePacket();
+
+            gmp.AgentData.AgentID = AgentId;
+            gmp.AgentData.SessionID = m_sessionId;
+            gmp.AgentData.TransactionID = invoice;
+
             gmp.MethodData.Method = Util.StringToBytes256(method);
             gmp.ParamList = new GenericMessagePacket.ParamListBlock[message.Count];
             int i = 0;
@@ -1523,7 +1535,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             OutPacket(tpProgress, ThrottleOutPacketType.Unknown);
         }
 
-        public void SendMoneyBalance(UUID transaction, bool success, byte[] description, int balance)
+        public void SendMoneyBalance(UUID transaction, bool success, byte[] description, int balance, int transactionType, UUID sourceID, bool sourceIsGroup, UUID destID, bool destIsGroup, int amount, string item)
         {
             MoneyBalanceReplyPacket money = (MoneyBalanceReplyPacket)PacketPool.Instance.GetPacket(PacketType.MoneyBalanceReply);
             money.MoneyData.AgentID = AgentId;
@@ -1531,7 +1543,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             money.MoneyData.TransactionSuccess = success;
             money.MoneyData.Description = description;
             money.MoneyData.MoneyBalance = balance;
-            money.TransactionInfo.ItemDescription = Util.StringToBytes256("NONE");
+            money.TransactionInfo.TransactionType = transactionType;
+            money.TransactionInfo.SourceID = sourceID;
+            money.TransactionInfo.IsSourceGroup = sourceIsGroup;
+            money.TransactionInfo.DestID = destID;
+            money.TransactionInfo.IsDestGroup = destIsGroup;
+            money.TransactionInfo.Amount = amount;
+            money.TransactionInfo.ItemDescription = Util.StringToBytes256(item);
+
             OutPacket(money, ThrottleOutPacketType.Task);
         }
 
@@ -1573,7 +1592,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             OutPacket(pc, ThrottleOutPacketType.Unknown);
         }
 
-        public void SendKillObject(ulong regionHandle, List<uint> localIDs)
+        public void SendKillObject(List<uint> localIDs)
         {
 //            m_log.DebugFormat("[CLIENT]: Sending KillObjectPacket to {0} for {1} in {2}", Name, localID, regionHandle);
 
@@ -2264,6 +2283,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <returns></returns>
         public AgentAlertMessagePacket BuildAgentAlertPacket(string message, bool modal)
         {
+            // Prepend a slash to make the message come up in the top right
+            // again.
+            // Allow special formats to be sent from aware modules.
+            if (!modal && !message.StartsWith("ALERT: ") && !message.StartsWith("NOTIFY: ") && message != "Home position set." && message != "You died and have been teleported to your home location")
+                message = "/" + message;
             AgentAlertMessagePacket alertPack = (AgentAlertMessagePacket)PacketPool.Instance.GetPacket(PacketType.AgentAlertMessage);
             alertPack.AgentData.AgentID = AgentId;
             alertPack.AlertData.Message = Util.StringToBytes256(message);
@@ -4804,7 +4828,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void SendForceClientSelectObjects(List<uint> ObjectIDs)
         {
-            m_log.WarnFormat("[LLCLIENTVIEW] sending select with {0} objects", ObjectIDs.Count);
+//            m_log.DebugFormat("[LLCLIENTVIEW] sending select with {0} objects", ObjectIDs.Count);
             
             bool firstCall = true;
             const int MAX_OBJECTS_PER_PACKET = 251;
@@ -6199,7 +6223,16 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     if (appear.ObjectData.TextureEntry.Length > 1)
                         te = new Primitive.TextureEntry(appear.ObjectData.TextureEntry, 0, appear.ObjectData.TextureEntry.Length);
 
-                    handlerSetAppearance(sender, te, visualparams);
+                    List<CachedTextureRequestArg> hashes = new List<CachedTextureRequestArg>();
+                    for (int i = 0; i < appear.WearableData.Length; i++)
+                    {
+                        CachedTextureRequestArg arg = new CachedTextureRequestArg();
+                        arg.BakedTextureIndex = appear.WearableData[i].TextureIndex;
+                        arg.WearableHashID = appear.WearableData[i].CacheID;
+                        hashes.Add(arg);
+                    }
+
+                    handlerSetAppearance(sender, te, visualparams, hashes);
                 }
                 catch (Exception e)
                 {
@@ -9667,7 +9700,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             EconomyDataRequest handlerEconomoyDataRequest = OnEconomyDataRequest;
             if (handlerEconomoyDataRequest != null)
             {
-                handlerEconomoyDataRequest(AgentId);
+                handlerEconomoyDataRequest(this);
             }
             return true;
         }
@@ -11447,8 +11480,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         }
 
         /// <summary>
-        /// Send a response back to a client when it asks the asset server (via the region server) if it has
-        /// its appearance texture cached.
         /// </summary>
         /// <remarks>
         /// At the moment, we always reply that there is no cached texture.
@@ -11458,33 +11489,71 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <returns></returns>
         protected bool HandleAgentTextureCached(IClientAPI simclient, Packet packet)
         {
-            //m_log.Debug("texture cached: " + packet.ToString());
             AgentCachedTexturePacket cachedtex = (AgentCachedTexturePacket)packet;
-            AgentCachedTextureResponsePacket cachedresp = (AgentCachedTextureResponsePacket)PacketPool.Instance.GetPacket(PacketType.AgentCachedTextureResponse);
 
             if (cachedtex.AgentData.SessionID != SessionId)
                 return false;
 
-            // TODO: don't create new blocks if recycling an old packet
-            cachedresp.AgentData.AgentID = AgentId;
-            cachedresp.AgentData.SessionID = m_sessionId;
-            cachedresp.AgentData.SerialNum = m_cachedTextureSerial;
-            m_cachedTextureSerial++;
-            cachedresp.WearableData =
-                new AgentCachedTextureResponsePacket.WearableDataBlock[cachedtex.WearableData.Length];
+            List<CachedTextureRequestArg> requestArgs = new List<CachedTextureRequestArg>();
 
             for (int i = 0; i < cachedtex.WearableData.Length; i++)
             {
+                CachedTextureRequestArg arg = new CachedTextureRequestArg();
+                arg.BakedTextureIndex = cachedtex.WearableData[i].TextureIndex;
+                arg.WearableHashID = cachedtex.WearableData[i].ID;
+                
+                requestArgs.Add(arg);
+            }
+
+            try
+            {
+                CachedTextureRequest handlerCachedTextureRequest = OnCachedTextureRequest;
+                if (handlerCachedTextureRequest != null)
+                {
+                    handlerCachedTextureRequest(simclient,cachedtex.AgentData.SerialNum,requestArgs);
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("[CLIENT VIEW]: AgentTextureCached packet handler threw an exception, {0}", e);
+                return false;
+            }
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// Send a response back to a client when it asks the asset server (via the region server) if it has
+        /// its appearance texture cached.
+        /// </summary>
+        /// <param name="avatar"></param>
+        /// <param name="serial"></param>
+        /// <param name="cachedTextures"></param>
+        /// <returns></returns>
+        public void SendCachedTextureResponse(ISceneEntity avatar, int serial, List<CachedTextureResponseArg> cachedTextures)
+        {
+            ScenePresence presence = avatar as ScenePresence;
+            if (presence == null)
+                return;
+
+            AgentCachedTextureResponsePacket cachedresp = (AgentCachedTextureResponsePacket)PacketPool.Instance.GetPacket(PacketType.AgentCachedTextureResponse);
+
+            // TODO: don't create new blocks if recycling an old packet
+            cachedresp.AgentData.AgentID = m_agentId;
+            cachedresp.AgentData.SessionID = m_sessionId;
+            cachedresp.AgentData.SerialNum = serial;
+            cachedresp.WearableData = new AgentCachedTextureResponsePacket.WearableDataBlock[cachedTextures.Count];
+
+            for (int i = 0; i < cachedTextures.Count; i++)
+            {
                 cachedresp.WearableData[i] = new AgentCachedTextureResponsePacket.WearableDataBlock();
-                cachedresp.WearableData[i].TextureIndex = cachedtex.WearableData[i].TextureIndex;
-                cachedresp.WearableData[i].TextureID = UUID.Zero;
+                cachedresp.WearableData[i].TextureIndex = (byte)cachedTextures[i].BakedTextureIndex;
+                cachedresp.WearableData[i].TextureID = cachedTextures[i].BakedTextureID;
                 cachedresp.WearableData[i].HostName = new byte[0];
             }
 
             cachedresp.Header.Zerocoded = true;
             OutPacket(cachedresp, ThrottleOutPacketType.Task);
-
-            return true;
         }
 
         protected bool HandleMultipleObjUpdate(IClientAPI simClient, Packet packet)
@@ -11512,8 +11581,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     if (part == null)
                     {
                         // It's a ghost! tell the client to delete it from view.
-                        simClient.SendKillObject(Scene.RegionInfo.RegionHandle,
-                                                 new List<uint> { localId });
+                        simClient.SendKillObject(new List<uint> { localId });
                     }
                     else
                     {
@@ -11872,17 +11940,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
             
             m_udpServer.SendPacket(m_udpClient, packet, throttlePacketType, doAutomaticSplitting, method);
-        }
-
-        public bool AddMoney(int debit)
-        {
-            if (m_moneyBalance + debit >= 0)
-            {
-                m_moneyBalance += debit;
-                SendMoneyBalance(UUID.Zero, true, Util.StringToBytes256("Poof Poof!"), m_moneyBalance);
-                return true;
-            }
-            return false;
         }
 
         protected void HandleAutopilot(Object sender, string method, List<String> args)

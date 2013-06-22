@@ -660,6 +660,7 @@ namespace OpenSim.Region.OptionalModules.Agent.InternetRelayClientView.Server
         public event BakeTerrain OnBakeTerrain;
         public event EstateChangeInfo OnEstateChangeInfo;
         public event EstateManageTelehub OnEstateManageTelehub;
+        public event CachedTextureRequest OnCachedTextureRequest;
         public event SetAppearance OnSetAppearance;
         public event AvatarNowWearing OnAvatarNowWearing;
         public event RezSingleAttachmentFromInv OnRezSingleAttachmentFromInv;
@@ -906,7 +907,7 @@ namespace OpenSim.Region.OptionalModules.Agent.InternetRelayClientView.Server
             // Mimicking LLClientView which gets always set appearance from client.
             AvatarAppearance appearance;
             m_scene.GetAvatarAppearance(this, out appearance);
-            OnSetAppearance(this, appearance.Texture, (byte[])appearance.VisualParams.Clone());
+            OnSetAppearance(this, appearance.Texture, (byte[])appearance.VisualParams.Clone(), new List<CachedTextureRequestArg>());
         }
 
         public void SendRegionHandshake(RegionInfo regionInfo, RegionHandshakeArgs args)
@@ -938,13 +939,18 @@ namespace OpenSim.Region.OptionalModules.Agent.InternetRelayClientView.Server
         {
             
         }
+        
+        public void SendCachedTextureResponse(ISceneEntity avatar, int serial, List<CachedTextureResponseArg> cachedTextures)
+        {
 
+        }
+        
         public void SendStartPingCheck(byte seq)
         {
             
         }
 
-        public void SendKillObject(ulong regionHandle, List<uint> localID)
+        public void SendKillObject(List<uint> localID)
         {
             
         }
@@ -971,12 +977,12 @@ namespace OpenSim.Region.OptionalModules.Agent.InternetRelayClientView.Server
             // TODO
         }
 
-        public void SendGenericMessage(string method, List<string> message)
+        public void SendGenericMessage(string method, UUID invoice, List<string> message)
         {
 
         }
 
-        public void SendGenericMessage(string method, List<byte[]> message)
+        public void SendGenericMessage(string method, UUID invoice, List<byte[]> message)
         {
             
         }
@@ -1050,7 +1056,7 @@ namespace OpenSim.Region.OptionalModules.Agent.InternetRelayClientView.Server
         {
         }
 
-        public void SendMoneyBalance(UUID transaction, bool success, byte[] description, int balance)
+        public void SendMoneyBalance(UUID transaction, bool success, byte[] description, int balance, int transactionType, UUID sourceID, bool sourceIsGroup, UUID destID, bool destIsGroup, int amount, string item)
         {
             
         }
@@ -1188,11 +1194,6 @@ namespace OpenSim.Region.OptionalModules.Agent.InternetRelayClientView.Server
         public void SendDialog(string objectname, UUID objectID, UUID ownerID, string ownerFirstName, string ownerLastName, string msg, UUID textureID, int ch, string[] buttonlabels)
         {
             
-        }
-
-        public bool AddMoney(int debit)
-        {
-            return true;
         }
 
         public void SendSunPos(Vector3 sunPos, Vector3 sunVel, ulong CurrentTime, uint SecondsPerSunCycle, uint SecondsPerYear, float OrbitalPosition)

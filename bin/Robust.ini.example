@@ -13,19 +13,21 @@
 ; * [[<ConfigName>@]<port>/]<dll name>[:<class name>]
 ; *
 [Startup]
+  ; Place to create a PID file
+  ; If no path if specified then a PID file is not created.
+  ; PIDFile = "/tmp/my.pid"
 
-	; Plugin Registry Location
-	; Set path to directory for plugin registry. Information
-	; about the registered repositories and installed plugins
-	; will be stored here
-	; The Robust.exe process must hvae R/W access to the location 
-	RegistryLocation = "."
+  ; Plugin Registry Location
+  ; Set path to directory for plugin registry. Information
+  ; about the registered repositories and installed plugins
+  ; will be stored here
+  ; The Robust.exe process must have R/W access to the location 
+  RegistryLocation = "."
 
-
-	; Modular configurations
-	; Set path to directory for modular ini files...
-	; The Robust.exe process must hvae R/W access to the location 
-	ConfigDirectory = "/home/opensim/etc/Configs"
+  ; Modular configurations
+  ; Set path to directory for modular ini files...
+  ; The Robust.exe process must have R/W access to the location 
+  ConfigDirectory = "."
 
 [ServiceList]
 AssetServiceConnector = "8003/OpenSim.Server.Handlers.dll:AssetServiceConnector"
@@ -49,6 +51,8 @@ MapGetServiceConnector = "8002/OpenSim.Server.Handlers.dll:MapGetServiceConnecto
 ;; Uncomment this if you want Groups V2 to work
 ;GroupsServiceConnector = "8003/OpenSim.Addons.Groups.dll:GroupsServiceRobustConnector"
 
+;; Uncomment for UserProfiles see [UserProfilesService] to configure...
+; UserProfilesServiceConnector = "8002/OpenSim.Server.Handlers.dll:UserProfilesConnector"
 
 ; * This is common for all services, it's the network setup for the entire
 ; * server instance, if none is specified above
@@ -270,6 +274,9 @@ MapGetServiceConnector = "8002/OpenSim.Server.Handlers.dll:MapGetServiceConnecto
     ; Ask co-operative viewers to use a different currency name
     ;Currency = ""
 
+    ;; Set minimum fee to publish classified
+    ; ClassifiedFee = 0
+
     WelcomeMessage = "Welcome, Avatar!"
     AllowRemoteSetLoginLevel = "false"
 
@@ -285,6 +292,12 @@ MapGetServiceConnector = "8002/OpenSim.Server.Handlers.dll:MapGetServiceConnecto
     ;
     ; For V2/V3 webapp authentication SSO
     ; OpenIDServerURL = "http://127.0.0.1/openid/openidserver/"
+
+    ; For V3 destination guide
+    ; DestinationGuide = "http://127.0.0.1/guide"
+
+    ; For V3 avatar picker (( work in progress ))
+    ; AvatarPicker = "http://127.0.0.1/avatars"
 
     ; If you run this login server behind a proxy, set this to true
     ; HasProxy = false
@@ -382,5 +395,14 @@ MapGetServiceConnector = "8002/OpenSim.Server.Handlers.dll:MapGetServiceConnecto
 
     ; password help: optional: page providing password assistance for users of your grid
     ;password = http://127.0.0.1/password
+
+[UserProfilesService]
+    LocalServiceModule = "OpenSim.Services.UserProfilesService.dll:UserProfilesService"
+    Enabled = false
+    ;; Configure this for separate profiles database
+    ;; ConnectionString = "Data Source=localhost;Database=opensim;User ID=opensim;Password=*****;Old Guids=true;"
+    ;; Realm = UserProfiles
+    UserAccountService = OpenSim.Services.UserAccountService.dll:UserAccountService
+    AuthenticationServiceModule = "OpenSim.Services.AuthenticationService.dll:PasswordAuthenticationService"
 
 

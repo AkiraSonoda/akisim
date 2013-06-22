@@ -338,6 +338,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void llSetCameraParams(LSL_List rules);
               void llSetClickAction(int action);
               void llSetColor(LSL_Vector color, int face);
+              void llSetContentType(LSL_Key id, LSL_Integer type);
               void llSetDamage(double damage);
               void llSetForce(LSL_Vector force, int local);
               void llSetForceAndTorque(LSL_Vector force, LSL_Vector torque, int local);
@@ -427,6 +428,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void print(string str);
 
               void SetPrimitiveParamsEx(LSL_Key prim, LSL_List rules, string originFunc);
+              void llSetKeyframedMotion(LSL_List frames, LSL_List options);
           LSL_List GetPrimitiveParamsEx(LSL_Key prim, LSL_List rules);
     }
 }

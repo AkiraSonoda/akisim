@@ -54,7 +54,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public new void Initialise(IConfigSource config)
         {
-            string umanmod = config.Configs["Modules"].GetString("UserManagementModule", Name);
+            string umanmod = config.Configs["Modules"].GetString("UserManagementModule", null);
             if (umanmod == Name)
             {
                 m_Enabled = true;
@@ -70,7 +70,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         #endregion ISharedRegionModule
 
-        protected override void AddAdditionalUsers(UUID avatarID, string query, List<UserData> users)
+        protected override void AddAdditionalUsers(string query, List<UserData> users)
         {
             if (query.Contains("@"))  // First.Last@foo.com, maybe?
             {

@@ -187,6 +187,7 @@ namespace OpenSim.Capabilities.Handlers
 
                             newTexture.Flags = AssetFlags.Collectable;
                             newTexture.Temporary = true;
+                            newTexture.Local = true;
                             m_assetService.Store(newTexture);
                             WriteTextureData(httpRequest, httpResponse, newTexture, format);
                             return true;

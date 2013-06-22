@@ -89,8 +89,8 @@ public class BSActorSetForce : BSActor
     // The object's physical representation is being rebuilt so pick up any physical dependencies (constraints, ...).
     //     Register a prestep action to restore physical requirements before the next simulation step.
     // Called at taint-time.
-    // BSActor.RemoveBodyDependencies()
-    public override void RemoveBodyDependencies()
+    // BSActor.RemoveDependencies()
+    public override void RemoveDependencies()
     {
         // Nothing to do for the hoverer since it is all software at pre-step action time.
     }
@@ -101,7 +101,7 @@ public class BSActorSetForce : BSActor
         if (m_forceMotor == null)
         {
             // A fake motor that might be used someday
-            m_forceMotor = new BSFMotor("setForce", 1f, 1f, 1f, 1f);
+            m_forceMotor = new BSFMotor("setForce", 1f, 1f, 1f);
 
             m_physicsScene.BeforeStep += Mover;
         }

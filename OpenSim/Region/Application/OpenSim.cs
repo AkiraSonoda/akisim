@@ -382,7 +382,7 @@ namespace OpenSim
                                           "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", HandleShowKPI);
         }
 
-        public override void ShutdownSpecific()
+        protected override void ShutdownSpecific()
         {
             if (m_shutdownCommandsFile != String.Empty)
             {
