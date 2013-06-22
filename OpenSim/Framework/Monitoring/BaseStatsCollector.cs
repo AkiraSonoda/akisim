@@ -49,7 +49,7 @@ namespace OpenSim.Framework.Monitoring
                     Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
             s_log.DebugFormat(
                 	"[MEMORY] OpenSim object memory churn : {0} MB/s",
-                	Math.Round((MemoryWatchdog.AverageMemoryChurn * 1000) / 1024.0 / 1024, 3));
+                	Math.Round((MemoryWatchdog.AverageHeapAllocationRate * 1000) / 1024.0 / 1024, 3));
             s_log.DebugFormat(
                     "[MEMORY] Process memory              : {0} MB",
                     Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));

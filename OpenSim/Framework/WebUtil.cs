@@ -149,8 +149,8 @@ namespace OpenSim.Framework
             {
                 string output;
 
-                if (DebugLevel == 5)
-                {
+                if (m_log.IsDebugEnabled)                
+				{
                     const int sampleLength = 80;
                     char[] sampleChars = new char[sampleLength];
                     reader.Read(sampleChars, 0, sampleLength);
@@ -167,7 +167,7 @@ namespace OpenSim.Framework
 
         public static void LogOutgoingDetail(string output)
         {
-            if (DebugLevel == 5)
+            if (m_log.IsDebugEnabled)
             {
                 output = output.Substring(0, 80);
                 output = output + "...";
@@ -205,7 +205,7 @@ namespace OpenSim.Framework
                 {
                     strBuffer = OSDParser.SerializeJsonString(data);
 
-                    if (DebugLevel >= 5)
+                    if (m_log.IsDebugEnabled)
                         LogOutgoingDetail(strBuffer);
 
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(strBuffer);
@@ -387,7 +387,7 @@ namespace OpenSim.Framework
                 {
                     queryString = BuildQueryString(data);
 
-                    if (DebugLevel >= 5)
+                    if (m_log.IsDebugEnabled)
                         LogOutgoingDetail(queryString);
 
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(queryString);
@@ -800,7 +800,7 @@ namespace OpenSim.Framework
                 int length = (int)buffer.Length;
                 request.ContentLength = length;
 
-                if (WebUtil.DebugLevel >= 5)
+                if (m_log.IsDebugEnabled)
                     WebUtil.LogOutgoingDetail(buffer);
 
                 request.BeginGetRequestStream(delegate(IAsyncResult res)
@@ -990,7 +990,7 @@ namespace OpenSim.Framework
                     length = (int)obj.Length;
                     request.ContentLength = length;
 
-                    if (WebUtil.DebugLevel >= 5)
+                    if (m_log.IsDebugEnabled)
                         WebUtil.LogOutgoingDetail(buffer);
 
                     Stream requestStream = null;
@@ -1135,7 +1135,7 @@ namespace OpenSim.Framework
                 int length = (int)buffer.Length;
                 request.ContentLength = length;
 
-                if (WebUtil.DebugLevel >= 5)
+                if (m_log.IsDebugEnabled)
                     WebUtil.LogOutgoingDetail(buffer);
 
                 Stream requestStream = null;
