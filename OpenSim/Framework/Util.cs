@@ -142,6 +142,12 @@ namespace OpenSim.Framework
         public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.SmartThreadPool;
         public static FireAndForgetMethod FireAndForgetMethod = DefaultFireAndForgetMethod;
 
+	public static bool IsPlatformMono
+        {
+            get { return Type.GetType("Mono.Runtime") != null; }
+        }
+
+
 
 			public static string HexDump(byte[] bytes, int bytesPerLine = 16)
 			{
@@ -1391,7 +1397,7 @@ namespace OpenSim.Framework
                     ru = "OSX/Mono";
                 else
                 {
-                    if (Type.GetType("Mono.Runtime") != null)
+                    if (IsPlatformMono)
                         ru = "Win/Mono";
                     else
                         ru = "Win/.NET";
@@ -2377,7 +2383,7 @@ namespace OpenSim.Framework
             {
                 if (m_highQueue.Count > 0)
                     res = m_highQueue.Dequeue();
-                else
+                else if (m_lowQueue.Count > 0)
                     res = m_lowQueue.Dequeue();
 
                 if (m_highQueue.Count == 0 && m_lowQueue.Count == 0)

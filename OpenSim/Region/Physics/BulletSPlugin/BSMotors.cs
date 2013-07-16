@@ -144,7 +144,6 @@ public class BSVMotor : BSMotor
 
         Vector3 correction = Vector3.Zero;
         Vector3 error = TargetValue - CurrentValue;
-        LastError = error;
         if (!ErrorIsZero(error))
         {
             correction = StepError(timeStep, error);
@@ -179,6 +178,7 @@ public class BSVMotor : BSMotor
             MDetailLog("{0},  BSVMotor.Step,zero,{1},origTgt={2},origCurr={3},currTgt={4},currCurr={5}",
                         BSScene.DetailLogZero, UseName, origCurrVal, origTarget, TargetValue, CurrentValue);
         }
+        LastError = error;
 
         return correction;
     }
@@ -188,6 +188,8 @@ public class BSVMotor : BSMotor
         CurrentValue = current;
         return Step(timeStep);
     }
+    // Given and error, computer a correction for this step.
+    // Simple scaling of the error by the timestep.
     public virtual Vector3 StepError(float timeStep, Vector3 error)
     {
         if (!Enabled) return Vector3.Zero;
@@ -221,7 +223,7 @@ public class BSVMotor : BSMotor
                                 CurrentValue, TargetValue);
 
         LastError = BSMotor.InfiniteVector;
-        while (maxOutput-- > 0 && !LastError.ApproxEquals(Vector3.Zero, ErrorZeroThreshold))
+        while (maxOutput-- > 0 && !ErrorIsZero())
         {
             Vector3 lastStep = Step(timeStep);
             MDetailLog("{0},BSVMotor.Test,{1},cur={2},tgt={3},lastError={4},lastStep={5}",
@@ -293,7 +295,6 @@ public class BSFMotor : BSMotor
 
         float correction = 0f;
         float error = TargetValue - CurrentValue;
-        LastError = error;
         if (!ErrorIsZero(error))
         {
             correction = StepError(timeStep, error);
@@ -328,6 +329,7 @@ public class BSFMotor : BSMotor
             MDetailLog("{0},  BSFMotor.Step,zero,{1},origTgt={2},origCurr={3},ret={4}",
                         BSScene.DetailLogZero, UseName, origCurrVal, origTarget, CurrentValue);
         }
+        LastError = error;
 
         return CurrentValue;
     }
@@ -363,7 +365,7 @@ public class BSFMotor : BSMotor
 
 // ============================================================================
 // ============================================================================
-// Proportional, Integral, Derivitive Motor
+// Proportional, Integral, Derivitive ("PID") Motor
 // Good description at http://www.answers.com/topic/pid-controller . Includes processes for choosing p, i and d factors.
 public class BSPIDVMotor : BSVMotor
 {
@@ -375,7 +377,6 @@ public class BSPIDVMotor : BSVMotor
     // The factors are vectors for the three dimensions. This is the proportional of each
     //    that is applied. This could be multiplied through the actual factors but it
     //    is sometimes easier to manipulate the factors and their mix separately.
-    //      to
     public Vector3 FactorMix;
 
     // Arbritrary factor range.
@@ -413,14 +414,14 @@ public class BSPIDVMotor : BSVMotor
             // If efficiency is high (1f), use a factor value that moves the error value to zero with little overshoot.
             // If efficiency is low (0f), use a factor value that overcorrects.
             // TODO: might want to vary contribution of different factor depending on efficiency.
-            float factor = ((1f - this.Efficiency) * EfficiencyHigh + EfficiencyLow) / 3f;
-            // float factor = (1f - this.Efficiency) * EfficiencyHigh + EfficiencyLow;
+            // float factor = ((1f - this.Efficiency) * EfficiencyHigh + EfficiencyLow) / 3f;
+            float factor = (1f - this.Efficiency) * EfficiencyHigh + EfficiencyLow;
 
             proportionFactor = new Vector3(factor, factor, factor);
             integralFactor = new Vector3(factor, factor, factor);
             derivFactor = new Vector3(factor, factor, factor);
 
-            MDetailLog("{0},BSPIDVMotor.setEfficiency,eff={1},factor={2}", BSScene.DetailLogZero, Efficiency, factor);
+            MDetailLog("{0},  BSPIDVMotor.setEfficiency,eff={1},factor={2}", BSScene.DetailLogZero, Efficiency, factor);
         }
     }
 
@@ -434,16 +435,15 @@ public class BSPIDVMotor : BSVMotor
 
         // A simple derivitive is the rate of change from the last error.
         Vector3 derivitive = (error - LastError) * timeStep;
-        LastError = error;
 
         // Correction = (proportionOfPresentError + accumulationOfPastError + rateOfChangeOfError)
-        Vector3 ret   =   error * timeStep   * proportionFactor * FactorMix.X
-                        + RunningIntegration * integralFactor   * FactorMix.Y
-                        + derivitive         * derivFactor      * FactorMix.Z
+        Vector3 ret   =   error / TimeScale * timeStep   * proportionFactor * FactorMix.X
+                        + RunningIntegration / TimeScale * integralFactor   * FactorMix.Y
+                        + derivitive / TimeScale         * derivFactor      * FactorMix.Z
                         ;
 
-        MDetailLog("{0},BSPIDVMotor.step,ts={1},err={2},runnInt={3},deriv={4},ret={5}",
-                        BSScene.DetailLogZero, timeStep, error, RunningIntegration, derivitive, ret);
+        MDetailLog("{0},  BSPIDVMotor.step,ts={1},err={2},lerr={3},runnInt={4},deriv={5},ret={6}",
+                        BSScene.DetailLogZero, timeStep, error, LastError, RunningIntegration, derivitive, ret);
 
         return ret;
     }

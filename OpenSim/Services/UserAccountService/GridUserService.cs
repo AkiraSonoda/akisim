@@ -46,12 +46,28 @@ namespace OpenSim.Services.UserAccountService
 
         public GridUserService(IConfigSource config) : base(config) 
         {
-            m_log.Debug("[USER GRID SERVICE]: Starting user grid service");
+            m_log.Debug("[GRID USER SERVICE]: Starting user grid service");
         }
 
         public virtual GridUserInfo GetGridUserInfo(string userID)
         {
-            GridUserData d = m_Database.Get(userID);
+            GridUserData d = null;
+            if (userID.Length > 36) // it's a UUI
+                d = m_Database.Get(userID);
+            else // it's a UUID
+            {
+                GridUserData[] ds = m_Database.GetAll(userID);
+                if (ds == null)
+                    return null;
+
+                if (ds.Length > 0)
+                {
+                    d = ds[0];
+                    foreach (GridUserData dd in ds)
+                        if (dd.UserID.Length > d.UserID.Length) // find the longest
+                            d = dd;
+                }
+            }
 
             if (d == null)
                 return null;
@@ -140,7 +156,7 @@ namespace OpenSim.Services.UserAccountService
 
         public bool SetLastPosition(string userID, UUID sessionID, UUID regionID, Vector3 lastPosition, Vector3 lastLookAt)
         {
-            //m_log.DebugFormat("[Grid User Service]: SetLastPosition for {0}", userID);
+            m_log.DebugFormat("[GRID USER SERVICE]: SetLastPosition for {0}", userID);
             GridUserData d = m_Database.Get(userID);
             if (d == null)
             {

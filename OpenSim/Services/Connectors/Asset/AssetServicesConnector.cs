@@ -54,14 +54,21 @@ namespace OpenSim.Services.Connectors
         private int m_maxAssetRequestConcurrency = 30;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
-                private List<AssetRetrievedEx> AssetRetrievedExList;
+        private List<AssetRetrievedEx> AssetRetrievedExList;
+
+	private string surabayaServerURI = String.Empty;
+	private bool surabayaServerEnabled = true;
+
                 
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
-        private Dictionary<string, List<AssetRetrievedEx>> m_AssetHandlers = new Dictionary<string, List<AssetRetrievedEx>>();
-		
-		private string surabayaServerURI = String.Empty;
-		private bool surabayaServerEnabled = true;
+        private Dictionary<string, AssetRetrievedEx> m_AssetHandlers = new Dictionary<string, AssetRetrievedEx>();
+
+        public int MaxAssetRequestConcurrency
+        {
+            get { return m_maxAssetRequestConcurrency; }
+            set { m_maxAssetRequestConcurrency = value; }
+        }
 
         public AssetServicesConnector()
         {
