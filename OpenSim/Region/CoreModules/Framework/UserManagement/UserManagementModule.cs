@@ -341,11 +341,11 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
                     }
                     else
-                        m_log.DebugFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
+                        m_log.WarnFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
                 }
                 else
                 {
-                    m_log.DebugFormat("[USER MANAGEMENT MODULE]: No grid user found for {0}", uuid);
+                    m_log.WarnFormat("[USER MANAGEMENT MODULE]: No grid user found for {0}", uuid);
                 }
 
                 names[0] = "Unknown";
@@ -500,7 +500,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void AddUser (UUID id, string creatorData)
         {
-            //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Adding user with id {0}, creatorData {1}", id, creatorData);
+            m_log.InfoFormat("[USER MANAGEMENT MODULE]: Adding user with id {0}, creatorData {1}", id, creatorData);
 
             UserData oldUser;
             lock (m_UserCache)
@@ -554,7 +554,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
                         catch (UriFormatException)
                         {
-                            m_log.DebugFormat("[SCENE]: Unable to parse Uri {0}", parts[0]);
+                            m_log.WarnFormat("[SCENE]: Unable to parse Uri {0}", parts[0]);
                             user.LastName = "@unknown";
                         }
                     }

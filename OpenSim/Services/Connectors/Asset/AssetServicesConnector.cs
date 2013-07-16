@@ -54,10 +54,9 @@ namespace OpenSim.Services.Connectors
         private int m_maxAssetRequestConcurrency = 30;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
-        private List<AssetRetrievedEx> AssetRetrievedExList;
 
-	private string surabayaServerURI = String.Empty;
-	private bool surabayaServerEnabled = true;
+		private string surabayaServerURI = String.Empty;
+		private bool surabayaServerEnabled = true;
 
                 
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
@@ -223,17 +222,16 @@ namespace OpenSim.Services.Connectors
                 {
                     AssetRetrievedEx handlerEx = new AssetRetrievedEx(delegate(AssetBase _asset) { handler(id, sender, _asset); });
 
-                    List<AssetRetrievedEx> handlers;
+                    AssetRetrievedEx handlers;
                     if (m_AssetHandlers.TryGetValue(id, out handlers))
                     {
                         // Someone else is already loading this asset. It will notify our handler when done.
-                        handlers.Add(handlerEx);
+                        handlers += handlerEx;
                         return true;
                     }
 
                     // Load the asset ourselves
-                    handlers = new List<AssetRetrievedEx>();
-                                        handlers.Add(handlerEx);
+                    handlers += handlerEx;
                     m_AssetHandlers.Add(id, handlers);
                 }
 
@@ -246,14 +244,13 @@ namespace OpenSim.Services.Connectors
                             if (m_Cache != null)
                                 m_Cache.Cache(a);
 
-                            List<AssetRetrievedEx> handlers;
+                            AssetRetrievedEx handlers;
                             lock (m_AssetHandlers)
                             {
                                 handlers = m_AssetHandlers[id];
                                 m_AssetHandlers.Remove(id);
                             }
-                            foreach(AssetRetrievedEx h in handlers)
-                                                                h.Invoke(a);
+                            handlers.Invoke(a);
                         }, m_maxAssetRequestConcurrency);
                     
                     success = true;
