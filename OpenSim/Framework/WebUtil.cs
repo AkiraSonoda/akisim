@@ -143,39 +143,6 @@ namespace OpenSim.Framework
             }
         }
 
-        public static void LogOutgoingDetail(Stream outputStream)
-        {
-            using (StreamReader reader = new StreamReader(Util.Copy(outputStream), Encoding.UTF8))
-            {
-                string output;
-
-                if (m_log.IsDebugEnabled)                
-				{
-                    const int sampleLength = 80;
-                    char[] sampleChars = new char[sampleLength];
-                    reader.Read(sampleChars, 0, sampleLength);
-                    output = new string(sampleChars);
-                }
-                else
-                {
-                    output = reader.ReadToEnd();
-                }
-
-                LogOutgoingDetail(output);
-            }
-        }
-
-        public static void LogOutgoingDetail(string output)
-        {
-            if (m_log.IsDebugEnabled)
-            {
-                output = output.Substring(0, 80);
-                output = output + "...";
-            }
-
-            m_log.DebugFormat("[WEB UTIL]: {0}", output.Replace("\n", @"\n"));
-        }
-
         private static OSDMap ServiceOSDRequestWorker(string url, OSDMap data, string method, int timeout, bool compressed)
         {
             int reqnum = RequestNumber++;
@@ -204,9 +171,6 @@ namespace OpenSim.Framework
                 if (data != null)
                 {
                     strBuffer = OSDParser.SerializeJsonString(data);
-
-                    if (m_log.IsDebugEnabled)
-                        LogOutgoingDetail(strBuffer);
 
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(strBuffer);
 
@@ -276,9 +240,7 @@ namespace OpenSim.Framework
                         url,
                         tickdiff,
                         tickdata,
-                        strBuffer != null
-                            ? (strBuffer.Length > MaxRequestDiagLength ? strBuffer.Remove(MaxRequestDiagLength) : strBuffer)
-                            : "");
+                        strBuffer);
                 else if (m_log.IsDebugEnabled)
                     m_log.DebugFormat(
                         "[WEB UTIL]: HTTP OUT {0} took {1}ms, {2}ms writing",
@@ -386,9 +348,6 @@ namespace OpenSim.Framework
                 if (data != null)
                 {
                     queryString = BuildQueryString(data);
-
-                    if (m_log.IsDebugEnabled)
-                        LogOutgoingDetail(queryString);
 
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(queryString);
                     
@@ -800,9 +759,6 @@ namespace OpenSim.Framework
                 int length = (int)buffer.Length;
                 request.ContentLength = length;
 
-                if (m_log.IsDebugEnabled)
-                    WebUtil.LogOutgoingDetail(buffer);
-
                 request.BeginGetRequestStream(delegate(IAsyncResult res)
                 {
                     Stream requestStream = request.EndGetRequestStream(res);
@@ -1142,9 +1098,6 @@ namespace OpenSim.Framework
 
                 int length = (int)buffer.Length;
                 request.ContentLength = length;
-
-                if (m_log.IsDebugEnabled)
-                    WebUtil.LogOutgoingDetail(buffer);
 
                 Stream requestStream = null;
                 try

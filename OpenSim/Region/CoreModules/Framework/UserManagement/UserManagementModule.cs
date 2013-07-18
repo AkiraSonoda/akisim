@@ -73,7 +73,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             {
                 m_Enabled = true;
                 Init();
-                m_log.DebugFormat("[USER MANAGEMENT MODULE]: {0} is enabled", Name);
+				m_log.DebugFormat("[UserManagementModule]: {0} is enabled", Name);
             }
         }
 
@@ -138,7 +138,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         void EventManager_OnPrimsLoaded(Scene s)
         {
             // let's sniff all the user names referenced by objects in the scene
-            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Caching creators' data from {0} ({1} objects)...", s.RegionInfo.RegionName, s.GetEntities().Length);
+			m_log.DebugFormat("[UserManagementModule]: Caching creators' data from {0} ({1} objects)...", s.RegionInfo.RegionName, s.GetEntities().Length);
             s.ForEachSOG(delegate(SceneObjectGroup sog) { CacheCreators(sog); });
         }
 
@@ -158,7 +158,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         void HandleUUIDNameRequest(UUID uuid, IClientAPI remote_client)
         {
 //            m_log.DebugFormat(
-//                "[USER MANAGEMENT MODULE]: Handling request for name binding of UUID {0} from {1}", 
+//                "[UserManagementModule]: Handling request for name binding of UUID {0} from {1}", 
 //                uuid, remote_client.Name);
 
             if (m_Scenes[0].LibraryService != null && (m_Scenes[0].LibraryService.LibraryRootFolder.Owner == uuid))
@@ -177,7 +177,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         {
             //EventManager.TriggerAvatarPickerRequest();
 
-            m_log.DebugFormat("[USER MANAGEMENT MODULE]: HandleAvatarPickerRequest for {0}", query);
+			m_log.DebugFormat("[UserManagementModule]: HandleAvatarPickerRequest for {0}", query);
 
             List<UserData> users = GetUserData(query, 500, 1);
 
@@ -272,7 +272,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         private void CacheCreators(SceneObjectGroup sog)
         {
-            //m_log.DebugFormat("[USER MANAGEMENT MODULE]: processing {0} {1}; {2}", sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
+			//m_log.DebugFormat("[UserManagementModule]: processing {0} {1}; {2}", sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
             AddUser(sog.RootPart.CreatorID, sog.RootPart.CreatorData);
 
             foreach (SceneObjectPart sop in sog.Parts)
@@ -291,6 +291,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         /// <param name='names'>The array of names if found.  If not found, then names[0] = "Unknown" and names[1] = "User"</param>
         private bool TryGetUserNames(UUID uuid, out string[] names)
         {
+			m_log.InfoFormat("[UserManagementModule] TryGetUserNames: {0}", uuid);
             names = new string[2];
 
             lock (m_UserCache)
@@ -341,15 +342,17 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
                     }
                     else
-                        m_log.WarnFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
+						m_log.WarnFormat("[UserManagementModule]: Unable to parse UUI {0}", uInfo.UserID);
                 }
                 else
                 {
-                    m_log.WarnFormat("[USER MANAGEMENT MODULE]: No grid user found for {0}", uuid);
+					m_log.WarnFormat("[UserManagementModule]: No grid user found for {0}", uuid);
                 }
 
+				m_log.WarnFormat("[UserManagementModule]: Adding Aki_UMMTGUN7 to names for {0}", uuid);
+
                 names[0] = "Unknown";
-                names[1] = "UserUMMTGUN7";
+                names[1] = "Aki_UMMTGUN7";
 
                 return false;
             }
@@ -421,7 +424,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
             if (userdata != null)
             {
-//                m_log.DebugFormat("[USER MANAGEMENT MODULE]: Requested url type {0} for {1}", serverType, userID);
+				//                m_log.DebugFormat("[UserManagementModule]: Requested url type {0} for {1}", serverType, userID);
 
                 if (userdata.ServerURLs != null && userdata.ServerURLs.ContainsKey(serverType) && userdata.ServerURLs[serverType] != null)
                 {
@@ -431,7 +434,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 if (userdata.HomeURL != null && userdata.HomeURL != string.Empty)
                 {
                     //m_log.DebugFormat(
-                    //    "[USER MANAGEMENT MODULE]: Did not find url type {0} so requesting urls from '{1}' for {2}",
+					//    "[UserManagementModule]: Did not find url type {0} so requesting urls from '{1}' for {2}",
                     //    serverType, userdata.HomeURL, userID);
 
                     UserAgentServiceConnector uConn = new UserAgentServiceConnector(userdata.HomeURL);
@@ -491,7 +494,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void AddUser(UUID uuid, string first, string last, string homeURL)
         {
-            //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
+			//m_log.DebugFormat("[UserManagementModule]: Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
             if (homeURL == string.Empty)
                 return;
 
@@ -500,7 +503,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void AddUser (UUID id, string creatorData)
         {
-            m_log.InfoFormat("[USER MANAGEMENT MODULE]: Adding user with id {0}, creatorData {1}", id, creatorData);
+			m_log.InfoFormat("[UserManagementModule]: Adding user with id {0}, creatorData \"{1}\"", id, creatorData);
 
             UserData oldUser;
             lock (m_UserCache)
@@ -519,7 +522,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 {
                     lock (m_UserCache)
                         m_UserCache.Remove(id);
-                    m_log.DebugFormat("[USER MANAGEMENT MODULE]: Re-adding user with id {0}, creatorData [{1}] and old HomeURL {2}", id, creatorData, oldUser.HomeURL);
+					m_log.DebugFormat("[UserManagementModule]: Re-adding user with id {0}, creatorData [{1}] and old HomeURL {2}", id, creatorData, oldUser.HomeURL);
                 }
                 else
                 {
@@ -581,7 +584,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 m_UserCache[user.Id] = user;
 
             //m_log.DebugFormat(
-            //    "[USER MANAGEMENT MODULE]: Added user {0} {1} {2} {3}",
+			//    "[UserManagementModule]: Added user {0} {1} {2} {3}",
             //    user.Id, user.FirstName, user.LastName, user.HomeURL);
         }
 
@@ -690,7 +693,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     if (names.Length == 2)
                     {
                         if (!foundRealName)
-                            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Sending {0} {1} for {2} to {3} since no bound name found", names[0], names[1], request.uuid, request.client.Name);
+							m_log.DebugFormat("[UserManagementModule]: Sending {0} {1} for {2} to {3} since no bound name found", names[0], names[1], request.uuid, request.client.Name);
 
                         request.client.SendNameReply(request.uuid, names[0], names[1]);
                     }
