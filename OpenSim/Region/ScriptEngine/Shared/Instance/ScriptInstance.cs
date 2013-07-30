@@ -796,17 +796,17 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                         m_CollisionInQueue = false;
                 }
 
-                if (m_log.IsDebugEnabled)
-                    m_log.DebugFormat(
-                        "[SCRIPT INSTANCE]: Processing event {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}", 
-                        data.EventName, 
-                        ScriptName, 
-                        Part.Name, 
-                        Part.LocalId, 
-                        Part.ParentGroup.Name, 
-                        Part.ParentGroup.UUID, 
-                        Part.AbsolutePosition, 
-                        Part.ParentGroup.Scene.Name);
+//                if (m_log.IsDebugEnabled)
+//                    m_log.DebugFormat(
+//                        "[SCRIPT INSTANCE]: Processing event {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}", 
+//                        data.EventName, 
+//                        ScriptName, 
+//                        Part.Name, 
+//                        Part.LocalId, 
+//                        Part.ParentGroup.Name, 
+//                        Part.ParentGroup.UUID, 
+//                        Part.AbsolutePosition, 
+//                        Part.ParentGroup.Scene.Name);
 
                 m_DetectParams = data.DetectParams;
 
@@ -814,17 +814,17 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 {
                     State = data.Params[0].ToString();
 
-                    if (m_log.IsDebugEnabled)
-                        m_log.DebugFormat(
-                            "[SCRIPT INSTANCE]: Changing state to {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}", 
-                            State, 
-                            ScriptName, 
-                            Part.Name, 
-                            Part.LocalId, 
-                            Part.ParentGroup.Name, 
-                            Part.ParentGroup.UUID, 
-                            Part.AbsolutePosition, 
-                            Part.ParentGroup.Scene.Name);
+//                    if (m_log.IsDebugEnabled)
+//                        m_log.DebugFormat(
+//                            "[SCRIPT INSTANCE]: Changing state to {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}", 
+//                            State, 
+//                            ScriptName, 
+//                            Part.Name, 
+//                            Part.LocalId, 
+//                            Part.ParentGroup.Name, 
+//                            Part.ParentGroup.UUID, 
+//                            Part.AbsolutePosition, 
+//                            Part.ParentGroup.Scene.Name);
 
                     AsyncCommandManager.RemoveScript(Engine,
                         LocalID, ItemID);
