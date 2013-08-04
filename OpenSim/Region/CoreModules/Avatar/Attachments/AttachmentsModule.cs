@@ -946,7 +946,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
             {
                 int throttleMs = (int)Math.Round((float)objatt.PrimCount / 100 * ThrottlePer100PrimsRezzed);
 
-                if (DebugLevel > 0)
+                if (m_log.IsDebugEnabled)
                     m_log.DebugFormat(
                         "[ATTACHMENTS MODULE]: Throttling by {0}ms after rez of {1} with {2} prims for attachment to {3} on point {4} in {5}",
                         throttleMs, objatt.Name, objatt.PrimCount, sp.Name, attachmentPt, m_scene.Name);

@@ -401,8 +401,11 @@ Asset service request failures: {3}" + Environment.NewLine,
         /// </summary>
         /// <returns></returns>
         public override void CompactReport() {
-            s_log.DebugFormat(
-                    "[CONNECTION] Abnormal client thread terminations: {0}", abnormalClientThreadTerminations);
+			List<Stat> stats = StatsManager.GetStatsFromEachContainer("clientstack", "ClientLogoutsDueToNoReceives");
+			
+			s_log.DebugFormat(
+				"[CONNECTION] Abnormal client thread terminations: {0}", 
+				stats != null ? stats.Sum(s => s.Value).ToString() : "0");
 
             s_log.DebugFormat(
                     "[FRAME] Dilatn:{0} SimFPS:{1} PhyFPS:{2} AgntUp:{3} RootAg:{4} ChldAg:{5} Prims:{6} AtvPrm:{7} AtvScr:{8} ScrLPS:{9}",
