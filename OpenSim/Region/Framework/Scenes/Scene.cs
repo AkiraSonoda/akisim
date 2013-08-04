@@ -230,6 +230,8 @@ namespace OpenSim.Region.Framework.Scenes
 
         public int MaxUndoCount { get; set; }
 
+        public bool SeeIntoRegion { get; set; }
+
         // Using this for RegionReady module to prevent LoginsDisabled from changing under our feet;
         public bool LoginLock = false;
 
@@ -844,6 +846,8 @@ namespace OpenSim.Region.Framework.Scenes
                 
                 //Animation states
                 m_useFlySlow = startupConfig.GetBoolean("enableflyslow", false);
+
+                SeeIntoRegion = startupConfig.GetBoolean("see_into_region", true);
 
                 MaxUndoCount = startupConfig.GetInt("MaxPrimUndos", 20);
 
@@ -2809,6 +2813,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             ScenePresence sp;
             bool vialogin;
+            bool reallyNew = true;
 
             // Validation occurs in LLUDPServer
             //
@@ -2860,6 +2865,7 @@ namespace OpenSim.Region.Framework.Scenes
                     m_log.WarnFormat(
                         "[SCENE]: Already found {0} scene presence for {1} in {2} when asked to add new scene presence",
                         sp.IsChildAgent ? "child" : "root", sp.Name, RegionInfo.RegionName);
+                    reallyNew = false;
                 }
     
                 // We must set this here so that TriggerOnNewClient and TriggerOnClientLogin can determine whether the
@@ -2871,7 +2877,9 @@ namespace OpenSim.Region.Framework.Scenes
                 // places.  However, we still need to do it here for NPCs.
                 CacheUserName(sp, aCircuit);
     
-                EventManager.TriggerOnNewClient(client);
+                if (reallyNew)
+                    EventManager.TriggerOnNewClient(client);
+    
                 if (vialogin)
                     EventManager.TriggerOnClientLogin(client);
             }
@@ -3430,15 +3438,8 @@ namespace OpenSim.Region.Framework.Scenes
                     if (closeChildAgents && isChildAgent)
                     {
                         // Tell a single agent to disconnect from the region.
-                        IEventQueue eq = RequestModuleInterface<IEventQueue>();
-                        if (eq != null)
-                        {
-                            eq.DisableSimulator(RegionInfo.RegionHandle, avatar.UUID);
-                        }
-                        else
-                        {
-                            avatar.ControllingClient.SendShutdownConnectionNotice();
-                        }
+                        // Let's do this via UDP
+                        avatar.ControllingClient.SendShutdownConnectionNotice();
                     }
     
                     // Only applies to root agents.
@@ -3686,19 +3687,34 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 ScenePresence sp = GetScenePresence(agent.AgentID);
     
-                if (sp != null && !sp.IsChildAgent)
+                if (sp != null)
                 {
-                    // We have a zombie from a crashed session. 
-                    // Or the same user is trying to be root twice here, won't work.
-                    // Kill it.
-                    m_log.WarnFormat(
-                        "[SCENE]: Existing root scene presence detected for {0} {1} in {2} when connecting.  Removing existing presence.",
-                        sp.Name, sp.UUID, RegionInfo.RegionName);
-    
-                    if (sp.ControllingClient != null)
-                        sp.ControllingClient.Close(true);
+                    if (!sp.IsChildAgent)
+                    {
+                        // We have a root agent. Is it in transit?
+                        if (!EntityTransferModule.IsInTransit(sp.UUID))
+                        {
+                            // We have a zombie from a crashed session. 
+                            // Or the same user is trying to be root twice here, won't work.
+                            // Kill it.
+                            m_log.WarnFormat(
+                                "[SCENE]: Existing root scene presence detected for {0} {1} in {2} when connecting.  Removing existing presence.",
+                                sp.Name, sp.UUID, RegionInfo.RegionName);
 
-                    sp = null;
+                            if (sp.ControllingClient != null)
+                                sp.ControllingClient.Close(true);
+
+                            sp = null;
+                        }
+                        //else
+                        //    m_log.WarnFormat("[SCENE]: Existing root scene presence for {0} {1} in {2}, but agent is in trasit", sp.Name, sp.UUID, RegionInfo.RegionName);
+                    }
+                    else
+                    {
+                        // We have a child agent here
+                        sp.DoNotCloseAfterTeleport = true;
+                        //m_log.WarnFormat("[SCENE]: Existing child scene presence for {0} {1} in {2}", sp.Name, sp.UUID, RegionInfo.RegionName);
+                    }
                 }
 
                 // Optimistic: add or update the circuit data with the new agent circuit data and teleport flags.
@@ -3743,7 +3759,7 @@ namespace OpenSim.Region.Framework.Scenes
     
                     try
                     {
-                        if (!AuthorizeUser(agent, out reason))
+                        if (!AuthorizeUser(agent, SeeIntoRegion, out reason))
                         {
                             m_authenticateHandler.RemoveCircuit(agent.circuitcode);
                             return false;
@@ -3782,9 +3798,12 @@ namespace OpenSim.Region.Framework.Scenes
                             agent.AgentID, RegionInfo.RegionName);
     
                         sp.AdjustKnownSeeds();
-                        
+
                         if (CapsModule != null)
+                        {
                             CapsModule.SetAgentCapsSeeds(agent);
+                            CapsModule.CreateCaps(agent.AgentID);
+                        }
                     }
                 }
 
@@ -3983,7 +4002,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="reason">outputs the reason to this string</param>
         /// <returns>True if the region accepts this agent.  False if it does not.  False will 
         /// also return a reason.</returns>
-        protected virtual bool AuthorizeUser(AgentCircuitData agent, out string reason)
+        protected virtual bool AuthorizeUser(AgentCircuitData agent, bool bypassAccessControl, out string reason)
         {
             reason = String.Empty;
 
@@ -4018,51 +4037,58 @@ namespace OpenSim.Region.Framework.Scenes
                 m_log.ErrorFormat("[CONNECTION BEGIN]: Estate Settings is null!");
             }
 
-            List<UUID> agentGroups = new List<UUID>();
-
-            if (m_groupsModule != null)
+            // We only test the things below when we want to cut off
+            // child agents from being present in the scene for which their root
+            // agent isn't allowed. Otherwise, we allow child agents. The test for
+            // the root is done elsewhere (QueryAccess)
+            if (!bypassAccessControl)
             {
-                GroupMembershipData[] GroupMembership = m_groupsModule.GetMembershipData(agent.AgentID);
+                List<UUID> agentGroups = new List<UUID>();
 
-                if (GroupMembership != null)
+                if (m_groupsModule != null)
                 {
-                    for (int i = 0; i < GroupMembership.Length; i++)
-                        agentGroups.Add(GroupMembership[i].GroupID);
+                    GroupMembershipData[] GroupMembership = m_groupsModule.GetMembershipData(agent.AgentID);
+
+                    if (GroupMembership != null)
+                    {
+                        for (int i = 0; i < GroupMembership.Length; i++)
+                            agentGroups.Add(GroupMembership[i].GroupID);
+                    }
+                    else
+                    {
+                        m_log.ErrorFormat("[CONNECTION BEGIN]: GroupMembership is null!");
+                    }
+                }
+
+                bool groupAccess = false;
+                UUID[] estateGroups = RegionInfo.EstateSettings.EstateGroups;
+
+                if (estateGroups != null)
+                {
+                    foreach (UUID group in estateGroups)
+                    {
+                        if (agentGroups.Contains(group))
+                        {
+                            groupAccess = true;
+                            break;
+                        }
+                    }
                 }
                 else
                 {
-                    m_log.ErrorFormat("[CONNECTION BEGIN]: GroupMembership is null!");
+                    m_log.ErrorFormat("[CONNECTION BEGIN]: EstateGroups is null!");
                 }
-            }
 
-            bool groupAccess = false;
-            UUID[] estateGroups = RegionInfo.EstateSettings.EstateGroups;
-
-            if (estateGroups != null)
-            {
-                foreach (UUID group in estateGroups)
+                if (!RegionInfo.EstateSettings.PublicAccess &&
+                    !RegionInfo.EstateSettings.HasAccess(agent.AgentID) &&
+                    !groupAccess)
                 {
-                    if (agentGroups.Contains(group))
-                    {
-                        groupAccess = true;
-                        break;
-                    }
+                    m_log.WarnFormat("[CONNECTION BEGIN]: Denied access to: {0} ({1} {2}) at {3} because the user does not have access to the estate",
+                                     agent.AgentID, agent.firstname, agent.lastname, RegionInfo.RegionName);
+                    reason = String.Format("Denied access to private region {0}: You are not on the access list for that region.",
+                                           RegionInfo.RegionName);
+                    return false;
                 }
-            }
-            else
-            {
-                m_log.ErrorFormat("[CONNECTION BEGIN]: EstateGroups is null!");
-            }
-
-            if (!RegionInfo.EstateSettings.PublicAccess &&
-                !RegionInfo.EstateSettings.HasAccess(agent.AgentID) &&
-                !groupAccess)
-            {
-                m_log.WarnFormat("[CONNECTION BEGIN]: Denied access to: {0} ({1} {2}) at {3} because the user does not have access to the estate",
-                                 agent.AgentID, agent.firstname, agent.lastname, RegionInfo.RegionName);
-                reason = String.Format("Denied access to private region {0}: You are not on the access list for that region.",
-                                       RegionInfo.RegionName);
-                return false;
             }
 
             // TODO: estate/region settings are not properly hooked up
@@ -4218,6 +4244,20 @@ namespace OpenSim.Region.Framework.Scenes
                 }
 
                 childAgentUpdate.ChildAgentDataUpdate(cAgentData);
+
+                int ntimes = 20;
+                if (cAgentData.SenderWantsToWaitForRoot)
+                {
+                    while (childAgentUpdate.IsChildAgent && ntimes-- > 0)
+                        Thread.Sleep(1000);
+
+                    m_log.DebugFormat(
+                        "[SCENE]: Found presence {0} {1} {2} in {3} after {4} waits",
+                        childAgentUpdate.Name, childAgentUpdate.UUID, childAgentUpdate.IsChildAgent ? "child" : "root", RegionInfo.RegionName, 20 - ntimes);
+
+                    if (childAgentUpdate.IsChildAgent)
+                        return false;
+                }
                 return true;
             }
             return false;
@@ -4266,7 +4306,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name='agentID'></param>
         protected virtual ScenePresence WaitGetScenePresence(UUID agentID)
         {
-            int ntimes = 10;
+            int ntimes = 20;
             ScenePresence sp = null;
             while ((sp = GetScenePresence(agentID)) == null && (ntimes-- > 0))
                 Thread.Sleep(1000);
@@ -4275,10 +4315,6 @@ namespace OpenSim.Region.Framework.Scenes
                 m_log.WarnFormat(
                     "[SCENE PRESENCE]: Did not find presence with id {0} in {1} before timeout",
                     agentID, RegionInfo.RegionName);
-//            else
-//                m_log.DebugFormat(
-//                    "[SCENE PRESENCE]: Found presence {0} {1} {2} in {3} after {4} waits",
-//                    sp.Name, sp.UUID, sp.IsChildAgent ? "child" : "root", RegionInfo.RegionName, 10 - ntimes);
 
             return sp;
         }
@@ -5525,17 +5561,6 @@ namespace OpenSim.Region.Framework.Scenes
         {
             reason = "You are banned from the region";
 
-            if (EntityTransferModule.IsInTransit(agentID))
-            {
-                reason = "Agent is still in transit from this region";
-
-                m_log.WarnFormat(
-                    "[SCENE]: Denying agent {0} entry into {1} since region still has them registered as in transit",
-                    agentID, RegionInfo.RegionName);
-
-                return false;
-            }
-
             if (Permissions.IsGod(agentID))
             {
                 reason = String.Empty;
@@ -5585,7 +5610,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             try
             {
-                if (!AuthorizeUser(aCircuit, out reason))
+                if (!AuthorizeUser(aCircuit, false, out reason))
                 {
                     // m_log.DebugFormat("[SCENE]: Denying access for {0}", agentID);
                     return false;

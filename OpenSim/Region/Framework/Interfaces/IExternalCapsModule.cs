@@ -27,83 +27,22 @@
 
 using System;
 using OpenMetaverse;
+using OpenSim.Framework;
+using Caps=OpenSim.Framework.Capabilities.Caps;
 
-namespace OpenSim.Framework
+namespace OpenSim.Region.Framework.Interfaces
 {
-    [Serializable]
-    public class Location : ICloneable
+    public interface IExternalCapsModule
     {
-        private readonly uint m_x;
-        private readonly uint m_y;
-
-        public Location(uint x, uint y)
-        {
-            m_x = x;
-            m_y = y;
-        }
-
-        public Location(ulong regionHandle)
-        {
-            m_x =  (uint)(regionHandle >> 32);
-            m_y = (uint)(regionHandle & (ulong)uint.MaxValue);
-        }
-
-        public ulong RegionHandle
-        {
-            get { return Utils.UIntsToLong(m_x, m_y); }
-        }
-
-        public uint X
-        {
-            get { return m_x; }
-        }
-
-        public uint Y
-        {
-            get { return m_y; }
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(obj, this))
-                return true;
-
-            if (obj is Location)
-            {
-                return Equals((Location) obj);
-            }
-
-            return base.Equals(obj);
-        }
-
-        public bool Equals(Location loc)
-        {
-            return loc.X == X && loc.Y == Y;
-        }
-
-        public bool Equals(int x, int y)
-        {
-            return X == x && y == Y;
-        }
-
-        public static bool operator ==(Location o, object o2)
-        {
-            return o.Equals(o2);
-        }
-
-        public static bool operator !=(Location o, object o2)
-        {
-            return !o.Equals(o2);
-        }
-
-        public override int GetHashCode()
-        {
-            return X.GetHashCode() ^ Y.GetHashCode();
-        }
-
-        public object Clone()
-        {
-            return new Location(X, Y);
-        }
+        /// <summary>
+        /// This function extends the simple URL configuration in the caps handlers
+        /// to facilitate more interesting computation when an external handler is
+        /// sent to the viewer. 
+        /// </summary>
+        /// <param name="agentID">New user UUID</param>
+        /// <param name="caps">Internal caps registry, where the external handler will be registered</param>
+        /// <param name="capName">Name of the specific cap we are registering</param>
+        /// <param name="urlSkel">The skeleton URL provided in the caps configuration</param>
+        bool RegisterExternalUserCapsHandler(UUID agentID, Caps caps, String capName, String urlSkel);
     }
 }

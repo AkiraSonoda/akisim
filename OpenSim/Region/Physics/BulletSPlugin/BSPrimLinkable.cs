@@ -200,20 +200,79 @@ public class BSPrimLinkable : BSPrimDisplaced
     }
 
     // Called after a simulation step to post a collision with this object.
+    // This returns 'true' if the collision has been queued and the SendCollisions call must
+    //     be made at the end of the simulation step.
     public override bool Collide(uint collidingWith, BSPhysObject collidee,
                     OMV.Vector3 contactPoint, OMV.Vector3 contactNormal, float pentrationDepth)
     {
-        // prims in the same linkset cannot collide with each other
-        BSPrimLinkable convCollidee = collidee as BSPrimLinkable;
-        if (convCollidee != null && (this.Linkset.LinksetID == convCollidee.Linkset.LinksetID))
+        bool ret = false;
+        // Ask the linkset if it wants to handle the collision
+        if (!Linkset.HandleCollide(collidingWith, collidee, contactPoint, contactNormal, pentrationDepth))
         {
-            return false;
+            // The linkset didn't handle it so pass the collision through normal processing
+            ret = base.Collide(collidingWith, collidee, contactPoint, contactNormal, pentrationDepth);
         }
+        return ret;
+    }
 
-        // TODO: handle collisions of other objects with with children of linkset.
-        //    This is a problem for LinksetCompound since the children are packed into the root.
+    // A linkset reports any collision on any part of the linkset.
+    public long SomeCollisionSimulationStep = 0;
+    public override bool HasSomeCollision
+    {
+        get
+        {
+            return (SomeCollisionSimulationStep == PhysScene.SimulationStep) || base.IsColliding;
+        }
+        set
+        {
+            if (value)
+                SomeCollisionSimulationStep = PhysScene.SimulationStep;
+            else
+                SomeCollisionSimulationStep = 0;
 
-        return base.Collide(collidingWith, collidee, contactPoint, contactNormal, pentrationDepth);
+            base.HasSomeCollision = value;
+        }
+    }
+
+    // Convert the existing linkset of this prim into a new type.
+    public bool ConvertLinkset(BSLinkset.LinksetImplementation newType)
+    {
+        bool ret = false;
+        if (LinksetType != newType)
+        {
+            // Set the implementation type first so the call to BSLinkset.Factory gets the new type.
+            this.LinksetType = newType;
+
+            BSLinkset oldLinkset = this.Linkset;
+            BSLinkset newLinkset = BSLinkset.Factory(PhysScene, this);
+
+            this.Linkset = newLinkset;
+
+            // Pick up any physical dependencies this linkset might have in the physics engine.
+            oldLinkset.RemoveDependencies(this);
+
+            // Create a list of the children (mainly because can't interate through a list that's changing)
+            List<BSPrimLinkable> children = new List<BSPrimLinkable>();
+            oldLinkset.ForEachMember((child) =>
+            {
+                if (!oldLinkset.IsRoot(child))
+                    children.Add(child);
+                return false;   // 'false' says to continue to next member
+            });
+
+            // Remove the children from the old linkset and add to the new (will be a new instance from the factory)
+            foreach (BSPrimLinkable child in children)
+            {
+                oldLinkset.RemoveMeFromLinkset(child);
+                newLinkset.AddMeToLinkset(child);
+                child.Linkset = newLinkset;
+            }
+
+            // Force the shape and linkset to get reconstructed
+            newLinkset.Refresh(this);
+            this.ForceBodyShapeRebuild(true /* inTaintTime */);
+        }
+        return ret;
     }
 }
 }

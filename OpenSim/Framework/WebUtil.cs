@@ -137,10 +137,10 @@ namespace OpenSim.Framework
         
         public static OSDMap ServiceOSDRequest(string url, OSDMap data, string method, int timeout, bool compressed)
         {
-            lock (EndPointLock(url))
-            {
+            //lock (EndPointLock(url))
+            //{
                 return ServiceOSDRequestWorker(url,data,method,timeout,compressed);
-            }
+            //}
         }
 
         private static OSDMap ServiceOSDRequestWorker(string url, OSDMap data, string method, int timeout, bool compressed)

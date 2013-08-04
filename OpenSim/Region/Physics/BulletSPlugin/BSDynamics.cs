@@ -45,7 +45,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         private static string LogHeader = "[BULLETSIM VEHICLE]";
 
         // the prim this dynamic controller belongs to
-        private BSPrim ControllingPrim { get; set; }
+        private BSPrimLinkable ControllingPrim { get; set; }
 
         private bool m_haveRegisteredForSceneEvents;
 
@@ -128,9 +128,15 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         public BSDynamics(BSScene myScene, BSPrim myPrim, string actorName)
             : base(myScene, myPrim, actorName)
         {
-            ControllingPrim = myPrim;
             Type = Vehicle.TYPE_NONE;
             m_haveRegisteredForSceneEvents = false;
+
+            ControllingPrim = myPrim as BSPrimLinkable;
+            if (ControllingPrim == null)
+            {
+                // THIS CANNOT HAPPEN!!
+            }
+            VDetailLog("{0},Creation", ControllingPrim.LocalID);
         }
 
         // Return 'true' if this vehicle is doing vehicle things
@@ -583,8 +589,10 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 m_vehicleMass = ControllingPrim.TotalMass;
 
                 // Friction affects are handled by this vehicle code
-                m_physicsScene.PE.SetFriction(ControllingPrim.PhysBody, BSParam.VehicleFriction);
-                m_physicsScene.PE.SetRestitution(ControllingPrim.PhysBody, BSParam.VehicleRestitution);
+                // m_physicsScene.PE.SetFriction(ControllingPrim.PhysBody, BSParam.VehicleFriction);
+                // m_physicsScene.PE.SetRestitution(ControllingPrim.PhysBody, BSParam.VehicleRestitution);
+                ControllingPrim.Linkset.SetPhysicalFriction(BSParam.VehicleFriction);
+                ControllingPrim.Linkset.SetPhysicalRestitution(BSParam.VehicleRestitution);
 
                 // Moderate angular movement introduced by Bullet.
                 // TODO: possibly set AngularFactor and LinearFactor for the type of vehicle.
@@ -594,18 +602,21 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 m_physicsScene.PE.SetAngularFactorV(ControllingPrim.PhysBody, BSParam.VehicleAngularFactor);
 
                 // Vehicles report collision events so we know when it's on the ground
-                m_physicsScene.PE.AddToCollisionFlags(ControllingPrim.PhysBody, CollisionFlags.BS_VEHICLE_COLLISIONS);
+                // m_physicsScene.PE.AddToCollisionFlags(ControllingPrim.PhysBody, CollisionFlags.BS_VEHICLE_COLLISIONS);
+                ControllingPrim.Linkset.AddToPhysicalCollisionFlags(CollisionFlags.BS_VEHICLE_COLLISIONS);
 
-                Vector3 inertia = m_physicsScene.PE.CalculateLocalInertia(ControllingPrim.PhysShape.physShapeInfo, m_vehicleMass);
-                ControllingPrim.Inertia = inertia * BSParam.VehicleInertiaFactor;
-                m_physicsScene.PE.SetMassProps(ControllingPrim.PhysBody, m_vehicleMass, ControllingPrim.Inertia);
-                m_physicsScene.PE.UpdateInertiaTensor(ControllingPrim.PhysBody);
+                // Vector3 inertia = m_physicsScene.PE.CalculateLocalInertia(ControllingPrim.PhysShape.physShapeInfo, m_vehicleMass);
+                // ControllingPrim.Inertia = inertia * BSParam.VehicleInertiaFactor;
+                // m_physicsScene.PE.SetMassProps(ControllingPrim.PhysBody, m_vehicleMass, ControllingPrim.Inertia);
+                // m_physicsScene.PE.UpdateInertiaTensor(ControllingPrim.PhysBody);
+                ControllingPrim.Linkset.ComputeAndSetLocalInertia(BSParam.VehicleInertiaFactor, m_vehicleMass);
 
                 // Set the gravity for the vehicle depending on the buoyancy
                 // TODO: what should be done if prim and vehicle buoyancy differ?
                 m_VehicleGravity = ControllingPrim.ComputeGravity(m_VehicleBuoyancy);
                 // The actual vehicle gravity is set to zero in Bullet so we can do all the application of same.
-                m_physicsScene.PE.SetGravity(ControllingPrim.PhysBody, Vector3.Zero);
+                // m_physicsScene.PE.SetGravity(ControllingPrim.PhysBody, Vector3.Zero);
+                ControllingPrim.Linkset.SetPhysicalGravity(Vector3.Zero);
 
                 VDetailLog("{0},BSDynamics.SetPhysicalParameters,mass={1},inert={2},vehGrav={3},aDamp={4},frict={5},rest={6},lFact={7},aFact={8}",
                         ControllingPrim.LocalID, m_vehicleMass, ControllingPrim.Inertia, m_VehicleGravity,
@@ -617,6 +628,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             {
                 if (ControllingPrim.PhysBody.HasPhysicalBody)
                     m_physicsScene.PE.RemoveFromCollisionFlags(ControllingPrim.PhysBody, CollisionFlags.BS_VEHICLE_COLLISIONS);
+                // ControllingPrim.Linkset.RemoveFromPhysicalCollisionFlags(CollisionFlags.BS_VEHICLE_COLLISIONS);
             }
         }
 
@@ -629,6 +641,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         // BSActor.Release()
         public override void Dispose()
         {
+            VDetailLog("{0},Dispose", ControllingPrim.LocalID);
             UnregisterForSceneEvents();
             Type = Vehicle.TYPE_NONE;
             Enabled = false;
@@ -1001,7 +1014,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             else if (newVelocityLengthSq < 0.001f)
                 VehicleVelocity = Vector3.Zero;
 
-            VDetailLog("{0},  MoveLinear,done,isColl={1},newVel={2}", ControllingPrim.LocalID, ControllingPrim.IsColliding, VehicleVelocity );
+            VDetailLog("{0},  MoveLinear,done,isColl={1},newVel={2}", ControllingPrim.LocalID, ControllingPrim.HasSomeCollision, VehicleVelocity );
 
         } // end MoveLinear()
 
@@ -1029,8 +1042,8 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             // Add this correction to the velocity to make it faster/slower.
             VehicleVelocity += linearMotorVelocityW;
 
-            VDetailLog("{0},  MoveLinear,velocity,origVelW={1},velV={2},correctV={3},correctW={4},newVelW={5},fricFact={6}",
-                        ControllingPrim.LocalID, origVelW, currentVelV, linearMotorCorrectionV,
+            VDetailLog("{0},  MoveLinear,velocity,origVelW={1},velV={2},tgt={3},correctV={4},correctW={5},newVelW={6},fricFact={7}",
+                        ControllingPrim.LocalID, origVelW, currentVelV, m_linearMotor.TargetValue, linearMotorCorrectionV,
                         linearMotorVelocityW, VehicleVelocity, frictionFactorV);
         }
 
@@ -1062,7 +1075,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 Vector3 linearDeflectionW = linearDeflectionV * VehicleOrientation;
 
                 // Optionally, if not colliding, don't effect world downward velocity. Let falling things fall.
-                if (BSParam.VehicleLinearDeflectionNotCollidingNoZ && !m_controllingPrim.IsColliding)
+                if (BSParam.VehicleLinearDeflectionNotCollidingNoZ && !m_controllingPrim.HasSomeCollision)
                 {
                     linearDeflectionW.Z = 0f;
                 }
@@ -1108,7 +1121,6 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 {
                     m_VhoverTargetHeight = m_VhoverHeight;
                 }
-
                 if ((m_flags & VehicleFlag.HOVER_UP_ONLY) != 0)
                 {
                     // If body is already heigher, use its height as target height
@@ -1157,7 +1169,6 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                                     m_VhoverTimescale, m_VhoverHeight, m_VhoverTargetHeight,
                                     verticalError, verticalCorrection);
                 }
-
             }
         }
 
@@ -1222,7 +1233,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 float targetHeight = Type == Vehicle.TYPE_BOAT ? GetWaterLevel(VehiclePosition) : GetTerrainHeight(VehiclePosition);
                 distanceAboveGround = VehiclePosition.Z - targetHeight;
                 // Not colliding if the vehicle is off the ground
-                if (!Prim.IsColliding)
+                if (!Prim.HasSomeCollision)
                 {
                     // downForce = new Vector3(0, 0, -distanceAboveGround / m_bankingTimescale);
                     VehicleVelocity += new Vector3(0, 0, -distanceAboveGround);
@@ -1233,12 +1244,12 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                 //     be computed with a motor.
                 // TODO: add interaction with banking.
                 VDetailLog("{0},  MoveLinear,limitMotorUp,distAbove={1},colliding={2},ret={3}",
-                                Prim.LocalID, distanceAboveGround, Prim.IsColliding, ret);
+                                Prim.LocalID, distanceAboveGround, Prim.HasSomeCollision, ret);
                  */
 
                 // Another approach is to measure if we're going up. If going up and not colliding,
                 //     the vehicle is in the air.  Fix that by pushing down.
-                if (!ControllingPrim.IsColliding && VehicleVelocity.Z > 0.1)
+                if (!ControllingPrim.HasSomeCollision && VehicleVelocity.Z > 0.1)
                 {
                     // Get rid of any of the velocity vector that is pushing us up.
                     float upVelocity = VehicleVelocity.Z;
@@ -1260,7 +1271,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                     }
                         */
                     VDetailLog("{0},  MoveLinear,limitMotorUp,collide={1},upVel={2},newVel={3}",
-                                    ControllingPrim.LocalID, ControllingPrim.IsColliding, upVelocity, VehicleVelocity);
+                                    ControllingPrim.LocalID, ControllingPrim.HasSomeCollision, upVelocity, VehicleVelocity);
                 }
             }
         }
@@ -1270,14 +1281,14 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             Vector3 appliedGravity = m_VehicleGravity * m_vehicleMass;
 
             // Hack to reduce downward force if the vehicle is probably sitting on the ground
-            if (ControllingPrim.IsColliding && IsGroundVehicle)
+            if (ControllingPrim.HasSomeCollision && IsGroundVehicle)
                 appliedGravity *= BSParam.VehicleGroundGravityFudge;
 
             VehicleAddForce(appliedGravity);
 
             VDetailLog("{0},  MoveLinear,applyGravity,vehGrav={1},collid={2},fudge={3},mass={4},appliedForce={5}",
                             ControllingPrim.LocalID, m_VehicleGravity,
-                            ControllingPrim.IsColliding, BSParam.VehicleGroundGravityFudge, m_vehicleMass, appliedGravity);
+                            ControllingPrim.HasSomeCollision, BSParam.VehicleGroundGravityFudge, m_vehicleMass, appliedGravity);
         }
 
         // =======================================================================
@@ -1344,6 +1355,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
         private void ComputeAngularTurning(float pTimestep)
         {
             // The user wants this many radians per second angular change?
+            Vector3 origVehicleRotationalVelocity = VehicleRotationalVelocity;      // DEBUG DEBUG
             Vector3 currentAngularV = VehicleRotationalVelocity * Quaternion.Inverse(VehicleOrientation);
             Vector3 angularMotorContributionV = m_angularMotor.Step(pTimestep, currentAngularV);
 
@@ -1356,20 +1368,20 @@ namespace OpenSim.Region.Physics.BulletSPlugin
             // TODO: This is here because this is where ODE put it but documentation says it
             //    is a linear effect. Where should this check go?
             //if ((m_flags & (VehicleFlag.NO_DEFLECTION_UP)) != 0)
-           // {
+            // {
             //    angularMotorContributionV.X = 0f;
             //    angularMotorContributionV.Y = 0f;
-          //  }
+            //  }
 
             // Reduce any velocity by friction.
             Vector3 frictionFactorW = ComputeFrictionFactor(m_angularFrictionTimescale, pTimestep);
             angularMotorContributionV -= (currentAngularV * frictionFactorW);
 
-            VehicleRotationalVelocity += angularMotorContributionV * VehicleOrientation;
+            Vector3 angularMotorContributionW = angularMotorContributionV * VehicleOrientation;
+            VehicleRotationalVelocity += angularMotorContributionW;
 
-
-
-            VDetailLog("{0},  MoveAngular,angularTurning,angContribV={1}", ControllingPrim.LocalID, angularMotorContributionV);
+            VDetailLog("{0},  MoveAngular,angularTurning,curAngVelV={1},origVehRotVel={2},vehRotVel={3},frictFact={4}, angContribV={5},angContribW={6}",
+                        ControllingPrim.LocalID, currentAngularV, origVehicleRotationalVelocity, VehicleRotationalVelocity, frictionFactorW, angularMotorContributionV, angularMotorContributionW);
         }
 
         // From http://wiki.secondlife.com/wiki/Linden_Vehicle_Tutorial:
@@ -1396,7 +1408,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
 
                             // Flipping what was originally a timescale into a speed variable and then multiplying it by 2
                             //    since only computing half the distance between the angles.
-                            float VerticalAttractionSpeed = (1 / m_verticalAttractionTimescale) * 2.0f;
+                            float verticalAttractionSpeed = (1 / m_verticalAttractionTimescale) * 2.0f;
 
                             // Make a prediction of where the up axis will be when this is applied rather then where it is now as
                             //     this makes for a smoother adjustment and less fighting between the various forces.
@@ -1406,12 +1418,13 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                             Vector3 torqueVector = Vector3.Cross(predictedUp, Vector3.UnitZ);
 
                             // Scale vector by our timescale since it is an acceleration it is r/s^2 or radians a timescale squared
-                            Vector3 vertContributionV = torqueVector * VerticalAttractionSpeed * VerticalAttractionSpeed;
+                            Vector3 vertContributionV = torqueVector * verticalAttractionSpeed * verticalAttractionSpeed;
 
                             VehicleRotationalVelocity += vertContributionV;
 
-                            VDetailLog("{0},  MoveAngular,verticalAttraction,upAxis={1},PredictedUp={2},torqueVector={3},contrib={4}",
+                            VDetailLog("{0},  MoveAngular,verticalAttraction,vertAttrSpeed={1},upAxis={2},PredictedUp={3},torqueVector={4},contrib={5}",
                                             ControllingPrim.LocalID,
+                                            verticalAttractionSpeed,
                                             vehicleUpAxis,
                                             predictedUp,
                                             torqueVector,
@@ -1424,37 +1437,38 @@ namespace OpenSim.Region.Physics.BulletSPlugin
                             // http://stackoverflow.com/questions/14939657/computing-vector-from-quaternion-works-computing-quaternion-from-vector-does-no
 
                             // Create a rotation that is only the vehicle's rotation around Z
-                            Vector3 currentEuler = Vector3.Zero;
-                            VehicleOrientation.GetEulerAngles(out currentEuler.X, out currentEuler.Y, out currentEuler.Z);
-                            Quaternion justZOrientation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, currentEuler.Z);
+                            Vector3 currentEulerW = Vector3.Zero;
+                            VehicleOrientation.GetEulerAngles(out currentEulerW.X, out currentEulerW.Y, out currentEulerW.Z);
+                            Quaternion justZOrientation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, currentEulerW.Z);
 
                             // Create the axis that is perpendicular to the up vector and the rotated up vector.
-                            Vector3 differenceAxis = Vector3.Cross(Vector3.UnitZ * justZOrientation, Vector3.UnitZ * VehicleOrientation);
+                            Vector3 differenceAxisW = Vector3.Cross(Vector3.UnitZ * justZOrientation, Vector3.UnitZ * VehicleOrientation);
                             // Compute the angle between those to vectors.
                             double differenceAngle = Math.Acos((double)Vector3.Dot(Vector3.UnitZ, Vector3.Normalize(Vector3.UnitZ * VehicleOrientation)));
                             // 'differenceAngle' is the angle to rotate and 'differenceAxis' is the plane to rotate in to get the vehicle vertical
 
                             // Reduce the change by the time period it is to change in. Timestep is handled when velocity is applied.
                             // TODO: add 'efficiency'.
-                            differenceAngle /= m_verticalAttractionTimescale;
+                            // differenceAngle /= m_verticalAttractionTimescale;
 
                             // Create the quaterian representing the correction angle
-                            Quaternion correctionRotation = Quaternion.CreateFromAxisAngle(differenceAxis, (float)differenceAngle);
+                            Quaternion correctionRotationW = Quaternion.CreateFromAxisAngle(differenceAxisW, (float)differenceAngle);
 
                             // Turn that quaternion into Euler values to make it into velocities to apply.
-                            Vector3 vertContributionV = Vector3.Zero;
-                            correctionRotation.GetEulerAngles(out vertContributionV.X, out vertContributionV.Y, out vertContributionV.Z);
-                            vertContributionV *= -1f;
+                            Vector3 vertContributionW = Vector3.Zero;
+                            correctionRotationW.GetEulerAngles(out vertContributionW.X, out vertContributionW.Y, out vertContributionW.Z);
+                            vertContributionW *= -1f;
+                            vertContributionW /= m_verticalAttractionTimescale;
 
-                            VehicleRotationalVelocity += vertContributionV;
+                            VehicleRotationalVelocity += vertContributionW;
 
                             VDetailLog("{0},  MoveAngular,verticalAttraction,upAxis={1},diffAxis={2},diffAng={3},corrRot={4},contrib={5}",
                                             ControllingPrim.LocalID,
                                             vehicleUpAxis,
-                                            differenceAxis,
+                                            differenceAxisW,
                                             differenceAngle,
-                                            correctionRotation,
-                                            vertContributionV);
+                                            correctionRotationW,
+                                            vertContributionW);
                             break;
                         }
                     case 2:

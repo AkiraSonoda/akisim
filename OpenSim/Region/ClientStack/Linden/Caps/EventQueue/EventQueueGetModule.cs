@@ -60,6 +60,11 @@ namespace OpenSim.Region.ClientStack.Linden
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
+        /// <value>
+        /// Debug level.
+        /// </value>
+        public int DebugLevel { get; set; }
+
         protected Scene m_scene;
         
         private Dictionary<UUID, int> m_ids = new Dictionary<UUID, int>();
@@ -79,7 +84,6 @@ namespace OpenSim.Region.ClientStack.Linden
             scene.RegisterModuleInterface<IEventQueue>(this);
 
             scene.EventManager.OnClientClosed += ClientClosed;
-            scene.EventManager.OnMakeChildAgent += MakeChildAgent;
             scene.EventManager.OnRegisterCaps += OnRegisterCaps;
 
             MainConsole.Instance.Commands.AddCommand(
@@ -97,7 +101,6 @@ namespace OpenSim.Region.ClientStack.Linden
                 return;
 
             scene.EventManager.OnClientClosed -= ClientClosed;
-            scene.EventManager.OnMakeChildAgent -= MakeChildAgent;
             scene.EventManager.OnRegisterCaps -= OnRegisterCaps;
 
             scene.UnregisterModuleInterface<IEventQueue>(this);
@@ -150,14 +153,12 @@ namespace OpenSim.Region.ClientStack.Linden
             {
                 if (!queues.ContainsKey(agentId))
                 {
-                    /*
                     m_log.DebugFormat(
                         "[EVENTQUEUE]: Adding new queue for agent {0} in region {1}", 
                         agentId, m_scene.RegionInfo.RegionName);
-                    */
                     queues[agentId] = new Queue<OSD>();
                 }
-                
+
                 return queues[agentId];
             }
         }
@@ -189,8 +190,12 @@ namespace OpenSim.Region.ClientStack.Linden
             {
                 Queue<OSD> queue = GetQueue(avatarID);
                 if (queue != null)
+                {
                     lock (queue)
                         queue.Enqueue(ev);
+                }
+                else
+                    m_log.WarnFormat("[EVENTQUEUE]: (Enqueue) No queue found for agent {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
             } 
             catch (NullReferenceException e)
             {
@@ -205,47 +210,14 @@ namespace OpenSim.Region.ClientStack.Linden
 
         private void ClientClosed(UUID agentID, Scene scene)
         {
-//            m_log.DebugFormat("[EVENTQUEUE]: Closed client {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
-
-            int count = 0;
-            while (queues.ContainsKey(agentID) && queues[agentID].Count > 0 && count++ < 5)
-            {
-                Thread.Sleep(1000);
-            }
+            //m_log.DebugFormat("[EVENTQUEUE]: Closed client {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
 
             lock (queues)
-            {
                 queues.Remove(agentID);
-            }
 
             List<UUID> removeitems = new List<UUID>();
             lock (m_AvatarQueueUUIDMapping)
                 m_AvatarQueueUUIDMapping.Remove(agentID);
-
-//            lock (m_AvatarQueueUUIDMapping)
-//            {
-//                foreach (UUID ky in m_AvatarQueueUUIDMapping.Keys)
-//                {
-////                    m_log.DebugFormat("[EVENTQUEUE]: Found key {0} in m_AvatarQueueUUIDMapping while looking for {1}", ky, AgentID);
-//                    if (ky == agentID)
-//                    {
-//                        removeitems.Add(ky);
-//                    }
-//                }
-//
-//                foreach (UUID ky in removeitems)
-//                {
-//                    UUID eventQueueGetUuid = m_AvatarQueueUUIDMapping[ky];
-//                    m_AvatarQueueUUIDMapping.Remove(ky);
-//
-//                    string eqgPath = GenerateEqgCapPath(eventQueueGetUuid);
-//                    MainServer.Instance.RemovePollServiceHTTPHandler("", eqgPath);
-//
-////                    m_log.DebugFormat(
-////                        "[EVENT QUEUE GET MODULE]: Removed EQG handler {0} for {1} in {2}",
-////                        eqgPath, agentID, m_scene.RegionInfo.RegionName);
-//                }
-//            }
 
             UUID searchval = UUID.Zero;
 
@@ -266,19 +238,9 @@ namespace OpenSim.Region.ClientStack.Linden
                 foreach (UUID ky in removeitems)
                     m_QueueUUIDAvatarMapping.Remove(ky);
             }
-        }
 
-        private void MakeChildAgent(ScenePresence avatar)
-        {
-            //m_log.DebugFormat("[EVENTQUEUE]: Make Child agent {0} in region {1}.", avatar.UUID, m_scene.RegionInfo.RegionName);
-            //lock (m_ids)
-           // {
-                //if (m_ids.ContainsKey(avatar.UUID))
-                //{
-                    // close the event queue.
-                    //m_ids[avatar.UUID] = -1;
-                //}
-            //}
+            // m_log.DebugFormat("[EVENTQUEUE]: Deleted queues for {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
+
         }
 
         /// <summary>
@@ -331,9 +293,8 @@ namespace OpenSim.Region.ClientStack.Linden
             }
 
             caps.RegisterPollHandler(
-                "EventQueueGet", 
-                new PollServiceEventArgs(
-                    null, GenerateEqgCapPath(eventQueueGetUUID), HasEvents, GetEvents, NoEvents, agentID, 40000));
+                "EventQueueGet",
+                new PollServiceEventArgs(null, GenerateEqgCapPath(eventQueueGetUUID), HasEvents, GetEvents, NoEvents, agentID, SERVER_EQ_TIME_NO_EVENTS));
 
             Random rnd = new Random(Environment.TickCount);
             lock (m_ids)
@@ -351,7 +312,10 @@ namespace OpenSim.Region.ClientStack.Linden
             Queue<OSD> queue = GetQueue(agentID);
             if (queue != null)
                 lock (queue)
+                {
+                    //m_log.WarnFormat("POLLED FOR EVENTS BY {0} in {1} -- {2}", agentID, m_scene.RegionInfo.RegionName, queue.Count);
                     return queue.Count > 0;
+                }
 
             return false;
         }
@@ -374,9 +338,14 @@ namespace OpenSim.Region.ClientStack.Linden
         public Hashtable GetEvents(UUID requestID, UUID pAgentId)
         {
             if (m_log.IsDebugEnabled)
-                m_log.DebugFormat("POLLED FOR EQ MESSAGES BY {0} in {1}", pAgentId, m_scene.RegionInfo.RegionName);
+                m_log.WarnFormat("POLLED FOR EQ MESSAGES BY {0} in {1}", pAgentId, m_scene.RegionInfo.RegionName);
 
-            Queue<OSD> queue = TryGetQueue(pAgentId);
+            Queue<OSD> queue = GetQueue(pAgentId);
+            if (queue == null)
+            {
+                return NoEvents(requestID, pAgentId);
+            }
+
             OSD element;
             lock (queue)
             {
@@ -747,12 +716,12 @@ namespace OpenSim.Region.ClientStack.Linden
 
         }
 
-        public void ChatterBoxSessionAgentListUpdates(UUID sessionID, UUID fromAgent, UUID toAgent, bool canVoiceChat, 
+        public void ChatterBoxSessionAgentListUpdates(UUID sessionID, UUID fromAgent, UUID anotherAgent, bool canVoiceChat, 
                                                       bool isModerator, bool textMute)
         {
             OSD item = EventQueueHelper.ChatterBoxSessionAgentListUpdates(sessionID, fromAgent, canVoiceChat,
                                                                           isModerator, textMute);
-            Enqueue(item, toAgent);
+            Enqueue(item, fromAgent);
             //m_log.InfoFormat("########### eq ChatterBoxSessionAgentListUpdates #############\n{0}", item);
         }
 

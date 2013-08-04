@@ -461,6 +461,7 @@ public static class BSParam
             (s) => { return MaxAddForceMagnitude; },
             (s,v) => { MaxAddForceMagnitude = v; MaxAddForceMagnitudeSquared = v * v; } ),
         // Density is passed around as 100kg/m3. This scales that to 1kg/m3.
+        // Reduce by power of 100 because Bullet doesn't seem to handle objects with large mass very well
         new ParameterDefn<float>("DensityScaleFactor", "Conversion for simulator/viewer density (100kg/m3) to physical density (1kg/m3)",
             0.01f ),
 
@@ -473,8 +474,9 @@ public static class BSParam
             0.2f,
             (s) => { return DefaultFriction; },
             (s,v) => { DefaultFriction = v; s.UnmanagedParams[0].defaultFriction = v; } ),
+        // For historical reasons, the viewer and simulator multiply the density by 100
         new ParameterDefn<float>("DefaultDensity", "Density for new objects" ,
-            10.000006836f,  // Aluminum g/cm3
+            1000.0006836f,  // Aluminum g/cm3 * 100
             (s) => { return DefaultDensity; },
             (s,v) => { DefaultDensity = v; s.UnmanagedParams[0].defaultDensity = v; } ),
         new ParameterDefn<float>("DefaultRestitution", "Bouncyness of an object" ,
@@ -554,8 +556,9 @@ public static class BSParam
             0.95f ),
         new ParameterDefn<float>("AvatarAlwaysRunFactor", "Speed multiplier if avatar is set to always run",
             1.3f ),
-        new ParameterDefn<float>("AvatarDensity", "Density of an avatar. Changed on avatar recreation.",
-            3.5f) ,
+            // For historical reasons, density is reported  * 100
+        new ParameterDefn<float>("AvatarDensity", "Density of an avatar. Changed on avatar recreation. Scaled times 100.",
+            3500f) ,    // 3.5 * 100
         new ParameterDefn<float>("AvatarRestitution", "Bouncyness. Changed on avatar recreation.",
             0f ),
         new ParameterDefn<float>("AvatarCapsuleWidth", "The distance between the sides of the avatar capsule",
@@ -701,7 +704,7 @@ public static class BSParam
 	    new ParameterDefn<float>("LinksetImplementation", "Type of linkset implementation (0=Constraint, 1=Compound, 2=Manual)",
             (float)BSLinkset.LinksetImplementation.Compound ),
 	    new ParameterDefn<bool>("LinksetOffsetCenterOfMass", "If 'true', compute linkset center-of-mass and offset linkset position to account for same",
-            false ),
+            true ),
 	    new ParameterDefn<bool>("LinkConstraintUseFrameOffset", "For linksets built with constraints, enable frame offsetFor linksets built with constraints, enable frame offset.",
             false ),
 	    new ParameterDefn<bool>("LinkConstraintEnableTransMotor", "Whether to enable translational motor on linkset constraints",

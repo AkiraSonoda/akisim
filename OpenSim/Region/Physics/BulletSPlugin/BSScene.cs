@@ -97,6 +97,9 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
 
     internal long m_simulationStep = 0; // The current simulation step.
     public long SimulationStep { get { return m_simulationStep; } }
+    // A number to use for SimulationStep that is probably not any step value
+    // Used by the collision code (which remembers the step when a collision happens) to remember not any simulation step.
+    public static long NotASimulationStep = -1234;
 
     internal float LastTimeStep { get; private set; }   // The simulation time from the last invocation of Simulate()
 
@@ -858,6 +861,23 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     }
 
     public override bool IsThreaded { get { return false;  } }
+
+    #region Extensions
+    // =============================================================
+    // Per scene functions. See below.
+
+    // Per avatar functions. See BSCharacter.
+
+    // Per prim functions. See BSPrim.
+    public const string PhysFunctGetLinksetType = "BulletSim.GetLinksetType";
+    public const string PhysFunctSetLinksetType = "BulletSim.SetLinksetType";
+    // =============================================================
+
+    public override object Extension(string pFunct, params object[] pParams)
+    {
+        return base.Extension(pFunct, pParams);
+    }
+    #endregion // Extensions
 
     #region Taints
     // The simulation execution order is:
