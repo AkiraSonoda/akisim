@@ -399,10 +399,12 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </summary>
         /// <param name="llsdRequest"></param>
         /// <returns></returns>
-        public LLSDAssetUploadResponse NewAgentInventoryRequest(LLSDAssetUploadRequest llsdRequest)
-        {
-            //m_log.Debug("[CAPS]: NewAgentInventoryRequest Request is: " + llsdRequest.ToString());
-            //m_log.Debug("asset upload request via CAPS" + llsdRequest.inventory_type + " , " + llsdRequest.asset_type);
+        public LLSDAssetUploadResponse NewAgentInventoryRequest (LLSDAssetUploadRequest llsdRequest)
+		{
+			if (m_log.IsDebugEnabled) {
+				m_log.Debug ("[BunchOfCaps]: NewAgentInventoryRequest Request is: " + llsdRequest.ToString ());
+				m_log.Debug ("[BunchOfCaps]: asset upload request via CAPS" + llsdRequest.inventory_type + " , " + llsdRequest.asset_type);
+			}
 
             if (llsdRequest.asset_type == "texture" ||
                 llsdRequest.asset_type == "animation" ||
@@ -779,11 +781,13 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <param name="path"></param>
         /// <param name="param"></param>
         /// <returns></returns>
-        public string NoteCardAgentInventory(string request, string path, string param,
+        public string NoteCardAgentInventory (string request, string path, string param,
                                              IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
-            //m_log.Debug("[CAPS]: NoteCardAgentInventory Request in region: " + m_regionName + "\n" + request);
-            //m_log.Debug("[CAPS]: NoteCardAgentInventory Request is: " + request);
+		{
+			if (m_log.IsDebugEnabled) {
+				m_log.Debug ("[BunchOfCaps]: NoteCardAgentInventory Request in region: " + m_regionName + "\n" + request);
+				m_log.Debug ("[BunchOfCaps]: NoteCardAgentInventory Request is: " + request);
+			}
 
             //OpenMetaverse.StructuredData.OSDMap hash = (OpenMetaverse.StructuredData.OSDMap)OpenMetaverse.StructuredData.LLSDParser.DeserializeBinary(Utils.StringToBytes(request));
             Hashtable hash = (Hashtable)LLSD.LLSDDeserialize(Utils.StringToBytes(request));
@@ -829,6 +833,10 @@ namespace OpenSim.Region.ClientStack.Linden
         public string CopyInventoryFromNotecard(string request, string path, string param,
                                              IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat("[BunchOfCaps]: CopyInventoryFromNotecard ( request: {0}, path: {1}, param: {2}, httpRequest: n/a, httpResponse: n/a )", request, path, param);
+			}
+
             Hashtable response = new Hashtable();
             response["int_response_code"] = 404;
             response["content_type"] = "text/plain";
@@ -893,7 +901,11 @@ namespace OpenSim.Region.ClientStack.Linden
                 string param, IOSHttpRequest httpRequest,
                 IOSHttpResponse httpResponse)
         {
-            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat("[BunchOfCaps]: GetObjectPhysicsData ( request: {0}, path: {1}, param: {2}, httpRequest: n/a, httpResponse: n/a )", request, path, param);
+			}
+
+			OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
             OSDMap resp = new OSDMap();
             OSDArray object_ids = (OSDArray)req["object_ids"];
 
@@ -920,10 +932,14 @@ namespace OpenSim.Region.ClientStack.Linden
             return response;
         }
 
-        public string UpdateAgentInformation(string request, string path,
+        public string UpdateAgentInformation (string request, string path,
                 string param, IOSHttpRequest httpRequest,
                 IOSHttpResponse httpResponse)
-        {
+		{
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat("[BunchOfCaps]: UpdateAgentInformation ( request: {0}, path: {1}, param: {2}, httpResponse: n/a )", request, path, param);
+			}
+
 //            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
             OSDMap resp = new OSDMap();
 

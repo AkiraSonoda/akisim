@@ -249,11 +249,11 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                                 return;
                             }
                         }
-//                        else
-//                        {
-//                            m_log.DebugFormat("[HG INVENTORY CONNECTOR]: User {0} does not have InventoryServerURI. OH NOES!", userID);
-//                            return;
-//                        }
+                        else
+                        {
+                            m_log.DebugFormat("[HG INVENTORY CONNECTOR]: User {0} does not have InventoryServerURI. OH NOES!", userID);
+                            return;
+                        }
                     }
                 }
                 if (sp == null)
@@ -319,7 +319,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
         public InventoryCollection GetUserInventory(UUID userID)
         {
             string invURL = GetInventoryServiceURL(userID);
-            m_log.DebugFormat("[HG INVENTORY CONNECTOR]: GetUserInventory for {0} {1}", userID, invURL);
+            m_log.DebugFormat("[HGInventoryBroker]: GetUserInventory for {0} {1}", userID, invURL);
 
             if (invURL == null) // not there, forward to local inventory connector to resolve
                 return m_LocalGridInventoryService.GetUserInventory(userID);
@@ -341,7 +341,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public InventoryFolderBase GetRootFolder(UUID userID)
         {
-            //m_log.DebugFormat("[HG INVENTORY CONNECTOR]: GetRootFolder for {0}", userID);
+            m_log.DebugFormat("[HG INVENTORY CONNECTOR]: GetRootFolder for {0}", userID);
             InventoryFolderBase root = m_Cache.GetRootFolder(userID);
             if (root != null)
                 return root;

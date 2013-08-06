@@ -253,7 +253,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         public bool SendAppearance(UUID agentId)
         {
-            // m_log.DebugFormat("[AVFACTORY]: Sending appearance for {0}", agentId);
+            m_log.DebugFormat("[AvatarFactoryModule]: Sending appearance for {0}", agentId);
 
             ScenePresence sp = m_scene.GetScenePresence(agentId);
             if (sp == null)
@@ -410,9 +410,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 if (face == null)
                     continue;
 
-                // m_log.DebugFormat(
-                //     "[AVFACTORY]: Looking for texture {0}, id {1} for {2} {3}",
-                //     face.TextureID, idx, client.Name, client.AgentId);
+                if(m_log.IsDebugEnabled) {
+					m_log.DebugFormat("[AvatarFactoryModule]: Looking for texture {0}, id {1} for {2}",face.TextureID, idx, sp.Name);
+				}
 
                 // if the texture is one of the "defaults" then skip it
                 // this should probably be more intelligent (skirt texture doesnt matter
@@ -423,12 +423,10 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
                 if (missingTexturesOnly)
                 {
-                    if (m_scene.AssetService.Get(face.TextureID.ToString()) != null)
-                    {
+					// AKIDO: Check if the AssetService.Get() respects Surabaya as well
+                    if (m_scene.AssetService.Get(face.TextureID.ToString()) != null) {
                         continue;
-                    }
-                    else
-                    {
+                    } else {
                         // On inter-simulator teleports, this occurs if baked textures are not being stored by the
                         // grid asset service (which means that they are not available to the new region and so have
                         // to be re-requested from the client).
@@ -436,14 +434,14 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                         // The only available core OpenSimulator behaviour right now
                         // is not to store these textures, temporarily or otherwise.
                         m_log.DebugFormat(
-                            "[AVFACTORY]: Missing baked texture {0} ({1}) for {2}, requesting rebake.",
+                            "[AvatarFactoryModule]: Missing baked texture {0} ({1}) for {2}, requesting rebake.",
                             face.TextureID, idx, sp.Name);
                     }
                 }
                 else
                 {
                     m_log.DebugFormat(
-                        "[AVFACTORY]: Requesting rebake of {0} ({1}) for {2}.",
+                        "[AvatarFactoryModule]: Requesting rebake of {0} ({1}) for {2}.",
                         face.TextureID, idx, sp.Name);
                 }
 
@@ -502,7 +500,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     UUID avatarID = kvp.Key;
                     long sendTime = kvp.Value;
 
-                    // m_log.DebugFormat("[AVFACTORY]: Handling queued appearance updates for {0}, update delta to now is {1}", avatarID, sendTime - now);
+                    m_log.DebugFormat("[AvatarFactoryModule]: Handling queued appearance updates for {0}, update delta to now is {1}", avatarID, sendTime - now);
 
                     if (sendTime < now)
                     {
@@ -548,11 +546,11 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             if (sp == null)
             {
                 // This is expected if the user has gone away.
-                // m_log.DebugFormat("[AVFACTORY]: Agent {0} no longer in the scene", agentid);
+                m_log.DebugFormat("[AvatarFactoryModule]: Agent {0} no longer in the scene", agentid);
                 return;
             }
 
-            // m_log.DebugFormat("[AVFACTORY]: Saving appearance for avatar {0}", agentid);
+            m_log.DebugFormat("[AvatarFactoryModule]: Saving appearance for avatar {0}", agentid);
 
             // This could take awhile since it needs to pull inventory
             // We need to do it at the point of save so that there is a sufficient delay for any upload of new body part/shape
@@ -578,7 +576,11 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         private void SetAppearanceAssets(UUID userID, AvatarAppearance appearance)
         {
-            IInventoryService invService = m_scene.InventoryService;
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("[AvatarFactoryModule]: SetAppearanceAssets ( userID: {0}, appearance: n/a )", userID);
+			}
+
+			IInventoryService invService = m_scene.InventoryService;
 
             if (invService.GetRootFolder(userID) != null)
             {
@@ -603,7 +605,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                         else
                         {
                             m_log.ErrorFormat(
-                                "[AVFACTORY]: Can't find inventory item {0} for {1}, setting to default",
+                                "[AvatarFactoryModule]: Can't find inventory item {0} for {1}, setting to default",
                                 appearance.Wearables[i][j].ItemID, (WearableType)i);
 
                             appearance.Wearables[i].RemoveItem(appearance.Wearables[i][j].ItemID);
@@ -613,7 +615,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             }
             else
             {
-                m_log.WarnFormat("[AVFACTORY]: user {0} has no inventory, appearance isn't going to work", userID);
+                m_log.WarnFormat("[AvatarFactoryModule]: user {0} has no inventory, appearance isn't going to work", userID);
             }
         }
 

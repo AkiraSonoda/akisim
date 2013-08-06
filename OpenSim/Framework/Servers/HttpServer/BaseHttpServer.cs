@@ -795,8 +795,8 @@ namespace OpenSim.Framework.Servers.HttpServer
                 request.Url.PathAndQuery,
                 request.RemoteIPEndPoint);
 
-            if (m_log.IsDebugEnabled)
-                LogIncomingInDetail(request);
+//            if (m_log.IsDebugEnabled)
+//                LogIncomingInDetail(request);
         }
 
         private void LogIncomingInDetail(OSHttpRequest request)
