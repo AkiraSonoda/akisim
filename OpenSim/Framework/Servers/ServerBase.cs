@@ -297,8 +297,9 @@ namespace OpenSim.Framework.Servers
                 "shutdown",
                 "Quit the application", (mod, args) => Shutdown());
 
-            ChecksManager.RegisterConsoleCommands(m_console);
-            StatsManager.RegisterConsoleCommands(m_console);
+// AKIDO: remove commented code
+//            ChecksManager.RegisterConsoleCommands(m_console);
+//            StatsManager.RegisterConsoleCommands(m_console);
         }
 
         public void RegisterCommonComponents(IConfigSource configSource)

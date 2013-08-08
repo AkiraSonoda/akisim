@@ -67,25 +67,26 @@ namespace OpenSim.Framework.Monitoring
 //        public static UserStatsCollector UserStats { get { return userStats; } }
         public static SimExtraStatsCollector SimExtraStats { get; set; }
 
-        public static void RegisterConsoleCommands(ICommandConsole console)
-        {
-            console.Commands.AddCommand(
-                "General",
-                false,
-                "show stats",
-                "show stats [list|all|(<category>[.<container>])+",
-                "Show statistical information for this server",
-                "If no final argument is specified then legacy statistics information is currently shown.\n"
-                    + "'list' argument will show statistic categories.\n"
-                    + "'all' will show all statistics.\n"
-                    + "A <category> name will show statistics from that category.\n"
-                    + "A <category>.<container> name will show statistics from that category in that container.\n"
-                    + "More than one name can be given separated by spaces.\n"
-                    + "THIS STATS FACILITY IS EXPERIMENTAL AND DOES NOT YET CONTAIN ALL STATS",
-                HandleShowStatsCommand);
-
-            StatsLogger.RegisterConsoleCommands(console);
-        }
+// AKIDO: remove this commented code
+//        public static void RegisterConsoleCommands(ICommandConsole console)
+//        {
+//            console.Commands.AddCommand(
+//                "General",
+//                false,
+//                "show stats",
+//                "show stats [list|all|(<category>[.<container>])+",
+//                "Show statistical information for this server",
+//                "If no final argument is specified then legacy statistics information is currently shown.\n"
+//                    + "'list' argument will show statistic categories.\n"
+//                    + "'all' will show all statistics.\n"
+//                    + "A <category> name will show statistics from that category.\n"
+//                    + "A <category>.<container> name will show statistics from that category in that container.\n"
+//                    + "More than one name can be given separated by spaces.\n"
+//                    + "THIS STATS FACILITY IS EXPERIMENTAL AND DOES NOT YET CONTAIN ALL STATS",
+//                HandleShowStatsCommand);
+//
+//            StatsLogger.RegisterConsoleCommands(console);
+//        }
 
         public static void HandleShowStatsCommand(string module, string[] cmd)
         {
