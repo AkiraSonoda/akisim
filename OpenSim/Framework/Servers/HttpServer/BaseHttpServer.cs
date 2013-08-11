@@ -795,33 +795,34 @@ namespace OpenSim.Framework.Servers.HttpServer
                 request.Url.PathAndQuery,
                 request.RemoteIPEndPoint);
 
-//            if (m_log.IsDebugEnabled)
-//                LogIncomingInDetail(request);
+            if (m_log.IsDebugEnabled)
+                LogIncomingInDetail(request);
         }
 
         private void LogIncomingInDetail(OSHttpRequest request)
         {
-            using (StreamReader reader = new StreamReader(Util.Copy(request.InputStream), Encoding.UTF8))
-            {
-                string output;
-
-                if (m_log.IsDebugEnabled)
-                {
-                    const int sampleLength = 80;
-                    char[] sampleChars = new char[sampleLength + 3];
-                    reader.Read(sampleChars, 0, sampleLength);
-                    sampleChars[80] = '.';
-                    sampleChars[81] = '.';
-                    sampleChars[82] = '.';
-                    output = new string(sampleChars);
-                }
-                else
-                {
-                    output = reader.ReadToEnd();
-                }
-
-                m_log.DebugFormat("[BASE HTTP SERVER]: {0}", output.Replace("\n", @"\n"));
-            }
+// AKIDO: remove function
+//            using (StreamReader reader = new StreamReader(Util.Copy(request.InputStream), Encoding.UTF8))
+//            {
+//                string output;
+//
+//                if (m_log.IsDebugEnabled)
+//                {
+//                    const int sampleLength = 80;
+//                    char[] sampleChars = new char[sampleLength + 3];
+//                    reader.Read(sampleChars, 0, sampleLength);
+//                    sampleChars[80] = '.';
+//                    sampleChars[81] = '.';
+//                    sampleChars[82] = '.';
+//                    output = new string(sampleChars);
+//                }
+//                else
+//                {
+//                    output = reader.ReadToEnd();
+//                }
+//
+//                m_log.DebugFormat("[BASE HTTP SERVER]: {0}", output.Replace("\n", @"\n"));
+//            }
         }
 
         private bool TryGetStreamHandler(string handlerKey, out IRequestHandler streamHandler)

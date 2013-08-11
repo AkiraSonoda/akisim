@@ -290,7 +290,8 @@ namespace OpenSim.Services.Connectors
 						XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
 						byte[] result = ServerUtils.SerializeResult(xs, asset);
 						string resultString = Util.UTF8.GetString(result);
-						m_log.DebugFormat("Dump of XML: {0}", resultString);
+						// AKIDO: remove commented code
+						//m_log.DebugFormat("Dump of XML: {0}", resultString);
 	                    OSDMap serializedAssetCaps = new OSDMap();
 	                    serializedAssetCaps.Add("assetID", asset.ID);
 						if(asset.Temporary) {
