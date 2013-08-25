@@ -62,6 +62,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public PollServiceRequestManager(BaseHttpServer pSrv, uint pWorkerThreadCount, int pTimeout)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             m_server = pSrv;
             m_WorkerThreadCount = pWorkerThreadCount;
             m_workerThreads = new Thread[m_WorkerThreadCount];
@@ -69,6 +73,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public void Start()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             //startup worker threads
             for (uint i = 0; i < m_WorkerThreadCount; i++)
             {
@@ -160,6 +168,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public void Stop()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             m_running = false;
 //            m_timeout = -10000; // cause all to expire
             Thread.Sleep(1000); // let the world move

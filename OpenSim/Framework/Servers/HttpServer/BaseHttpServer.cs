@@ -144,6 +144,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public BaseHttpServer(uint port, bool ssl, uint sslport, string CN) : this (port, ssl)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             if (m_ssl)
             {
                 m_sslport = sslport;
@@ -164,6 +168,11 @@ namespace OpenSim.Framework.Servers.HttpServer
         /// <param name="handler"></param>
         public void AddStreamHandler(IRequestHandler handler)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string httpMethod = handler.HttpMethod;
             string path = handler.Path;
             string handlerKey = GetHandlerKey(httpMethod, path);
@@ -1747,6 +1756,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public void Start()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             StartHTTP();
         }
 

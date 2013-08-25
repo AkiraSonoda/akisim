@@ -26,12 +26,16 @@
  */
 
 using System;
+using System.Reflection;
+using log4net;
 
 namespace OpenSim.Framework.Servers.HttpServer
 {
     public abstract class BaseRequestHandler
     {
-        public int RequestsReceived { get; protected set; }
+		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+		public int RequestsReceived { get; protected set; }
 
         public int RequestsHandled { get; protected set; }
 
@@ -53,11 +57,19 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public string Description { get; private set; }
 
-        protected BaseRequestHandler(string httpMethod, string path) : this(httpMethod, path, null, null) {}
+        protected BaseRequestHandler(string httpMethod, string path) : this(httpMethod, path, null, null) {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+		}
 
         protected BaseRequestHandler(string httpMethod, string path, string name, string description)
         {
-            Name = name;
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+			Name = name;
             Description = description;
             m_httpMethod = httpMethod;
             m_path = path;

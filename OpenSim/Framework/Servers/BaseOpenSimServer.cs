@@ -76,6 +76,10 @@ namespace OpenSim.Framework.Servers
 
         public BaseOpenSimServer() : base()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
             // Random uuid for private data
             m_osSecret = UUID.Random().ToString();
 
@@ -88,6 +92,11 @@ namespace OpenSim.Framework.Servers
         /// </summary>
         protected virtual void StartupSpecific()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
+
             StatsManager.SimExtraStats = new SimExtraStatsCollector();
             RegisterCommonCommands();
             RegisterCommonComponents(Config);
@@ -95,7 +104,7 @@ namespace OpenSim.Framework.Servers
 
         protected override void ShutdownSpecific()
         {            
-            m_log.Info("[SHUTDOWN]: Shutdown processing on main thread complete.  Exiting...");
+			m_log.InfoFormat("{0}: Shutdown processing on main thread complete.  Exiting...", System.Reflection.MethodBase.GetCurrentMethod().Name);
 
             RemovePIDFile();
 
@@ -132,7 +141,12 @@ namespace OpenSim.Framework.Servers
         /// Performs initialisation of the scene, such as loading configuration from disk.
         /// </summary>
         public virtual void Startup()
-        {            
+        {   
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             StartupSpecific();
             
             TimeSpan timeTaken = DateTime.Now - m_startuptime;
@@ -150,6 +164,10 @@ namespace OpenSim.Framework.Servers
 
         public string StatReport(IOSHttpRequest httpRequest)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             // If we catch a request for "callback", wrap the response in the value for jsonp
             if (httpRequest.Query.ContainsKey("callback"))
             {

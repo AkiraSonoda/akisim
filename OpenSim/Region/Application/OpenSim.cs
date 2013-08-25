@@ -77,10 +77,17 @@ namespace OpenSim
 
         public OpenSim(IConfigSource configSource) : base(configSource)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
         }
 
         protected override void ReadExtraConfigSettings()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
             base.ReadExtraConfigSettings();
 
             IConfig startupConfig = Config.Configs["Startup"];

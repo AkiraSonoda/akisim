@@ -72,6 +72,10 @@ namespace OpenSim.Framework.Servers
 
         public ServerBase()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             m_startuptime = DateTime.Now;
             m_version = VersionInfo.Version;
             EnhanceVersionInformation();
@@ -192,6 +196,10 @@ namespace OpenSim.Framework.Servers
         /// </summary>
         public void RegisterCommonCommands()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             if (m_console == null)
                 return;
 
@@ -304,6 +312,10 @@ namespace OpenSim.Framework.Servers
 
         public void RegisterCommonComponents(IConfigSource configSource)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             IConfig networkConfig = configSource.Configs["Network"];
 
             if (networkConfig != null)
@@ -692,6 +704,10 @@ namespace OpenSim.Framework.Servers
         /// </summary>
         protected void EnhanceVersionInformation()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             string buildVersion = string.Empty;
 
             // The subversion information is deprecated and will be removed at a later date
@@ -718,26 +734,26 @@ namespace OpenSim.Framework.Servers
             }
             else if (File.Exists(gitRefPointerPath))
             {
-//                m_log.DebugFormat("[SERVER BASE]: Found {0}", gitRefPointerPath);
+                m_log.DebugFormat("[SERVER BASE]: Found {0}", gitRefPointerPath);
 
                 string rawPointer = "";
 
                 using (StreamReader pointerFile = File.OpenText(gitRefPointerPath))
                     rawPointer = pointerFile.ReadLine();
 
-//                m_log.DebugFormat("[SERVER BASE]: rawPointer [{0}]", rawPointer);
+                m_log.DebugFormat("[SERVER BASE]: rawPointer [{0}]", rawPointer);
 
                 Match m = Regex.Match(rawPointer, "^ref: (.+)$");
 
                 if (m.Success)
                 {
-//                    m_log.DebugFormat("[SERVER BASE]: Matched [{0}]", m.Groups[1].Value);
+                    m_log.DebugFormat("[SERVER BASE]: Matched [{0}]", m.Groups[1].Value);
 
                     string gitRef = m.Groups[1].Value;
                     string gitRefPath = gitDir + gitRef;
                     if (File.Exists(gitRefPath))
                     {
-//                        m_log.DebugFormat("[SERVER BASE]: Found gitRefPath [{0}]", gitRefPath);
+                        m_log.DebugFormat("[SERVER BASE]: Found gitRefPath [{0}]", gitRefPath);
 
                         using (StreamReader refFile = File.OpenText(gitRefPath))
                         {
