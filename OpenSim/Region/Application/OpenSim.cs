@@ -654,6 +654,11 @@ namespace OpenSim
         /// <param name="cmdParams"></param>
         protected void ChangeSelectedRegion(string module, string[] cmdparams)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (cmdparams.Length > 2)
             {
                 string newRegionName = CombineParams(cmdparams, 2);
