@@ -49,7 +49,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AppearanceInfoModule")]
     public class AppearanceInfoModule : ISharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
 //        private IAvatarFactoryModule m_avatarFactory;
@@ -237,6 +237,10 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                 MainConsole.Instance.OutputFormat("Usage: appearance rebake <first-name> <last-name>");
                 return;
             }
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
 
             string firstname = cmd[2];
             string lastname = cmd[3];

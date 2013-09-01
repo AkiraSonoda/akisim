@@ -267,7 +267,11 @@ namespace OpenSim.Region.Framework.Scenes
             set
             {
                 m_appearance = value;
-//                m_log.DebugFormat("[SCENE PRESENCE]: Set appearance for {0} to {1}", Name, value);
+
+				if (m_log.IsDebugEnabled) {
+            		m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+					m_log.DebugFormat ("Dump of incoming appearance: {0}", value.ToString());
+            	}
             }
         }
 

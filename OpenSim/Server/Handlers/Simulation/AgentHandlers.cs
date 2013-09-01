@@ -63,16 +63,16 @@ namespace OpenSim.Server.Handlers.Simulation
             m_SimulationService = sim;
         }
 
-        public Hashtable Handler(Hashtable request)
-        {
-//            m_log.Debug("[CONNECTION DEBUGGING]: AgentHandler Called");
-//
-//            m_log.Debug("---------------------------");
-//            m_log.Debug(" >> uri=" + request["uri"]);
-//            m_log.Debug(" >> content-type=" + request["content-type"]);
-//            m_log.Debug(" >> http-method=" + request["http-method"]);
-//            m_log.Debug("---------------------------\n");
-
+        public Hashtable Handler (Hashtable request)
+		{
+			if (m_log.IsDebugEnabled) {
+				m_log.Debug ("[CONNECTION DEBUGGING]: AgentHandler Called");
+				m_log.Debug ("---------------------------");
+				m_log.Debug (" >> uri=" + request ["uri"]);
+				m_log.Debug (" >> content-type=" + request ["content-type"]);
+				m_log.Debug (" >> http-method=" + request ["http-method"]);
+				m_log.Debug ("---------------------------\n");
+			}
             Hashtable responsedata = new Hashtable();
             responsedata["content_type"] = "text/html";
             responsedata["keepalive"] = false;
@@ -117,19 +117,20 @@ namespace OpenSim.Server.Handlers.Simulation
 
         }
 
-        protected virtual void DoQueryAccess(Hashtable request, Hashtable responsedata, UUID id, UUID regionID)
-        {
-            if (m_SimulationService == null)
-            {
-                m_log.Debug("[AGENT HANDLER]: Agent QUERY called. Harmless but useless.");
-                responsedata["content_type"] = "application/json";
-                responsedata["int_response_code"] = HttpStatusCode.NotImplemented;
-                responsedata["str_response_string"] = string.Empty;
+        protected virtual void DoQueryAccess (Hashtable request, Hashtable responsedata, UUID id, UUID regionID)
+		{
+			m_log.InfoFormat("QUERYACCESS with agentID {0}", id);
 
-                return;
-            }
+			if (m_SimulationService == null) {
+				m_log.Debug ("[AGENT HANDLER]: Agent QUERY called. Harmless but useless.");
+				responsedata ["content_type"] = "application/json";
+				responsedata ["int_response_code"] = HttpStatusCode.NotImplemented;
+				responsedata ["str_response_string"] = string.Empty;
 
-            // m_log.DebugFormat("[AGENT HANDLER]: Received QUERYACCESS with {0}", (string)request["body"]);
+				return;
+			}
+
+
             OSDMap args = Utils.GetOSDMap((string)request["body"]);
 
             Vector3 position = Vector3.Zero;
@@ -206,7 +207,9 @@ namespace OpenSim.Server.Handlers.Simulation
         protected override byte[] ProcessRequest(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-//            m_log.DebugFormat("[SIMULATION]: Stream handler called");
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
 
             Hashtable keysvals = new Hashtable();
             Hashtable headervals = new Hashtable();
@@ -272,6 +275,10 @@ namespace OpenSim.Server.Handlers.Simulation
 
         protected void DoAgentPost(Hashtable request, Hashtable responsedata, UUID id)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             OSDMap args = Utils.GetOSDMap((string)request["body"]);
             if (args == null)
             {
@@ -412,7 +419,9 @@ namespace OpenSim.Server.Handlers.Simulation
         protected override byte[] ProcessRequest(string path, Stream request,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-//            m_log.DebugFormat("[SIMULATION]: Stream handler called");
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
 
             Hashtable keysvals = new Hashtable();
             Hashtable headervals = new Hashtable();
@@ -473,6 +482,10 @@ namespace OpenSim.Server.Handlers.Simulation
 
         protected void DoAgentPut(Hashtable request, Hashtable responsedata)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             OSDMap args = Utils.GetOSDMap((string)request["body"]);
             if (args == null)
             {
