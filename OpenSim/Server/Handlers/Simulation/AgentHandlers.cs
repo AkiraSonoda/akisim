@@ -275,9 +275,7 @@ namespace OpenSim.Server.Handlers.Simulation
 
         protected void DoAgentPost(Hashtable request, Hashtable responsedata, UUID id)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+			m_log.InfoFormat ("[AgentPostHandler]; DoAgentPost for {0} ", id);
 
             OSDMap args = Utils.GetOSDMap((string)request["body"]);
             if (args == null)
@@ -393,6 +391,10 @@ namespace OpenSim.Server.Handlers.Simulation
         // subclasses can override this
         protected virtual bool CreateAgent(GridRegion gatekeeper, GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, out string reason)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             return m_SimulationService.CreateAgent(destination, aCircuit, teleportFlags, out reason);
         }
     }

@@ -162,6 +162,11 @@ namespace OpenSim.Framework
         /// <returns>map of the agent circuit data</returns>
         public OSDMap PackAgentCircuitData()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             OSDMap args = new OSDMap();
             args["agent_id"] = OSD.FromUUID(AgentID);
             args["base_folder"] = OSD.FromUUID(BaseFolder);
@@ -240,6 +245,10 @@ namespace OpenSim.Framework
         /// <param name="args"></param>
         public void UnpackAgentCircuitData(OSDMap args)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             if (args["agent_id"] != null)
                 AgentID = args["agent_id"].AsUUID();
             if (args["base_folder"] != null)

@@ -60,27 +60,42 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
         
         public void Initialise(IConfigSource source)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: INITIALIZED MODULE");
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
         }
         
         public void PostInitialise()
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: POST INITIALIZED MODULE");
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
         }
         
         public void Close()
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: CLOSED MODULE");
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
         }
         
         public void AddRegion(Scene scene)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);                                     
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
         }
         
         public void RemoveRegion(Scene scene)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             
             lock (m_scenes)
                 m_scenes.Remove(scene.RegionInfo.RegionID);
@@ -188,6 +203,10 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         protected void HandleShowAppearanceCommand(string module, string[] cmd)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             if (cmd.Length != 2 && cmd.Length < 4)
             {
                 MainConsole.Instance.OutputFormat("Usage: appearance show [<first-name> <last-name>]");
@@ -232,6 +251,11 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         private void HandleRebakeAppearanceCommand(string module, string[] cmd)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (cmd.Length != 4)
             {
                 MainConsole.Instance.OutputFormat("Usage: appearance rebake <first-name> <last-name>");
@@ -269,6 +293,10 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         protected void HandleFindAppearanceCommand(string module, string[] cmd)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             if (cmd.Length != 3)
             {
                 MainConsole.Instance.OutputFormat("Usage: appearance find <uuid-or-start-of-uuid>");
