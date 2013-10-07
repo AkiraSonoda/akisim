@@ -208,6 +208,7 @@ namespace OpenSim.Region.ClientStack.Linden
                         "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} when placing message {1} in region {2}", 
                         avatarID, evMap["message"], m_scene.Name);
                 }
+			}
             catch (NullReferenceException e)
             {
                 m_log.Error("[EVENTQUEUE] Caught exception: " + e);

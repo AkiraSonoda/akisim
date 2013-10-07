@@ -313,7 +313,9 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         /// <returns></returns>
         private bool TryGetUserNames(UUID uuid, string[] names)
         {
-	    m_log.InfoFormat("[UserManagementModule] TryGetUserNames: {0}", uuid);
+			if(m_log.IsDebugEnabled) {
+	    		m_log.DebugFormat("[UserManagementModule] TryGetUserNames: {0}", uuid);
+			}
             if (names == null)
                 names = new string[2];
 
@@ -394,10 +396,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 					m_log.WarnFormat("[UserManagementModule]: No grid user found for {0}", uuid);
                 }
 
-				m_log.WarnFormat("[UserManagementModule]: Adding Aki_UMMTGUN7 to names for {0}", uuid);
+				m_log.WarnFormat("[UserManagementModule]: Adding Aki_UMMTGUN9 to names for {0}", uuid);
 
                 names[0] = "Unknown";
-                names[1] = "Aki_UMMTGUN8";
+                names[1] = "Aki_UMMTGUN9";
 
                 return false;
             }
@@ -545,9 +547,11 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             AddUser(uuid, homeURL + ";" + first + " " + last);
         }
 
-        public void AddUser(UUID id, string creatorData)
-        {
-			m_log.InfoFormat("[UserManagementModule]: Adding user with id {0}, creatorData \"{1}\"", id, creatorData);
+        public void AddUser (UUID id, string creatorData)
+		{
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("[UserManagementModule]: Adding user with id {0}, creatorData \"{1}\"", id, creatorData);
+			}
 
             UserData oldUser;
             lock (m_UserCache)
