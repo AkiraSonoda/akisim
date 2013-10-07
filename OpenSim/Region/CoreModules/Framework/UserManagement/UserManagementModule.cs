@@ -178,17 +178,20 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 m_ServiceThrottle.Enqueue("name", uuid.ToString(),  delegate
                 {
                     //m_log.DebugFormat("[YYY]: Name request {0}", uuid);
-                    bool foundRealName = TryGetUserNames(uuid, names);
 
-                    if (names.Length == 2)
-                    {
-                        if (!foundRealName)
-                            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Sending {0} {1} for {2} to {3} since no bound name found", names[0], names[1], uuid, client.Name);
-
+                    // As least upto September 2013, clients permanently cache UUID -> Name bindings.  Some clients
+                    // appear to clear this when the user asks it to clear the cache, but others may not.
+                    //
+                    // So to avoid clients
+                    // (particularly Hypergrid clients) permanently binding "Unknown User" to a given UUID, we will 
+                    // instead drop the request entirely.
+                    if (TryGetUserNames(uuid, names))
                         client.SendNameReply(uuid, names[0], names[1]);
-                    }
+//                    else
+//                        m_log.DebugFormat(
+//                            "[USER MANAGEMENT MODULE]: No bound name for {0} found, ignoring request from {1}", 
+//                            uuid, client.Name);
                 });
-
             }
         }
 
@@ -484,13 +487,19 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public string GetUserUUI(UUID userID)
         {
-            UserAccount account = m_Scenes[0].UserAccountService.GetUserAccount(m_Scenes[0].RegionInfo.ScopeID, userID);
-            if (account != null)
-                return userID.ToString();
-
             UserData ud;
             lock (m_UserCache)
                 m_UserCache.TryGetValue(userID, out ud);
+
+            if (ud == null) // It's not in the cache
+            {
+                string[] names = new string[2];
+                // This will pull the data from either UserAccounts or GridUser
+                // and stick it into the cache
+                TryGetUserNamesFromServices(userID, names);
+                lock (m_UserCache)
+                    m_UserCache.TryGetValue(userID, out ud);
+            }
 
             if (ud != null)
             {
@@ -536,7 +545,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             AddUser(uuid, homeURL + ";" + first + " " + last);
         }
 
-        public void AddUser (UUID id, string creatorData)
+        public void AddUser(UUID id, string creatorData)
         {
 			m_log.InfoFormat("[UserManagementModule]: Adding user with id {0}, creatorData \"{1}\"", id, creatorData);
 
@@ -596,6 +605,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             user.LastName = "@unknown";
                         }
                     }
+
                     if (parts.Length >= 2)
                         user.FirstName = parts[1].Replace(' ', '.');
                 }
@@ -608,7 +618,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     user.FirstName = "Unknown";
                     user.LastName = "UserUMMAU4";
                 }
-
+                
                 AddUserInternal(user);
             }
         }
@@ -636,6 +646,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         protected void Init()
         {
+            AddUser(UUID.Zero, "Unknown", "User");
             RegisterConsoleCmds();
         }
 

@@ -404,7 +404,7 @@ namespace OpenSim.Groups
                         url = m_UserManagement.GetUserServerURL(uid, "GroupsServerURI");
                         if (url == string.Empty)
                         {
-                            reason = "You don't have have an accessible groups server in your home world. You membership to this group in only within this grid.";
+                            reason = "You don't have an accessible groups server in your home world. You membership to this group in only within this grid.";
                             return true;
                         }
 
@@ -623,10 +623,13 @@ namespace OpenSim.Groups
                 if (agent != null)
                     break;
             }
-            if (agent == null) // oops
-                return AgentID.ToString();
+            if (agent != null)
+                return Util.ProduceUserUniversalIdentifier(agent);
+            
+            // we don't know anything about this foreign user
+            // try asking the user management module, which may know more
+            return m_UserManagement.GetUserUUI(AgentID);
 
-            return Util.ProduceUserUniversalIdentifier(agent);
         }
 
         private string AgentUUIForOutside(string AgentIDStr)

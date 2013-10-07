@@ -41,7 +41,7 @@ namespace OpenSim.Region.Physics.BulletSPlugin
     [Serializable]
 public class BSPrim : BSPhysObject
 {
-    private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+    protected static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
     private static readonly string LogHeader = "[BULLETS PRIM]";
 
     // _size is what the user passed. Scale is what we pass to the physics engine with the mesh.
@@ -102,7 +102,7 @@ public class BSPrim : BSPhysObject
 
         // DetailLog("{0},BSPrim.constructor,call", LocalID);
         // do the actual object creation at taint time
-        PhysScene.TaintedObject("BSPrim.create", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.create", delegate()
         {
             // Make sure the object is being created with some sanity.
             ExtremeSanityCheck(true /* inTaintTime */);
@@ -110,6 +110,8 @@ public class BSPrim : BSPhysObject
             CreateGeomAndObject(true);
 
             CurrentCollisionFlags = PhysScene.PE.GetCollisionFlags(PhysBody);
+
+            IsInitialized = true;
         });
     }
 
@@ -117,12 +119,14 @@ public class BSPrim : BSPhysObject
     public override void Destroy()
     {
         // m_log.DebugFormat("{0}: Destroy, id={1}", LogHeader, LocalID);
+        IsInitialized = false;
+
         base.Destroy();
 
         // Undo any vehicle properties
         this.VehicleType = (int)Vehicle.TYPE_NONE;
 
-        PhysScene.TaintedObject("BSPrim.Destroy", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.Destroy", delegate()
         {
             DetailLog("{0},BSPrim.Destroy,taint,", LocalID);
             // If there are physical body and shape, release my use of same.
@@ -157,7 +161,7 @@ public class BSPrim : BSPhysObject
     }
     public override bool ForceBodyShapeRebuild(bool inTaintTime)
     {
-        PhysScene.TaintedObject(inTaintTime, "BSPrim.ForceBodyShapeRebuild", delegate()
+        PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.ForceBodyShapeRebuild", delegate()
         {
             _mass = CalculateMass();   // changing the shape changes the mass
             CreateGeomAndObject(true);
@@ -174,7 +178,7 @@ public class BSPrim : BSPhysObject
             if (value != _isSelected)
             {
                 _isSelected = value;
-                PhysScene.TaintedObject("BSPrim.setSelected", delegate()
+                PhysScene.TaintedObject(LocalID, "BSPrim.setSelected", delegate()
                 {
                     DetailLog("{0},BSPrim.selected,taint,selected={1}", LocalID, _isSelected);
                     SetObjectDynamic(false);
@@ -220,7 +224,7 @@ public class BSPrim : BSPhysObject
         _rotationalVelocity = OMV.Vector3.Zero;
 
         // Zero some other properties in the physics engine
-        PhysScene.TaintedObject(inTaintTime, "BSPrim.ZeroMotion", delegate()
+        PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.ZeroMotion", delegate()
         {
             if (PhysBody.HasPhysicalBody)
                 PhysScene.PE.ClearAllForces(PhysBody);
@@ -230,7 +234,7 @@ public class BSPrim : BSPhysObject
     {
         _rotationalVelocity = OMV.Vector3.Zero;
         // Zero some other properties in the physics engine
-        PhysScene.TaintedObject(inTaintTime, "BSPrim.ZeroMotion", delegate()
+        PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.ZeroMotion", delegate()
         {
             // DetailLog("{0},BSPrim.ZeroAngularMotion,call,rotVel={1}", LocalID, _rotationalVelocity);
             if (PhysBody.HasPhysicalBody)
@@ -258,7 +262,7 @@ public class BSPrim : BSPhysObject
         });
 
         // Update parameters so the new actor's Refresh() action is called at the right time.
-        PhysScene.TaintedObject("BSPrim.LockAngularMotion", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.LockAngularMotion", delegate()
         {
             UpdatePhysicalParameters();
         });
@@ -283,7 +287,7 @@ public class BSPrim : BSPhysObject
             RawPosition = value;
             PositionSanityCheck(false);
 
-            PhysScene.TaintedObject("BSPrim.setPosition", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.setPosition", delegate()
             {
                 DetailLog("{0},BSPrim.SetPosition,taint,pos={1},orient={2}", LocalID, RawPosition, RawOrientation);
                 ForcePosition = RawPosition;
@@ -527,7 +531,7 @@ public class BSPrim : BSPhysObject
         set {
             Vehicle type = (Vehicle)value;
 
-            PhysScene.TaintedObject("setVehicleType", delegate()
+            PhysScene.TaintedObject(LocalID, "setVehicleType", delegate()
             {
                 // Some vehicle scripts change vehicle type on the fly as an easy way to
                 //    change all the parameters. Like a plane changing to CAR when on the
@@ -557,7 +561,7 @@ public class BSPrim : BSPhysObject
     }
     public override void VehicleFloatParam(int param, float value)
     {
-        PhysScene.TaintedObject("BSPrim.VehicleFloatParam", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.VehicleFloatParam", delegate()
         {
             BSDynamics vehicleActor = GetVehicleActor(true /* createIfNone */);
             if (vehicleActor != null)
@@ -569,7 +573,7 @@ public class BSPrim : BSPhysObject
     }
     public override void VehicleVectorParam(int param, OMV.Vector3 value)
     {
-        PhysScene.TaintedObject("BSPrim.VehicleVectorParam", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.VehicleVectorParam", delegate()
         {
             BSDynamics vehicleActor = GetVehicleActor(true /* createIfNone */);
             if (vehicleActor != null)
@@ -581,7 +585,7 @@ public class BSPrim : BSPhysObject
     }
     public override void VehicleRotationParam(int param, OMV.Quaternion rotation)
     {
-        PhysScene.TaintedObject("BSPrim.VehicleRotationParam", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.VehicleRotationParam", delegate()
         {
             BSDynamics vehicleActor = GetVehicleActor(true /* createIfNone */);
             if (vehicleActor != null)
@@ -593,7 +597,7 @@ public class BSPrim : BSPhysObject
     }
     public override void VehicleFlags(int param, bool remove)
     {
-        PhysScene.TaintedObject("BSPrim.VehicleFlags", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.VehicleFlags", delegate()
         {
             BSDynamics vehicleActor = GetVehicleActor(true /* createIfNone */);
             if (vehicleActor != null)
@@ -609,7 +613,7 @@ public class BSPrim : BSPhysObject
         if (_isVolumeDetect != newValue)
         {
             _isVolumeDetect = newValue;
-            PhysScene.TaintedObject("BSPrim.SetVolumeDetect", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.SetVolumeDetect", delegate()
             {
                 // DetailLog("{0},setVolumeDetect,taint,volDetect={1}", LocalID, _isVolumeDetect);
                 SetObjectDynamic(true);
@@ -617,10 +621,14 @@ public class BSPrim : BSPhysObject
         }
         return;
     }
+    public override bool IsVolumeDetect
+    {
+        get { return _isVolumeDetect; }
+    }
     public override void SetMaterial(int material)
     {
         base.SetMaterial(material);
-        PhysScene.TaintedObject("BSPrim.SetMaterial", delegate()
+        PhysScene.TaintedObject(LocalID, "BSPrim.SetMaterial", delegate()
         {
             UpdatePhysicalParameters();
         });
@@ -633,7 +641,7 @@ public class BSPrim : BSPhysObject
             if (base.Friction != value)
             {
                 base.Friction = value;
-                PhysScene.TaintedObject("BSPrim.setFriction", delegate()
+                PhysScene.TaintedObject(LocalID, "BSPrim.setFriction", delegate()
                 {
                     UpdatePhysicalParameters();
                 });
@@ -648,7 +656,7 @@ public class BSPrim : BSPhysObject
             if (base.Restitution != value)
             {
                 base.Restitution = value;
-                PhysScene.TaintedObject("BSPrim.setRestitution", delegate()
+                PhysScene.TaintedObject(LocalID, "BSPrim.setRestitution", delegate()
                 {
                     UpdatePhysicalParameters();
                 });
@@ -665,7 +673,7 @@ public class BSPrim : BSPhysObject
             if (base.Density != value)
             {
                 base.Density = value;
-                PhysScene.TaintedObject("BSPrim.setDensity", delegate()
+                PhysScene.TaintedObject(LocalID, "BSPrim.setDensity", delegate()
                 {
                     UpdatePhysicalParameters();
                 });
@@ -680,7 +688,7 @@ public class BSPrim : BSPhysObject
             if (base.GravModifier != value)
             {
                 base.GravModifier = value;
-                PhysScene.TaintedObject("BSPrim.setGravityModifier", delegate()
+                PhysScene.TaintedObject(LocalID, "BSPrim.setGravityModifier", delegate()
                 {
                     UpdatePhysicalParameters();
                 });
@@ -691,7 +699,7 @@ public class BSPrim : BSPhysObject
         get { return RawVelocity; }
         set {
             RawVelocity = value;
-            PhysScene.TaintedObject("BSPrim.setVelocity", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.setVelocity", delegate()
             {
                 // DetailLog("{0},BSPrim.SetVelocity,taint,vel={1}", LocalID, RawVelocity);
                 ForceVelocity = RawVelocity;
@@ -737,7 +745,7 @@ public class BSPrim : BSPhysObject
                 return;
             RawOrientation = value;
 
-            PhysScene.TaintedObject("BSPrim.setOrientation", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.setOrientation", delegate()
             {
                 ForceOrientation = RawOrientation;
             });
@@ -768,7 +776,7 @@ public class BSPrim : BSPhysObject
             if (_isPhysical != value)
             {
                 _isPhysical = value;
-                PhysScene.TaintedObject("BSPrim.setIsPhysical", delegate()
+                PhysScene.TaintedObject(LocalID, "BSPrim.setIsPhysical", delegate()
                 {
                     DetailLog("{0},setIsPhysical,taint,isPhys={1}", LocalID, _isPhysical);
                     SetObjectDynamic(true);
@@ -1012,7 +1020,7 @@ public class BSPrim : BSPhysObject
     public override bool FloatOnWater {
         set {
             _floatOnWater = value;
-            PhysScene.TaintedObject("BSPrim.setFloatOnWater", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.setFloatOnWater", delegate()
             {
                 if (_floatOnWater)
                     CurrentCollisionFlags = PhysScene.PE.AddToCollisionFlags(PhysBody, CollisionFlags.BS_FLOATS_ON_WATER);
@@ -1029,7 +1037,7 @@ public class BSPrim : BSPhysObject
             _rotationalVelocity = value;
             Util.ClampV(_rotationalVelocity, BSParam.MaxAngularVelocity);
             // m_log.DebugFormat("{0}: RotationalVelocity={1}", LogHeader, _rotationalVelocity);
-            PhysScene.TaintedObject("BSPrim.setRotationalVelocity", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.setRotationalVelocity", delegate()
             {
                 ForceRotationalVelocity = _rotationalVelocity;
             });
@@ -1060,7 +1068,7 @@ public class BSPrim : BSPhysObject
         get { return _buoyancy; }
         set {
             _buoyancy = value;
-            PhysScene.TaintedObject("BSPrim.setBuoyancy", delegate()
+            PhysScene.TaintedObject(LocalID, "BSPrim.setBuoyancy", delegate()
             {
                 ForceBuoyancy = _buoyancy;
             });
@@ -1134,7 +1142,7 @@ public class BSPrim : BSPhysObject
                 // DetailLog("{0},BSPrim.addForce,call,force={1}", LocalID, addForce);
 
                 OMV.Vector3 addForce = force;
-                PhysScene.TaintedObject(inTaintTime, "BSPrim.AddForce", delegate()
+                PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.AddForce", delegate()
                 {
                     // Bullet adds this central force to the total force for this tick.
                     // Deep down in Bullet:
@@ -1164,7 +1172,7 @@ public class BSPrim : BSPhysObject
                 OMV.Vector3 addImpulse = Util.ClampV(impulse, BSParam.MaxAddForceMagnitude);
                 // DetailLog("{0},BSPrim.addForceImpulse,call,impulse={1}", LocalID, impulse);
 
-                PhysScene.TaintedObject(inTaintTime, "BSPrim.AddImpulse", delegate()
+                PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.AddImpulse", delegate()
                 {
                     // Bullet adds this impulse immediately to the velocity
                     DetailLog("{0},BSPrim.addForceImpulse,taint,impulseforce={1}", LocalID, addImpulse);
@@ -1189,7 +1197,7 @@ public class BSPrim : BSPhysObject
         if (force.IsFinite())
         {
             OMV.Vector3 angForce = force;
-            PhysScene.TaintedObject(inTaintTime, "BSPrim.AddAngularForce", delegate()
+            PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.AddAngularForce", delegate()
             {
                 if (PhysBody.HasPhysicalBody)
                 {
@@ -1213,7 +1221,7 @@ public class BSPrim : BSPhysObject
     public void ApplyTorqueImpulse(OMV.Vector3 impulse, bool inTaintTime)
     {
         OMV.Vector3 applyImpulse = impulse;
-        PhysScene.TaintedObject(inTaintTime, "BSPrim.ApplyTorqueImpulse", delegate()
+        PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.ApplyTorqueImpulse", delegate()
         {
             if (PhysBody.HasPhysicalBody)
             {
@@ -1544,39 +1552,10 @@ public class BSPrim : BSPhysObject
     #region Extension
     public override object Extension(string pFunct, params object[] pParams)
     {
+        DetailLog("{0} BSPrim.Extension,op={1}", LocalID, pFunct);
         object ret = null;
         switch (pFunct)
         {
-            case BSScene.PhysFunctGetLinksetType:
-            {
-                BSPrimLinkable myHandle = this as BSPrimLinkable;
-                if (myHandle != null)
-                {
-                    ret = (object)myHandle.LinksetType;
-                }
-                m_log.DebugFormat("{0} Extension.physGetLinksetType, type={1}", LogHeader, ret);
-                break;
-            }
-            case BSScene.PhysFunctSetLinksetType:
-            {
-                if (pParams.Length > 0)
-                {
-                    BSLinkset.LinksetImplementation linksetType = (BSLinkset.LinksetImplementation)pParams[0];
-                    BSPrimLinkable myHandle = this as BSPrimLinkable;
-                    if (myHandle != null && myHandle.Linkset.IsRoot(myHandle))
-                    {
-                        PhysScene.TaintedObject("BSPrim.PhysFunctSetLinksetType", delegate()
-                        {
-                            // Cause the linkset type to change
-                            m_log.DebugFormat("{0} Extension.physSetLinksetType, oldType={1}, newType={2}",
-                                                LogHeader, myHandle.Linkset.LinksetImpl, linksetType);
-                            myHandle.ConvertLinkset(linksetType);
-                        });
-                    }
-                    ret = (object)(int)linksetType;
-                }
-                break;
-            }
             default:
                 ret = base.Extension(pFunct, pParams);
                 break;

@@ -220,7 +220,7 @@ namespace OpenSim.Region.Framework.Scenes
         private float m_sitAvatarHeight = 2.0f;
 
         private Vector3 m_lastChildAgentUpdatePosition;
-        private Vector3 m_lastChildAgentUpdateCamPosition;
+//        private Vector3 m_lastChildAgentUpdateCamPosition;
 
         private const int LAND_VELOCITYMAG_MAX = 12;
 
@@ -312,7 +312,21 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         private string m_callbackURI;
 
-        public UUID m_originRegionID;
+        /// <summary>
+        /// Records the region from which this presence originated, if not from login.
+        /// </summary>
+        /// <remarks>
+        /// Also acts as a signal in the teleport V2 process to release UpdateAgent after a viewer has triggered
+        /// CompleteMovement and made the previous child agent a root agent.
+        /// </remarks>
+        private UUID m_originRegionID;
+
+        /// <summary>
+        /// This object is used as a lock before accessing m_originRegionID to make sure that every thread is seeing
+        /// the very latest value and not using some cached version.  Cannot make m_originRegionID itself volatite as
+        /// it is a value type.
+        /// </summary>
+        private object m_originRegionIDAccessLock = new object();
 
         /// <summary>
         /// Used by the entity transfer module to signal when the presence should not be closed because a subsequent
@@ -899,11 +913,11 @@ namespace OpenSim.Region.Framework.Scenes
         /// This method is on the critical path for transferring an avatar from one region to another.  Delay here
         /// delays that crossing.
         /// </summary>
-        public void MakeRootAgent(Vector3 pos, bool isFlying)
+        private void MakeRootAgent(Vector3 pos, bool isFlying)
         {
-            m_log.InfoFormat(
-                "[SCENE]: Upgrading child to root agent for {0} in {1}",
-                Name, m_scene.RegionInfo.RegionName);
+//            m_log.InfoFormat(
+//                "[SCENE]: Upgrading child to root agent for {0} in {1}",
+//                Name, m_scene.RegionInfo.RegionName);
 
             //m_log.DebugFormat("[SCENE]: known regions in {0}: {1}", Scene.RegionInfo.RegionName, KnownChildRegionHandles.Count);
 
@@ -1355,15 +1369,26 @@ namespace OpenSim.Region.Framework.Scenes
 
         private bool WaitForUpdateAgent(IClientAPI client)
         {
-            // Before UpdateAgent, m_originRegionID is UUID.Zero; after, it's non-Zero
+            // Before the source region executes UpdateAgent
+            // (which triggers Scene.IncomingUpdateChildAgent(AgentData cAgentData) here in the destination, 
+            // m_originRegionID is UUID.Zero; after, it's non-Zero.  The CompleteMovement sequence initiated from the
+            // viewer (in turn triggered by the source region sending it a TeleportFinish event) waits until it's non-zero
             int count = 50;
-            while (m_originRegionID.Equals(UUID.Zero) && count-- > 0)
+            UUID originID;
+
+            lock (m_originRegionIDAccessLock)
+                originID = m_originRegionID;
+
+            while (originID.Equals(UUID.Zero) && count-- > 0)
             {
+                lock (m_originRegionIDAccessLock)
+                    originID = m_originRegionID;
+
                 m_log.DebugFormat("[SCENE PRESENCE]: Agent {0} waiting for update in {1}", client.Name, Scene.Name);
                 Thread.Sleep(200);
             }
 
-            if (m_originRegionID.Equals(UUID.Zero))
+            if (originID.Equals(UUID.Zero))
             {
                 // Movement into region will fail
                 m_log.WarnFormat("[SCENE PRESENCE]: Update agent {0} never arrived in {1}", client.Name, Scene.Name);
@@ -1386,9 +1411,9 @@ namespace OpenSim.Region.Framework.Scenes
         {
 //            DateTime startTime = DateTime.Now;
 
-            m_log.DebugFormat(
+            m_log.InfoFormat(
                 "[SCENE PRESENCE]: Completing movement of {0} into region {1} in position {2}",
-                client.Name, Scene.RegionInfo.RegionName, AbsolutePosition);
+                client.Name, Scene.Name, AbsolutePosition);
 
             // Make sure it's not a login agent. We don't want to wait for updates during login
             if (PresenceType != PresenceType.Npc && (m_teleportFlags & TeleportFlags.ViaLogin) == 0)
@@ -1442,7 +1467,12 @@ namespace OpenSim.Region.Framework.Scenes
                     "[SCENE PRESENCE]: Releasing {0} {1} with callback to {2}",
                     client.Name, client.AgentId, m_callbackURI);
 
-                Scene.SimulationService.ReleaseAgent(m_originRegionID, UUID, m_callbackURI);
+                UUID originID;
+
+                lock (m_originRegionIDAccessLock)
+                    originID = m_originRegionID;
+
+                Scene.SimulationService.ReleaseAgent(originID, UUID, m_callbackURI);
                 m_callbackURI = null;
             }
 //            else
@@ -1848,8 +1878,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (m_movementUpdateCount < 1)
                 m_movementUpdateCount = 1;
 
-
-            AgentManager.ControlFlags flags = (AgentManager.ControlFlags)agentData.ControlFlags;
+//            AgentManager.ControlFlags flags = (AgentManager.ControlFlags)agentData.ControlFlags;
 
             // Camera location in world.  We'll need to raytrace
             // from this location from time to time.
@@ -2299,6 +2328,9 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void HandleAgentRequestSit(IClientAPI remoteClient, UUID agentID, UUID targetID, Vector3 offset)
         {
+            if (IsChildAgent)
+                return;
+
             if (ParentID != 0)
             {
                 if (ParentPart.UUID == targetID)
@@ -2525,6 +2557,9 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void HandleAgentSit(IClientAPI remoteClient, UUID agentID)
         {
+            if (IsChildAgent)
+                return;
+
             SceneObjectPart part = m_scene.GetSceneObjectPart(m_requestedSitTargetID);
 
             if (part != null)
@@ -2595,6 +2630,9 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void HandleAgentSitOnGround()
         {
+            if (IsChildAgent)
+                return;
+
 //            m_updateCount = 0;  // Kill animation update burst so that the SIT_G.. will stick..
             m_AngularVelocity = Vector3.Zero;
             Animator.TrySetMovementAnimation("SIT_GROUND_CONSTRAINED");
@@ -2882,7 +2920,7 @@ namespace OpenSim.Region.Framework.Scenes
             // If we are using the the cached appearance then send it out to everyone
             if (cachedappearance)
             {
-                m_log.DebugFormat("[SCENE PRESENCE]: baked textures are in the cache for {0}", Name);
+                m_log.DebugFormat("[SCENE PRESENCE]: Baked textures are in the cache for {0} in {1}", Name, m_scene.Name);
 
                 // If the avatars baked textures are all in the cache, then we have a 
                 // complete appearance... send it out, if not, then we'll send it when
@@ -3036,7 +3074,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (Util.GetDistanceTo(AbsolutePosition, m_lastChildAgentUpdatePosition) >= Scene.ChildReprioritizationDistance)
             {
                 m_lastChildAgentUpdatePosition = AbsolutePosition;
-                m_lastChildAgentUpdateCamPosition = CameraPosition;
+//                m_lastChildAgentUpdateCamPosition = CameraPosition;
 
                 ChildAgentDataUpdate cadu = new ChildAgentDataUpdate();
                 cadu.ActiveGroupID = UUID.Zero.Guid;
@@ -3246,11 +3284,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public void RestoreInCurrentScene()
-        {
-            AddToPhysicalScene(false); // not exactly false
-        }
-
         public void Reset()
         {
 //            m_log.DebugFormat("[SCENE PRESENCE]: Resetting {0} in {1}", Name, Scene.RegionInfo.RegionName);
@@ -3346,7 +3379,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         #region Child Agent Updates
 
-        public void ChildAgentDataUpdate(AgentData cAgentData)
+        public void UpdateChildAgent(AgentData cAgentData)
         {
 //            m_log.Debug("   >>> ChildAgentDataUpdate <<< " + Scene.RegionInfo.RegionName);
             if (!IsChildAgent)
@@ -3356,11 +3389,12 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         private static Vector3 marker = new Vector3(-1f, -1f, -1f);
+
         /// <summary>
         /// This updates important decision making data about a child agent
         /// The main purpose is to figure out what objects to send to a child agent that's in a neighboring region
         /// </summary>
-        public void ChildAgentDataUpdate(AgentPosition cAgentData, uint tRegionX, uint tRegionY, uint rRegionX, uint rRegionY)
+        public void UpdateChildAgent(AgentPosition cAgentData, uint tRegionX, uint tRegionY, uint rRegionX, uint rRegionY)
         {
             if (!IsChildAgent)
                 return;
@@ -3465,7 +3499,8 @@ namespace OpenSim.Region.Framework.Scenes
 
         private void CopyFrom(AgentData cAgent)
         {
-            m_originRegionID = cAgent.RegionID;
+            lock (m_originRegionIDAccessLock)
+                m_originRegionID = cAgent.RegionID;
 
             m_callbackURI = cAgent.CallbackURI;
 //            m_log.DebugFormat(

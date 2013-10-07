@@ -246,8 +246,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
                 {
                     // If we're an NPC then skip all the item checks and manipulations since we don't have an
                     // inventory right now.
-                    SceneObjectGroup objatt 
-                        = RezSingleAttachmentFromInventoryInternal(
+                    RezSingleAttachmentFromInventoryInternal(
                         sp, sp.PresenceType == PresenceType.Npc ? UUID.Zero : attach.ItemID, attach.AssetID, attachmentPt, true);
                 }
                 catch (Exception e)
@@ -353,11 +352,26 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
                 attachPos = Vector3.Zero;
             }
 
+            // if the attachment point is the same as previous, make sure we get the saved
+            // position info.
+            if (attachmentPt != 0 && attachmentPt == group.RootPart.Shape.LastAttachPoint)
+            {
+                attachPos = group.RootPart.AttachedPos;
+            }
+
             // AttachmentPt 0 means the client chose to 'wear' the attachment.
             if (attachmentPt == (uint)AttachmentPoint.Default)
             {
                 // Check object for stored attachment point
                 attachmentPt = group.AttachmentPoint;
+            }
+
+            // if we didn't find an attach point, look for where it was last attached
+            if (attachmentPt == 0)
+            {
+                attachmentPt = (uint)group.RootPart.Shape.LastAttachPoint;
+                attachPos = group.RootPart.AttachedPos;
+                group.HasGroupChanged = true;
             }
 
             // if we still didn't find a suitable attachment point.......
@@ -550,6 +564,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
                 so.ClearPartAttachmentData();
                 rootPart.ApplyPhysics(rootPart.GetEffectiveObjectFlags(), rootPart.VolumeDetectActive);
                 so.HasGroupChanged = true;
+                so.RootPart.Shape.LastAttachPoint = (byte)so.AttachmentPoint;
                 rootPart.Rezzed = DateTime.Now;
                 rootPart.RemFlag(PrimFlags.TemporaryOnRez);
                 so.AttachToBackup();

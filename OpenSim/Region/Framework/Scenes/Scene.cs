@@ -737,6 +737,7 @@ namespace OpenSim.Region.Framework.Scenes
             m_config = config;
             MinFrameTime = 0.089f;
             MinMaintenanceTime = 1;
+            SeeIntoRegion = true;
 
             Random random = new Random();
 
@@ -847,7 +848,7 @@ namespace OpenSim.Region.Framework.Scenes
                 //Animation states
                 m_useFlySlow = startupConfig.GetBoolean("enableflyslow", false);
 
-                SeeIntoRegion = startupConfig.GetBoolean("see_into_region", true);
+                SeeIntoRegion = startupConfig.GetBoolean("see_into_region", SeeIntoRegion);
 
                 MaxUndoCount = startupConfig.GetInt("MaxPrimUndos", 20);
 
@@ -1320,7 +1321,7 @@ namespace OpenSim.Region.Framework.Scenes
             Thread.Sleep(500);
 
             // Stop all client threads.
-            ForEachScenePresence(delegate(ScenePresence avatar) { IncomingCloseAgent(avatar.UUID, false); });
+            ForEachScenePresence(delegate(ScenePresence avatar) { CloseAgent(avatar.UUID, false); });
 
             m_log.Debug("[SCENE]: Persisting changed objects");
             EventManager.TriggerSceneShuttingDown(this);
@@ -2809,7 +2810,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         #region Add/Remove Avatar Methods
 
-        public override ISceneAgent AddNewClient(IClientAPI client, PresenceType type)
+        public override ISceneAgent AddNewAgent(IClientAPI client, PresenceType type)
         {
             ScenePresence sp;
             bool vialogin;
@@ -2817,7 +2818,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             // Validation occurs in LLUDPServer
             //
-            // XXX: A race condition exists here where two simultaneous calls to AddNewClient can interfere with
+            // XXX: A race condition exists here where two simultaneous calls to AddNewAgent can interfere with
             // each other.  In practice, this does not currently occur in the code.
             AgentCircuitData aCircuit = m_authenticateHandler.GetAgentCircuitData(client.CircuitCode);
 
@@ -2825,9 +2826,9 @@ namespace OpenSim.Region.Framework.Scenes
             // and a simultaneous one that removes it (as can happen if the client is closed at a particular point
             // whilst connecting).
             //
-            // It would be easier to lock across all NewUserConnection(), AddNewClient() and
+            // It would be easier to lock across all NewUserConnection(), AddNewAgent() and
             // RemoveClient() calls for all agents, but this would allow a slow call (e.g. because of slow service
-            // response in some module listening to AddNewClient()) from holding up unrelated agent calls.
+            // response in some module listening to AddNewAgent()) from holding up unrelated agent calls.
             //
             // In practice, the lock (this) in LLUDPServer.AddNewClient() currently lock across all
             // AddNewClient() operations (though not other ops).
@@ -2844,7 +2845,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 // XXX: Not sure how good it is to add a new client if a scene presence already exists.  Possibly this
                 // could occur if a viewer crashes and relogs before the old client is kicked out.  But this could cause
-                // other problems, and possible the code calling AddNewClient() should ensure that no client is already
+                // other problems, and possibly the code calling AddNewAgent() should ensure that no client is already
                 // connected.
                 if (sp == null)
                 {
@@ -2870,6 +2871,9 @@ namespace OpenSim.Region.Framework.Scenes
     
                 // We must set this here so that TriggerOnNewClient and TriggerOnClientLogin can determine whether the
                 // client is for a root or child agent.
+                // XXX: This may be better set for a new client before that client is added to the client manager.
+                // But need to know what happens in the case where a ScenePresence is already present (and if this 
+                // actually occurs).
                 client.SceneAgent = sp;
 
                 // This is currently also being done earlier in NewUserConnection for real users to see if this 
@@ -2980,7 +2984,7 @@ namespace OpenSim.Region.Framework.Scenes
                         {
                             PresenceService.LogoutAgent(sp.ControllingClient.SessionId);
 
-                            IncomingCloseAgent(sp.UUID, false);
+                            CloseAgent(sp.UUID, false);
                         }
                         else
                         {
@@ -3390,7 +3394,19 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public override void RemoveClient(UUID agentID, bool closeChildAgents)
+        /// <summary>
+        /// Remove the given client from the scene. 
+        /// </summary>
+        /// <remarks>
+        /// Only clientstack code should call this directly.  All other code should call IncomingCloseAgent() instead
+        /// to properly operate the state machine and avoid race conditions with other close requests (such as directly
+        /// from viewers).
+        /// </remarks>
+        /// <param name='agentID'>ID of agent to close</param>
+        /// <param name='closeChildAgents'>
+        /// Close the neighbour child agents associated with this client.
+        /// </param>
+        public void RemoveClient(UUID agentID, bool closeChildAgents)
         {
             AgentCircuitData acd = m_authenticateHandler.GetAgentCircuitData(agentID);
 
@@ -3691,29 +3707,43 @@ namespace OpenSim.Region.Framework.Scenes
 
                 // We need to ensure that we are not already removing the scene presence before we ask it not to be 
                 // closed.
-                if (sp != null && sp.IsChildAgent && sp.LifecycleState == ScenePresenceState.Running)
+                if (sp != null && sp.IsChildAgent 
+                    && (sp.LifecycleState == ScenePresenceState.Running 
+                        || sp.LifecycleState == ScenePresenceState.PreRemove))
                 {
                     m_log.DebugFormat(
-                        "[SCENE]: Reusing existing child scene presence for {0} in {1}", sp.Name, Name);
+                        "[SCENE]: Reusing existing child scene presence for {0}, state {1} in {2}", 
+                        sp.Name, sp.LifecycleState, Name);
 
                     // In the case where, for example, an A B C D region layout, an avatar may
                     // teleport from A -> D, but then -> C before A has asked B to close its old child agent.  When C
                     // renews the lease on the child agent at B, we must make sure that the close from A does not succeed.
-                    if (!acd.ChildrenCapSeeds.ContainsKey(RegionInfo.RegionHandle))
-                    {
-                        m_log.DebugFormat(
-                            "[SCENE]: Setting DoNotCloseAfterTeleport for child scene presence {0} in {1} because source will attempt close.", 
-                            sp.Name, Name);
+                    //
+                    // XXX: In the end, this should not be necessary if child agents are closed without delay on 
+                    // teleport, since realistically, the close request should always be processed before any other
+                    // region tried to re-establish a child agent.  This is much simpler since the logic below is 
+                    // vulnerable to an issue when a viewer quits a region without sending a proper logout but then
+                    // re-establishes the connection on a relogin.  This could wrongly set the DoNotCloseAfterTeleport
+                    // flag when no teleport had taken place (and hence no close was going to come).
+//                    if (!acd.ChildrenCapSeeds.ContainsKey(RegionInfo.RegionHandle))
+//                    {
+//                        m_log.DebugFormat(
+//                            "[SCENE]: Setting DoNotCloseAfterTeleport for child scene presence {0} in {1} because source will attempt close.", 
+//                            sp.Name, Name);
+//
+//                        sp.DoNotCloseAfterTeleport = true;
+//                    }
+//                    else if (EntityTransferModule.IsInTransit(sp.UUID))
 
-                        sp.DoNotCloseAfterTeleport = true;
-                    }
-                    else if (EntityTransferModule.IsInTransit(sp.UUID))
-                    {
-                        m_log.DebugFormat(
-                            "[SCENE]: Setting DoNotCloseAfterTeleport for child scene presence {0} in {1} because this region will attempt previous end-of-teleport close.", 
-                            sp.Name, Name);
+                    sp.LifecycleState = ScenePresenceState.Running;
 
+                    if (EntityTransferModule.IsInTransit(sp.UUID))
+                    {
                         sp.DoNotCloseAfterTeleport = true;
+
+                        m_log.DebugFormat(
+                            "[SCENE]: Set DoNotCloseAfterTeleport for child scene presence {0} in {1} because this region will attempt end-of-teleport close from a previous close.", 
+                            sp.Name, Name);
                     }
                 }
             }
@@ -3761,7 +3791,7 @@ namespace OpenSim.Region.Framework.Scenes
                             sp.Name, sp.UUID, RegionInfo.RegionName);
 
                         if (sp.ControllingClient != null)
-                            IncomingCloseAgent(sp.UUID, true);
+                            CloseAgent(sp.UUID, true);
 
                         sp = null;
                     }
@@ -3811,7 +3841,7 @@ namespace OpenSim.Region.Framework.Scenes
     
                     try
                     {
-                        if (!AuthorizeUser(acd, SeeIntoRegion, out reason))
+                        if (!AuthorizeUser(acd, (vialogin ? false : SeeIntoRegion), out reason))
                         {
                             m_authenticateHandler.RemoveCircuit(acd.circuitcode);
                             return false;
@@ -4265,7 +4295,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="cAgentData">Agent that contains all of the relevant things about an agent.
         /// Appearance, animations, position, etc.</param>
         /// <returns>true if we handled it.</returns>
-        public virtual bool IncomingChildAgentDataUpdate(AgentData cAgentData)
+        public virtual bool IncomingUpdateChildAgent(AgentData cAgentData)
         {
             m_log.DebugFormat(
                 "[SCENE]: Incoming child agent update for {0} in {1}", cAgentData.AgentID, RegionInfo.RegionName);
@@ -4274,7 +4304,7 @@ namespace OpenSim.Region.Framework.Scenes
             ILandObject nearestParcel = GetNearestAllowedParcel(cAgentData.AgentID, Constants.RegionSize / 2, Constants.RegionSize / 2);
             if (nearestParcel == null)
             {
-                m_log.DebugFormat(
+                m_log.InfoFormat(
                     "[SCENE]: Denying root agent entry to {0} in {1}: no allowed parcel",
                     cAgentData.AgentID, RegionInfo.RegionName);
 
@@ -4284,7 +4314,7 @@ namespace OpenSim.Region.Framework.Scenes
             // We have to wait until the viewer contacts this region
             // after receiving the EnableSimulator HTTP Event Queue message (for the v1 teleport protocol) 
             // or TeleportFinish (for the v2 teleport protocol).  This triggers the viewer to send
-            // a UseCircuitCode packet which in turn calls AddNewClient which finally creates the ScenePresence.
+            // a UseCircuitCode packet which in turn calls AddNewAgent which finally creates the ScenePresence.
             ScenePresence sp = WaitGetScenePresence(cAgentData.AgentID);
 
             if (sp != null)
@@ -4299,7 +4329,7 @@ namespace OpenSim.Region.Framework.Scenes
                         sp.UUID, sp.ControllingClient.SessionId, cAgentData.SessionID));
                 }
 
-                sp.ChildAgentDataUpdate(cAgentData);
+                sp.UpdateChildAgent(cAgentData);
 
                 int ntimes = 20;
                 if (cAgentData.SenderWantsToWaitForRoot)
@@ -4307,9 +4337,14 @@ namespace OpenSim.Region.Framework.Scenes
                     while (sp.IsChildAgent && ntimes-- > 0)
                         Thread.Sleep(1000);
 
-                    m_log.DebugFormat(
-                        "[SCENE]: Found presence {0} {1} {2} in {3} after {4} waits",
-                        sp.Name, sp.UUID, sp.IsChildAgent ? "child" : "root", Name, 20 - ntimes);
+                    if (sp.IsChildAgent)
+                        m_log.WarnFormat(
+                            "[SCENE]: Found presence {0} {1} unexpectedly still child in {2}",
+                            sp.Name, sp.UUID, Name);
+                    else
+                        m_log.InfoFormat(
+                            "[SCENE]: Found presence {0} {1} as root in {2} after {3} waits",
+                                sp.Name, sp.UUID, Name, 20 - ntimes);
 
                     if (sp.IsChildAgent)
                         return false;
@@ -4327,16 +4362,16 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         /// <param name="cAgentData">AgentPosition that contains agent positional data so we can know what to send</param>
         /// <returns>true if we handled it.</returns>
-        public virtual bool IncomingChildAgentDataUpdate(AgentPosition cAgentData)
+        public virtual bool IncomingUpdateChildAgent(AgentPosition cAgentData)
         {
             //m_log.Debug(" XXX Scene IncomingChildAgentDataUpdate POSITION in " + RegionInfo.RegionName);
             ScenePresence childAgentUpdate = GetScenePresence(cAgentData.AgentID);
             if (childAgentUpdate != null)
             {
-                if (childAgentUpdate.ControllingClient.SessionId != cAgentData.SessionID)
-                    // Only warn for now
-                    m_log.WarnFormat("[SCENE]: Attempt at updating position of agent {0} with invalid session id {1}. Neighbor running older version?", 
-                        childAgentUpdate.UUID, cAgentData.SessionID);
+//                if (childAgentUpdate.ControllingClient.SessionId != cAgentData.SessionID)
+//                    // Only warn for now
+//                    m_log.WarnFormat("[SCENE]: Attempt at updating position of agent {0} with invalid session id {1}. Neighbor running older version?", 
+//                        childAgentUpdate.UUID, cAgentData.SessionID);
 
                 // I can't imagine *yet* why we would get an update if the agent is a root agent..
                 // however to avoid a race condition crossing borders..
@@ -4347,7 +4382,7 @@ namespace OpenSim.Region.Framework.Scenes
                     uint tRegionX = RegionInfo.RegionLocX;
                     uint tRegionY = RegionInfo.RegionLocY;
                     //Send Data to ScenePresence
-                    childAgentUpdate.ChildAgentDataUpdate(cAgentData, tRegionX, tRegionY, rRegionX, rRegionY);
+                    childAgentUpdate.UpdateChildAgent(cAgentData, tRegionX, tRegionY, rRegionX, rRegionY);
                     // Not Implemented:
                     //TODO: Do we need to pass the message on to one of our neighbors?
                 }
@@ -4397,17 +4432,78 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="force"></param>
         /// <param name="auth_token"></param>
         /// <returns></returns>
-        public bool IncomingCloseAgent(UUID agentID, bool force, string auth_token)
+        public bool CloseAgent(UUID agentID, bool force, string auth_token)
         {
             //m_log.DebugFormat("[SCENE]: Processing incoming close agent {0} in region {1} with auth_token {2}", agentID, RegionInfo.RegionName, auth_token);
 
             // Check that the auth_token is valid
             AgentCircuitData acd = AuthenticateHandler.GetAgentCircuitData(agentID);
-            if (acd != null && acd.SessionID.ToString() == auth_token)
-                return IncomingCloseAgent(agentID, force);
+
+            if (acd == null)
+            {
+                m_log.DebugFormat(
+                    "[SCENE]: Request to close agent {0} but no such agent in scene {1}.  May have been closed previously.", 
+                    agentID, Name);
+
+                return false;
+            }
+
+            if (acd.SessionID.ToString() == auth_token)
+            {
+                return CloseAgent(agentID, force);
+            }
             else
-                m_log.ErrorFormat("[SCENE]: Request to close agent {0} with invalid authorization token {1}", agentID, auth_token);
+            {
+                m_log.WarnFormat(
+                    "[SCENE]: Request to close agent {0} with invalid authorization token {1} in {2}", 
+                    agentID, auth_token, Name);
+            }
+
             return false;
+        }
+
+        /// <summary>
+        /// Tell a single client to prepare to close.
+        /// </summary>
+        /// <remarks>
+        /// This should only be called if we may close the client but there will be some delay in so doing.  Meant for
+        /// internal use - other callers should almost certainly called CloseClient().
+        /// </remarks>
+        /// <param name="sp"></param>
+        /// <returns>true if pre-close state notification was successful.  false if the agent
+        /// was not in a state where it could transition to pre-close.</returns>
+        public bool IncomingPreCloseClient(ScenePresence sp)
+        {
+            lock (m_removeClientLock)
+            {
+                // We need to avoid a race condition where in, for example, an A B C D region layout, an avatar may
+                // teleport from A -> D, but then -> C before A has asked B to close its old child agent.  We do not
+                // want to obey this close since C may have renewed the child agent lease on B.
+                if (sp.DoNotCloseAfterTeleport)
+                {
+                    m_log.DebugFormat(
+                        "[SCENE]: Not pre-closing {0} agent {1} in {2} since another simulator has re-established the child connection",
+                        sp.IsChildAgent ? "child" : "root", sp.Name, Name);
+
+                    // Need to reset the flag so that a subsequent close after another teleport can succeed.
+                    sp.DoNotCloseAfterTeleport = false;
+
+                    return false;
+                }
+
+                if (sp.LifecycleState != ScenePresenceState.Running)
+                {
+                    m_log.DebugFormat(
+                        "[SCENE]: Called IncomingPreCloseAgent() for {0} in {1} but presence is already in state {2}",
+                        sp.Name, Name, sp.LifecycleState);
+
+                    return false;
+                }
+
+                sp.LifecycleState = ScenePresenceState.PreRemove;
+
+                return true;
+            }
         }
 
         /// <summary>
@@ -4418,7 +4514,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// Force the agent to close even if it might be in the middle of some other operation.  You do not want to
         /// force unless you are absolutely sure that the agent is dead and a normal close is not working.
         /// </param>
-        public bool IncomingCloseAgent(UUID agentID, bool force)
+        public override bool CloseAgent(UUID agentID, bool force)
         {
             ScenePresence sp;
 
@@ -4429,16 +4525,16 @@ namespace OpenSim.Region.Framework.Scenes
                 if (sp == null)
                 {
                     m_log.DebugFormat(
-                        "[SCENE]: Called RemoveClient() with agent ID {0} but no such presence is in {1}", 
+                        "[SCENE]: Called CloseClient() with agent ID {0} but no such presence is in {1}", 
                         agentID, Name);
     
                     return false;
                 }
 
-                if (sp.LifecycleState != ScenePresenceState.Running)
+                if (sp.LifecycleState != ScenePresenceState.Running && sp.LifecycleState != ScenePresenceState.PreRemove)
                 {
                     m_log.DebugFormat(
-                        "[SCENE]: Called RemoveClient() for {0} in {1} but presence is already in state {2}",
+                        "[SCENE]: Called CloseClient() for {0} in {1} but presence is already in state {2}",
                         sp.Name, Name, sp.LifecycleState);
 
                     return false;
@@ -5711,7 +5807,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 if (!AuthorizeUser(aCircuit, false, out reason))
                 {
-                    // m_log.DebugFormat("[SCENE]: Denying access for {0}", agentID);
+                    //m_log.DebugFormat("[SCENE]: Denying access for {0}", agentID);
                     return false;
                 }
             }

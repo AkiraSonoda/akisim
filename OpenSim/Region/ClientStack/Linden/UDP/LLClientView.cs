@@ -750,7 +750,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public virtual void Start()
         {
-            m_scene.AddNewClient(this, PresenceType.User);
+            m_scene.AddNewAgent(this, PresenceType.User);
 
             RefreshGroupMembership();
         }
@@ -6656,6 +6656,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 }
                 #endregion
 
+                if (SceneAgent.IsChildAgent)
+                {
+                    SendCantSitBecauseChildAgentResponse();
+                    return true;
+                }
+
                 AgentRequestSit handlerAgentRequestSit = OnAgentRequestSit;
 
                 if (handlerAgentRequestSit != null)
@@ -6680,6 +6686,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 }
                 #endregion
 
+                if (SceneAgent.IsChildAgent)
+                {
+                    SendCantSitBecauseChildAgentResponse();
+                    return true;
+                }
+
                 AgentSit handlerAgentSit = OnAgentSit;
                 if (handlerAgentSit != null)
                 {
@@ -6687,6 +6699,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 }
             }
             return true;
+        }
+
+        /// <summary>
+        /// Used when a child agent gets a sit response which should not be fulfilled.
+        /// </summary>
+        private void SendCantSitBecauseChildAgentResponse()
+        {
+            SendAlertMessage("Try moving closer.  Can't sit on object because it is not in the same region as you.");
         }
 
         private bool HandleSoundTrigger(IClientAPI sender, Packet Pack)
@@ -12173,6 +12193,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             shape.PCode = addPacket.ObjectData.PCode;
             shape.State = addPacket.ObjectData.State;
+            shape.LastAttachPoint = addPacket.ObjectData.State;
             shape.PathBegin = addPacket.ObjectData.PathBegin;
             shape.PathEnd = addPacket.ObjectData.PathEnd;
             shape.PathScaleX = addPacket.ObjectData.PathScaleX;
@@ -12597,7 +12618,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             if (p is ScenePresence)
             {
-                ScenePresence presence = p as ScenePresence;
                 // It turns out to get the agent to stop flying, you have to feed it stop flying velocities
                 // There's no explicit message to send the client to tell it to stop flying..   it relies on the
                 // velocity, collision plane and avatar height
@@ -12605,14 +12625,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 // Add 1/6 the avatar's height to it's position so it doesn't shoot into the air
                 // when the avatar stands up
 
-                Vector3 pos = presence.AbsolutePosition;
-
                 ImprovedTerseObjectUpdatePacket.ObjectDataBlock block =
                     CreateImprovedTerseBlock(p, false);
 
                 const float TIME_DILATION = 1.0f;
                 ushort timeDilation = Utils.FloatToUInt16(TIME_DILATION, 0.0f, 1.0f);
-
 
                 ImprovedTerseObjectUpdatePacket packet
                     = (ImprovedTerseObjectUpdatePacket)PacketPool.Instance.GetPacket(
