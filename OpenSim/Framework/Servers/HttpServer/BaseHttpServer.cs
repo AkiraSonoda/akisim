@@ -486,6 +486,11 @@ namespace OpenSim.Framework.Servers.HttpServer
         /// <param name="response"></param>
         public virtual void HandleRequest(OSHttpRequest request, OSHttpResponse response)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (request.HttpMethod == String.Empty) // Can't handle empty requests, not wasting a thread
             {
                 try
@@ -836,6 +841,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         private bool TryGetStreamHandler(string handlerKey, out IRequestHandler streamHandler)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             string bestMatch = null;
 
             lock (m_streamHandlers)
@@ -1045,7 +1054,21 @@ namespace OpenSim.Framework.Servers.HttpServer
                     }
 
                     response.ContentType = "text/xml";
-                    responseString = XmlRpcResponseSerializer.Singleton.Serialize(xmlRpcResponse);
+                    using (MemoryStream outs = new MemoryStream())
+                    {
+                        using (XmlTextWriter writer = new XmlTextWriter(outs, Encoding.UTF8))
+                        {
+                            writer.Formatting = Formatting.None;
+                            XmlRpcResponseSerializer.Singleton.Serialize(writer, xmlRpcResponse);
+                            writer.Flush();
+                            outs.Flush();
+                            outs.Position = 0;
+                            using (StreamReader sr = new StreamReader(outs))
+                            {
+                                responseString = sr.ReadToEnd();
+                            }
+                        }
+                    }
                 }
                 else
                 {
@@ -1076,6 +1099,12 @@ namespace OpenSim.Framework.Servers.HttpServer
         // Batch requests not yet supported
         private byte[] HandleJsonRpcRequests(OSHttpRequest request, OSHttpResponse response)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+				m_log.DebugFormat("HandleJsonRpcRequest for request to {0}, method {1}",request.RawUrl, request.HttpMethod);
+			}
+
+
             Stream requestStream = request.InputStream;
             JsonRpcResponse jsonRpcResponse = new JsonRpcResponse();
             OSDMap jsonRpcRequest = null;
@@ -1161,6 +1190,11 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         private byte[] HandleLLSDRequests(OSHttpRequest request, OSHttpResponse response)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat("HandleLLSDRequest for request to {0}, method {1}",request.RawUrl, request.HttpMethod);
+			}
+
             //m_log.Warn("[BASE HTTP SERVER]: We've figured out it's a LLSD Request");
             Stream requestStream = request.InputStream;
 
@@ -1459,9 +1493,11 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public byte[] HandleHTTPRequest(OSHttpRequest request, OSHttpResponse response)
         {
-//            m_log.DebugFormat(
-//                "[BASE HTTP SERVER]: HandleHTTPRequest for request to {0}, method {1}",
-//                request.RawUrl, request.HttpMethod);
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat("HandleHTTPRequest for request to {0}, method {1}",request.RawUrl, request.HttpMethod);
+			}
+
 
             switch (request.HttpMethod)
             {
@@ -1476,7 +1512,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         private byte[] HandleContentVerbs(OSHttpRequest request, OSHttpResponse response)
         {
-//            m_log.DebugFormat("[BASE HTTP SERVER]: HandleContentVerbs for request to {0}", request.RawUrl);
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat("HandleContentVerbs for request to {0}", request.RawUrl);
+			}
 
             // This is a test.  There's a workable alternative..  as this way sucks.
             // We'd like to put this into a text file parhaps that's easily editable.
@@ -1520,15 +1559,18 @@ namespace OpenSim.Framework.Servers.HttpServer
 
             foreach (string queryname in querystringkeys)
             {
-//                m_log.DebugFormat(
-//                    "[BASE HTTP SERVER]: Got query paremeter {0}={1}", queryname, request.QueryString[queryname]);
+				if(m_log.IsDebugEnabled) {
+	                m_log.DebugFormat("Got query paremeter {0}={1}", queryname, request.QueryString[queryname]);
+				}
                 keysvals.Add(queryname, request.QueryString[queryname]);
                 requestVars.Add(queryname, keysvals[queryname]);
             }
 
             foreach (string headername in rHeaders)
             {
-//                m_log.Debug("[BASE HTTP SERVER]: " + headername + "=" + request.Headers[headername]);
+				if(m_log.IsDebugEnabled) {
+	                m_log.Debug(headername + "=" + request.Headers[headername]);
+				}
                 headervals[headername] = request.Headers[headername];
             }
 
@@ -1544,8 +1586,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
             if (keysvals.Contains("method"))
             {
-//                m_log.Debug("[BASE HTTP SERVER]: Contains Method");
-                string method = (string) keysvals["method"];
+				string method = (string) keysvals["method"];
+				if(m_log.IsDebugEnabled) {
+					m_log.DebugFormat("Contains Method: {0}", method);
+				}
 //                m_log.Debug("[BASE HTTP SERVER]: " + requestBody);
                 GenericHTTPMethod requestprocessor;
                 bool foundHandler = TryGetHTTPHandler(method, out requestprocessor);
@@ -1564,7 +1608,10 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             else
             {
-                GenericHTTPMethod requestprocessor;
+				if(m_log.IsDebugEnabled) {
+					m_log.Debug("Contains no Method");
+				}
+				GenericHTTPMethod requestprocessor;
                 bool foundHandler = TryGetHTTPHandlerPathBased(request.RawUrl, out requestprocessor);
                 if (foundHandler)
                 {
@@ -1585,6 +1632,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         private bool TryGetHTTPHandlerPathBased(string path, out GenericHTTPMethod httpHandler)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             httpHandler = null;
             // Pull out the first part of the path
             // splitting the path by '/' means we'll get the following return..
@@ -1650,6 +1701,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         internal byte[] DoHTTPGruntWork(Hashtable responsedata, OSHttpResponse response)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             //m_log.Info("[BASE HTTP SERVER]: Doing HTTP Grunt work with response");
             int responsecode = (int)responsedata["int_response_code"];
             string responseString = (string)responsedata["str_response_string"];

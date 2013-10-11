@@ -202,8 +202,13 @@ namespace OpenSim.Region.ClientStack.Linden
                         queue.Enqueue(ev);
                 }
                 else
-                    m_log.WarnFormat("[EVENTQUEUE]: (Enqueue) No queue found for agent {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
-            } 
+                {
+                    OSDMap evMap = (OSDMap)ev;
+                    m_log.WarnFormat(
+                        "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} when placing message {1} in region {2}", 
+                        avatarID, evMap["message"], m_scene.Name);
+                }
+			}
             catch (NullReferenceException e)
             {
                 m_log.Error("[EVENTQUEUE] Caught exception: " + e);

@@ -157,12 +157,20 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     public delegate void TaintCallback();
     private struct TaintCallbackEntry
     {
+        public String originator;
         public String ident;
         public TaintCallback callback;
-        public TaintCallbackEntry(string i, TaintCallback c)
+        public TaintCallbackEntry(string pIdent, TaintCallback pCallBack)
         {
-            ident = i;
-            callback = c;
+            originator = BSScene.DetailLogZero;
+            ident = pIdent;
+            callback = pCallBack;
+        }
+        public TaintCallbackEntry(string pOrigin, string pIdent, TaintCallback pCallBack)
+        {
+            originator = pOrigin;
+            ident = pIdent;
+            callback = pCallBack;
         }
     }
     private Object _taintLock = new Object();   // lock for using the next object
@@ -639,7 +647,8 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
                     BSPhysObject pobj;
                     if (PhysObjects.TryGetValue(entprop.ID, out pobj))
                     {
-                        pobj.UpdateProperties(entprop);
+                        if (pobj.IsInitialized)
+                            pobj.UpdateProperties(entprop);
                     }
                 }
             }
@@ -766,10 +775,13 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
 
         // DetailLog("{0},BSScene.SendCollision,collide,id={1},with={2}", DetailLogZero, localID, collidingWith);
 
-        if (collider.Collide(collidingWith, collidee, collidePoint, collideNormal, penetration))
+        if (collider.IsInitialized)
         {
-            // If a collision was 'good', remember to send it to the simulator
-            ObjectsWithCollisions.Add(collider);
+            if (collider.Collide(collidingWith, collidee, collidePoint, collideNormal, penetration))
+            {
+                // If a collision was 'good', remember to send it to the simulator
+                ObjectsWithCollisions.Add(collider);
+            }
         }
 
         return;
@@ -863,18 +875,9 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     public override bool IsThreaded { get { return false;  } }
 
     #region Extensions
-    // =============================================================
-    // Per scene functions. See below.
-
-    // Per avatar functions. See BSCharacter.
-
-    // Per prim functions. See BSPrim.
-    public const string PhysFunctGetLinksetType = "BulletSim.GetLinksetType";
-    public const string PhysFunctSetLinksetType = "BulletSim.SetLinksetType";
-    // =============================================================
-
     public override object Extension(string pFunct, params object[] pParams)
     {
+        DetailLog("{0} BSScene.Extension,op={1}", DetailLogZero, pFunct);
         return base.Extension(pFunct, pParams);
     }
     #endregion // Extensions
@@ -893,26 +896,37 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     // Calls to the PhysicsActors can't directly call into the physics engine
     //       because it might be busy. We delay changes to a known time.
     // We rely on C#'s closure to save and restore the context for the delegate.
-    public void TaintedObject(String ident, TaintCallback callback)
+    public void TaintedObject(string pOriginator, string pIdent, TaintCallback pCallback)
+    {
+        TaintedObject(false /*inTaintTime*/, pOriginator, pIdent, pCallback);
+    }
+    public void TaintedObject(uint pOriginator, String pIdent, TaintCallback pCallback)
+    {
+        TaintedObject(false /*inTaintTime*/, m_physicsLoggingEnabled ? pOriginator.ToString() : BSScene.DetailLogZero, pIdent, pCallback);
+    }
+    public void TaintedObject(bool inTaintTime, String pIdent, TaintCallback pCallback)
+    {
+        TaintedObject(inTaintTime, BSScene.DetailLogZero, pIdent, pCallback);
+    }
+    public void TaintedObject(bool inTaintTime, uint pOriginator, String pIdent, TaintCallback pCallback)
+    {
+        TaintedObject(inTaintTime, m_physicsLoggingEnabled ? pOriginator.ToString() : BSScene.DetailLogZero, pIdent, pCallback);
+    }
+    // Sometimes a potentially tainted operation can be used in and out of taint time.
+    // This routine executes the command immediately if in taint-time otherwise it is queued.
+    public void TaintedObject(bool inTaintTime, string pOriginator, string pIdent, TaintCallback pCallback)
     {
         if (!m_initialized) return;
 
-        lock (_taintLock)
-        {
-            _taintOperations.Add(new TaintCallbackEntry(ident, callback));
-        }
-
-        return;
-    }
-
-    // Sometimes a potentially tainted operation can be used in and out of taint time.
-    // This routine executes the command immediately if in taint-time otherwise it is queued.
-    public void TaintedObject(bool inTaintTime, string ident, TaintCallback callback)
-    {
         if (inTaintTime)
-            callback();
+            pCallback();
         else
-            TaintedObject(ident, callback);
+        {
+            lock (_taintLock)
+            {
+                _taintOperations.Add(new TaintCallbackEntry(pOriginator, pIdent, pCallback));
+            }
+        }
     }
 
     private void TriggerPreStepEvent(float timeStep)
@@ -942,7 +956,7 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
 
     private void ProcessRegularTaints()
     {
-        if (_taintOperations.Count > 0)  // save allocating new list if there is nothing to process
+        if (m_initialized && _taintOperations.Count > 0)  // save allocating new list if there is nothing to process
         {
             // swizzle a new list into the list location so we can process what's there
             List<TaintCallbackEntry> oldList;
@@ -956,7 +970,7 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
             {
                 try
                 {
-                    DetailLog("{0},BSScene.ProcessTaints,doTaint,id={1}", DetailLogZero, tcbe.ident); // DEBUG DEBUG DEBUG
+                    DetailLog("{0},BSScene.ProcessTaints,doTaint,id={1}", tcbe.originator, tcbe.ident); // DEBUG DEBUG DEBUG
                     tcbe.callback();
                 }
                 catch (Exception e)
@@ -973,10 +987,11 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     //     will replace any previous operation by the same object.
     public void PostTaintObject(String ident, uint ID, TaintCallback callback)
     {
-        string uniqueIdent = ident + "-" + ID.ToString();
+        string IDAsString = ID.ToString();
+        string uniqueIdent = ident + "-" + IDAsString;
         lock (_taintLock)
         {
-            _postTaintOperations[uniqueIdent] = new TaintCallbackEntry(uniqueIdent, callback);
+            _postTaintOperations[uniqueIdent] = new TaintCallbackEntry(IDAsString, uniqueIdent, callback);
         }
 
         return;
@@ -985,7 +1000,7 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     // Taints that happen after the normal taint processing but before the simulation step.
     private void ProcessPostTaintTaints()
     {
-        if (_postTaintOperations.Count > 0)
+        if (m_initialized && _postTaintOperations.Count > 0)
         {
             Dictionary<string, TaintCallbackEntry> oldList;
             lock (_taintLock)
@@ -1086,7 +1101,7 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
         string xval = val;
         List<uint> xlIDs = lIDs;
         string xparm = parm;
-        TaintedObject("BSScene.UpdateParameterSet", delegate() {
+        TaintedObject(DetailLogZero, "BSScene.UpdateParameterSet", delegate() {
             BSParam.ParameterDefnBase thisParam;
             if (BSParam.TryGetParameter(xparm, out thisParam))
             {

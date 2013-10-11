@@ -94,7 +94,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
                     throw new Exception(string.Format("Invalid ConnectorProtocolVersion {0}", ServiceVersion));
 
                 m_log.InfoFormat(
-                    "[LOCAL SIMULATION CONNECTOR]: Initialzied with connector protocol version {0}", ServiceVersion);
+                    "[LOCAL SIMULATION CONNECTOR]: Initialized with connector protocol version {0}", ServiceVersion);
             }
         }
 
@@ -207,16 +207,23 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 
         public bool CreateAgent(GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, out string reason)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (destination == null)
             {
                 reason = "Given destination was null";
-                m_log.DebugFormat("[LOCAL SIMULATION CONNECTOR]: CreateAgent was given a null destination");
+                m_log.WarnFormat("CreateAgent was given a null destination");
                 return false;
             }
 
             if (m_scenes.ContainsKey(destination.RegionID))
             {
-//                    m_log.DebugFormat("[LOCAL SIMULATION CONNECTOR]: Found region {0} to send SendCreateChildAgent", destination.RegionName);
+				if(m_log.IsDebugEnabled) {
+					m_log.DebugFormat("Found region {0} to send SendCreateChildAgent", destination.RegionName);
+				}
                 return m_scenes[destination.RegionID].NewUserConnection(aCircuit, teleportFlags, out reason);
             }
 
@@ -235,7 +242,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 //                        "[LOCAL SIMULATION CONNECTOR]: Found region {0} {1} to send AgentUpdate",
 //                        destination.RegionName, destination.RegionID);
 
-                return m_scenes[destination.RegionID].IncomingChildAgentDataUpdate(cAgentData);
+                return m_scenes[destination.RegionID].IncomingUpdateChildAgent(cAgentData);
             }
 
 //            m_log.DebugFormat(
@@ -245,7 +252,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             return false;
         }
 
-        public bool UpdateAgent(GridRegion destination, AgentPosition cAgentData)
+        public bool UpdateAgent(GridRegion destination, AgentPosition agentPosition)
         {
             if (destination == null)
                 return false;
@@ -257,7 +264,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             foreach (Scene s in m_scenes.Values)
             {
 //                m_log.Debug("[LOCAL COMMS]: Found region to send ChildAgentUpdate");
-                s.IncomingChildAgentDataUpdate(cAgentData);
+                s.IncomingUpdateChildAgent(agentPosition);
             }
 
             //m_log.Debug("[LOCAL COMMS]: region not found for ChildAgentUpdate");
@@ -311,7 +318,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 //                        "[LOCAL SIMULATION CONNECTOR]: Found region {0} {1} to send AgentUpdate",
 //                        s.RegionInfo.RegionName, destination.RegionHandle);
 
-                m_scenes[destination.RegionID].IncomingCloseAgent(id, false, auth_token);
+                m_scenes[destination.RegionID].CloseAgent(id, false, auth_token);
                 return true;
             }
 

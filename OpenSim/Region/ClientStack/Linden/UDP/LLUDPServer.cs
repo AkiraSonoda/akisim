@@ -108,6 +108,32 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             StatsManager.RegisterStat(
                 new Stat(
+                    "IncomingPacketsMalformedCount",
+                    "Number of inbound UDP packets that could not be recognized as LL protocol packets.",
+                    "",
+                    "",
+                    "clientstack",
+                    scene.Name,
+                    StatType.Pull,
+                    MeasuresOfInterest.AverageChangeOverTime,
+                    stat => stat.Value = m_udpServer.IncomingMalformedPacketCount,
+                    StatVerbosity.Info));
+
+            StatsManager.RegisterStat(
+                new Stat(
+                    "IncomingPacketsOrphanedCount",
+                    "Number of inbound packets that were not initial connections packets and could not be associated with a viewer.",
+                    "",
+                    "",
+                    "clientstack",
+                    scene.Name,
+                    StatType.Pull,
+                    MeasuresOfInterest.AverageChangeOverTime,
+                    stat => stat.Value = m_udpServer.IncomingOrphanedPacketCount,
+                    StatVerbosity.Info));
+
+            StatsManager.RegisterStat(
+                new Stat(
                     "OutgoingUDPSendsCount",
                     "Number of UDP sends performed",
                     "",
@@ -268,7 +294,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public Socket Server { get { return null; } }
 
-        private int m_malformedCount = 0; // Guard against a spamming attack
+        /// <summary>
+        /// Record how many inbound packets could not be recognized as LLUDP packets.
+        /// </summary>
+        public int IncomingMalformedPacketCount { get; private set; }
+
+        /// <summary>
+        /// Record how many inbound packets could not be associated with a simulator circuit.
+        /// </summary>
+        public int IncomingOrphanedPacketCount { get; private set; }
 
         /// <summary>
         /// Record current outgoing client for monitoring purposes.
@@ -1181,6 +1215,19 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             outgoingPacket.TickCount = Environment.TickCount & Int32.MaxValue;
         }
 
+        private void RecordMalformedInboundPacket(IPEndPoint endPoint)
+        {
+//                if (m_malformedCount < 100)
+//                    m_log.DebugFormat("[LLUDPSERVER]: Dropped malformed packet: " + e.ToString());
+
+            IncomingMalformedPacketCount++;
+
+            if ((IncomingMalformedPacketCount % 10000) == 0)
+                m_log.WarnFormat(
+                    "[LLUDPSERVER]: Received {0} malformed packets so far, probable network attack.  Last was from {1}", 
+                    IncomingMalformedPacketCount, endPoint);
+        }
+
         public override void PacketReceived(UDPPacketBuffer buffer)
         {
             // Debugging/Profiling
@@ -1202,6 +1249,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 //                    "[LLUDPSERVER]: Dropping undersized packet with {0} bytes received from {1} in {2}",
 //                    buffer.DataLength, buffer.RemoteEndPoint, m_scene.RegionInfo.RegionName);
 
+                RecordMalformedInboundPacket(endPoint);
+
                 return; // Drop undersized packet
             }
 
@@ -1220,6 +1269,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 //                    "[LLUDPSERVER]: Dropping packet with malformed header received from {0} in {1}",
 //                    buffer.RemoteEndPoint, m_scene.RegionInfo.RegionName);
 
+                RecordMalformedInboundPacket(endPoint);
+
                 return; // Malformed header
             }
 
@@ -1235,34 +1286,23 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     // Only allocate a buffer for zerodecoding if the packet is zerocoded
                     ((buffer.Data[0] & Helpers.MSG_ZEROCODED) != 0) ? new byte[4096] : null);
             }
-            catch (MalformedDataException)
-            {
-            }
-            catch (IndexOutOfRangeException)
-            {
-//                m_log.WarnFormat(
-//                    "[LLUDPSERVER]: Dropping short packet received from {0} in {1}",
-//                    buffer.RemoteEndPoint, m_scene.RegionInfo.RegionName);
-
-                return; // Drop short packet
-            }
             catch (Exception e)
             {
-                if (m_malformedCount < 100)
+                if (IncomingMalformedPacketCount < 100)
                     m_log.DebugFormat("[LLUDPSERVER]: Dropped malformed packet: " + e.ToString());
-
-                m_malformedCount++;
-
-                if ((m_malformedCount % 100000) == 0)
-                    m_log.DebugFormat("[LLUDPSERVER]: Received {0} malformed packets so far, probable network attack.", m_malformedCount);
             }
 
             // Fail-safe check
             if (packet == null)
             {
-                m_log.ErrorFormat("[LLUDPSERVER]: Malformed data, cannot parse {0} byte packet from {1}:",
-                    buffer.DataLength, buffer.RemoteEndPoint);
-                m_log.Error(Utils.BytesToHexString(buffer.Data, buffer.DataLength, null));
+                if (IncomingMalformedPacketCount < 100)
+                {
+                    m_log.WarnFormat("[LLUDPSERVER]: Malformed data, cannot parse {0} byte packet from {1}, data {2}:",
+                        buffer.DataLength, buffer.RemoteEndPoint, Utils.BytesToHexString(buffer.Data, buffer.DataLength, null));
+                }
+
+                RecordMalformedInboundPacket(endPoint);
+
                 return;
             }
 
@@ -1300,6 +1340,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (!m_scene.TryGetClient(endPoint, out client) || !(client is LLClientView))
             {
                 //m_log.Debug("[LLUDPSERVER]: Received a " + packet.Type + " packet from an unrecognized source: " + address + " in " + m_scene.RegionInfo.RegionName);
+
+                IncomingOrphanedPacketCount++;
+
+                if ((IncomingOrphanedPacketCount % 10000) == 0)
+                    m_log.WarnFormat(
+                        "[LLUDPSERVER]: Received {0} orphaned packets so far.  Last was from {1}", 
+                        IncomingOrphanedPacketCount, endPoint);
+
                 return;
             }
 
@@ -1644,32 +1692,76 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 endPoint = (IPEndPoint)array[0];
                 CompleteAgentMovementPacket packet = (CompleteAgentMovementPacket)array[1];
 
+                m_log.DebugFormat(
+                    "[LLUDPSERVER]: Handling CompleteAgentMovement request from {0} in {1}", endPoint, m_scene.Name);
+
                 // Determine which agent this packet came from
-                int count = 20;
-                bool ready = false;
-                while (!ready && count-- > 0)
+                // We need to wait here because in when using the OpenSimulator V2 teleport protocol to travel to a destination
+                // simulator with no existing child presence, the viewer (at least LL 3.3.4) will send UseCircuitCode 
+                // and then CompleteAgentMovement immediately without waiting for an ack.  As we are now handling these
+                // packets asynchronously, we need to account for this thread proceeding more quickly than the 
+                // UseCircuitCode thread.
+                int count = 40;
+                while (count-- > 0)
                 {
-                    if (m_scene.TryGetClient(endPoint, out client) && client.IsActive && client.SceneAgent != null)
+                    if (m_scene.TryGetClient(endPoint, out client))
                     {
-                        LLClientView llClientView = (LLClientView)client;
-                        LLUDPClient udpClient = llClientView.UDPClient;
-                        if (udpClient != null && udpClient.IsConnected)
-                            ready = true;
+                        if (!client.IsActive)
+                        {
+                            // This check exists to catch a condition where the client has been closed by another thread
+                            // but has not yet been removed from the client manager (and possibly a new connection has
+                            // not yet been established).
+                            m_log.DebugFormat(
+                                "[LLUDPSERVER]: Received a CompleteAgentMovement from {0} for {1} in {2} but client is not active yet.  Waiting.",
+                                endPoint, client.Name, m_scene.Name);
+                        }
+                        else if (client.SceneAgent == null)
+                        {
+                            // This check exists to catch a condition where the new client has been added to the client
+                            // manager but the SceneAgent has not yet been set in Scene.AddNewAgent().  If we are too
+                            // eager, then the new ScenePresence may not have registered a listener for this messsage
+                            // before we try to process it.
+                            // XXX: A better long term fix may be to add the SceneAgent before the client is added to 
+                            // the client manager
+                            m_log.DebugFormat(
+                                "[LLUDPSERVER]: Received a CompleteAgentMovement from {0} for {1} in {2} but client SceneAgent not set yet.  Waiting.",
+                                endPoint, client.Name, m_scene.Name);
+                        }
                         else
                         {
-                            m_log.Debug("[LLUDPSERVER]: Received a CompleteMovementIntoRegion in " + m_scene.RegionInfo.RegionName + " (not ready yet)");
-                            Thread.Sleep(200);
+                            break;
                         }
                     }
                     else
                     {
-                        m_log.Debug("[LLUDPSERVER]: Received a CompleteMovementIntoRegion in " + m_scene.RegionInfo.RegionName + " (not ready yet)");
-                        Thread.Sleep(200);
+                        m_log.DebugFormat(
+                            "[LLUDPSERVER]: Received a CompleteAgentMovement from {0} in {1} but no client exists yet.  Waiting.", 
+                            endPoint, m_scene.Name);
                     }
+
+                    Thread.Sleep(200);
                 }
 
                 if (client == null)
+                {
+                    m_log.DebugFormat(
+                        "[LLUDPSERVER]: No client found for CompleteAgentMovement from {0} in {1} after wait.  Dropping.",
+                        endPoint, m_scene.Name);
+
                     return;
+                }
+                else if (!client.IsActive || client.SceneAgent == null)
+                {
+                    // This check exists to catch a condition where the client has been closed by another thread
+                    // but has not yet been removed from the client manager.
+                    // The packet could be simply ignored but it is useful to know if this condition occurred for other debugging
+                    // purposes.
+                    m_log.DebugFormat(
+                        "[LLUDPSERVER]: Received a CompleteAgentMovement from {0} for {1} in {2} but client is not active after wait.  Dropping.",
+                        endPoint, client.Name, m_scene.Name);
+
+                    return;
+                }
 
                 IncomingPacket incomingPacket1;
 
@@ -1690,7 +1782,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             catch (Exception e)
             {
                 m_log.ErrorFormat(
-                    "[LLUDPSERVER]: CompleteMovementIntoRegion handling from endpoint {0}, client {1} {2} failed.  Exception {3}{4}",
+                    "[LLUDPSERVER]: CompleteAgentMovement handling from endpoint {0}, client {1} {2} failed.  Exception {3}{4}",
                     endPoint != null ? endPoint.ToString() : "n/a",
                     client != null ? client.Name : "unknown",
                     client != null ? client.AgentId.ToString() : "unknown",
@@ -1801,7 +1893,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                      client.Kick("Simulator logged you out due to connection timeout.");
             }
 
-            m_scene.IncomingCloseAgent(client.AgentId, true);
+            m_scene.CloseAgent(client.AgentId, true);
         }
 
         private void IncomingPacketHandler()
@@ -2142,7 +2234,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (!client.IsLoggingOut)
             {
                 client.IsLoggingOut = true;
-                m_scene.IncomingCloseAgent(client.AgentId, false);
+                m_scene.CloseAgent(client.AgentId, false);
             }
         }
     }

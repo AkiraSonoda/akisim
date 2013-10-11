@@ -54,7 +54,7 @@ namespace OpenSim
     public class OpenSim : OpenSimBase
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly ILog s_log = LogManager.GetLogger ("SimStats");
+
         protected string m_startupCommandsFile;
         protected string m_shutdownCommandsFile;
         protected bool m_gui = false;
@@ -244,27 +244,33 @@ namespace OpenSim
 
             m_console.Commands.AddCommand("General", false, "change region",
                                           "change region <region name>",
-                                          "Change current console region", ChangeSelectedRegion);
+                                          "Change current console region", 
+                                          ChangeSelectedRegion);
 
             m_console.Commands.AddCommand("Archiving", false, "save xml",
                                           "save xml",
-                                          "Save a region's data in XML format", SaveXml);
+                                          "Save a region's data in XML format", 
+                                          SaveXml);
 
             m_console.Commands.AddCommand("Archiving", false, "save xml2",
                                           "save xml2",
-                                          "Save a region's data in XML2 format", SaveXml2);
+                                          "Save a region's data in XML2 format", 
+                                          SaveXml2);
 
             m_console.Commands.AddCommand("Archiving", false, "load xml",
                                           "load xml [-newIDs [<x> <y> <z>]]",
-                                          "Load a region's data from XML format", LoadXml);
+                                          "Load a region's data from XML format",
+                                          LoadXml);
 
             m_console.Commands.AddCommand("Archiving", false, "load xml2",
                                           "load xml2",
-                                          "Load a region's data from XML2 format", LoadXml2);
+                                          "Load a region's data from XML2 format", 
+                                          LoadXml2);
 
             m_console.Commands.AddCommand("Archiving", false, "save prims xml2",
                                           "save prims xml2 [<prim name> <file name>]",
-                                          "Save named prim to XML2", SavePrimsXml2);
+                                          "Save named prim to XML2", 
+                                          SavePrimsXml2);
 
             m_console.Commands.AddCommand("Archiving", false, "load oar",
                                           "load oar [--merge] [--skip-assets] [<OAR path>]",
@@ -294,7 +300,8 @@ namespace OpenSim
 
             m_console.Commands.AddCommand("Objects", false, "edit scale",
                                           "edit scale <name> <x> <y> <z>",
-                                          "Change the scale of a named prim", HandleEditScale);
+                                          "Change the scale of a named prim", 
+                                          HandleEditScale);
 
             m_console.Commands.AddCommand("Users", false, "kick user",
                                           "kick user <first> <last> [--force] [message]",
@@ -302,12 +309,6 @@ namespace OpenSim
                                           "The --force option will kick the user without any checks to see whether it's already in the process of closing\n"
                                           + "Only use this option if you are sure the avatar is inactive and a normal kick user operation does not removed them",
                                           KickUserCommand);
-
-            m_console.Commands.AddCommand ("Users", false, "akick",
-                                          "akick <first> <last>",
-                                          "Kick a user off the simulator",
-                                          "Kick a user off the simulator",
-                                          AkickCommand);
 
             m_console.Commands.AddCommand("Users", false, "show users",
                                           "show users [full]",
@@ -318,31 +319,38 @@ namespace OpenSim
 
             m_console.Commands.AddCommand("Comms", false, "show connections",
                                           "show connections",
-                                          "Show connection data", HandleShow);
+                                          "Show connection data", 
+                                          HandleShow);
 
             m_console.Commands.AddCommand("Comms", false, "show circuits",
                                           "show circuits",
-                                          "Show agent circuit data", HandleShow);
+                                          "Show agent circuit data", 
+                                          HandleShow);
 
             m_console.Commands.AddCommand("Comms", false, "show pending-objects",
                                           "show pending-objects",
-                                          "Show # of objects on the pending queues of all scene viewers", HandleShow);
+                                          "Show # of objects on the pending queues of all scene viewers", 
+                                          HandleShow);
 
             m_console.Commands.AddCommand("General", false, "show modules",
                                           "show modules",
-                                          "Show module data", HandleShow);
+                                          "Show module data", 
+                                          HandleShow);
 
             m_console.Commands.AddCommand("Regions", false, "show regions",
                                           "show regions",
-                                          "Show region data", HandleShow);
+                                          "Show region data", 
+                                          HandleShow);
             
             m_console.Commands.AddCommand("Regions", false, "show ratings",
                                           "show ratings",
-                                          "Show rating data", HandleShow);
+                                          "Show rating data", 
+                                          HandleShow);
 
             m_console.Commands.AddCommand("Objects", false, "backup",
                                           "backup",
-                                          "Persist currently unsaved object changes immediately instead of waiting for the normal persistence call.", RunCommand);
+                                          "Persist currently unsaved object changes immediately instead of waiting for the normal persistence call.", 
+                                          RunCommand);
 
             m_console.Commands.AddCommand("Regions", false, "create region",
                                           "create region [\"region name\"] <region_file.ini>",
@@ -355,23 +363,24 @@ namespace OpenSim
 
             m_console.Commands.AddCommand("Regions", false, "restart",
                                           "restart",
-                                          "Restart all sims in this instance", RunCommand);
+                                          "Restart all sims in this instance", 
+                                          RunCommand);
 
             m_console.Commands.AddCommand("General", false, "command-script",
                                           "command-script <script>",
-                                          "Run a command script from file", RunCommand);
+                                          "Run a command script from file", 
+                                          RunCommand);
 
             m_console.Commands.AddCommand("Regions", false, "remove-region",
                                           "remove-region <name>",
-                                          "Remove a region from this simulator", RunCommand);
+                                          "Remove a region from this simulator", 
+                                          RunCommand);
 
             m_console.Commands.AddCommand("Regions", false, "delete-region",
                                           "delete-region <name>",
-                                          "Delete a region from disk", RunCommand);
-	   m_console.Commands.AddCommand ("General", false, "show kpi",
-                                          "show kpi",
-                                          "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", HandleShowKPI);
-	}
+                                          "Delete a region from disk", 
+                                          RunCommand);
+        }
 
         protected override void ShutdownSpecific()
         {
@@ -415,38 +424,6 @@ namespace OpenSim
         /// </summary>
         /// <param name="module"></param>
         /// <param name="cmdparams">name of avatar to kick</param>
-        private void AkickCommand (string module, string[] cmdparams)
-        {
-            
-            IList agents = SceneManager.GetCurrentSceneAvatars ();
-
-            foreach (ScenePresence presence in agents) {
-                RegionInfo regionInfo = presence.Scene.RegionInfo;
-
-                if (presence.Firstname.ToLower ().Contains (cmdparams [1].ToLower ()) &&
-                    presence.Lastname.ToLower ().Contains (cmdparams [2].ToLower ())) {
-                    MainConsole.Instance.Output (
-                        String.Format (
-                            "Akick: {0,-16} {1,-16} {2,-37} in region: {3,-16}",
-                            presence.Firstname, presence.Lastname, presence.UUID, regionInfo.RegionName)
-                    );
-
-                    // kick client...
-                    presence.ControllingClient.Kick ("Simulator logged you out due to connection timeout");
-
-                    presence.Scene.IncomingCloseAgent (presence.UUID, false);
-                }
-            }
-
-            MainConsole.Instance.Output ("");
-        }
-
-
-        /// <summary>
-        /// Kicks users off the region
-        /// </summary>
-        /// <param name="module"></param>
-        /// <param name="cmdparams">name of avatar to kick</param>
         private void KickUserCommand(string module, string[] cmdparams)
         {
             bool force = false;
@@ -482,7 +459,7 @@ namespace OpenSim
                     else
                         presence.ControllingClient.Kick("\nThe OpenSim manager kicked you out.\n");
 
-                    presence.Scene.IncomingCloseAgent(presence.UUID, force);
+                    presence.Scene.CloseAgent(presence.UUID, force);
                     break;
                 }
             }
@@ -712,48 +689,6 @@ namespace OpenSim
             RefreshPrompt();
         }
 
-        /// <summary>
-        /// Prints Base Simulator KPI into the log
-        /// </summary>
-        public override void HandleShowKPI (string mod, string[] cmd)
-        {
-
-            // Prints info from BaseOpenSimServer
-            base.HandleShowKPI (mod, cmd);
-
-            // Printing AgentInfo 
-            
-            IList agents;
-            agents = SceneManager.GetCurrentScenePresences ();
-            s_log.DebugFormat ("[AGENTS] Agents connected: {0}", agents.Count);
-
-            foreach (ScenePresence presence in agents) {
-                RegionInfo regionInfo = presence.Scene.RegionInfo;
-                string regionName;
-
-                if (regionInfo == null) {
-                    regionName = "Unresolvable";
-                } else {
-                    regionName = regionInfo.RegionName;
-                }
-
-                s_log.DebugFormat (
-                                "[AGENTS] Firstname:{0} Lastname:{1} AgentID:{2} Root/Child:{3} Region:{4} Position:{5}",
-                                presence.Firstname,
-                                presence.Lastname,
-                                presence.UUID,
-                                presence.IsChildAgent ? "Child" : "Root",
-                                regionName,
-                                presence.AbsolutePosition.ToString ());
-            }
-            
-            // Print Connection Info
-            PrintConnections ();
-            // Print Circuit Info
-            PrintCircuits ();
-
-        }
-
         // see BaseOpenSimServer
         /// <summary>
         /// Many commands list objects for debugging.  Some of the types are listed  here
@@ -891,25 +826,6 @@ namespace OpenSim
             }
         }
 
-        private void PrintCircuits ()
-        {
-
-            SceneManager.ForEachScene (
-                s => {
-                foreach (AgentCircuitData aCircuit in s.AuthenticateHandler.GetAgentCircuits().Values)
-                    s_log.DebugFormat (
-                            "[CIRCUITS] Region:{0} AvatarName:{1} Type:{2} Code:{3} IP:{4} ViewerName:{5}",
-                            s.Name,
-                            aCircuit.Name,
-                            aCircuit.child ? "child" : "root",
-                            aCircuit.circuitcode.ToString (),
-                            aCircuit.IPAddress.ToString (),
-                            aCircuit.Viewer);
-            }
-            );
-
-        }
-        
         private void HandleShowCircuits()
         {
             ConsoleDisplayTable cdt = new ConsoleDisplayTable();
@@ -936,22 +852,6 @@ namespace OpenSim
             MainConsole.Instance.Output(cdt.ToString());
         }
 
-        private void PrintConnections ()
-        {
-
-            SceneManager.ForEachScene (
-                s => s.ForEachClient (
-                    c => s_log.DebugFormat (
-                        "[CONNECTIONS] Region:{0} AvatarName:{1} CirquitCode:{2} Endpoint:{3} Active:{4}",
-                        s.Name,
-                        c.Name,
-                        c.CircuitCode.ToString (),
-                        c.RemoteEndPoint.ToString (),                
-                        c.IsActive.ToString ())
-            )
-            );
-        }
-        
         private void HandleShowConnections()
         {
             ConsoleDisplayTable cdt = new ConsoleDisplayTable();
