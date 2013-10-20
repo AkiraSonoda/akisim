@@ -236,7 +236,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     m_log.InfoFormat("AVATARFACTORY ISVALIDBAKEDTEXTURECACHE={0}", isValidBakedTextureCache);
                     // If bake textures are missing and this is not an NPC, request a rebake from client
                     if (!isValidBakedTextureCache && (((ScenePresence)sp).PresenceType != PresenceType.Npc))
-                        RequestRebake(sp, true);
+                        RequestRebake(sp, false);
 
                     // Save the wearble hashes in the appearance
                     sp.Appearance.ResetTextureHashes();
@@ -457,16 +457,14 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             for (int i = 0; i < AvatarAppearance.BAKE_INDICES.Length; i++)
             {
                 int idx = AvatarAppearance.BAKE_INDICES[i];
-                // Primitive.TextureEntryFace face = sp.Appearance.Texture.FaceTextures[idx];
-                UUID textureID = sp.Appearance.Texture.FaceTextures[idx].TextureID;
+                Primitive.TextureEntryFace face = sp.Appearance.Texture.FaceTextures[idx];
                 // if there is no texture entry, skip it
 
-                // if (face == null)
-                //    continue;
+                if (face == null)
+                    continue;
 
                 if(m_log.IsDebugEnabled) {
-					// m_log.DebugFormat("[AvatarFactoryModule]: Looking for texture {0}, id {1} for {2}",face.TextureID, idx, sp.Name);
-                    m_log.DebugFormat("[AvatarFactoryModule]: Looking for texture {0}, id {1} for {2}",textureID, idx, sp.Name);
+					m_log.DebugFormat("[AvatarFactoryModule]: Looking for texture {0}, id {1} for {2}",face.TextureID, idx, sp.Name);
                 }
 
                 // if the texture is one of the "defaults" then skip it
@@ -474,19 +472,15 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 // if the avatar isnt wearing a skirt) but if any of the main baked
                 // textures is default then the rest should be as well
 
-                // if (face.TextureID == UUID.Zero || face.TextureID == AppearanceManager.DEFAULT_AVATAR_TEXTURE)
-                //     continue;
-
-                if (textureID == UUID.Zero || textureID == AppearanceManager.DEFAULT_AVATAR_TEXTURE)
+                if (face.TextureID == UUID.Zero || face.TextureID == AppearanceManager.DEFAULT_AVATAR_TEXTURE)
                     continue;
 
                 if (missingTexturesOnly)
                 {
                     m_log.InfoFormat("AVATARFACTORY REQUESTREBAKE MISSINGTEXTURES");
 					// AKIDO: Check if the AssetService.Get() respects Surabaya as well
-                    // if (m_scene.AssetService.Get(face.TextureID.ToString()) != null) {
-                    if (m_scene.AssetService.Get(textureID.ToString()) != null) {
-                            continue;
+                    if (m_scene.AssetService.Get(face.TextureID.ToString()) != null) {
+                        continue;
                     } else {
                         // On inter-simulator teleports, this occurs if baked textures are not being stored by the
                         // grid asset service (which means that they are not available to the new region and so have
@@ -494,19 +488,16 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                         //
                         // The only available core OpenSimulator behaviour right now
                         // is not to store these textures, temporarily or otherwise.
-                        // m_log.DebugFormat("[AvatarFactoryModule]: Missing baked texture {0} ({1}) for {2}, requesting rebake.",face.TextureID, idx, sp.Name);
-                        m_log.DebugFormat("[AvatarFactoryModule]: Missing baked texture {0} ({1}) for {2}, requesting rebake.",textureID, idx, sp.Name);
+                        m_log.DebugFormat("[AvatarFactoryModule]: Missing baked texture {0} ({1}) for {2}, requesting rebake.",face.TextureID, idx, sp.Name);
                     }
                 }
                 else
                 {
-                    // m_log.DebugFormat("[AvatarFactoryModule]: Requesting rebake of {0} ({1}) for {2}.",face.TextureID, idx, sp.Name);
-                    m_log.DebugFormat("[AvatarFactoryModule]: Requesting rebake of {0} ({1}) for {2}.",textureID, idx, sp.Name);
+                    m_log.DebugFormat("[AvatarFactoryModule]: Requesting rebake of {0} ({1}) for {2}.",face.TextureID, idx, sp.Name);
                 }
 
                 texturesRebaked++;
-                // sp.ControllingClient.SendRebakeAvatarTextures(face.TextureID);
-                sp.ControllingClient.SendRebakeAvatarTextures(textureID);
+                sp.ControllingClient.SendRebakeAvatarTextures(face.TextureID);
             }
 
             return texturesRebaked;
