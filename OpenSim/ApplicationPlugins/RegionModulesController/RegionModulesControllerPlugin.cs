@@ -247,6 +247,11 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
         /// <returns>true if the module is enabled, false if it is disabled</returns>
         protected bool CheckModuleEnabled(TypeExtensionNode node, IConfig modulesConfig)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
+
             // Get the config string
             string moduleString =
                     modulesConfig.GetString("Setup_" + node.Id, String.Empty);
@@ -282,6 +287,11 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
         //
         public void AddRegionToModules (Scene scene)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
+
             Dictionary<Type, ISharedRegionModule> deferredSharedModules =
                     new Dictionary<Type, ISharedRegionModule>();
             Dictionary<Type, INonSharedRegionModule> deferredNonSharedModules =
@@ -486,6 +496,11 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
 
         public void RemoveRegionFromModules (Scene scene)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
+
             foreach (IRegionModuleBase module in scene.RegionModules.Values)
             {
                 m_log.DebugFormat("[REGIONMODULE]: Removing scene {0} from module {1}",

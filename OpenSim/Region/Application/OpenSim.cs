@@ -77,10 +77,17 @@ namespace OpenSim
 
         public OpenSim(IConfigSource configSource) : base(configSource)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
         }
 
         protected override void ReadExtraConfigSettings()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
             base.ReadExtraConfigSettings();
 
             IConfig startupConfig = Config.Configs["Startup"];
@@ -624,6 +631,11 @@ namespace OpenSim
         /// <param name="cmdParams"></param>
         protected void ChangeSelectedRegion(string module, string[] cmdparams)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (cmdparams.Length > 2)
             {
                 string newRegionName = CombineParams(cmdparams, 2);

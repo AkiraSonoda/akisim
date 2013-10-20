@@ -44,6 +44,11 @@ namespace OpenSim.Region.ClientStack
 
         public ClientStackManager(string pDllName) 
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("DLLName {0}", pDllName);
+			}
+
             List<string> clientstacks = new List<string>();
             if (pDllName.Contains(","))
             {
@@ -100,6 +105,7 @@ namespace OpenSim.Region.ClientStack
         /// <param name="authenticateClass"></param>
         /// <returns></returns>
         public List<IClientNetworkServer> CreateServers(
+
             IPAddress _listenIP, ref uint port, int proxyPortOffset, bool allow_alternate_port,
             AgentCircuitManager authenticateClass)
         {
@@ -124,6 +130,10 @@ namespace OpenSim.Region.ClientStack
             IPAddress _listenIP, ref uint port, int proxyPortOffset, bool allow_alternate_port, IConfigSource configSource,
             AgentCircuitManager authenticateClass)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             List<IClientNetworkServer> servers = new List<IClientNetworkServer>();
             if (plugin != null)
             {

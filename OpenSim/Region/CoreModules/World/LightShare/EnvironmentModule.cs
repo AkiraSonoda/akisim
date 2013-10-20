@@ -60,6 +60,10 @@ namespace OpenSim.Region.CoreModules.World.LightShare
         #region INonSharedRegionModule
         public void Initialise(IConfigSource source)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             IConfig config = source.Configs["ClientStack.LindenCaps"];
 
             if (null == config)
@@ -92,6 +96,10 @@ namespace OpenSim.Region.CoreModules.World.LightShare
 
         public void AddRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             if (!Enabled)
                 return;
 
@@ -102,6 +110,10 @@ namespace OpenSim.Region.CoreModules.World.LightShare
 
         public void RegionLoaded(Scene scene)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             if (!Enabled)
                 return;
 
@@ -111,6 +123,10 @@ namespace OpenSim.Region.CoreModules.World.LightShare
 
         public void RemoveRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             if (Enabled)
                 return;
 
@@ -122,6 +138,10 @@ namespace OpenSim.Region.CoreModules.World.LightShare
         #region IEnvironmentModule
         public void ResetEnvironmentSettings(UUID regionUUID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             if (!Enabled)
                 return;
 
@@ -132,8 +152,9 @@ namespace OpenSim.Region.CoreModules.World.LightShare
         #region Events
         private void OnRegisterCaps(UUID agentID, Caps caps)
         {
-            //            m_log.DebugFormat("[{0}]: Register capability for agentID {1} in region {2}",
-            //                Name, agentID, caps.RegionName);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             string capsPath = capsBase + UUID.Random();
 
@@ -163,8 +184,9 @@ namespace OpenSim.Region.CoreModules.World.LightShare
         private string GetEnvironmentSettings(string request, string path, string param,
               UUID agentID, Caps caps)
         {
-            //            m_log.DebugFormat("[{0}]: Environment GET handle for agentID {1} in region {2}",
-            //                Name, agentID, caps.RegionName);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             string env = String.Empty;
 
@@ -187,9 +209,9 @@ namespace OpenSim.Region.CoreModules.World.LightShare
         private string SetEnvironmentSettings(string request, string path, string param,
                               UUID agentID, Caps caps)
         {
-
-            //            m_log.DebugFormat("[{0}]: Environment SET handle from agentID {1} in region {2}",
-            //                Name, agentID, caps.RegionName);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             setResponse.regionID = regionID;
             setResponse.success = false;

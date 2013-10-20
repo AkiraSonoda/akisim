@@ -49,7 +49,6 @@ namespace OpenSim.Framework
 
         protected int m_serial = 0;
         protected byte[] m_visualparams;
-        protected Primitive.TextureEntry m_texture;
         protected AvatarWearable[] m_wearables;
         protected Dictionary<int, List<AvatarAttachment>> m_attachments;
         protected float m_avatarHeight = 0;
@@ -67,6 +66,7 @@ namespace OpenSim.Framework
             set { m_visualparams = value; }
         }
 
+        protected Primitive.TextureEntry m_texture;
         public virtual Primitive.TextureEntry Texture
         {
             get { return m_texture; }
@@ -114,7 +114,7 @@ namespace OpenSim.Framework
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-				m_log.WarnFormat("create appearance from OSDMap");
+				m_log.WarnFormat("create appearance from OSDMap (Packed Appearance)");
 			}
 
             Unpack(map);
@@ -123,17 +123,13 @@ namespace OpenSim.Framework
 
         public AvatarAppearance(AvatarAppearance appearance) : this(appearance, true)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-				m_log.WarnFormat("create appearance from an existing appearance boolean==true");
-			}
         }
 
         public AvatarAppearance(AvatarAppearance appearance, bool copyWearables)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-				m_log.WarnFormat("[AVATAR APPEARANCE] create from an existing appearance with boolean");
+                m_log.WarnFormat("create from an existing appearance CopyWearables={0}", copyWearables);
 			}
 
 

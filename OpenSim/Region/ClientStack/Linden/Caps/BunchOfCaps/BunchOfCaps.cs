@@ -118,7 +118,9 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public BunchOfCaps(Scene scene, Caps caps)
         {
-                        m_log.Debug("[BunchOfCaps]: BunchOfCaps( scene, caps)");
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             m_Scene = scene;
             m_HostCapsObj = caps;
@@ -162,6 +164,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterRegionServiceHandlers(string capsBase)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             try
             {
                 // the root of all evil
@@ -190,7 +196,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterInventoryServiceHandlers(string capsBase)
         {
-                        m_log.DebugFormat("[BunchOfCaps]: RegisterInventoryServiceHandlers( capsBase: {0} )", capsBase);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             try
             {
                 // I don't think this one works...
@@ -270,10 +279,11 @@ namespace OpenSim.Region.ClientStack.Linden
         public string SeedCapRequest(string request, string path, string param,
                                   IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            m_log.DebugFormat(
-                                "[BunchOfCaps]: SeedCapRequest(request: {0}, path: {1}, param: {2} )  in {3} for agent {4}",
-                                request, path, param, m_regionName, m_HostCapsObj.AgentID
-                        );
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat("request: {0}, path: {1}, param: {2} )  in {3} for agent {4}",request, path, param, m_regionName, m_HostCapsObj.AgentID);
+            }
+
 
             if (!m_Scene.CheckClient(m_HostCapsObj.AgentID, httpRequest.RemoteIPEndPoint))
             {
@@ -293,6 +303,8 @@ namespace OpenSim.Region.ClientStack.Linden
             string result = LLSDHelpers.SerialiseLLSDReply(m_HostCapsObj.GetCapsDetails(true, validCaps));
 
             m_log.DebugFormat("[CAPS] CapsRequest {0}", result);
+
+            m_log.Info("SEEDCAPSREQUEST");
 
             return result;
         }

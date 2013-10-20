@@ -68,7 +68,9 @@ namespace OpenSim.Framework
     /// </summary>
     public class PluginLoader <T> : IDisposable where T : IPlugin
     {
-        private const int max_loadable_plugins = 10000;
+		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+		private const int max_loadable_plugins = 10000;
 
         private List<T> loaded = new List<T>();
         private List<string> extpoints = new List<string>();
@@ -119,6 +121,10 @@ namespace OpenSim.Framework
 
         public void Add(string extpoint)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             if (extpoints.Contains(extpoint))
                 return;
 
@@ -149,12 +155,21 @@ namespace OpenSim.Framework
 
         public void Load(string extpoint)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             Add(extpoint);
             Load();
         }
 
         public void Load()
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+		
             foreach (string ext in extpoints)
             {
                 log.Info("[PLUGINS]: Loading extension point " + ext);

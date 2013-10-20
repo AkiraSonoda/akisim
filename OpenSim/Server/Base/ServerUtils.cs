@@ -217,7 +217,12 @@ namespace OpenSim.Server.Base
         /// <returns></returns>
         public static T LoadPlugin<T> (string dllName, Object[] args) where T:class
         {
-            // This is good to debug configuration problems
+            if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("Loading: {0}.", dllName);
+			}
+
+			// This is good to debug configuration problems
             //if (dllName == string.Empty)
             //    Util.PrintCallStack();
             
@@ -252,6 +257,11 @@ namespace OpenSim.Server.Base
         /// <returns></returns>
         public static T LoadPlugin<T>(string dllName, string className, Object[] args) where T:class
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string interfaceName = typeof(T).ToString();
 
             try
@@ -313,6 +323,10 @@ namespace OpenSim.Server.Base
 
         public static Dictionary<string, object> ParseQueryString(string query)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             Dictionary<string, object> result = new Dictionary<string, object>();
             string[] terms = query.Split(new char[] {'&'});
 
@@ -364,6 +378,10 @@ namespace OpenSim.Server.Base
 
         public static string BuildQueryString(Dictionary<string, object> data)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             string qstring = String.Empty;
 
             string part;
@@ -409,6 +427,10 @@ namespace OpenSim.Server.Base
 
         public static string BuildXmlResponse(Dictionary<string, object> data)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             XmlDocument doc = new XmlDocument();
 
             XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
@@ -428,6 +450,10 @@ namespace OpenSim.Server.Base
 
         private static void BuildXmlData(XmlElement parent, Dictionary<string, object> data)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             foreach (KeyValuePair<string, object> kvp in data)
             {
                 if (kvp.Value == null)
@@ -458,6 +484,10 @@ namespace OpenSim.Server.Base
 
         public static Dictionary<string, object> ParseXmlResponse(string data)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             //m_log.DebugFormat("[XXX]: received xml string: {0}", data);
 
             Dictionary<string, object> ret = new Dictionary<string, object>();
@@ -480,6 +510,10 @@ namespace OpenSim.Server.Base
 
         private static Dictionary<string, object> ParseElement(XmlNode element)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             Dictionary<string, object> ret = new Dictionary<string, object>();
 
             XmlNodeList partL = element.ChildNodes;
@@ -502,6 +536,11 @@ namespace OpenSim.Server.Base
 
         public static IConfig GetConfig(string configFile, string configName)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             IConfig config;
 
             if (File.Exists(configFile))

@@ -12519,13 +12519,21 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             return numPackets;
         }
 
-        public void SendRebakeAvatarTextures(UUID textureID)
+        public void SendRebakeAvatarTextures (UUID textureID)
         {
-            RebakeAvatarTexturesPacket pack =
-                (RebakeAvatarTexturesPacket)PacketPool.Instance.GetPacket(PacketType.RebakeAvatarTextures);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
-            pack.TextureData = new RebakeAvatarTexturesPacket.TextureDataBlock();
+            RebakeAvatarTexturesPacket pack =
+                (RebakeAvatarTexturesPacket)PacketPool.Instance.GetPacket (PacketType.RebakeAvatarTextures);
+
+            pack.TextureData = new RebakeAvatarTexturesPacket.TextureDataBlock ();
             pack.TextureData.TextureID = textureID;
+
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("Sending RebakeAvatarTexturesPacket to {0}", m_udpClient.AgentID );
+            }
             OutPacket(pack, ThrottleOutPacketType.Task);
         }
 

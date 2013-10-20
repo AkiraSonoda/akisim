@@ -26,6 +26,8 @@
  */
 
 using OpenSim.Framework;
+using System.Reflection;
+using log4net;
 
 namespace OpenSim
 {
@@ -49,16 +51,25 @@ namespace OpenSim
 
     public class ApplicationPluginInitialiser : PluginInitialiserBase
     {
+		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         private OpenSimBase server;
 
         public ApplicationPluginInitialiser(OpenSimBase s)
         {
-            server = s;
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+			server = s;
         }
 
         public override void Initialise(IPlugin plugin)
         {
-            IApplicationPlugin p = plugin as IApplicationPlugin;
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+			}
+
+			IApplicationPlugin p = plugin as IApplicationPlugin;
             p.Initialise(server);
         }
     }

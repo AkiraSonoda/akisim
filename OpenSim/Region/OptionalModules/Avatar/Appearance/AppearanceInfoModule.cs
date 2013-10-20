@@ -232,7 +232,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     {
                         ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
                         if (sp != null && !sp.IsChildAgent)
-                            scene.AvatarFactory.WriteBakedTexturesReport(sp, MainConsole.Instance.OutputFormat);
+                            scene.AvatarFactory.WriteBakedTexturesReport(sp);
                     }
                     else
                     {
@@ -276,7 +276,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     ScenePresence sp = scene.GetScenePresence(firstname, lastname);
                     if (sp != null && !sp.IsChildAgent)
                     {
-                        int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, false);
+                        int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, true);
 
                         if (rebakesRequested > 0)
                             MainConsole.Instance.OutputFormat(

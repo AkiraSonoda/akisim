@@ -39,7 +39,7 @@ namespace OpenSim.Framework.Servers
 {
     public class MainServer
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private static BaseHttpServer instance = null;
         private static Dictionary<uint, BaseHttpServer> m_Servers = new Dictionary<uint, BaseHttpServer>();
@@ -59,6 +59,10 @@ namespace OpenSim.Framework.Servers
 
             set
             {
+				if (m_log.IsDebugEnabled) {
+					m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
+				}
+
                 lock (m_Servers)
                     if (!m_Servers.ContainsValue(value))
                         throw new Exception("HTTP server must already have been registered to be set as the main instance");
@@ -91,6 +95,11 @@ namespace OpenSim.Framework.Servers
 
         private static void HandleShowHttpHandlersCommand(string module, string[] args)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (args.Length != 2)
             {
                 MainConsole.Instance.Output("Usage: show http-handlers");
@@ -147,6 +156,11 @@ namespace OpenSim.Framework.Servers
         /// <param name='server'></param>
         public static void AddHttpServer(BaseHttpServer server)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             lock (m_Servers)
             {
                 if (m_Servers.ContainsKey(server.Port))
@@ -166,6 +180,11 @@ namespace OpenSim.Framework.Servers
         /// <returns></returns>
         public static bool RemoveHttpServer(uint port)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             lock (m_Servers)
             {
                 if (instance != null && instance.Port == port)
@@ -214,6 +233,11 @@ namespace OpenSim.Framework.Servers
         /// <param name='ipaddr'>A specific IP address to bind to.  If null then the default IP address is used.</param>
         public static IHttpServer GetHttpServer(uint port, IPAddress ipaddr)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             if (port == 0)
                 return Instance;
             

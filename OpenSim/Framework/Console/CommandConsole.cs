@@ -703,7 +703,7 @@ namespace OpenSim.Framework.Console
     /// </summary>
     public class CommandConsole : ConsoleBase, ICommandConsole
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public event OnOutputDelegate OnOutput;
 
@@ -711,6 +711,10 @@ namespace OpenSim.Framework.Console
 
         public CommandConsole(string defaultPrompt) : base(defaultPrompt)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+			}
+
             Commands = new Commands();
 
             Commands.AddCommand(

@@ -208,7 +208,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
         public bool CreateAgent(GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.InfoFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
 

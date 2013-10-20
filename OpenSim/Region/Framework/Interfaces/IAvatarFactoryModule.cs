@@ -97,6 +97,6 @@ namespace OpenSim.Region.Framework.Interfaces
         /// <param name="sp"></param>
         /// <param name="reportOutputAction"></param>
         /// <returns></returns>
-        void WriteBakedTexturesReport(IScenePresence sp, ReportOutputAction reportOutputAction);
+        void WriteBakedTexturesReport(IScenePresence sp);
     }
 }
