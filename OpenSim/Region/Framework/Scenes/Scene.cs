@@ -3668,6 +3668,8 @@ namespace OpenSim.Region.Framework.Scenes
                 return false;
             }
 
+            m_log.Info("CHECKVIEWERALLOWED");
+
             //Check if the viewer is banned or in the viewer access list
             //We check if the substring is listed for higher flexebility
             bool ViewerDenied = true;
@@ -3713,6 +3715,8 @@ namespace OpenSim.Region.Framework.Scenes
 
             ILandObject land;
             ScenePresence sp;
+
+            m_log.Info("CHECKSCENEPRESENCE");
 
             lock (m_removeClientLock)
             {
@@ -3907,6 +3911,8 @@ namespace OpenSim.Region.Framework.Scenes
                 // request for the HG avatar appears to trigger before the user name is cached.
                 CacheUserName(null, acd);
             }
+
+            m_log.Info("CHECKVIALOGIN");
 
             if (vialogin)
             {

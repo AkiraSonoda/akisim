@@ -87,6 +87,11 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void AddRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+
             m_scene = scene;
             scene.RegisterModuleInterface<IEventQueue>(this);
 
@@ -104,6 +109,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RemoveRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             if (m_scene != scene)
                 return;
 
@@ -136,6 +145,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         protected void HandleShowEq(string module, string[] args)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             MainConsole.Instance.OutputFormat("For scene {0}", m_scene.Name);
 
             lock (queues)
@@ -192,7 +205,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public bool Enqueue(OSD ev, UUID avatarID)
         {
-            //m_log.DebugFormat("[EVENTQUEUE]: Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             try
             {
                 Queue<OSD> queue = GetQueue(avatarID);
@@ -222,7 +238,9 @@ namespace OpenSim.Region.ClientStack.Linden
 
         private void ClientClosed(UUID agentID, Scene scene)
         {
-            //m_log.DebugFormat("[EVENTQUEUE]: Closed client {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             lock (queues)
                 queues.Remove(agentID);
@@ -266,11 +284,12 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void OnRegisterCaps(UUID agentID, Caps caps)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat("agentID {0} caps {1} region {2}", agentID, caps, m_scene.RegionInfo.RegionName);
+            }
             // Register an event queue for the client
 
-            //m_log.DebugFormat(
-            //    "[EVENTQUEUE]: OnRegisterCaps: agentID {0} caps {1} region {2}",
-            //    agentID, caps, m_scene.RegionInfo.RegionName);
 
             // Let's instantiate a Queue for this agent right now
             TryGetQueue(agentID);
@@ -347,10 +366,11 @@ namespace OpenSim.Region.ClientStack.Linden
             }
         }
 
-        public Hashtable GetEvents(UUID requestID, UUID pAgentId)
+        public Hashtable GetEvents (UUID requestID, UUID pAgentId)
         {
-            if (m_log.IsDebugEnabled)
-                m_log.WarnFormat("POLLED FOR EQ MESSAGES BY {0} in {1}", pAgentId, m_scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("POLLED FOR EQ MESSAGES BY {0} in {1}", pAgentId, m_scene.RegionInfo.RegionName);
+            }
 
             Queue<OSD> queue = GetQueue(pAgentId);
             if (queue == null)
@@ -680,18 +700,30 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void DisableSimulator(ulong handle, UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.DisableSimulator(handle);
             Enqueue(item, avatarID);
         }
 
         public virtual void EnableSimulator(ulong handle, IPEndPoint endPoint, UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.EnableSimulator(handle, endPoint);
             Enqueue(item, avatarID);
         }
 
         public virtual void EstablishAgentCommunication(UUID avatarID, IPEndPoint endPoint, string capsPath) 
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.EstablishAgentCommunication(avatarID, endPoint.ToString(), capsPath);
             Enqueue(item, avatarID);
         }
@@ -701,6 +733,10 @@ namespace OpenSim.Region.ClientStack.Linden
                                         uint locationID, uint flags, string capsURL, 
                                         UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.TeleportFinishEvent(regionHandle, simAccess, regionExternalEndPoint,
                                                             locationID, flags, capsURL, avatarID);
             Enqueue(item, avatarID);
@@ -710,6 +746,10 @@ namespace OpenSim.Region.ClientStack.Linden
                                 IPEndPoint newRegionExternalEndPoint,
                                 string capsURL, UUID avatarID, UUID sessionID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.CrossRegion(handle, pos, lookAt, newRegionExternalEndPoint,
                                                     capsURL, avatarID, sessionID);
             Enqueue(item, avatarID);
@@ -720,6 +760,10 @@ namespace OpenSim.Region.ClientStack.Linden
                                          uint timeStamp, bool offline, int parentEstateID, Vector3 position,
                                          uint ttl, UUID transactionID, bool fromGroup, byte[] binaryBucket)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.ChatterboxInvitation(sessionID, sessionName, fromAgent, message, toAgent, fromName, dialog, 
                                                              timeStamp, offline, parentEstateID, position, ttl, transactionID, 
                                                              fromGroup, binaryBucket);
@@ -731,6 +775,10 @@ namespace OpenSim.Region.ClientStack.Linden
         public void ChatterBoxSessionAgentListUpdates(UUID sessionID, UUID fromAgent, UUID anotherAgent, bool canVoiceChat, 
                                                       bool isModerator, bool textMute)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.ChatterBoxSessionAgentListUpdates(sessionID, fromAgent, canVoiceChat,
                                                                           isModerator, textMute);
             Enqueue(item, fromAgent);
@@ -739,35 +787,59 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void ParcelProperties(ParcelPropertiesMessage parcelPropertiesMessage, UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.ParcelProperties(parcelPropertiesMessage);
             Enqueue(item, avatarID);
         }
 
         public void GroupMembership(AgentGroupDataUpdatePacket groupUpdate, UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.GroupMembership(groupUpdate);
             Enqueue(item, avatarID);
         }
 
         public void QueryReply(PlacesReplyPacket groupUpdate, UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.PlacesQuery(groupUpdate);
             Enqueue(item, avatarID);
         }
 
         public OSD ScriptRunningEvent(UUID objectID, UUID itemID, bool running, bool mono)
-        {
+        {   
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             return EventQueueHelper.ScriptRunningReplyEvent(objectID, itemID, running, mono);
         }
 
         public OSD BuildEvent(string eventName, OSD eventBody)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             return EventQueueHelper.BuildEvent(eventName, eventBody);
         }
 
         public void partPhysicsProperties(uint localID, byte physhapetype,
                         float density, float friction, float bounce, float gravmod,UUID avatarID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             OSD item = EventQueueHelper.partPhysicsProperties(localID, physhapetype,
                         density, friction, bounce, gravmod);
             Enqueue(item, avatarID);

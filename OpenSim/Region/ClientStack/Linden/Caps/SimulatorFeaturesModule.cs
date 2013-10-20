@@ -56,8 +56,7 @@ namespace OpenSim.Region.ClientStack.Linden
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "SimulatorFeaturesModule")]
     public class SimulatorFeaturesModule : ISharedRegionModule, ISimulatorFeaturesModule
     {
-//        private static readonly ILog m_log =
-//            LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public event SimulatorFeaturesRequestDelegate OnSimulatorFeaturesRequest;
 
@@ -75,6 +74,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void Initialise(IConfigSource source)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             IConfig config = source.Configs["SimulatorFeatures"];
             if (config != null)
             {    
@@ -88,6 +91,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void AddRegion(Scene s)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             m_scene = s;
             m_scene.EventManager.OnRegisterCaps += RegisterCaps;
 
@@ -96,6 +103,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RemoveRegion(Scene s)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             m_scene.EventManager.OnRegisterCaps -= RegisterCaps;
         }
 
@@ -126,6 +137,10 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </remarks>
         private void AddDefaultFeatures()
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             lock (m_features)
             {
                 m_features["MeshRezEnabled"] = true;
@@ -155,6 +170,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterCaps(UUID agentID, Caps caps)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             IRequestHandler reqHandler
                 = new RestHTTPHandler(
                     "GET", "/CAPS/" + UUID.Random(),
@@ -165,30 +184,50 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void AddFeature(string name, OSD value)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             lock (m_features)
                 m_features[name] = value;
         }
 
         public bool RemoveFeature(string name)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             lock (m_features)
                 return m_features.Remove(name);
         }
 
         public bool TryGetFeature(string name, out OSD value)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             lock (m_features)
                 return m_features.TryGetValue(name, out value);
         }
 
         public OSDMap GetFeatures()
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             lock (m_features)
                 return new OSDMap(m_features);
         }
 
         private OSDMap DeepCopy()
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             // This isn't the cheapest way of doing this but the rate
             // of occurrence is low (on sim entry only) and it's a sure
             // way to get a true deep copy.
@@ -199,7 +238,9 @@ namespace OpenSim.Region.ClientStack.Linden
 
         private Hashtable HandleSimulatorFeaturesRequest(Hashtable mDhttpMethod, UUID agentID)
         {
-//            m_log.DebugFormat("[SIMULATOR FEATURES MODULE]: SimulatorFeatures request");
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             OSDMap copy = DeepCopy();
 

@@ -266,6 +266,7 @@ namespace OpenSim.Region.Framework.Scenes
             get { return m_appearance; }
             set
             {
+                m_log.Info("SETAPPEARANCE");
                 m_appearance = value;
 
 				if (m_log.IsDebugEnabled) {
