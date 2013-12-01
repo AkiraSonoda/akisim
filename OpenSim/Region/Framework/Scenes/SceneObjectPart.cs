@@ -473,7 +473,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             get
             {
-                if (CreatorData != null && CreatorData != string.Empty)
+                if (!string.IsNullOrEmpty(CreatorData))
                     return CreatorID.ToString() + ';' + CreatorData;
                 else
                     return CreatorID.ToString();
@@ -787,16 +787,6 @@ namespace OpenSim.Region.Framework.Scenes
                     catch (Exception e)
                     {
                         m_log.ErrorFormat("[SCENEOBJECTPART]: GROUP POSITION. {0}", e);
-                    }
-                }
-                
-                // TODO if we decide to do sitting in a more SL compatible way (multiple avatars per prim), this has to be fixed, too
-                if (SitTargetAvatar != UUID.Zero)
-                {
-                    ScenePresence avatar;
-                    if (ParentGroup.Scene.TryGetScenePresence(SitTargetAvatar, out avatar))
-                    {
-                        avatar.ParentPosition = GetWorldPosition();
                     }
                 }
             }
@@ -2700,7 +2690,8 @@ namespace OpenSim.Region.Framework.Scenes
                 return;
 
             // This was pulled from SceneViewer. Attachments always receive full updates.
-            // I could not verify if this is a requirement but this maintains existing behavior
+            // This is needed because otherwise if only the root prim changes position, then
+            // it looks as if the entire object has moved (including the other prims).
             if (ParentGroup.IsAttachment)
             {
                 ScheduleFullUpdate();

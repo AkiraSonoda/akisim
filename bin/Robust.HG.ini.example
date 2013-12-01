@@ -23,7 +23,7 @@
 [Startup]
   ; Place to create a PID file
   ; If no path if specified then a PID file is not created.
-  ; PIDFile = "/tmp/my.pid"
+  ; PIDFile = "/tmp/Robust.exe.pid"
 
   ; Plugin Registry Location
   ; Set path to directory for plugin registry. Information
@@ -126,6 +126,15 @@ HGAssetServiceConnector = "HGAssetService@8002/OpenSim.Server.Handlers.dll:Asset
 	; GatekeeperURI = "http://127.0.0.1:8002"
 
 [DatabaseService]
+    ; PGSQL
+    ; Uncomment these lines if you want to use PGSQL storage
+    ; Change the connection string to your db details
+    ;StorageProvider = "OpenSim.Data.PGSQL.dll"
+    ;ConnectionString = "Server=localhost;Database=opensim;User Id=opensim; password=***;"
+
+    ; MySQL
+    ; Uncomment these lines if you want to use MySQL storage
+    ; Change the connection string to your db details
     StorageProvider = "OpenSim.Data.MySQL.dll"
     ConnectionString = "Data Source=localhost;Database=opensim;User ID=opensim;Password=*****;Old Guids=true;"
 

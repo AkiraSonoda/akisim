@@ -1463,6 +1463,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             mapReply.AgentData.AgentID = AgentId;
             mapReply.Data = new MapBlockReplyPacket.DataBlock[mapBlocks2.Length];
+            mapReply.Size = new MapBlockReplyPacket.SizeBlock[mapBlocks2.Length];
             mapReply.AgentData.Flags = flag;
 
             for (int i = 0; i < mapBlocks2.Length; i++)
@@ -1477,6 +1478,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 mapReply.Data[i].RegionFlags = mapBlocks2[i].RegionFlags;
                 mapReply.Data[i].Access = mapBlocks2[i].Access;
                 mapReply.Data[i].Agents = mapBlocks2[i].Agents;
+
+                // TODO: hookup varregion sim size here
+                mapReply.Size[i] = new MapBlockReplyPacket.SizeBlock();
+                mapReply.Size[i].SizeX = 256;
+                mapReply.Size[i].SizeY = 256;
             }
             OutPacket(mapReply, ThrottleOutPacketType.Land);
         }
@@ -2634,11 +2640,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             AvatarSitResponsePacket avatarSitResponse = new AvatarSitResponsePacket();
             avatarSitResponse.SitObject.ID = TargetID;
-            if (CameraAtOffset != Vector3.Zero)
-            {
-                avatarSitResponse.SitTransform.CameraAtOffset = CameraAtOffset;
-                avatarSitResponse.SitTransform.CameraEyeOffset = CameraEyeOffset;
-            }
+            avatarSitResponse.SitTransform.CameraAtOffset = CameraAtOffset;
+            avatarSitResponse.SitTransform.CameraEyeOffset = CameraEyeOffset;
             avatarSitResponse.SitTransform.ForceMouselook = ForceMouseLook;
             avatarSitResponse.SitTransform.AutoPilot = autopilot;
             avatarSitResponse.SitTransform.SitPosition = OffsetPos;
@@ -3806,7 +3809,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             m_udpClient.NeedAcks.Remove(oPacket.SequenceNumber);
 
             // Count this as a resent packet since we are going to requeue all of the updates contained in it
-            Interlocked.Increment(ref m_udpClient.PacketsResent);
+            Interlocked.Increment(ref m_udpClient.PacketsResent);           
+
+            // We're not going to worry about interlock yet since its not currently critical that this total count
+            // is 100% correct
+            m_udpServer.PacketsResentCount++;
 
             foreach (EntityUpdate update in updates)
                 ResendPrimUpdate(update);
@@ -4368,6 +4375,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // Count this as a resent packet since we are going to requeue all of the updates contained in it
             Interlocked.Increment(ref m_udpClient.PacketsResent);
 
+            // We're not going to worry about interlock yet since its not currently critical that this total count
+            // is 100% correct
+            m_udpServer.PacketsResentCount++;
+
             foreach (ObjectPropertyUpdate update in updates)
                 ResendPropertyUpdate(update);
         }
@@ -4551,6 +4562,32 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             SceneObjectPart root = sop.ParentGroup.RootPart;
 
             block.TouchName = Util.StringToBytes256(root.TouchName);
+
+            // SL 3.3.4, at least, appears to read this information as a concatenated byte[] stream of UUIDs but
+            // it's not yet clear whether this is actually used.  If this is done in the future then a pre-cached
+            // copy is really needed since it's less efficient to be constantly recreating this byte array.
+//            using (MemoryStream memStream = new MemoryStream())
+//            {
+//                using (BinaryWriter binWriter = new BinaryWriter(memStream))
+//                {
+//                    for (int i = 0; i < sop.GetNumberOfSides(); i++)               
+//                    {
+//                        Primitive.TextureEntryFace teFace = sop.Shape.Textures.FaceTextures[i];
+//
+//                        UUID textureID;
+//
+//                        if (teFace != null)
+//                            textureID = teFace.TextureID;
+//                        else
+//                            textureID = sop.Shape.Textures.DefaultTexture.TextureID;
+//
+//                        binWriter.Write(textureID.GetBytes());
+//                    }
+//
+//                    block.TextureID = memStream.ToArray();
+//                }
+//            }
+           
             block.TextureID = new byte[0]; // TextureID ???
             block.SitName = Util.StringToBytes256(root.SitName);
             block.OwnerMask = root.OwnerMask;
@@ -5044,6 +5081,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 ScenePresence presence = (ScenePresence)entity;
 
+//                m_log.DebugFormat(
+//                    "[LLCLIENTVIEW]: Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+
                 attachPoint = presence.State;
                 collisionPlane = presence.CollisionPlane;
                 position = presence.OffsetPosition;
@@ -5163,6 +5203,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         protected ObjectUpdatePacket.ObjectDataBlock CreateAvatarUpdateBlock(ScenePresence data)
         {
+//            m_log.DebugFormat(
+//                "[LLCLIENTVIEW]: Sending full update to {0} with position {1} in {2}", Name, data.OffsetPosition, m_scene.Name);
+
             byte[] objectData = new byte[76];
 
             data.CollisionPlane.ToBytes(objectData, 0);
@@ -5183,7 +5226,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             update.NameValue = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
                 data.Lastname + "\nTitle STRING RW SV " + data.Grouptitle);
             update.ObjectData = objectData;
-            update.ParentID = data.ParentID;
+
+            SceneObjectPart parentPart = data.ParentPart;
+            if (parentPart != null)
+                update.ParentID = parentPart.ParentGroup.LocalId;
+            else
+                update.ParentID = 0;
+
             update.PathCurve = 16;
             update.PathScaleX = 100;
             update.PathScaleY = 100;
@@ -12626,6 +12675,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             if (p is ScenePresence)
             {
+//                m_log.DebugFormat(
+//                    "[LLCLIENTVIEW]: Immediately sending terse agent update for {0} to {1} in {2}", 
+//                    p.Name, Name, Scene.Name);
+
                 // It turns out to get the agent to stop flying, you have to feed it stop flying velocities
                 // There's no explicit message to send the client to tell it to stop flying..   it relies on the
                 // velocity, collision plane and avatar height
