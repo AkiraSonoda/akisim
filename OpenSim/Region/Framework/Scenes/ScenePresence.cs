@@ -2663,34 +2663,36 @@ namespace OpenSim.Region.Framework.Scenes
                 {
                     Vector3 sitTargetPos = part.SitTargetPosition;
                     Quaternion sitTargetOrient = part.SitTargetOrientation;
+					Vector3 newPos;
 
-//                        m_log.DebugFormat(
-//                            "[SCENE PRESENCE]: Sitting {0} at sit target {1}, {2} on {3} {4}",
-//                            Name, sitTargetPos, sitTargetOrient, part.Name, part.LocalId);
+                    // SitTarget Compatibility Workaround 
+                    if (m_scene.m_useWrongSitTarget) {
+                       if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
+							newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
+                       } else {
+							newPos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
+                       }
+                    } else {
+						newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
+                    }
 
-                    //Quaternion vq = new Quaternion(sitTargetPos.X, sitTargetPos.Y+0.2f, sitTargetPos.Z+0.2f, 0);
-                    //Quaternion nq = new Quaternion(-sitTargetOrient.X, -sitTargetOrient.Y, -sitTargetOrient.Z, sitTargetOrient.w);
+					Quaternion newRot;
 
-                    //Quaternion result = (sitTargetOrient * vq) * nq;
+					if (part.IsRoot){
+						newRot = sitTargetOrient;
+					} else {
+						newPos = newPos * part.RotationOffset;
+						newRot = part.RotationOffset * sitTargetOrient;
+					}
 
-                                        // SitTarget Compatibility Workaround 
-                                        if (m_scene.m_useWrongSitTarget) {
-                                                if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-                                                m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
-                                                } else {
-                                                m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
-                                                }
-                                        } else {
-                    m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
-                                        }
+					newPos += part.OffsetPosition;
 
-                    Rotation = sitTargetOrient;
-                    ParentPosition = part.AbsolutePosition;
+					m_pos = newPos;
+					Rotation = newRot;
                 }
                 else
                 {
                     m_pos -= part.AbsolutePosition;
-                    ParentPosition = part.AbsolutePosition;
 
 //                        m_log.DebugFormat(
 //                            "[SCENE PRESENCE]: Sitting {0} at position {1} ({2} + {3}) on part {4} {5} without sit target",
