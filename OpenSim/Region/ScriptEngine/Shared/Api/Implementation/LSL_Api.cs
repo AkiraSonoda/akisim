@@ -2970,37 +2970,40 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 // need the magnitude later
                 // float velmag = (float)Util.GetMagnitude(llvel);
 
-                SceneObjectGroup new_group = World.RezObject(m_host, item, pos, rot, vel, param);
+                List<SceneObjectGroup> new_groups = World.RezObject(m_host, item, pos, rot, vel, param);
 
                 // If either of these are null, then there was an unknown error.
-                if (new_group == null)
+                if (new_groups == null)
                     return;
 
-                // objects rezzed with this method are die_at_edge by default.
-                new_group.RootPart.SetDieAtEdge(true);
-
-                new_group.ResumeScripts();
-
-                m_ScriptEngine.PostObjectEvent(m_host.LocalId, new EventParams(
-                        "object_rez", new Object[] {
-                        new LSL_String(
-                        new_group.RootPart.UUID.ToString()) },
-                        new DetectParams[0]));
-
-                float groupmass = new_group.GetMass();
-
-                PhysicsActor pa = new_group.RootPart.PhysActor;
-
-                //Recoil.
-                if (pa != null && pa.IsPhysical && (Vector3)vel != Vector3.Zero)
+                foreach (SceneObjectGroup group in new_groups)
                 {
-                    Vector3 recoil = -vel * groupmass * m_recoilScaleFactor;
-                    if (recoil != Vector3.Zero)
+                    // objects rezzed with this method are die_at_edge by default.
+                    group.RootPart.SetDieAtEdge(true);
+
+                    group.ResumeScripts();
+
+                    m_ScriptEngine.PostObjectEvent(m_host.LocalId, new EventParams(
+                            "object_rez", new Object[] {
+                            new LSL_String(
+                            group.RootPart.UUID.ToString()) },
+                            new DetectParams[0]));
+
+                    float groupmass = group.GetMass();
+
+                    PhysicsActor pa = group.RootPart.PhysActor;
+
+                    //Recoil.
+                    if (pa != null && pa.IsPhysical && (Vector3)vel != Vector3.Zero)
                     {
-                        llApplyImpulse(recoil, 0);
+                        Vector3 recoil = -vel * groupmass * m_recoilScaleFactor;
+                        if (recoil != Vector3.Zero)
+                        {
+                            llApplyImpulse(recoil, 0);
+                        }
                     }
+                    // Variable script delay? (see (http://wiki.secondlife.com/wiki/LSL_Delay)
                 }
-                // Variable script delay? (see (http://wiki.secondlife.com/wiki/LSL_Delay)
             });
 
             //ScriptSleep((int)((groupmass * velmag) / 10));
@@ -3322,7 +3325,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
 
             emailModule.SendEmail(m_host.UUID, address, subject, message);
-            llSleep(EMAIL_PAUSE_TIME);
+            ScriptSleep(EMAIL_PAUSE_TIME * 1000);
         }
 
         public void llGetNextEmail(string address, string subject)
@@ -6237,7 +6240,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             PSYS_SRC_TARGET_KEY = 20,
             PSYS_SRC_OMEGA = 21,
             PSYS_SRC_ANGLE_BEGIN = 22,
-            PSYS_SRC_ANGLE_END = 23
+            PSYS_SRC_ANGLE_END = 23,
+            PSYS_PART_BLEND_FUNC_SOURCE = 24,
+            PSYS_PART_BLEND_FUNC_DEST = 25,
+            PSYS_PART_START_GLOW = 26,
+            PSYS_PART_END_GLOW = 27
         }
 
         internal Primitive.ParticleSystem.ParticleDataFlags ConvertUINTtoFlags(uint flags)
@@ -6263,6 +6270,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             ps.BurstRate = 0.1f;
             ps.PartMaxAge = 10.0f;
             ps.BurstPartCount = 1;
+            ps.BlendFuncSource = ScriptBaseClass.PSYS_PART_BF_SOURCE_ALPHA;
+            ps.BlendFuncDest = ScriptBaseClass.PSYS_PART_BF_ONE_MINUS_SOURCE_ALPHA;
+            ps.PartStartGlow = 0.0f;
+            ps.PartEndGlow = 0.0f;
+
             return ps;
         }
 
@@ -6297,6 +6309,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 LSL_Vector tempv = new LSL_Vector();
 
                 float tempf = 0;
+                int tmpi = 0;
 
                 for (int i = 0; i < rules.Length; i += 2)
                 {
@@ -6355,7 +6368,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             break;
 
                         case (int)ScriptBaseClass.PSYS_SRC_PATTERN:
-                            int tmpi = (int)rules.GetLSLIntegerItem(i + 1);
+                            tmpi = (int)rules.GetLSLIntegerItem(i + 1);
                             prules.Pattern = (Primitive.ParticleSystem.SourcePattern)tmpi;
                             break;
 
@@ -6373,6 +6386,26 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             tempf = (float)rules.GetLSLFloatItem(i + 1);
                             prules.OuterAngle = (float)tempf;
                             prules.PartFlags &= 0xFFFFFFFD; // Make sure new angle format is off.
+                            break;
+
+                        case (int)ScriptBaseClass.PSYS_PART_BLEND_FUNC_SOURCE:
+                            tmpi = (int)rules.GetLSLIntegerItem(i + 1);
+                            prules.BlendFuncSource = (byte)tmpi;
+                            break;
+
+                        case (int)ScriptBaseClass.PSYS_PART_BLEND_FUNC_DEST:
+                            tmpi = (int)rules.GetLSLIntegerItem(i + 1);
+                            prules.BlendFuncDest = (byte)tmpi;
+                            break;
+
+                        case (int)ScriptBaseClass.PSYS_PART_START_GLOW:
+                            tempf = (float)rules.GetLSLFloatItem(i + 1);
+                            prules.PartStartGlow = (float)tempf;
+                            break;
+
+                        case (int)ScriptBaseClass.PSYS_PART_END_GLOW:
+                            tempf = (float)rules.GetLSLFloatItem(i + 1);
+                            prules.PartEndGlow = (float)tempf;
                             break;
 
                         case (int)ScriptBaseClass.PSYS_SRC_TEXTURE:
