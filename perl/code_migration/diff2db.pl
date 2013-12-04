@@ -48,12 +48,14 @@ use DBI;
 
 my $num_args = $#ARGV + 1;
 
-if ($num_args != 1 ) {
+if ($num_args != 3 ) {
  	usage();
  	exit;
 }
 
 my $filepath = $ARGV[0];
+my $repo_short_name = $ARGV[1];
+my $branch_name = $ARGV[2];
 
 my $dbh = DBI->connect('DBI:mysql:code_migration', 'opensim', 'akira'
 	           ) || die "Could not connect to database: $DBI::errstr";
@@ -64,6 +66,7 @@ my $original_base;
 my $modified_base;
 my $orig_file;
 my $mod_file;
+my $id_repo_branch;
 
 # check every line
 while (<FILE>) { 
@@ -80,11 +83,15 @@ while (<FILE>) {
 		my $orig_file_path = $original_base . "/OpenSim/" . $orig_file;
 		my $mod_file_path = $modified_base . "/OpenSim/" . $mod_file;
 		
-		if ( !existsInDb( $orig_file_path ) ) {
+		$id_repo_branch = &getIdOfRepo();
+		my $existsInDB = &existsInDb( $orig_file_path );
+		
+		if ( $existsInDB == 0 ) {
 			print "File does not exist in database\n";
-			insertInDb($orig_file_path, $mod_file_path);
+			insertInSourceFiles($orig_file_path, $mod_file_path);
 		} else {
 			print "File existis in database\n";
+			insertInRepoSource($id_repo_branch, $existsInDB);
 		};
 	}
 }
@@ -97,7 +104,7 @@ $dbh->disconnect();
 sub existsInDb {
 	my $filename = shift @_;
 	
-	my $sth = $dbh->prepare('SELECT * FROM code_migration.source_files WHERE os_file_name = ?')
+	my $sth = $dbh->prepare('SELECT * FROM source_files WHERE os_file_name = ?')
               or die "Couldn't prepare statement: " . $dbh->errstr;
 	
 	$sth->execute($filename)
@@ -105,28 +112,72 @@ sub existsInDb {
 	
 	if ($sth->rows == 0) {
     	$sth->finish;
-    	return false;
+    	return 0;
     } else {
+    	my $result = $sth->fetchrow_hashref();
     	$sth->finish;
-    	return true;
+    	return $result->{index};
     }
 
 }
 
-sub insertInDb {
+# returns the if number of the given repository short name and the given branch name
+sub getIdOfRepo {
+	my $sth = $dbh->prepare('SELECT * FROM code_migration.repo_branch WHERE repo_short_name=? AND branch_name=?');
+	$sth->execute($repo_short_name, $branch_name);
+	my $result = $sth->fetchrow_hashref();
+	$sth->finish;
+	return $result->{idrepo_branch};	
+}
+
+# inserts the file names from the scanned diff file into the source_files table and the corresponding repo_source connection table
+sub insertInSourceFiles {
 	my $orig_file = shift @_;
 	my $mod_file = shift @_;
 	
 	$dbh->do('INSERT INTO source_files (os_file_name, akisim_file_name) Values (?,?)', undef, $orig_file, $mod_file)
-       	or die "Couldn't do statement: " . $dbh->errstr;	
+       	or die "Couldn't do statement: " . $dbh->errstr;
+    
+    # Now we have to get the resulting index which was generated during the insert
+   	my $sth = $dbh->prepare('SELECT * FROM source_files WHERE os_file_name = ?')
+       or die "Couldn't prepare statement: " . $dbh->errstr;
+	$sth->execute($orig_file);
+    my $result = $sth->fetchrow_hashref();
+    
+    # Now we have to insert the index into the repo_source Table
+	$dbh->do('INSERT INTO repo_source (idrepo, idsource) Values (?,?)', undef, $id_repo_branch, $result->{index})
+       	or die "Couldn't do statement: " . $dbh->errstr;
+    
 }
+
+# inserts the ids from the source_files table and the corresponding repo_branch connection table repo_source, if the connection does not exist already.
+sub insertInRepoSource {
+	my $id_repo = shift @_;
+	my $id_source = shift @_;
+	
+	# check if the connection already exists
+	my $sth = $dbh->prepare('SELECT * FROM code_migration.repo_source WHERE idrepo = ? AND idsource =?')
+                    or die "Couldn't prepare statement: " . $dbh->errstr;
+	
+	$sth->execute($id_repo, $id_source)
+          or die "Couldn't execute statement: " . $sth->errstr;
+
+	# if no rows are found the connection does not exist and therefore has to be crated
+	if ($sth->rows == 0) {
+		$dbh->do('INSERT INTO repo_source (idrepo, idsource) Values (?,?)', undef, $id_repo, $id_source)
+       		or die "Couldn't do statement: " . $dbh->errstr;		
+	}
+
+}
+
 
 # Prints usage
 sub usage {
 	print "\n";
-	print "Usage: diff2db [diff filepath]\n\n";
+	print "Usage: diff2db [diff filepath] [repo short name] [branch name]\n\n";
 	print "checks a given diff file of the comparison of two file trees \n";
 	print "e.g. compare the opensim tree with the akisim tree\n";
 	print "and writes the compared file names into the source_code file of\n";
-	print "the code_migration database\n";
+	print "the code_migration database and connects them with the given \n";
+	print "repository and branch name\n";
 }	
