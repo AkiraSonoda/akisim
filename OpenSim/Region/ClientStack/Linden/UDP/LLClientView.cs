@@ -5096,7 +5096,18 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 //                acceleration = new Vector3(1, 0, 0);
                 
                 angularVelocity = presence.AngularVelocity;
+
+                // Whilst not in mouselook, an avatar will transmit only the Z rotation as this is the only axis
+                // it rotates around.
+                // In mouselook, X and Y co-ordinate will also be sent but when used in Rotation, these cause unwanted
+                // excessive up and down movements of the camera when looking up and down.
+                // See http://opensimulator.org/mantis/view.php?id=3274
+                // This does not affect head movement, since this is controlled entirely by camera movement rather than
+                // body rotation.  It does not affect sitting avatar since it's the sitting part rotation that takes
+                // effect, not the avatar rotation.
                 rotation = presence.Rotation;
+                rotation.X = 0;
+                rotation.Y = 0;
 
                 if (sendTexture)
                     textureEntry = presence.Appearance.Texture.GetBytes();
@@ -5212,7 +5223,19 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             data.OffsetPosition.ToBytes(objectData, 16);
 //            data.Velocity.ToBytes(objectData, 28);
 //            data.Acceleration.ToBytes(objectData, 40);
-            data.Rotation.ToBytes(objectData, 52);
+
+            // Whilst not in mouselook, an avatar will transmit only the Z rotation as this is the only axis
+            // it rotates around.
+            // In mouselook, X and Y co-ordinate will also be sent but when used in Rotation, these cause unwanted
+            // excessive up and down movements of the camera when looking up and down.
+            // See http://opensimulator.org/mantis/view.php?id=3274
+            // This does not affect head movement, since this is controlled entirely by camera movement rather than
+            // body rotation.  It does not affect sitting avatar since it's the sitting part rotation that takes
+            // effect, not the avatar rotation.
+            Quaternion rot = data.Rotation;
+            rot.X = 0;
+            rot.Y = 0;
+            rot.ToBytes(objectData, 52);
             //data.AngularVelocity.ToBytes(objectData, 64);
 
             ObjectUpdatePacket.ObjectDataBlock update = new ObjectUpdatePacket.ObjectDataBlock();
@@ -6419,26 +6442,25 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 // Temporarily protect ourselves from the mantis #951 failure.
                 // However, we could do this for several other handlers where a failure isn't terminal
                 // for the client session anyway, in order to protect ourselves against bad code in plugins
+                Vector3 avSize = appear.AgentData.Size;
                 try
                 {
                     byte[] visualparams = new byte[appear.VisualParam.Length];
                     for (int i = 0; i < appear.VisualParam.Length; i++)
                         visualparams[i] = appear.VisualParam[i].ParamValue;
+                    //var b = appear.WearableData[0]; 
 
                     Primitive.TextureEntry te = null;
                     if (appear.ObjectData.TextureEntry.Length > 1)
                         te = new Primitive.TextureEntry(appear.ObjectData.TextureEntry, 0, appear.ObjectData.TextureEntry.Length);
 
-                    List<CachedTextureRequestArg> hashes = new List<CachedTextureRequestArg>();
-                    for (int i = 0; i < appear.WearableData.Length; i++)
-                    {
-                        CachedTextureRequestArg arg = new CachedTextureRequestArg();
-                        arg.BakedTextureIndex = appear.WearableData[i].TextureIndex;
-                        arg.WearableHashID = appear.WearableData[i].CacheID;
-                        hashes.Add(arg);
-                    }
+                    WearableCacheItem[] cacheitems = new WearableCacheItem[appear.WearableData.Length];
+                    for (int i=0; i<appear.WearableData.Length;i++)
+                        cacheitems[i] = new WearableCacheItem(){CacheId = appear.WearableData[i].CacheID,TextureIndex=Convert.ToUInt32(appear.WearableData[i].TextureIndex)};
 
-                    handlerSetAppearance(sender, te, visualparams, hashes);
+
+
+                    handlerSetAppearance(sender, te, visualparams,avSize, cacheitems);
                 }
                 catch (Exception e)
                 {
