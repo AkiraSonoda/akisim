@@ -2842,40 +2842,52 @@ namespace OpenSim.Region.Framework.Scenes
                     Vector3 sitTargetPos = part.SitTargetPosition;
                     Quaternion sitTargetOrient = part.SitTargetOrientation;
 
+                    Vector3 newPos;
+
+                    double x, y, z, m;
+
+                    Quaternion r = sitTargetOrient;
+                    m = r.X * r.X + r.Y * r.Y + r.Z * r.Z + r.W * r.W;
+
+                    if (Math.Abs(1.0 - m) > 0.000001)
+                    {
+                        m = 1.0 / Math.Sqrt(m);
+                        r.X *= (float)m;
+                        r.Y *= (float)m;
+                        r.Z *= (float)m;
+                        r.W *= (float)m;
+                    }
+
+                    x = 2 * (r.X * r.Z + r.Y * r.W);
+                    y = 2 * (-r.X * r.W + r.Y * r.Z);
+                    z = -r.X * r.X - r.Y * r.Y + r.Z * r.Z + r.W * r.W;
+
+                    Vector3 up = new Vector3((float)x, (float)y, (float)z);
+                    Vector3 sitOffset = up * Appearance.AvatarHeight * 0.02638f;
+
 
                     // SitTarget Compatibility Workaround 
                     if (m_scene.m_useWrongSitTarget) {
                         if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-                            m_pos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
-                            Rotation = sitTargetOrient;
+                            newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
+                            Quaternion newRot;
+                            if (part.IsRoot) {
+                                newRot = sitTargetOrient;
+                            } else {
+                                newPos = newPos * part.RotationOffset;
+                                newRot = part.RotationOffset * sitTargetOrient;
+                            }
+
+                            newPos += part.OffsetPosition;
+                            m_pos = newPos;
+                            Rotation = newRot;
+//                      ParentPosition = part.AbsolutePosition;
+                            part.ParentGroup.AddAvatar(UUID);
                         } else {
                             m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
                             Rotation = sitTargetOrient;
                         }
                     } else {
-                        Vector3 newPos;
-
-                        double x, y, z, m;
-
-                        Quaternion r = sitTargetOrient;
-                        m = r.X * r.X + r.Y * r.Y + r.Z * r.Z + r.W * r.W;
-
-                        if (Math.Abs(1.0 - m) > 0.000001)
-                        {
-                            m = 1.0 / Math.Sqrt(m);
-                            r.X *= (float)m;
-                            r.Y *= (float)m;
-                            r.Z *= (float)m;
-                            r.W *= (float)m;
-                        }
-
-                        x = 2 * (r.X * r.Z + r.Y * r.W);
-                        y = 2 * (-r.X * r.W + r.Y * r.Z);
-                        z = -r.X * r.X - r.Y * r.Y + r.Z * r.Z + r.W * r.W;
-
-                        Vector3 up = new Vector3((float)x, (float)y, (float)z);
-                        Vector3 sitOffset = up * Appearance.AvatarHeight * 0.02638f;
-
                         newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                         Quaternion newRot;
                         if (part.IsRoot) {
