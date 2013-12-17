@@ -728,20 +728,20 @@ namespace Prebuild.Core
 			if(clean && target == "all")//default to all if no target was specified for clean
 			{
                 //check if they passed yes
-                if (!m_CommandLine.WasPassed("yes"))
-                {
-				    Console.WriteLine("WARNING: This operation will clean ALL project files for all targets, are you sure? (y/n):");
-				    string ret = Console.ReadLine();
-				    if(ret == null)
-				    {
-					    return;
-				    }
-				    ret = ret.Trim().ToLower();
-				    if((ret.ToLower() != "y" && ret.ToLower() != "yes"))
-				    {
-					    return;
-                    }
-                }
+//                if (!m_CommandLine.WasPassed("yes"))
+//                {
+//				    Console.WriteLine("WARNING: This operation will clean ALL project files for all targets, are you sure? (y/n):");
+//				    string ret = Console.ReadLine();
+//				    if(ret == null)
+//				    {
+//					    return;
+//				    }
+//				    ret = ret.Trim().ToLower();
+//				    if((ret.ToLower() != "y" && ret.ToLower() != "yes"))
+//				    {
+//					    return;
+//                    }
+//                }
 				//clean all targets (just cleaning vs2002 target didn't clean nant)
 				foreach(ITarget targ in m_Targets.Values)
 				{
