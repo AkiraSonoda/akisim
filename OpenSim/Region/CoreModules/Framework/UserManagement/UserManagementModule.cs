@@ -66,12 +66,17 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void Initialise(IConfigSource config)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+
             string umanmod = config.Configs["Modules"].GetString("UserManagementModule", Name);
             if (umanmod == Name)
             {
                 m_Enabled = true;
                 Init();
-				m_log.DebugFormat("[UserManagementModule]: {0} is enabled", Name);
+		m_log.DebugFormat("[UserManagementModule]: {0} is enabled", Name);
             }
         }
 
@@ -90,32 +95,49 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             get { return null; }
         }
 
-        public void AddRegion(Scene scene)
+        public void AddRegion (Scene scene)
         {
-            if (m_Enabled)
-            {
-                m_Scenes.Add(scene);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
-                scene.RegisterModuleInterface<IUserManagement>(this);
-                scene.RegisterModuleInterface<IPeople>(this);
-                scene.EventManager.OnNewClient += new EventManager.OnNewClientDelegate(EventManager_OnNewClient);
-                scene.EventManager.OnPrimsLoaded += new EventManager.PrimsLoaded(EventManager_OnPrimsLoaded);
+            if (m_Enabled) {
+                m_Scenes.Add (scene);
+                scene.RegisterModuleInterface<IUserManagement> (this);
+                scene.RegisterModuleInterface<IPeople> (this);
+                scene.EventManager.OnNewClient += new EventManager.OnNewClientDelegate (EventManager_OnNewClient);
+                scene.EventManager.OnPrimsLoaded += new EventManager.PrimsLoaded (EventManager_OnPrimsLoaded);
+            } else {
+                m_log.Warn("AddRegion disabled");
             }
         }
 
-        public void RemoveRegion(Scene scene)
+        public void RemoveRegion (Scene scene)
         {
-            if (m_Enabled)
-            {
-                scene.UnregisterModuleInterface<IUserManagement>(this);
-                m_Scenes.Remove(scene);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+
+            if (m_Enabled) {
+                scene.UnregisterModuleInterface<IUserManagement> (this);
+                m_Scenes.Remove (scene);
+            } else {
+                m_log.Warn("RemoveRegion disabled");
             }
         }
 
-        public void RegionLoaded(Scene s)
+        public void RegionLoaded (Scene s)
         {
-            if (m_Enabled && m_ServiceThrottle == null)
-                m_ServiceThrottle = s.RequestModuleInterface<IServiceThrottleModule>();
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+            if (m_Enabled && m_ServiceThrottle == null) {
+                m_ServiceThrottle = s.RequestModuleInterface<IServiceThrottleModule> ();
+            } else {
+                m_log.Warn("RegionLoaded disabled or ServiceThrottle null");
+            }
         }
 
         public void PostInitialise()
@@ -124,6 +146,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void Close()
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             m_Scenes.Clear();
 
             lock (m_UserCache)
@@ -137,13 +163,21 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         void EventManager_OnPrimsLoaded(Scene s)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             // let's sniff all the user names referenced by objects in the scene
-			m_log.DebugFormat("[UserManagementModule]: Caching creators' data from {0} ({1} objects)...", s.RegionInfo.RegionName, s.GetEntities().Length);
+	    m_log.DebugFormat("[UserManagementModule]: Caching creators' data from {0} ({1} objects)...", s.RegionInfo.RegionName, s.GetEntities().Length);
             s.ForEachSOG(delegate(SceneObjectGroup sog) { CacheCreators(sog); });
         }
 
         void EventManager_OnNewClient(IClientAPI client)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             client.OnConnectionClosed += new Action<IClientAPI>(HandleConnectionClosed);
             client.OnNameFromUUIDRequest += new UUIDNameRequest(HandleUUIDNameRequest);
             client.OnAvatarPickerRequest += new AvatarPickerRequest(HandleAvatarPickerRequest);
@@ -151,15 +185,22 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         void HandleConnectionClosed(IClientAPI client)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             client.OnNameFromUUIDRequest -= new UUIDNameRequest(HandleUUIDNameRequest);
             client.OnAvatarPickerRequest -= new AvatarPickerRequest(HandleAvatarPickerRequest);
         }
 
         void HandleUUIDNameRequest(UUID uuid, IClientAPI client)
         {
-//            m_log.DebugFormat(
-//                "[UserManagementModule]: Handling request for name binding of UUID {0} from {1}", 
-//                uuid, remote_client.Name);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat(
+                                "Handling request for name binding of UUID {0} from {1}", 
+                                uuid, client.Name);
+            }
 
             if (m_Scenes[0].LibraryService != null && (m_Scenes[0].LibraryService.LibraryRootFolder.Owner == uuid))
             {
@@ -197,9 +238,14 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void HandleAvatarPickerRequest(IClientAPI client, UUID avatarID, UUID RequestID, string query)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+
             //EventManager.TriggerAvatarPickerRequest();
 
-			m_log.DebugFormat("[UserManagementModule]: HandleAvatarPickerRequest for {0}", query);
+            m_log.DebugFormat("[UserManagementModule]: HandleAvatarPickerRequest for {0}", query);
 
             List<UserData> users = GetUserData(query, 500, 1);
 
@@ -257,6 +303,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public List<UserData> GetUserData(string query, int page_size, int page_number)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             // search the user accounts service
             List<UserAccount> accs = m_Scenes[0].UserAccountService.GetUserAccounts(m_Scenes[0].RegionInfo.ScopeID, query);
 
@@ -294,7 +344,12 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         private void CacheCreators(SceneObjectGroup sog)
         {
-			//m_log.DebugFormat("[UserManagementModule]: processing {0} {1}; {2}", sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat("processing {0} {1}; {2}", sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
+            }
+
+
             AddUser(sog.RootPart.CreatorID, sog.RootPart.CreatorData);
 
             foreach (SceneObjectPart sop in sog.Parts)
@@ -313,9 +368,11 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         /// <returns></returns>
         private bool TryGetUserNames(UUID uuid, string[] names)
         {
-			if(m_log.IsDebugEnabled) {
-	    		m_log.DebugFormat("[UserManagementModule] TryGetUserNames: {0}", uuid);
-			}
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+
             if (names == null)
                 names = new string[2];
 
@@ -330,6 +387,11 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         private bool TryGetUserNamesFromCache(UUID uuid, string[] names)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
+
             lock (m_UserCache)
             {
                 if (m_UserCache.ContainsKey(uuid))
@@ -352,6 +414,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         /// <param name='names'>The array of names if found.  If not found, then names[0] = "Unknown" and names[1] = "User"</param>
         private bool TryGetUserNamesFromServices(UUID uuid, string[] names)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             UserAccount account = m_Scenes[0].UserAccountService.GetUserAccount(UUID.Zero, uuid);
 
             if (account != null)
@@ -389,14 +455,14 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
                     }
                     else
-						m_log.WarnFormat("[UserManagementModule]: Unable to parse UUI {0}", uInfo.UserID);
+                        m_log.WarnFormat("[UserManagementModule]: Unable to parse UUI {0}", uInfo.UserID);
                 }
                 else
                 {
-					m_log.WarnFormat("[UserManagementModule]: No grid user found for {0}", uuid);
+                    m_log.WarnFormat("[UserManagementModule]: No grid user found for {0}", uuid);
                 }
 
-				m_log.WarnFormat("[UserManagementModule]: Adding Aki_UMMTGUN9 to names for {0}", uuid);
+                m_log.WarnFormat("[UserManagementModule]: Adding Aki_UMMTGUN9 to names for {0}", uuid);
 
                 names[0] = "Unknown";
                 names[1] = "Aki_UMMTGUN9";
@@ -409,6 +475,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public UUID GetUserIdByName(string name)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             string[] parts = name.Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 2)
                 throw new Exception("Name must have 2 components");
@@ -418,6 +488,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public UUID GetUserIdByName(string firstName, string lastName)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             // TODO: Optimize for reverse lookup if this gets used by non-console commands.
             lock (m_UserCache)
             {
@@ -456,25 +530,22 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             return string.Empty;
         }
 
-        public string GetUserServerURL(UUID userID, string serverType)
+        public string GetUserServerURL (UUID userID, string serverType)
         {
             UserData userdata;
             lock (m_UserCache)
                 m_UserCache.TryGetValue(userID, out userdata);
 
-            if (userdata != null)
-            {
-				//                m_log.DebugFormat("[UserManagementModule]: Requested url type {0} for {1}", serverType, userID);
+            if (userdata != null) {
+                m_log.DebugFormat("[UserManagementModule]: Requested url type {0} for {1}", serverType, userID);
 
-                if (userdata.ServerURLs != null && userdata.ServerURLs.ContainsKey(serverType) && userdata.ServerURLs[serverType] != null)
-                {
+                if (userdata.ServerURLs != null && userdata.ServerURLs.ContainsKey(serverType) && userdata.ServerURLs[serverType] != null) {
                     return userdata.ServerURLs[serverType].ToString();
                 }
 
-                if (userdata.HomeURL != null && userdata.HomeURL != string.Empty)
-                {
+                if (userdata.HomeURL != null && userdata.HomeURL != string.Empty) {
                     //m_log.DebugFormat(
-					//    "[UserManagementModule]: Did not find url type {0} so requesting urls from '{1}' for {2}",
+                    //    "[UserManagementModule]: Did not find url type {0} so requesting urls from '{1}' for {2}",
                     //    serverType, userdata.HomeURL, userID);
 
                     UserAgentServiceConnector uConn = new UserAgentServiceConnector(userdata.HomeURL);
@@ -482,6 +553,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     if (userdata.ServerURLs != null && userdata.ServerURLs.ContainsKey(serverType) && userdata.ServerURLs[serverType] != null)
                         return userdata.ServerURLs[serverType].ToString();
                 }
+            } else {
+                m_log.WarnFormat("UserData for Avatar {0} is null", userID);
             }
 
             return string.Empty;
@@ -489,6 +562,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public string GetUserUUI(UUID userID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             UserData ud;
             lock (m_UserCache)
                 m_UserCache.TryGetValue(userID, out ud);
@@ -524,6 +601,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void AddUser(UUID uuid, string first, string last)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
+
             lock (m_UserCache)
             {
                 if (m_UserCache.ContainsKey(uuid))
@@ -540,18 +621,23 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public void AddUser(UUID uuid, string first, string last, string homeURL)
         {
-			//m_log.DebugFormat("[UserManagementModule]: Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat("Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
+            }
+
             if (homeURL == string.Empty)
                 return;
 
             AddUser(uuid, homeURL + ";" + first + " " + last);
         }
 
-        public void AddUser (UUID id, string creatorData)
-		{
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("[UserManagementModule]: Adding user with id {0}, creatorData \"{1}\"", id, creatorData);
-			}
+        public void AddUser(UUID id, string creatorData)
+        {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat("Adding user with id {0}, creatorData {1}", id, creatorData);
+            }
 
             UserData oldUser;
             lock (m_UserCache)
@@ -559,7 +645,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
             if (oldUser != null)
             {
-                if (creatorData == null || creatorData == String.Empty)
+                if (string.IsNullOrEmpty(creatorData))
                 {
                     //ignore updates without creator data
                     return;
@@ -570,7 +656,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 {
                     lock (m_UserCache)
                         m_UserCache.Remove(id);
-					m_log.DebugFormat("[UserManagementModule]: Re-adding user with id {0}, creatorData [{1}] and old HomeURL {2}", id, creatorData, oldUser.HomeURL);
+                    m_log.DebugFormat("[UserManagementModule]: Re-adding user with id {0}, creatorData [{1}] and old HomeURL {2}", id, creatorData, oldUser.HomeURL);
                 }
                 else
                 {
@@ -629,12 +715,16 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         void AddUserInternal(UserData user)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat(
+                    "[USER MANAGEMENT MODULE]: Added user {0} {1} {2} {3}",
+                    user.Id, user.FirstName, user.LastName, user.HomeURL);
+            }
+
             lock (m_UserCache)
                 m_UserCache[user.Id] = user;
 
-            //m_log.DebugFormat(
-			//    "[UserManagementModule]: Added user {0} {1} {2} {3}",
-            //    user.Id, user.FirstName, user.LastName, user.HomeURL);
         }
 
         public bool IsLocalGridUser(UUID uuid)
