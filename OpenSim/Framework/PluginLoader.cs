@@ -222,6 +222,11 @@ namespace OpenSim.Framework
 
         private void initialise_plugin_dir_(string dir)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat ("Directory: {0}", dir);
+            }
+
             if (AddinManager.IsInitialized == true)
                 return;
 

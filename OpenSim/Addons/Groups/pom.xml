@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.opensim</groupId>
+    <artifactId>OpenSim.Addons.Groups</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>OpenSim.Addons.Groups</name>
+
+	<build>
+		<plugins>
+			<plugin> 
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptors>
+						<descriptor>assembly.xml</descriptor>
+					</descriptors> 
+				</configuration> 
+				<executions>
+					<execution>
+						<id>zip</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId> 
+				<executions>
+					<execution> 
+						<id>unpack</id>
+						<phase>install</phase>
+						<goals>
+							<goal>unpack</goal>
+						</goals>
+						<configuration> 
+							<artifactItems>
+								<artifactItem>
+									<groupId>org.opensim</groupId>
+									<artifactId>OpenSim.Addons.Groups</artifactId> 
+									<version>0.0.1-SNAPSHOT</version>
+									<type>zip</type>
+									<outputDirectory>../../../RegionServer/bin</outputDirectory>
+									<overWrite>true</overWrite>				
+								</artifactItem>
+							</artifactItems>
+						</configuration>
+					</execution> 
+				</executions>
+			</plugin>			
+		</plugins> 
+	</build>
+    <distributionManagement>
+    	<snapshotRepository>
+        	<id>libs-snapshot-local.artifactory.openjgrid.org</id>
+        	<name>artifactory.openjgrid.org-snapshots</name>
+        	<url>https://artifactory.openjgrid.org/artifactory/libs-snapshot-local</url>
+    	</snapshotRepository>
+	</distributionManagement>
+</project>

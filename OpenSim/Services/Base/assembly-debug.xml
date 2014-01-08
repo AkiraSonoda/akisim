@@ -1,0 +1,16 @@
+<assembly> 
+	<formats>
+		<format>zip</format> 
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory> 
+	<fileSets>
+		<fileSet> 
+			<directory>../../../bin</directory> 
+			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>OpenSim.Services.Base.dll</include>
+				<include>OpenSim.Services.Base.dll.mdb</include>
+			</includes>
+		</fileSet>
+	</fileSets>
+</assembly>

@@ -1,0 +1,16 @@
+<assembly> 
+	<formats>
+		<format>zip</format> 
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory> 
+	<fileSets>
+		<fileSet> 
+			<directory>../../../../bin/Physics</directory> 
+			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>OpenSim.Region.Physics.OdePlugin.dll</include>
+				<include>OpenSim.Region.Physics.OdePlugin.dll.mdb</include>
+			</includes>
+		</fileSet>
+	</fileSets>
+</assembly>

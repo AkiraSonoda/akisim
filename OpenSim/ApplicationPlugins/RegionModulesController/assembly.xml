@@ -1,0 +1,16 @@
+<assembly> 
+	<formats>
+		<format>zip</format> 
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory> 
+	<fileSets>
+		<fileSet> 
+			<directory>../../../bin</directory> 
+			<outputDirectory>/</outputDirectory>
+			<includes>
+				<include>OpenSim.ApplicationPlugins.RegionModulesController.dll</include>
+<!-- 				<include>OpenSim.ApplicationPlugins.RegionModulesController.dll.mdb</include> -->
+			</includes>
+		</fileSet>
+	</fileSets>
+</assembly>
