@@ -246,6 +246,8 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     //     WriteBakedTexturesReport(sp);
                     // }
 
+                    // AKIDO check the code below against OpenSim. Worked fine for Aki-13.13 possibly does not after Mels "Christmas Gift 2013"
+
                     bool isValidBakedTextureCache = ValidateBakedTextureCache(sp);
                     m_log.InfoFormat("AVATARFACTORY ISVALIDBAKEDTEXTURECACHE={0}", isValidBakedTextureCache);
                     // If bake textures are missing and this is not an NPC, request a rebake from client
@@ -720,11 +722,11 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             if (sp == null)
             {
                 // This is expected if the user has gone away.
-                m_log.DebugFormat("[AvatarFactoryModule]: Agent {0} no longer in the scene", agentid);
+//                m_log.DebugFormat("[AVFACTORY]: Agent {0} no longer in the scene", agentid);
                 return;
             }
 
-            m_log.DebugFormat("[AvatarFactoryModule]: Saving appearance for avatar {0}", agentid);
+//            m_log.DebugFormat("[AVFACTORY]: Saving appearance for avatar {0}", agentid);
 
             // This could take awhile since it needs to pull inventory
             // We need to do it at the point of save so that there is a sufficient delay for any upload of new body part/shape
@@ -823,7 +825,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                         else
                         {
                             m_log.ErrorFormat(
-                                "[AvatarFactoryModule]: Can't find inventory item {0} for {1}, setting to default",
+                                "[AVFACTORY]: Can't find inventory item {0} for {1}, setting to default",
                                 appearance.Wearables[i][j].ItemID, (WearableType)i);
 
                             TryAndRepairBrokenWearable((WearableType)i, invService, userID, appearance);
@@ -930,7 +932,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             }
             else
             {
-                m_log.WarnFormat("[AvatarFactoryModule]: user {0} has no inventory, appearance isn't going to work", userID);
+                m_log.WarnFormat("[AVFACTORY]: user {0} has no inventory, appearance isn't going to work", userID);
             }
         }
         private void TryAndRepairBrokenWearable(WearableType type, IInventoryService invService, UUID userID,AvatarAppearance appearance)

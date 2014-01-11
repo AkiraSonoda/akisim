@@ -224,7 +224,7 @@ namespace OpenSim.Region.ClientStack.Linden
                         "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} when placing message {1} in region {2}", 
                         avatarID, evMap["message"], m_scene.Name);
                 }
-			}
+            } 
             catch (NullReferenceException e)
             {
                 m_log.Error("[EVENTQUEUE] Caught exception: " + e);
@@ -360,13 +360,14 @@ namespace OpenSim.Region.ClientStack.Linden
             if (element is OSDMap)
             {
                 OSDMap ev = (OSDMap)element;
+                //AKIDO check this Debug Message, it is different to the regular OpenSim code ... why?
                 m_log.DebugFormat(
                     "Eq OUT {0,-30} to {1,-20} {2,-20}",
                     ev["message"], m_scene.GetScenePresence(agentId).Name, m_scene.RegionInfo.RegionName);
             }
         }
 
-        public Hashtable GetEvents (UUID requestID, UUID pAgentId)
+        public Hashtable GetEvents(UUID requestID, UUID pAgentId)
         {
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("POLLED FOR EQ MESSAGES BY {0} in {1}", pAgentId, m_scene.RegionInfo.RegionName);

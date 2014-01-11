@@ -232,7 +232,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     {
                         ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
                         if (sp != null && !sp.IsChildAgent)
-                            scene.AvatarFactory.WriteBakedTexturesReport(sp);
+                            scene.AvatarFactory.WriteBakedTexturesReport(sp, MainConsole.Instance.OutputFormat);
                     }
                     else
                     {
@@ -276,6 +276,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     ScenePresence sp = scene.GetScenePresence(firstname, lastname);
                     if (sp != null && !sp.IsChildAgent)
                     {
+                        // AKIDO set this to TRUE in AKI-13.13
+                        // AKIDO but because of the recent problems after the Melanie Christmas "Present" I have to investigate nn that.
                         int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, true);
 
                         if (rebakesRequested > 0)

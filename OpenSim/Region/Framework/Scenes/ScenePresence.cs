@@ -3214,6 +3214,7 @@ namespace OpenSim.Region.Framework.Scenes
                 cachedappearance = m_scene.AvatarFactory.ValidateBakedTextureCache(this);
             
             // If we aren't using a cached appearance, then clear out the baked textures
+            // AKIDO Commenting out the code above solved the "Cloud Problem" in Aki-13.13. After Melanies Christmas "Present" this has to be re-evaluated
             // if (!cachedappearance)
             // {
             //     Appearance.ResetAppearance();

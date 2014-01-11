@@ -560,8 +560,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             }
         }
 
-        public bool Stop (int timeout)
-		{
+        public bool Stop(int timeout)
+        {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat (
                     "[SCRIPT INSTANCE]: Stopping script {0} {1} in {2} {3} with timeout {4} {5} {6}",

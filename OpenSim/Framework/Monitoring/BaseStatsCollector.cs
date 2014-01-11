@@ -61,7 +61,7 @@ namespace OpenSim.Framework.Monitoring
 			}
         }
 
-		public virtual string Report()
+        public virtual string Report()
         {
             StringBuilder sb = new StringBuilder(Environment.NewLine);
             sb.Append("MEMORY STATISTICS");

@@ -3638,7 +3638,7 @@ namespace OpenSim.Region.Framework.Scenes
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
-			bool vialogin = ((teleportFlags & (uint)TPFlags.ViaLogin) != 0 ||
+            bool vialogin = ((teleportFlags & (uint)TPFlags.ViaLogin) != 0 ||
                 (teleportFlags & (uint)TPFlags.ViaHGLogin) != 0);
             bool viahome = ((teleportFlags & (uint)TPFlags.ViaHome) != 0);
             bool godlike = ((teleportFlags & (uint)TPFlags.Godlike) != 0);

@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -299,6 +300,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         #region Class Members
 
+        //AKIDO change the function entry debug statements to the guarded ones
         // LLClientView Only
         public delegate void BinaryGenericMessage(Object sender, string method, byte[][] args);
 
@@ -1527,7 +1529,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                                        uint flags, string capsURL)
         {
 			m_log.DebugFormat("[LLClientView]: SendRegionTeleport( ..., capsURL: {0} )", capsURL);
-			//TeleportFinishPacket teleport = (TeleportFinishPacket)PacketPool.Instance.GetPacket(PacketType.TeleportFinish);
+            //TeleportFinishPacket teleport = (TeleportFinishPacket)PacketPool.Instance.GetPacket(PacketType.TeleportFinish);
 
             TeleportFinishPacket teleport = new TeleportFinishPacket();
             teleport.Info.AgentID = AgentId;
@@ -1558,7 +1560,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public void SendTeleportFailed(string reason)
         {
 			m_log.DebugFormat("[LLClientView]: SendTeleportFailed( reason: {0} )", reason);
-			TeleportFailedPacket tpFailed = (TeleportFailedPacket)PacketPool.Instance.GetPacket(PacketType.TeleportFailed);
+            TeleportFailedPacket tpFailed = (TeleportFailedPacket)PacketPool.Instance.GetPacket(PacketType.TeleportFailed);
             tpFailed.Info.AgentID = AgentId;
             tpFailed.Info.Reason = Util.StringToBytes256(reason);
             tpFailed.AlertInfo = new TeleportFailedPacket.AlertInfoBlock[0];

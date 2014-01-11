@@ -142,7 +142,7 @@ namespace OpenSim.Framework
         public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.SmartThreadPool;
         public static FireAndForgetMethod FireAndForgetMethod = DefaultFireAndForgetMethod;
 
-		public static bool IsPlatformMono
+        public static bool IsPlatformMono
         {
             get { return Type.GetType("Mono.Runtime") != null; }
         }
@@ -209,7 +209,7 @@ namespace OpenSim.Framework
 			return result.ToString();
 		}
 
-		/// <summary>
+        /// <summary>
         /// Gets the name of the directory where the current running executable
         /// is located
         /// </summary>

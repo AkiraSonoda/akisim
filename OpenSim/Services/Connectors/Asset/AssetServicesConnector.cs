@@ -41,6 +41,9 @@ using OpenSim.Services.Interfaces;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
+// AKIDO change the function entry debug logging statements to the guarded ones
+
+
 namespace OpenSim.Services.Connectors
 {
     public class AssetServicesConnector : IAssetService
@@ -52,13 +55,12 @@ namespace OpenSim.Services.Connectors
         private string m_ServerURI = String.Empty;
         private IImprovedAssetCache m_Cache = null;
         private int m_maxAssetRequestConcurrency = 30;
-
+        
         private delegate void AssetRetrievedEx(AssetBase asset);
 
 		private string surabayaServerURI = String.Empty;
 		private bool surabayaServerEnabled = true;
 
-                
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
         private Dictionary<string, AssetRetrievedEx> m_AssetHandlers = new Dictionary<string, AssetRetrievedEx>();

@@ -392,7 +392,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
    					m_log.Error("Exception while caching baked texture to Surabaya: ", ex);
    				}
 
-               return asset.ID;
+                return asset.ID;
             }
 
             string id = string.Empty;

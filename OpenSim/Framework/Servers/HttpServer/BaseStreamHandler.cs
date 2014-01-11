@@ -26,8 +26,6 @@
  */
 
 using System.IO;
-using System.Reflection;
-using log4net;
 
 namespace OpenSim.Framework.Servers.HttpServer
 {
@@ -39,20 +37,10 @@ namespace OpenSim.Framework.Servers.HttpServer
     /// </remarks>
     public abstract class BaseStreamHandler : BaseRequestHandler, IStreamedRequestHandler
     {
-		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
-        protected BaseStreamHandler(string httpMethod, string path) : this(httpMethod, path, null, null) {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-		}
+        protected BaseStreamHandler(string httpMethod, string path) : this(httpMethod, path, null, null) {}
 
         protected BaseStreamHandler(string httpMethod, string path, string name, string description)
-            : base(httpMethod, path, name, description) {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-		}
+            : base(httpMethod, path, name, description) {}
 
         public virtual byte[] Handle(
             string path, Stream request, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)

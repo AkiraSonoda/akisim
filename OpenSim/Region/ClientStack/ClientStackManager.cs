@@ -105,7 +105,6 @@ namespace OpenSim.Region.ClientStack
         /// <param name="authenticateClass"></param>
         /// <returns></returns>
         public List<IClientNetworkServer> CreateServers(
-
             IPAddress _listenIP, ref uint port, int proxyPortOffset, bool allow_alternate_port,
             AgentCircuitManager authenticateClass)
         {

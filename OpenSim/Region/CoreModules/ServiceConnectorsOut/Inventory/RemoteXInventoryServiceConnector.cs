@@ -66,7 +66,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
                     if (m_UserManager == null)
                         m_log.ErrorFormat(
-                                                        "[RemoteXInventoryServicesConnector]: Could not retrieve IUserManagement module from {0}",
+                            "[RemoteXInventoryServicesConnector]: Could not retrieve IUserManagement module from {0}",
                             Scene.RegionInfo.RegionName);
                 }
 
@@ -116,7 +116,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                     Init(source);
                     m_Enabled = true;
 
-                                        m_log.Info("[RemoteXInventoryServicesConnector]: Remote XInventory enabled");
+                    m_log.Info("[RemoteXInventoryServicesConnector]: Remote XInventory enabled");
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             if (!m_Enabled)
                 return;
 
-                        m_log.InfoFormat("[RemoteXInventoryServicesConnector]: Enabled remote XInventory for region {0}", scene.RegionInfo.RegionName);
+            m_log.InfoFormat("[RemoteXInventoryServicesConnector]: Enabled remote XInventory for region {0}", scene.RegionInfo.RegionName);
 
         }
 
@@ -303,7 +303,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                 return null;
 
             if (m_RemoteConnector == null)
-                                m_log.DebugFormat("[RemoteXInventoryServicesConnector]: connector stub is null!!!");
+                m_log.DebugFormat("[RemoteXInventoryServicesConnector]: connector stub is null!!!");
             return m_RemoteConnector.GetItem(item);
         }
 

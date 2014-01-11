@@ -222,7 +222,7 @@ namespace OpenSim.Server.Base
 				m_log.DebugFormat ("Loading: {0}.", dllName);
 			}
 
-			// This is good to debug configuration problems
+            // This is good to debug configuration problems
             //if (dllName == string.Empty)
             //    Util.PrintCallStack();
             

@@ -411,8 +411,8 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </summary>
         /// <param name="llsdRequest"></param>
         /// <returns></returns>
-        public LLSDAssetUploadResponse NewAgentInventoryRequest (LLSDAssetUploadRequest llsdRequest)
-		{
+        public LLSDAssetUploadResponse NewAgentInventoryRequest(LLSDAssetUploadRequest llsdRequest)
+        {
 			if (m_log.IsDebugEnabled) {
 				m_log.Debug ("[BunchOfCaps]: NewAgentInventoryRequest Request is: " + llsdRequest.ToString ());
 				m_log.Debug ("[BunchOfCaps]: asset upload request via CAPS" + llsdRequest.inventory_type + " , " + llsdRequest.asset_type);
@@ -797,9 +797,9 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <param name="path"></param>
         /// <param name="param"></param>
         /// <returns></returns>
-        public string NoteCardAgentInventory (string request, string path, string param,
+        public string NoteCardAgentInventory(string request, string path, string param,
                                              IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-		{
+        {
 			if (m_log.IsDebugEnabled) {
 				m_log.Debug ("[BunchOfCaps]: NoteCardAgentInventory Request in region: " + m_regionName + "\n" + request);
 				m_log.Debug ("[BunchOfCaps]: NoteCardAgentInventory Request is: " + request);
@@ -921,7 +921,7 @@ namespace OpenSim.Region.ClientStack.Linden
 				m_log.DebugFormat("[BunchOfCaps]: GetObjectPhysicsData ( request: {0}, path: {1}, param: {2}, httpRequest: n/a, httpResponse: n/a )", request, path, param);
 			}
 
-			OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
+            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
             OSDMap resp = new OSDMap();
             OSDArray object_ids = (OSDArray)req["object_ids"];
 
@@ -948,10 +948,10 @@ namespace OpenSim.Region.ClientStack.Linden
             return response;
         }
 
-        public string UpdateAgentInformation (string request, string path,
+        public string UpdateAgentInformation(string request, string path,
                 string param, IOSHttpRequest httpRequest,
                 IOSHttpResponse httpResponse)
-		{
+        {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat("[BunchOfCaps]: UpdateAgentInformation ( request: {0}, path: {1}, param: {2}, httpResponse: n/a )", request, path, param);
 			}

@@ -57,6 +57,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
         /// A value of 0 will apply no pause.  The pause is specified in milliseconds.
         /// </remarks>
         public int ThrottlePer100PrimsRezzed { get; set; }
+        
         private Scene m_scene;
         private IInventoryAccessModule m_invAccessModule;
 

@@ -63,8 +63,8 @@ namespace OpenSim.Server.Handlers.Simulation
             m_SimulationService = sim;
         }
 
-        public Hashtable Handler (Hashtable request)
-		{
+        public Hashtable Handler(Hashtable request)
+        {
 			if (m_log.IsDebugEnabled) {
 				m_log.Debug ("[CONNECTION DEBUGGING]: AgentHandler Called");
 				m_log.Debug ("---------------------------");
