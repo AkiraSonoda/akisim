@@ -3639,7 +3639,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             AvatarAppearancePacket avp = (AvatarAppearancePacket)PacketPool.Instance.GetPacket(PacketType.AvatarAppearance);
             // TODO: don't create new blocks if recycling an old packet
-            avp.VisualParam = new AvatarAppearancePacket.VisualParamBlock[218];
+            avp.VisualParam = new AvatarAppearancePacket.VisualParamBlock[visualParams.Length];
             avp.ObjectData.TextureEntry = textureEntry;
 
             AvatarAppearancePacket.VisualParamBlock avblock = null;
@@ -5097,8 +5097,21 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 
                 angularVelocity = presence.AngularVelocity;
 
-                // AKIDO: Reverted fix from Justin: https://github.com/opensim/opensim/commit/17b32b764acd815400d9eb903aaec6dcebd60ac7 because it breaks some sit-anim scripts
+                // Whilst not in mouselook, an avatar will transmit only the Z rotation as this is the only axis
+                // it rotates around.
+                // In mouselook, X and Y co-ordinate will also be sent but when used in Rotation, these cause unwanted
+                // excessive up and down movements of the camera when looking up and down.
+                // See http://opensimulator.org/mantis/view.php?id=3274
+                // This does not affect head movement, since this is controlled entirely by camera movement rather than
+                // body rotation.  We still need to transmit X and Y for sitting avatars but mouselook does not change
+                // the rotation in this case.
                 rotation = presence.Rotation;
+
+                if (!presence.IsSatOnObject)
+                {
+                    rotation.X = 0;
+                    rotation.Y = 0;
+                }
 
                 if (sendTexture)
                     textureEntry = presence.Appearance.Texture.GetBytes();
@@ -5112,7 +5125,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 attachPoint = part.ParentGroup.AttachmentPoint;
                 attachPoint = ((attachPoint % 16) * 16 + (attachPoint / 16));
 //                m_log.DebugFormat(
-				//                    "[LLClientView]: Sending attachPoint {0} for {1} {2} to {3}",
+//                    "[LLCLIENTVIEW]: Sending attachPoint {0} for {1} {2} to {3}",
 //                    attachPoint, part.Name, part.LocalId, Name);
 
                 collisionPlane = Vector4.Zero;
@@ -5214,8 +5227,24 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             data.OffsetPosition.ToBytes(objectData, 16);
 //            data.Velocity.ToBytes(objectData, 28);
 //            data.Acceleration.ToBytes(objectData, 40);
-            // AKIDO: Reverted fix from Justin: https://github.com/opensim/opensim/commit/17b32b764acd815400d9eb903aaec6dcebd60ac7 because it breaks some sit-anim scripts
-            data.Rotation.ToBytes(objectData, 52);
+
+            // Whilst not in mouselook, an avatar will transmit only the Z rotation as this is the only axis
+            // it rotates around.
+            // In mouselook, X and Y co-ordinate will also be sent but when used in Rotation, these cause unwanted
+            // excessive up and down movements of the camera when looking up and down.
+            // See http://opensimulator.org/mantis/view.php?id=3274
+            // This does not affect head movement, since this is controlled entirely by camera movement rather than
+            // body rotation.  We still need to transmit X and Y for sitting avatars but mouselook does not change
+            // the rotation in this case.
+            Quaternion rot = data.Rotation;
+
+            if (!data.IsSatOnObject)
+            {
+                rot.X = 0;
+                rot.Y = 0;
+            }
+
+            rot.ToBytes(objectData, 52);
             //data.AngularVelocity.ToBytes(objectData, 64);
 
             ObjectUpdatePacket.ObjectDataBlock update = new ObjectUpdatePacket.ObjectDataBlock();
@@ -5304,7 +5333,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
 
 //                m_log.DebugFormat(
-			//                    "[LLClientView]: Sending state {0} for {1} {2} to {3}",
+//                    "[LLCLIENTVIEW]: Sending state {0} for {1} {2} to {3}",
 //                    update.State, data.Name, data.LocalId, Name);
 
             update.ObjectData = objectData;
@@ -5354,7 +5383,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
 
 //            m_log.DebugFormat(
-			//                "[LLClientView]: Constructing client update for part {0} {1} with flags {2}, localId {3}",
+//                "[LLCLIENTVIEW]: Constructing client update for part {0} {1} with flags {2}, localId {3}",
 //                data.Name, update.FullID, flags, update.ID);
 
             update.UpdateFlags = (uint)flags;
@@ -5695,9 +5724,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             ;
             //if (movementSignificant)
             //{
-			//m_log.DebugFormat("[LLClientView]: Bod {0} {1}",
+                //m_log.DebugFormat("[LLCLIENTVIEW]: Bod {0} {1}",
                 //    qdelta1, qdelta2);
-			//m_log.DebugFormat("[LLClientView]: St {0} {1} {2} {3}",
+                //m_log.DebugFormat("[LLCLIENTVIEW]: St {0} {1} {2} {3}",
                 //    x.ControlFlags, x.Flags, x.Far, x.State);
             //}
             return movementSignificant;
@@ -5725,9 +5754,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             //if (cameraSignificant)
             //{
-			//m_log.DebugFormat("[LLClientView]: Cam1 {0} {1}",
+                //m_log.DebugFormat("[LLCLIENTVIEW]: Cam1 {0} {1}",
                 //    x.CameraAtAxis, x.CameraCenter);
-			//m_log.DebugFormat("[LLClientView]: Cam2 {0} {1}",
+                //m_log.DebugFormat("[LLCLIENTVIEW]: Cam2 {0} {1}",
                 //    x.CameraLeftAxis, x.CameraUpAxis);
             //}
 
@@ -5945,12 +5974,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     catch (Exception e)
                     {
                         m_log.ErrorFormat(
-							"[LLClientView]: Exeception when handling generic message {0}{1}", e.Message, e.StackTrace);
+                            "[LLCLIENTVIEW]: Exeception when handling generic message {0}{1}", e.Message, e.StackTrace);
                     }
                 }
             }
             
-			//m_log.Debug("[LLClientView]: Not handling GenericMessage with method-type of: " + method);
+            //m_log.Debug("[LLCLIENTVIEW]: Not handling GenericMessage with method-type of: " + method);
             return false;
         }
 
@@ -6097,7 +6126,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             ScriptDialogReplyPacket rdialog = (ScriptDialogReplyPacket)Pack;
 
-			//m_log.DebugFormat("[LLClientView]: Received ScriptDialogReply from {0}", rdialog.Data.ObjectID);
+            //m_log.DebugFormat("[CLIENT]: Received ScriptDialogReply from {0}", rdialog.Data.ObjectID);
 
             #region Packet Session and User Check
             if (m_checkPackets)
@@ -6346,7 +6375,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
 
             #endregion
-			//m_log.Info("[LLClientView]: LAND:" + modify.ToString());
+            //m_log.Info("[LAND]: LAND:" + modify.ToString());
             if (modify.ParcelData.Length > 0)
             {
                 // Note: the ModifyTerrain event handler sends out updated packets before the end of this event.  Therefore, 
@@ -6445,7 +6474,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 catch (Exception e)
                 {
                     m_log.ErrorFormat(
-						"[LLClientView]: AgentSetApperance packet handler threw an exception, {0}",
+                        "[CLIENT VIEW]: AgentSetApperance packet handler threw an exception, {0}",
                         e);
                 }
             }
@@ -6471,7 +6500,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 AvatarWearingArgs wearingArgs = new AvatarWearingArgs();
                 for (int i = 0; i < nowWearing.WearableData.Length; i++)
                 {
-					//m_log.DebugFormat("[LLClientView]: Wearable type {0} item {1}", nowWearing.WearableData[i].WearableType, nowWearing.WearableData[i].ItemID);
+                    //m_log.DebugFormat("[XXX]: Wearable type {0} item {1}", nowWearing.WearableData[i].WearableType, nowWearing.WearableData[i].ItemID);
                     AvatarWearingArgs.Wearable wearable =
                         new AvatarWearingArgs.Wearable(nowWearing.WearableData[i].ItemID,
                                                        nowWearing.WearableData[i].WearableType);
@@ -6799,7 +6828,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             AvatarPickerRequestPacket.AgentDataBlock Requestdata = avRequestQuery.AgentData;
             AvatarPickerRequestPacket.DataBlock querydata = avRequestQuery.Data;
-			//m_log.Debug("[LLClientView]:" Agent sends: + Utils.BytesToString(querydata.Name));
+            //m_log.Debug("Agent Sends:" + Utils.BytesToString(querydata.Name));
 
             AvatarPickerRequest handlerAvatarPickerRequest = OnAvatarPickerRequest;
             if (handlerAvatarPickerRequest != null)
@@ -7044,7 +7073,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 #endregion
 
                 PrimitiveBaseShape shape = GetShapeFromAddPacket(addPacket);
-				// m_log.Info("[LLClientView]: " + addPacket.ToString());
+                // m_log.Info("[REZData]: " + addPacket.ToString());
                 //BypassRaycast: 1
                 //RayStart: <69.79469, 158.2652, 98.40343>
                 //RayEnd: <61.97724, 141.995, 92.58341>
@@ -7497,7 +7526,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         private bool HandleObjectSpinStart(IClientAPI sender, Packet Pack)
         {
-			//m_log.Warn("[LLClientView]: unhandled ObjectSpinStart packet");
+            //m_log.Warn("[CLIENT]: unhandled ObjectSpinStart packet");
             ObjectSpinStartPacket spinStart = (ObjectSpinStartPacket)Pack;
 
             #region Packet Session and User Check
@@ -7519,7 +7548,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         private bool HandleObjectSpinUpdate(IClientAPI sender, Packet Pack)
         {
-			//m_log.Warn("[LLClientView]: unhandled ObjectSpinUpdate packet");
+            //m_log.Warn("[CLIENT]: unhandled ObjectSpinUpdate packet");
             ObjectSpinUpdatePacket spinUpdate = (ObjectSpinUpdatePacket)Pack;
 
             #region Packet Session and User Check
@@ -7534,7 +7563,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             Vector3 axis;
             float angle;
             spinUpdate.ObjectData.Rotation.GetAxisAngle(out axis, out angle);
-			//m_log.Warn("[LLClientView]: ObjectSpinUpdate packet rot axis:" + axis + " angle:" + angle);
+            //m_log.Warn("[CLIENT]: ObjectSpinUpdate packet rot axis:" + axis + " angle:" + angle);
 
             SpinObject handlerSpinUpdate = OnSpinUpdate;
             if (handlerSpinUpdate != null)
@@ -7546,7 +7575,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         private bool HandleObjectSpinStop(IClientAPI sender, Packet Pack)
         {
-			//m_log.Warn("[LLClientView]: unhandled ObjectSpinStop packet");
+            //m_log.Warn("[CLIENT]: unhandled ObjectSpinStop packet");
             ObjectSpinStopPacket spinStop = (ObjectSpinStopPacket)Pack;
 
             #region Packet Session and User Check
@@ -7916,7 +7945,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         private bool HandleRequestImage(IClientAPI sender, Packet Pack)
         {
             RequestImagePacket imageRequest = (RequestImagePacket)Pack;
-			//m_log.Debug("[LLClientView] image request: " + Pack.ToString());
+            //m_log.Debug("image request: " + Pack.ToString());
 
             #region Packet Session and User Check
             if (m_checkPackets)
@@ -7961,7 +7990,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <returns>This parameter may be ignored since we appear to return true whatever happens</returns>
         private bool HandleTransferRequest(IClientAPI sender, Packet Pack)
         {
-			//m_log.Debug("[LLClientView]: ClientView.ProcessPackets.cs:ProcessInPacket() - Got transfer request");
+            //m_log.Debug("ClientView.ProcessPackets.cs:ProcessInPacket() - Got transfer request");
 
             TransferRequestPacket transfer = (TransferRequestPacket)Pack;
             UUID taskID = UUID.Zero;
@@ -7998,7 +8027,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             UUID requestID = new UUID(transfer.TransferInfo.Params, 80);
 
             //m_log.DebugFormat(
-			//    "[LLClientView]: Got request for asset {0} from item {1} in prim {2} by {3}",
+            //    "[CLIENT]: Got request for asset {0} from item {1} in prim {2} by {3}",
             //    requestID, itemID, taskID, Name);
 
             //m_log.Debug("Transfer Request: " + transfer.ToString());
@@ -8012,7 +8041,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 if (part == null)
                 {
                     m_log.WarnFormat(
-						"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but prim does not exist",
+                        "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but prim does not exist",
                         Name, requestID, itemID, taskID);
                     return;
                 }
@@ -8021,7 +8050,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 if (tii == null)
                 {
                     m_log.WarnFormat(
-						"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but item does not exist",
+                        "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but item does not exist",
                         Name, requestID, itemID, taskID);
                     return;
                 }
@@ -8043,7 +8072,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     if (part.OwnerID != AgentId)
                     {
                         m_log.WarnFormat(
-							"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but the prim is owned by {4}",
+                            "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but the prim is owned by {4}",
                             Name, requestID, itemID, taskID, part.OwnerID);
                         return;
                     }
@@ -8051,7 +8080,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     if ((part.OwnerMask & (uint)PermissionMask.Modify) == 0)
                     {
                         m_log.WarnFormat(
-							"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but modify permissions are not set",
+                            "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but modify permissions are not set",
                             Name, requestID, itemID, taskID);
                         return;
                     }
@@ -8059,7 +8088,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     if (tii.OwnerID != AgentId)
                     {
                         m_log.WarnFormat(
-							"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but the item is owned by {4}",
+                            "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but the item is owned by {4}",
                             Name, requestID, itemID, taskID, tii.OwnerID);
                         return;
                     }
@@ -8069,7 +8098,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                             != ((uint)PermissionMask.Modify | (uint)PermissionMask.Copy | (uint)PermissionMask.Transfer))
                     {
                         m_log.WarnFormat(
-							"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but item permissions are not modify/copy/transfer",
+                            "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but item permissions are not modify/copy/transfer",
                             Name, requestID, itemID, taskID);
                         return;
                     }
@@ -8077,7 +8106,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     if (tii.AssetID != requestID)
                     {
                         m_log.WarnFormat(
-							"[LLClientView]: {0} requested asset {1} from item {2} in prim {3} but this does not match item's asset {4}",
+                            "[CLIENT]: {0} requested asset {1} from item {2} in prim {3} but this does not match item's asset {4}",
                             Name, requestID, itemID, taskID, tii.AssetID);
                         return;
                     }

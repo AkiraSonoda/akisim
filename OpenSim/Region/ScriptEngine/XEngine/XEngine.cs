@@ -1666,9 +1666,7 @@ namespace OpenSim.Region.ScriptEngine.XEngine
         public bool GetScriptState(UUID itemID)
         {
             IScriptInstance instance = GetInstance(itemID);
-            if (instance != null)
-                return instance.Running;
-            return false;
+            return instance != null && instance.Running;
         }
 
         public void ApiResetScript(UUID itemID)
@@ -1712,9 +1710,7 @@ namespace OpenSim.Region.ScriptEngine.XEngine
         public DetectParams GetDetectParams(UUID itemID, int idx)
         {
             IScriptInstance instance = GetInstance(itemID);
-            if (instance != null)
-                return instance.GetDetectParams(idx);
-            return null;
+            return instance != null ? instance.GetDetectParams(idx) : null;
         }
 
         public void SetMinEventDelay(UUID itemID, double delay)
@@ -1727,9 +1723,7 @@ namespace OpenSim.Region.ScriptEngine.XEngine
         public UUID GetDetectID(UUID itemID, int idx)
         {
             IScriptInstance instance = GetInstance(itemID);
-            if (instance != null)
-                return instance.GetDetectID(idx);
-            return UUID.Zero;
+            return instance != null ? instance.GetDetectID(idx) : UUID.Zero;
         }
 
         public void SetState(UUID itemID, string newState)
@@ -1743,9 +1737,7 @@ namespace OpenSim.Region.ScriptEngine.XEngine
         public int GetStartParameter(UUID itemID)
         {
             IScriptInstance instance = GetInstance(itemID);
-            if (instance == null)
-                return 0;
-            return instance.StartParam;
+            return instance == null ? 0 : instance.StartParam;
         }
 
         public void OnShutdown()
@@ -1779,9 +1771,7 @@ namespace OpenSim.Region.ScriptEngine.XEngine
         public IScriptApi GetApi(UUID itemID, string name)
         {
             IScriptInstance instance = GetInstance(itemID);
-            if (instance == null)
-                return null;
-            return instance.GetApi(name);
+            return instance == null ? null : instance.GetApi(name);
         }
 
         public void OnGetScriptRunning(IClientAPI controllingClient, UUID objectID, UUID itemID)
