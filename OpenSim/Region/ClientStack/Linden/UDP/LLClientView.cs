@@ -5099,21 +5099,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 
                 angularVelocity = presence.AngularVelocity;
 
-                // Whilst not in mouselook, an avatar will transmit only the Z rotation as this is the only axis
-                // it rotates around.
-                // In mouselook, X and Y co-ordinate will also be sent but when used in Rotation, these cause unwanted
-                // excessive up and down movements of the camera when looking up and down.
-                // See http://opensimulator.org/mantis/view.php?id=3274
-                // This does not affect head movement, since this is controlled entirely by camera movement rather than
-                // body rotation.  We still need to transmit X and Y for sitting avatars but mouselook does not change
-                // the rotation in this case.
+                // AKIDO: Reverted fix from Justin: https://github.com/opensim/opensim/commit/17b32b764acd815400d9eb903aaec6dcebd60ac7 because it breaks some sit-anim scripts
                 rotation = presence.Rotation;
-
-                if (!presence.IsSatOnObject)
-                {
-                    rotation.X = 0;
-                    rotation.Y = 0;
-                }
 
                 if (sendTexture)
                     textureEntry = presence.Appearance.Texture.GetBytes();
@@ -5230,23 +5217,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 //            data.Velocity.ToBytes(objectData, 28);
 //            data.Acceleration.ToBytes(objectData, 40);
 
-            // Whilst not in mouselook, an avatar will transmit only the Z rotation as this is the only axis
-            // it rotates around.
-            // In mouselook, X and Y co-ordinate will also be sent but when used in Rotation, these cause unwanted
-            // excessive up and down movements of the camera when looking up and down.
-            // See http://opensimulator.org/mantis/view.php?id=3274
-            // This does not affect head movement, since this is controlled entirely by camera movement rather than
-            // body rotation.  We still need to transmit X and Y for sitting avatars but mouselook does not change
-            // the rotation in this case.
-            Quaternion rot = data.Rotation;
-
-            if (!data.IsSatOnObject)
-            {
-                rot.X = 0;
-                rot.Y = 0;
-            }
-
-            rot.ToBytes(objectData, 52);
+            // AKIDO: Reverted fix from Justin: https://github.com/opensim/opensim/commit/17b32b764acd815400d9eb903aaec6dcebd60ac7 because it breaks some sit-anim scripts
+            data.Rotation.ToBytes(objectData, 52);
             //data.AngularVelocity.ToBytes(objectData, 64);
 
             ObjectUpdatePacket.ObjectDataBlock update = new ObjectUpdatePacket.ObjectDataBlock();

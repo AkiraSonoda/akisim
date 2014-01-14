@@ -2838,89 +2838,41 @@ namespace OpenSim.Region.Framework.Scenes
                     return;
                 }
 
+                // AKIDO reverted ALL of Justins "Fixes", because it would break a lot of existing scripts ... Maybe in Future I will set up another compatibility mode
 
-                if (part.SitTargetAvatar == UUID)
-                {
+                if (part.SitTargetAvatar == UUID) {
                     Vector3 sitTargetPos = part.SitTargetPosition;
                     Quaternion sitTargetOrient = part.SitTargetOrientation;
-
                     Vector3 newPos;
 
-                    double x, y, z, m;
-
-                    Quaternion r = sitTargetOrient;
-                    m = r.X * r.X + r.Y * r.Y + r.Z * r.Z + r.W * r.W;
-
-                    if (Math.Abs(1.0 - m) > 0.000001)
-                    {
-                        m = 1.0 / Math.Sqrt(m);
-                        r.X *= (float)m;
-                        r.Y *= (float)m;
-                        r.Z *= (float)m;
-                        r.W *= (float)m;
-                    }
-
-                    x = 2 * (r.X * r.Z + r.Y * r.W);
-                    y = 2 * (-r.X * r.W + r.Y * r.Z);
-                    z = -r.X * r.X - r.Y * r.Y + r.Z * r.Z + r.W * r.W;
-
-                    Vector3 up = new Vector3((float)x, (float)y, (float)z);
-                    Vector3 sitOffset = up * Appearance.AvatarHeight * 0.02638f;
-
-
-                    // SitTarget Compatibility Workaround 
+                    // SitTarget Compatibility Workaround
                     if (m_scene.m_useWrongSitTarget) {
                         if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-                            newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
-                            Quaternion newRot;
-                            if (part.IsRoot) {
-                                newRot = sitTargetOrient;
-                            } else {
-                                newPos = newPos * part.RotationOffset;
-                                newRot = part.RotationOffset * sitTargetOrient;
-                            }
-
-                            newPos += part.OffsetPosition;
-                            m_pos = newPos;
-                            Rotation = newRot;
-//                      ParentPosition = part.AbsolutePosition;
-                            part.ParentGroup.AddAvatar(UUID);
+                            newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
                         } else {
-                            m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
-                            Rotation = sitTargetOrient;
+                            newPos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
                         }
                     } else {
-                        newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
-                        Quaternion newRot;
-                        if (part.IsRoot) {
-                            newRot = sitTargetOrient;
-                        } else {
-                            newPos = newPos * part.RotationOffset;
-                            newRot = part.RotationOffset * sitTargetOrient;
-                        }
-
-                        newPos += part.OffsetPosition;
-                        m_pos = newPos;
-                        Rotation = newRot;
-//                      ParentPosition = part.AbsolutePosition;
-                        part.ParentGroup.AddAvatar(UUID);
+                        newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT;
                     }
 
+                    Quaternion newRot;
+
+                    if (part.IsRoot) {
+                        newRot = sitTargetOrient;
+                    } else {
+                        newPos = newPos * part.RotationOffset;
+                        newRot = part.RotationOffset * sitTargetOrient;
+                    }
+
+                    newPos += part.OffsetPosition;
+
+                    m_pos = newPos;
+                    Rotation = newRot;
                 }
                 else
                 {
-                    if (m_scene.m_useWrongSitTarget) {
-                        m_pos -= part.AbsolutePosition;
-                    } else {
-                        // An viewer expects to specify sit positions as offsets to the root prim, even if a child prim is
-                        // being sat upon.
-                        m_pos -= part.GroupPosition;
-//                    ParentPosition = part.AbsolutePosition;
-                        part.ParentGroup.AddAvatar (UUID);
-                    }
-//                        m_log.DebugFormat(
-//                            "[SCENE PRESENCE]: Sitting {0} at position {1} ({2} + {3}) on part {4} {5} without sit target",
-//                            Name, part.AbsolutePosition, m_pos, ParentPosition, part.Name, part.LocalId);
+                    m_pos -= part.AbsolutePosition;
                 }
 
                 ParentPart = m_scene.GetSceneObjectPart(m_requestedSitTargetID);
