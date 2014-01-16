@@ -1202,7 +1202,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         #endregion
 
-        public void WriteBakedTexturesReport(IScenePresence sp, ReportOutputAction outputAction)
+        // AKIDO removed reportOutputAction
+
+        public void WriteBakedTexturesReport(IScenePresence sp)
         {
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -1210,8 +1212,8 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
             // AKIDO Implemented outputAction again, which was removed in Aki-13.13
 
-            outputAction("For {0} in {1}", sp.Name, m_scene.RegionInfo.RegionName);
-            outputAction(BAKED_TEXTURES_REPORT_FORMAT, "Bake Type", "UUID");
+            m_log.DebugFormat("For {0} in {1}", sp.Name, m_scene.RegionInfo.RegionName);
+            m_log.DebugFormat(BAKED_TEXTURES_REPORT_FORMAT, "Bake Type", "UUID");
 
             Dictionary<BakeType, Primitive.TextureEntryFace> bakedTextures = GetBakedTextureFaces(sp.UUID);
 
@@ -1233,11 +1235,11 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                         rawTextureID += " (uploaded)";
                 }
 
-                outputAction(BAKED_TEXTURES_REPORT_FORMAT, bt, rawTextureID);
+                m_log.DebugFormat(BAKED_TEXTURES_REPORT_FORMAT, bt, rawTextureID);
             }
 
             bool bakedTextureValid = m_scene.AvatarFactory.ValidateBakedTextureCache(sp);
-            outputAction("{0} baked appearance texture is {1}", sp.Name, bakedTextureValid ? "OK" : "incomplete");
+            m_log.DebugFormat("{0} baked appearance texture is {1}", sp.Name, bakedTextureValid ? "OK" : "incomplete");
         }
     }
 }
