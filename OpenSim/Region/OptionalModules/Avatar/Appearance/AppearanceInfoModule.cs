@@ -231,8 +231,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     if (targetNameSupplied)
                     {
                         ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
+                        // AKIDO removed reportOutputAction from WriteBakedTextureReport
                         if (sp != null && !sp.IsChildAgent)
-                            scene.AvatarFactory.WriteBakedTexturesReport(sp, MainConsole.Instance.OutputFormat);
+                            scene.AvatarFactory.WriteBakedTexturesReport(sp);
                     }
                     else
                     {

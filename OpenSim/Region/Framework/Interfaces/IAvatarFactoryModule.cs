@@ -93,12 +93,13 @@ namespace OpenSim.Region.Framework.Interfaces
         void QueueAppearanceSend(UUID agentid);
         void QueueAppearanceSave(UUID agentid);
 
+        // AKIDO removed reportOutputAction 
+
         /// <summary>
         /// Get a report about the current state of a scene presence's baked appearance textures.
         /// </summary>
         /// <param name="sp"></param>
-        /// <param name="reportOutputAction"></param>
         /// <returns></returns>
-        void WriteBakedTexturesReport(IScenePresence sp, ReportOutputAction reportOutputAction);
+        void WriteBakedTexturesReport(IScenePresence sp);
     }
 }
