@@ -2894,52 +2894,37 @@ namespace OpenSim.Region.Framework.Scenes
                     if (m_scene.m_useWrongSitTarget) {
                         if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
                             newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
-                            Quaternion newRot;
-                            if (part.IsRoot) {
-                                newRot = sitTargetOrient;
-                            } else {
-                                newPos = newPos * part.RotationOffset;
-                                newRot = part.RotationOffset * sitTargetOrient;
-                            }
-
-                            newPos += part.OffsetPosition;
-                            m_pos = newPos;
-                            Rotation = newRot;
-//                      ParentPosition = part.AbsolutePosition;
-                            part.ParentGroup.AddAvatar(UUID);
                         } else {
-                            m_pos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
-                            Rotation = sitTargetOrient;
+                            newPos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
                         }
                     } else {
                         newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
-                        Quaternion newRot;
-                        if (part.IsRoot) {
-                            newRot = sitTargetOrient;
-                        } else {
-                            newPos = newPos * part.RotationOffset;
-                            newRot = part.RotationOffset * sitTargetOrient;
-                        }
-
-                        newPos += part.OffsetPosition;
-                        m_pos = newPos;
-                        Rotation = newRot;
-//                      ParentPosition = part.AbsolutePosition;
-                        part.ParentGroup.AddAvatar(UUID);
                     }
+                    Quaternion newRot;
+
+                    if (part.IsRoot) {
+                       newRot = sitTargetOrient;
+                    } else {
+                       newPos = newPos * part.RotationOffset;
+                       newRot = part.RotationOffset * sitTargetOrient;
+                    }
+
+                    newPos += part.OffsetPosition;
+
+                    m_pos = newPos;
+                    Rotation = newRot;
+
+//                    ParentPosition = part.AbsolutePosition;
+                    part.ParentGroup.AddAvatar(UUID);
 
                 }
                 else
                 {
-                    if (m_scene.m_useWrongSitTarget) {
-                        m_pos -= part.AbsolutePosition;
-                    } else {
-                        // An viewer expects to specify sit positions as offsets to the root prim, even if a child prim is
-                        // being sat upon.
-                        m_pos -= part.GroupPosition;
+                    // An viewer expects to specify sit positions as offsets to the root prim, even if a child prim is
+                    // being sat upon.
+                    m_pos -= part.GroupPosition;
 //                    ParentPosition = part.AbsolutePosition;
-                        part.ParentGroup.AddAvatar (UUID);
-                    }
+                    part.ParentGroup.AddAvatar (UUID);
 //                        m_log.DebugFormat(
 //                            "[SCENE PRESENCE]: Sitting {0} at position {1} ({2} + {3}) on part {4} {5} without sit target",
 //                            Name, part.AbsolutePosition, m_pos, ParentPosition, part.Name, part.LocalId);
