@@ -77,15 +77,16 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
 
         public void Initialise(IConfigSource source)
         {
+            // AKIDO get the Surabaya Server Config
             IConfig surabayaConfig = source.Configs["SurabayaServer"];
             if (surabayaConfig != null) {
                 surabayaServerURI = surabayaConfig.GetString("SurabayaServerURI");
 				surabayaServerEnabled = surabayaConfig.GetBoolean("Enabled");
                 m_log.DebugFormat("[AssetServicesConnector]: Surabaya ServerURI: {0}", surabayaServerURI);
             } else {
-                m_log.Warn("[AssetServicesConnector]: Surabaya Config is missing, defaulting to http://localhost:8080");
-				surabayaServerEnabled = true;
-                surabayaServerURI = "http://localhost:8080";
+                m_log.Warn("[AssetServicesConnector]: Surabaya Config is missing, disabling Surabaya");
+                surabayaServerEnabled = false;
+                surabayaServerURI = "";
             }
 
             IConfig moduleConfig = source.Configs["Modules"];
@@ -346,6 +347,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
 
 
    				try {
+                    // AKIDO Baked Textures are stored on the Surabaya Server as well... 
    					// it is also possible to disable Surabaya. I'd favor to configure 
    					// Surabaya in the CAPS Section of the OpenSim.ini but right now with still some 
    					// old Viwers which do not support http getTexture() I stick to this hack.
