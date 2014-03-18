@@ -147,6 +147,8 @@ public static class BSParam
     // Vehicle parameters
     public static float VehicleMaxLinearVelocity { get; private set; }
     public static float VehicleMaxLinearVelocitySquared { get; private set; }
+    public static float VehicleMinLinearVelocity { get; private set; }
+    public static float VehicleMinLinearVelocitySquared { get; private set; }
     public static float VehicleMaxAngularVelocity { get; private set; }
     public static float VehicleMaxAngularVelocitySq { get; private set; }
     public static float VehicleAngularDamping { get; private set; }
@@ -538,7 +540,7 @@ public static class BSParam
             (s,o) => { s.PE.SetContactProcessingThreshold(o.PhysBody, ContactProcessingThreshold); } ),
 
 	    new ParameterDefn<float>("TerrainImplementation", "Type of shape to use for terrain (0=heightmap, 1=mesh)",
-            (float)BSTerrainPhys.TerrainImplementation.Mesh ),
+            (float)BSTerrainPhys.TerrainImplementation.Heightmap ),
         new ParameterDefn<int>("TerrainMeshMagnification", "Number of times the 256x256 heightmap is multiplied to create the terrain mesh" ,
             2 ),
         new ParameterDefn<float>("TerrainFriction", "Factor to reduce movement against terrain surface" ,
@@ -598,6 +600,10 @@ public static class BSParam
             1000.0f,
             (s) => { return (float)VehicleMaxLinearVelocity; },
             (s,v) => { VehicleMaxLinearVelocity = v; VehicleMaxLinearVelocitySquared = v * v; } ),
+        new ParameterDefn<float>("VehicleMinLinearVelocity", "Maximum velocity magnitude that can be assigned to a vehicle",
+            0.001f,
+            (s) => { return (float)VehicleMinLinearVelocity; },
+            (s,v) => { VehicleMinLinearVelocity = v; VehicleMinLinearVelocitySquared = v * v; } ),
         new ParameterDefn<float>("VehicleMaxAngularVelocity", "Maximum rotational velocity magnitude that can be assigned to a vehicle",
             12.0f,
             (s) => { return (float)VehicleMaxAngularVelocity; },

@@ -65,6 +65,17 @@ namespace OpenSim.Region.ClientStack.Linden
 
         // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
+
+        /// <summary>
+        /// Control whether requests will be processed asynchronously.
+        /// </summary>
+        /// <remarks>
+        /// Defaults to true.  Can currently not be changed once a region has been added to the module.
+        /// </remarks>
+        public bool ProcessQueuedRequestsAsync { get; private set; }
+
+        private Stat m_queuedRequestsStat;
+
         private Scene m_scene;
 
         private IInventoryService m_InventoryService;
@@ -83,6 +94,13 @@ namespace OpenSim.Region.ClientStack.Linden
                 new DoubleQueue<aPollRequest>();
 
         #region ISharedRegionModule Members
+
+        public WebFetchInvDescModule() : this(true) {}
+
+        public WebFetchInvDescModule(bool processQueuedResultsAsync)
+        {
+            ProcessQueuedRequestsAsync = processQueuedResultsAsync;
+        }
 
         public void Initialise(IConfigSource source)
         {
@@ -114,8 +132,18 @@ namespace OpenSim.Region.ClientStack.Linden
 
             m_scene.EventManager.OnRegisterCaps -= RegisterCaps;
 
-            foreach (Thread t in m_workerThreads)
-                Watchdog.AbortThread(t.ManagedThreadId);
+            StatsManager.DeregisterStat(m_queuedRequestsStat);
+
+            if (ProcessQueuedRequestsAsync)
+            {
+                if (m_workerThreads != null)
+                {
+                    foreach (Thread t in m_workerThreads)
+                        Watchdog.AbortThread(t.ManagedThreadId);
+
+                    m_workerThreads = null;
+                }
+            }
 
             m_scene = null;
         }
@@ -125,6 +153,21 @@ namespace OpenSim.Region.ClientStack.Linden
             if (!m_Enabled)
                 return;
 
+            m_queuedRequestsStat =
+                new Stat(
+                    "QueuedFetchInventoryRequests",
+                    "Number of fetch inventory requests queued for processing",
+                    "",
+                    "",
+                    "scene",
+                    m_scene.Name,
+                    StatType.Pull,
+                    MeasuresOfInterest.AverageChangeOverTime,
+                    stat => { lock (m_queue) { stat.Value = m_queue.Count; } },
+                    StatVerbosity.Debug);
+
+            StatsManager.RegisterStat(m_queuedRequestsStat);
+
             m_InventoryService = m_scene.InventoryService;
             m_LibraryService = m_scene.LibraryService;
 
@@ -133,7 +176,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
             m_scene.EventManager.OnRegisterCaps += RegisterCaps;
 
-            if (m_workerThreads == null)
+            if (ProcessQueuedRequestsAsync && m_workerThreads == null)
             {
                 m_workerThreads = new Thread[2];
 
@@ -358,11 +401,16 @@ namespace OpenSim.Region.ClientStack.Linden
             {
                 Watchdog.UpdateThread();
 
-                aPollRequest poolreq = m_queue.Dequeue();
-
-                if (poolreq != null && poolreq.thepoll != null)
-                    poolreq.thepoll.Process(poolreq);
+                WaitProcessQueuedInventoryRequest();
             }
+        }
+
+        public void WaitProcessQueuedInventoryRequest()
+        {
+            aPollRequest poolreq = m_queue.Dequeue();
+
+            if (poolreq != null && poolreq.thepoll != null)
+                poolreq.thepoll.Process(poolreq);
         }
     }
 }

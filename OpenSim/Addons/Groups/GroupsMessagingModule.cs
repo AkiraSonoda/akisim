@@ -82,7 +82,6 @@ namespace OpenSim.Groups
         private Dictionary<UUID, List<string>> m_groupsAgentsDroppedFromChatSession = new Dictionary<UUID, List<string>>();
         private Dictionary<UUID, List<string>> m_groupsAgentsInvitedToChatSession = new Dictionary<UUID, List<string>>();
 
-
         #region Region Module interfaceBase Members
 
         public void Initialise(IConfigSource config)
@@ -177,10 +176,8 @@ namespace OpenSim.Groups
                 return;
             }
 
-
             if (m_presenceService == null)
                 m_presenceService = scene.PresenceService;
-
         }
 
         public void RemoveRegion(Scene scene)
@@ -231,7 +228,6 @@ namespace OpenSim.Groups
 
         #endregion
 
-
         /// <summary>
         /// Not really needed, but does confirm that the group exists.
         /// </summary>
@@ -252,15 +248,21 @@ namespace OpenSim.Groups
                 return false;
             }
         }
-        
+
         public void SendMessageToGroup(GridInstantMessage im, UUID groupID)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
+            SendMessageToGroup(im, groupID, UUID.Zero, null);
+        }
+        
+        public void SendMessageToGroup(
+            GridInstantMessage im, UUID groupID, UUID sendingAgentForGroupCalls, Func<GroupMembersData, bool> sendCondition)
+        {
             UUID fromAgentID = new UUID(im.fromAgentID);
+
+            // Unlike current XmlRpcGroups, Groups V2 can accept UUID.Zero when a perms check for the requesting agent
+            // is not necessary.
             List<GroupMembersData> groupMembers = m_groupData.GetGroupMembers(UUID.Zero.ToString(), groupID);
+
             int groupMembersCount = groupMembers.Count;
             PresenceInfo[] onlineAgents = null;
 
@@ -314,14 +316,26 @@ namespace OpenSim.Groups
 
                 if (clientsAlreadySent.Contains(member.AgentID))
                     continue;
+
                 clientsAlreadySent.Add(member.AgentID);
 
-                if (hasAgentDroppedGroupChatSession(member.AgentID.ToString(), groupID))
+                if (sendCondition != null)
                 {
-					// Don't deliver messages to people who have dropped this session
-					if (m_log.IsDebugEnabled) {
-						m_log.DebugFormat ("[GroupsMessagingModule]: {0} has dropped session, not delivering to them", member.AgentID);
-					}
+                    if (!sendCondition(member))
+                    {
+                        if (m_log.IsDebugEnabled) 
+                            m_log.DebugFormat(
+                                "[Groups.Messaging]: Not sending to {0} as they do not fulfill send condition", 
+                                 member.AgentID);
+
+                        continue;
+                    }
+                }
+                else if (hasAgentDroppedGroupChatSession(member.AgentID.ToString(), groupID))
+                {
+                    // Don't deliver messages to people who have dropped this session
+                    if (m_log.IsDebugEnabled) 
+                        m_log.DebugFormat("[Groups.Messaging]: {0} has dropped session, not delivering to them", member.AgentID);
 
                     continue;
                 }

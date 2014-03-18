@@ -92,12 +92,12 @@ namespace OpenSim.Region.Framework.Interfaces
 
         void EnableChildAgent(ScenePresence agent, GridRegion region);
 
-        GridRegion GetDestination(Scene scene, UUID agentID, Vector3 pos, out uint xDest, out uint yDest, out string version, out Vector3 newpos);
+        GridRegion GetDestination(Scene scene, UUID agentID, Vector3 pos, out string version,
+                                        out Vector3 newpos, out string reason);
 
         void Cross(SceneObjectGroup sog, Vector3 position, bool silent);
 
         ScenePresence CrossAgentToNewRegionAsync(ScenePresence agent, Vector3 pos, GridRegion neighbourRegion, bool isFlying, string version);
-
     }
 
     public interface IUserAgentVerificationModule

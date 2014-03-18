@@ -273,10 +273,21 @@ namespace OpenSim
                                           SavePrimsXml2);
 
             m_console.Commands.AddCommand("Archiving", false, "load oar",
-                                          "load oar [--merge] [--skip-assets] [<OAR path>]",
+                                          "load oar [--merge] [--skip-assets]"
+                                             + " [--force-terrain] [--force-parcels]"
+                                             + " [--no-objects]"
+                                             + " [--rotation degrees] [--rotation-center \"<x,y,z>\"]"
+                                             + " [--displacement \"<x,y,z>\"]"
+                                             + " [<OAR path>]",
                                           "Load a region's data from an OAR archive.",
-                                          "--merge will merge the OAR with the existing scene." + Environment.NewLine
+                                          "--merge will merge the OAR with the existing scene (suppresses terrain and parcel info loading)." + Environment.NewLine
                                           + "--skip-assets will load the OAR but ignore the assets it contains." + Environment.NewLine
+                                          + "--displacement will add this value to the position of every object loaded" + Environment.NewLine
+                                          + "--force-terrain forces the loading of terrain from the oar (undoes suppression done by --merge)" + Environment.NewLine
+                                          + "--force-parcels forces the loading of parcels from the oar (undoes suppression done by --merge)" + Environment.NewLine
+                                          + "--rotation specified rotation to be applied to the oar. Specified in degrees." + Environment.NewLine
+                                          + "--rotation-center Location (relative to original OAR) to apply rotation. Default is <128,128,0>" + Environment.NewLine
+                                          + "--no-objects suppresses the addition of any objects (good for loading only the terrain)" + Environment.NewLine
                                           + "The path can be either a filesystem location or a URI."
                                           + "  If this is not given then the command looks for an OAR named region.oar in the current directory.",
                                           LoadOar);
@@ -595,7 +606,7 @@ namespace OpenSim
             {
                 scene.ForEachSOG(delegate(SceneObjectGroup sog)
                 {
-                    if (sog.AttachmentPoint == 0)
+                    if (!sog.IsAttachment)
                     {
                         sog.RootPart.UpdateRotation(rot * sog.GroupRotation);
                         Vector3 offset = sog.AbsolutePosition - center;
@@ -624,7 +635,7 @@ namespace OpenSim
             {
                 scene.ForEachSOG(delegate(SceneObjectGroup sog)
                 {
-                    if (sog.AttachmentPoint == 0)
+                    if (!sog.IsAttachment)
                     {
                         if (sog.RootPart.AbsolutePosition.Z < minZ)
                             minZ = sog.RootPart.AbsolutePosition.Z;
@@ -636,7 +647,7 @@ namespace OpenSim
             {
                 scene.ForEachSOG(delegate(SceneObjectGroup sog)
                 {
-                    if (sog.AttachmentPoint == 0)
+                    if (!sog.IsAttachment)
                     {
                         Vector3 tmpRootPos = sog.RootPart.AbsolutePosition;
                         tmpRootPos.Z -= minZ;
@@ -676,7 +687,7 @@ namespace OpenSim
             {
                 scene.ForEachSOG(delegate(SceneObjectGroup sog)
                 {
-                    if (sog.AttachmentPoint == 0)
+                    if (!sog.IsAttachment)
                         sog.UpdateGroupPosition(sog.AbsolutePosition + offset);
                 });
             });
@@ -999,17 +1010,24 @@ namespace OpenSim
                     break;
 
                 case "regions":
+                    ConsoleDisplayTable cdt = new ConsoleDisplayTable();
+                    cdt.AddColumn("Name", ConsoleDisplayUtil.RegionNameSize);
+                    cdt.AddColumn("ID", ConsoleDisplayUtil.UuidSize);
+                    cdt.AddColumn("Position", ConsoleDisplayUtil.CoordTupleSize);
+                    cdt.AddColumn("Port", ConsoleDisplayUtil.PortSize);
+                    cdt.AddColumn("Ready?", 6);
+                    cdt.AddColumn("Estate", ConsoleDisplayUtil.EstateNameSize);
                     SceneManager.ForEachScene(
-                        delegate(Scene scene)
-                            {
-                                MainConsole.Instance.Output(String.Format(
-                                           "Region Name: {0}, Region XLoc: {1}, Region YLoc: {2}, Region Port: {3}, Estate Name: {4}",
-                                           scene.RegionInfo.RegionName,
-                                           scene.RegionInfo.RegionLocX,
-                                           scene.RegionInfo.RegionLocY,
-                                           scene.RegionInfo.InternalEndPoint.Port,
-                                           scene.RegionInfo.EstateSettings.EstateName));
-                            });
+                        scene => 
+                        { 
+                            RegionInfo ri = scene.RegionInfo; 
+                            cdt.AddRow(
+                                ri.RegionName, ri.RegionID, string.Format("{0},{1}", ri.RegionLocX, ri.RegionLocY), 
+                                ri.InternalEndPoint.Port, scene.Ready ? "Yes" : "No", ri.EstateSettings.EstateName);
+                        }
+                    );
+
+                    MainConsole.Instance.Output(cdt.ToString());
                     break;
 
                 case "ratings":

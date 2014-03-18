@@ -258,7 +258,7 @@ namespace OpenSim.Services.LLLoginService
             LookAt = String.Format("[r{0},r{1},r{2}]", lookAt.X, lookAt.Y, lookAt.Z);
 
             FillOutRegionData(destination);
-            // m_log.DebugFormat("[LOGIN RESPONSE] LLLoginResponse create. sizeX=<{0},{1}>", RegionSizeX, RegionSizeY);
+            m_log.DebugFormat("[LOGIN RESPONSE] LLLoginResponse create. sizeX={0}, sizeY={1}", RegionSizeX, RegionSizeY);
 
             FillOutSeedCap(aCircuit, destination, clientIP);
 
@@ -361,7 +361,8 @@ namespace OpenSim.Services.LLLoginService
 
         private void FillOutHomeData(GridUserInfo pinfo, GridRegion home)
         {
-            int x = 1000 * (int)Constants.RegionSize, y = 1000 * (int)Constants.RegionSize;
+            int x = (int)Util.RegionToWorldLoc(1000);
+            int y = (int)Util.RegionToWorldLoc(1000);
             if (home != null)
             {
                 x = home.RegionLocX;
@@ -435,10 +436,23 @@ namespace OpenSim.Services.LLLoginService
             ErrorReason = "key";
             welcomeMessage = "Welcome to OpenSim!";
             seedCapability = String.Empty;
-            home = "{'region_handle':[r" + (1000*Constants.RegionSize).ToString() + ",r" + (1000*Constants.RegionSize).ToString() + "], 'position':[r" +
-                   userProfile.homepos.X.ToString() + ",r" + userProfile.homepos.Y.ToString() + ",r" +
-                   userProfile.homepos.Z.ToString() + "], 'look_at':[r" + userProfile.homelookat.X.ToString() + ",r" +
-                   userProfile.homelookat.Y.ToString() + ",r" + userProfile.homelookat.Z.ToString() + "]}";
+            home = "{'region_handle':[" 
+                    + "r" + Util.RegionToWorldLoc(1000).ToString()
+                    + ","
+                    + "r" + Util.RegionToWorldLoc(1000).ToString()
+                    + "], 'position':["
+                    + "r" + userProfile.homepos.X.ToString()
+                    + ","
+                    + "r" + userProfile.homepos.Y.ToString()
+                    + ","
+                    + "r" + userProfile.homepos.Z.ToString()
+                    + "], 'look_at':["
+                    + "r" + userProfile.homelookat.X.ToString()
+                    + ","
+                    + "r" + userProfile.homelookat.Y.ToString()
+                    + ","
+                    + "r" + userProfile.homelookat.Z.ToString()
+                    + "]}";
             lookAt = "[r0.99949799999999999756,r0.03166859999999999814,r0]";
             RegionX = (uint) 255232;
             RegionY = (uint) 254976;
@@ -533,7 +547,7 @@ namespace OpenSim.Services.LLLoginService
                 responseData["region_y"] = (Int32)(RegionY);
                 responseData["region_size_x"] = (Int32)RegionSizeX;
                 responseData["region_size_y"] = (Int32)RegionSizeY;
-                // m_log.DebugFormat("[LOGIN RESPONSE] returning sizeX=<{0},{1}>", RegionSizeX, RegionSizeY);
+                m_log.DebugFormat("[LOGIN RESPONSE] returning sizeX={0}, sizeY={1}", RegionSizeX, RegionSizeY);
 
                 if (searchURL != String.Empty)
                     responseData["search"] = searchURL;

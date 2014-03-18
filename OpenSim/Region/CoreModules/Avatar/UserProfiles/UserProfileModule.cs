@@ -657,9 +657,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
         /// Enabled.
         /// </param>
         public void PickInfoUpdate(IClientAPI remoteClient, UUID pickID, UUID creatorID, bool topPick, string name, string desc, UUID snapshotID, int sortOrder, bool enabled)
-        {
-            
+        {            
             m_log.DebugFormat("[PROFILES]: Start PickInfoUpdate Name: {0} PickId: {1} SnapshotId: {2}", name, pickID.ToString(), snapshotID.ToString());
+
             UserProfilePick pick = new UserProfilePick();
             string serverURI = string.Empty;
             GetUserProfileServerURI(remoteClient.AgentId, out serverURI);
@@ -667,24 +667,34 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
 
             Vector3 avaPos = p.AbsolutePosition;
             // Getting the global position for the Avatar
-            Vector3 posGlobal = new Vector3(remoteClient.Scene.RegionInfo.RegionLocX*Constants.RegionSize + avaPos.X,
-                                            remoteClient.Scene.RegionInfo.RegionLocY*Constants.RegionSize + avaPos.Y,
+            Vector3 posGlobal = new Vector3(remoteClient.Scene.RegionInfo.WorldLocX + avaPos.X,
+                                            remoteClient.Scene.RegionInfo.WorldLocY + avaPos.Y,
                                             avaPos.Z);
 
             string landOwnerName = string.Empty;
-            ILandObject land =  p.Scene.LandChannel.GetLandObject(avaPos.X, avaPos.Y);
-            if(land.LandData.IsGroupOwned)
+            ILandObject land = p.Scene.LandChannel.GetLandObject(avaPos.X, avaPos.Y);
+
+            if (land != null)
             {
-                IGroupsModule groupMod = p.Scene.RequestModuleInterface<IGroupsModule>();
-                UUID groupId = land.LandData.GroupID;
-                GroupRecord groupRecord = groupMod.GetGroupRecord(groupId);
-                landOwnerName = groupRecord.GroupName;
+                if (land.LandData.IsGroupOwned)
+                {
+                    IGroupsModule groupMod = p.Scene.RequestModuleInterface<IGroupsModule>();
+                    UUID groupId = land.LandData.GroupID;
+                    GroupRecord groupRecord = groupMod.GetGroupRecord(groupId);
+                    landOwnerName = groupRecord.GroupName;
+                }
+                else
+                {
+                    IUserAccountService accounts = p.Scene.RequestModuleInterface<IUserAccountService>();
+                    UserAccount user = accounts.GetUserAccount(p.Scene.RegionInfo.ScopeID, land.LandData.OwnerID);
+                    landOwnerName = user.Name;
+                }
             }
             else
             {
-                IUserAccountService accounts = p.Scene.RequestModuleInterface<IUserAccountService>();
-                UserAccount user = accounts.GetUserAccount(p.Scene.RegionInfo.ScopeID, land.LandData.OwnerID);
-                landOwnerName = user.Name;
+                m_log.WarnFormat(
+                    "[PROFILES]: PickInfoUpdate found no parcel info at {0},{1} in {2}", 
+                    avaPos.X, avaPos.Y, p.Scene.Name);
             }
 
             pick.PickId = pickID;
@@ -1164,7 +1174,16 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
 
                 UserAgentServiceConnector uConn = new UserAgentServiceConnector(home_url);
 
-                Dictionary<string, object> account = uConn.GetUserInfo(userID);
+                Dictionary<string, object> account;
+                try
+                {
+                    account = uConn.GetUserInfo(userID);
+                }
+                catch (Exception e)
+                {
+                    m_log.Debug("[PROFILES]: GetUserInfo call failed ", e);
+                    account = new Dictionary<string, object>();
+                }
 
                 if (account.Count > 0)
                 {
@@ -1290,9 +1309,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
             webRequest.ContentType = "application/json-rpc";
             webRequest.Method = "POST";
 
-            Stream dataStream = webRequest.GetRequestStream();
-            dataStream.Write(content, 0, content.Length);
-            dataStream.Close();
+            using (Stream dataStream = webRequest.GetRequestStream())
+                dataStream.Write(content, 0, content.Length);
 
             WebResponse webResponse = null;
             try
@@ -1306,26 +1324,18 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
                 return false;
             }
 
-            Stream rstream = webResponse.GetResponseStream();
-              
-            OSDMap mret = new OSDMap();
-            try
+            using (webResponse)
+            using (Stream rstream = webResponse.GetResponseStream())
             {
-                mret = (OSDMap)OSDParser.DeserializeJson(rstream);
-            }
-            catch (Exception e)
-            {
-                m_log.DebugFormat("[PROFILES]: JsonRpcRequest Error {0} - remote user with legacy profiles?", e.Message);
-                return false;
-            }
+                OSDMap mret = (OSDMap)OSDParser.DeserializeJson(rstream);
 
+                if (mret.ContainsKey("error"))
+                    return false;
 
-            if (mret.ContainsKey("error"))
-                return false;
-            
-            // get params...
-            OSD.DeserializeMembers(ref parameters, (OSDMap) mret["result"]);
-            return true;
+                // get params...
+                OSD.DeserializeMembers(ref parameters, (OSDMap)mret["result"]);
+                return true;
+            }
         }
 
         /// <summary>
@@ -1366,9 +1376,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
             webRequest.ContentType = "application/json-rpc";
             webRequest.Method = "POST";
 
-            Stream dataStream = webRequest.GetRequestStream();
-            dataStream.Write(content, 0, content.Length);
-            dataStream.Close();
+            using (Stream dataStream = webRequest.GetRequestStream())
+                dataStream.Write(content, 0, content.Length);
 
             WebResponse webResponse = null;
             try
@@ -1382,29 +1391,32 @@ namespace OpenSim.Region.OptionalModules.Avatar.UserProfiles
                 return false;
             }
 
-            Stream rstream = webResponse.GetResponseStream();
-
-            OSDMap response = new OSDMap();
-            try
+            using (webResponse)
+            using (Stream rstream = webResponse.GetResponseStream())
             {
-                response = (OSDMap)OSDParser.DeserializeJson(rstream);
-            }
-            catch (Exception e)
-            {
-                m_log.DebugFormat("[PROFILES]: JsonRpcRequest Error {0} - remote user with legacy profiles?", e.Message);
-                return false;
-            }
+                OSDMap response = new OSDMap();
+                try
+                {
+                    response = (OSDMap)OSDParser.DeserializeJson(rstream);
+                }
+                catch (Exception e)
+                {
+                    m_log.DebugFormat("[PROFILES]: JsonRpcRequest Error {0} - remote user with legacy profiles?", e.Message);
+                    return false;
+                }
 
-            if(response.ContainsKey("error"))
-            {
-                data = response["error"];
-                return false;
+                if (response.ContainsKey("error"))
+                {
+                    data = response["error"];
+                    return false;
+                }
+
+                data = response;
+
+                return true;
             }
-
-            data = response;
-
-            return true;
         }
+
         #endregion Web Util
     }
 }

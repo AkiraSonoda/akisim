@@ -42,8 +42,8 @@ namespace OpenSim.Region.Framework.Scenes
 {
     public abstract class SceneBase : IScene
     {
-        protected static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        protected static readonly string LogHeader = "[SCENE]";
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly string LogHeader = "[SCENE]";
 
         #region Events
 
