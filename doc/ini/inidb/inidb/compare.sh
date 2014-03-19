@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-DevelHome="/Users/markusgasser/develop"
+DevelHome="/home/opensim/develop"
 
 # checking Metro inis
 # echo "==== check (latest) Metro AkiSim OpenSim.ini against Database ========================"
