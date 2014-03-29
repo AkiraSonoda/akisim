@@ -913,7 +913,8 @@ namespace OpenSim.Region.Framework.Scenes
 
                 if (m_generateMaptiles)
                 {
-                    int maptileRefresh = startupConfig.GetInt("MaptileRefresh", 0);
+                    int maptileRefresh = Util.GetConfigVarFromSections<int>(config, "MaptileRefresh", possibleMapConfigSections, 0);
+                    m_log.InfoFormat("[SCENE]: Region {0}, WORLD MAP refresh time set to {1} seconds", RegionInfo.RegionName, maptileRefresh);
                     if (maptileRefresh != 0)
                     {
                         m_mapGenerationTimer.Interval = maptileRefresh * 1000;
@@ -1525,7 +1526,7 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         tmpMS = Util.EnvironmentTickCount();
                         m_cleaningTemps = true;
-                        Util.FireAndForget(delegate { CleanTempObjects(); m_cleaningTemps = false;  });
+                        Util.RunThreadNoTimeout(delegate { CleanTempObjects(); m_cleaningTemps = false;  }, "CleanTempObjects", null);
                         tempOnRezMS = Util.EnvironmentTickCountSubtract(tmpMS);
                     }
     
@@ -1698,7 +1699,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (!m_backingup)
             {
                 m_backingup = true;
-                Util.FireAndForget(BackupWaitCallback);
+                Util.RunThreadNoTimeout(BackupWaitCallback, "BackupWaitCallback", null);
             }
         }
 
@@ -1711,7 +1712,7 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         /// <summary>
-        /// Wrapper for Backup() that can be called with Util.FireAndForget()
+        /// Wrapper for Backup() that can be called with Util.RunThreadNoTimeout()
         /// </summary>
         private void BackupWaitCallback(object o)
         {
@@ -1719,8 +1720,12 @@ namespace OpenSim.Region.Framework.Scenes
         }
         
         /// <summary>
-        /// Backup the scene.  This acts as the main method of the backup thread.
+        /// Backup the scene.
         /// </summary>
+        /// <remarks>
+        /// This acts as the main method of the backup thread.  In a regression test whether the backup thread is not
+        /// running independently this can be invoked directly.
+        /// </remarks>
         /// <param name="forced">
         /// If true, then any changes that have not yet been persisted are persisted.  If false,
         /// then the persistence decision is left to the backup code (in some situations, such as object persistence,
@@ -1773,6 +1778,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if (group != null)
             {
+                group.HasGroupChanged = true;
                 group.ProcessBackup(SimulationDataService, true);
             }
         }
@@ -2361,13 +2367,12 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 if (!softDelete)
                 {
-                    // Force a database update so that the scene object group ID is accurate.  It's possible that the
-                    // group has recently been delinked from another group but that this change has not been persisted
-                    // to the DB.
+                    // If the group contains prims whose SceneGroupID is incorrect then force a
+                    // database update, because RemoveObject() works by searching on the SceneGroupID.
                     // This is an expensive thing to do so only do it if absolutely necessary.
-                    if (so.HasGroupChangedDueToDelink)
-                        ForceSceneObjectBackup(so);                
-                    
+                    if (so.GroupContainsForeignPrims)
+                        ForceSceneObjectBackup(so);
+
                     so.DetachFromBackup();
                     SimulationDataService.RemoveObject(so.UUID, RegionInfo.RegionID);
                 }
@@ -3433,6 +3438,8 @@ namespace OpenSim.Region.Framework.Scenes
             // TeleportFlags.ViaLandmark | TeleportFlags.ViaLocation | TeleportFlags.ViaLandmark | TeleportFlags.Default - Regular Teleport
 
             // Don't disable this log message - it's too helpful
+            string curViewer = Util.GetViewerName(acd);
+
             m_log.InfoFormat(
                 "[SCENE]: Region {0} told of incoming {1} agent {2} {3} {4} (circuit code {5}, IP {6}, viewer {7}, teleportflags ({8}), position {9})",
                 RegionInfo.RegionName,
@@ -3442,7 +3449,7 @@ namespace OpenSim.Region.Framework.Scenes
                 acd.AgentID,
                 acd.circuitcode,
                 acd.IPAddress,
-                acd.Viewer,
+                curViewer,
                 ((TPFlags)teleportFlags).ToString(),
                 acd.startpos
             );
@@ -3464,7 +3471,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 foreach (string viewer in m_AllowedViewers)
                 {
-                    if (viewer == acd.Viewer.Substring(0, viewer.Length).Trim().ToLower())
+                    if (viewer == curViewer.Substring(0, viewer.Length).Trim().ToLower())
                     {
                         ViewerDenied = false;
                         break;
@@ -3481,7 +3488,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 foreach (string viewer in m_BannedViewers)
                 {
-                    if (viewer == acd.Viewer.Substring(0, viewer.Length).Trim().ToLower())
+                    if (viewer == curViewer.Substring(0, viewer.Length).Trim().ToLower())
                     {
                         ViewerDenied = true;
                         break;
@@ -3493,7 +3500,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 m_log.DebugFormat(
                     "[SCENE]: Access denied for {0} {1} using {2}",
-                    acd.firstname, acd.lastname, acd.Viewer);
+                    acd.firstname, acd.lastname, curViewer);
                 reason = "Access denied, your viewer is banned by the region owner";
                 return false;
             }

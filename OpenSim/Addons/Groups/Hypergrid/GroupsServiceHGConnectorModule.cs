@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) Contributors, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
@@ -688,7 +688,7 @@ namespace OpenSim.Groups
 
                     // so we have the list of urls to send the notice to
                     // this may take a long time...
-                    Util.FireAndForget(delegate
+                    Util.RunThreadNoTimeout(delegate
                     {
                         foreach (string u in urls)
                         {
@@ -699,7 +699,7 @@ namespace OpenSim.Groups
                                     hasAttachment, attType, attName, attItemID, AgentUUIForOutside(attOwnerID));
                             }
                         }
-                    });
+                    }, "AddGroupNotice", null);
 
                     return true;
                 }

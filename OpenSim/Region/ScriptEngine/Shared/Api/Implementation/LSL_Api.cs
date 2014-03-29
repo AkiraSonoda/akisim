@@ -3614,6 +3614,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 implicitPerms = ScriptBaseClass.PERMISSION_TAKE_CONTROLS |
                         ScriptBaseClass.PERMISSION_TRIGGER_ANIMATION |
                         ScriptBaseClass.PERMISSION_CONTROL_CAMERA |
+                        ScriptBaseClass.PERMISSION_TRACK_CAMERA |
                         ScriptBaseClass.PERMISSION_ATTACH;
             }
             else
@@ -6408,14 +6409,14 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                         case (int)ScriptBaseClass.PSYS_PART_START_SCALE:
                             tempv = rules.GetVector3Item(i + 1);
-                            prules.PartStartScaleX = (float)tempv.x;
-                            prules.PartStartScaleY = (float)tempv.y;
+                            prules.PartStartScaleX = validParticleScale((float)tempv.x);
+                            prules.PartStartScaleY = validParticleScale((float)tempv.y);
                             break;
 
                         case (int)ScriptBaseClass.PSYS_PART_END_SCALE:
                             tempv = rules.GetVector3Item(i + 1);
-                            prules.PartEndScaleX = (float)tempv.x;
-                            prules.PartEndScaleY = (float)tempv.y;
+                            prules.PartEndScaleX = validParticleScale((float)tempv.x);
+                            prules.PartEndScaleY = validParticleScale((float)tempv.y);
                             break;
 
                         case (int)ScriptBaseClass.PSYS_PART_MAX_AGE:
@@ -6544,6 +6545,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 part.ParentGroup.HasGroupChanged = true;
             }
             part.SendFullUpdateToAllClients();
+        }
+
+        private float validParticleScale(float value)
+        {
+            if (value > 4.0f) return 4.0f;
+            return value;
         }
 
         public void llGroundRepel(double height, int water, double tau)

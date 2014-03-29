@@ -150,12 +150,27 @@ namespace OpenSim.Region.Framework.Scenes
 
             get { return m_hasGroupChanged; }
         }
+
+        private bool m_groupContainsForeignPrims = false;
         
         /// <summary>
-        /// Has the group changed due to an unlink operation?  We record this in order to optimize deletion, since
-        /// an unlinked group currently has to be persisted to the database before we can perform an unlink operation.
+        /// Whether the group contains prims that came from a different group. This happens when
+        /// linking or delinking groups. The implication is that until the group is persisted,
+        /// the prims in the database still use the old SceneGroupID. That's a problem if the group
+        /// is deleted, because we delete groups by searching for prims by their SceneGroupID.
         /// </summary>
-        public bool HasGroupChangedDueToDelink { get; private set; }
+        public bool GroupContainsForeignPrims
+        {
+            private set
+            {
+                m_groupContainsForeignPrims = value;
+                if (m_groupContainsForeignPrims)
+                    HasGroupChanged = true;
+            }
+
+            get { return m_groupContainsForeignPrims; }
+        }
+
 
         private bool isTimeToPersist()
         {
@@ -272,7 +287,10 @@ namespace OpenSim.Region.Framework.Scenes
         private Vector3 lastPhysGroupPos;
         private Quaternion lastPhysGroupRot;
 
-        private bool m_isBackedUp;
+        /// <summary>
+        /// Is this entity set to be saved in persistent storage?
+        /// </summary>
+        public bool Backup { get; private set; }
 
         protected MapAndArray<UUID, SceneObjectPart> m_parts = new MapAndArray<UUID, SceneObjectPart>();
 
@@ -696,7 +714,11 @@ namespace OpenSim.Region.Framework.Scenes
             set { m_rootPart.Text = value; }
         }
 
-        protected virtual bool InSceneBackup
+        /// <summary>
+        /// If set to true then the scene object can be backed up in principle, though this will only actually occur
+        /// if Backup is set.  If false then the scene object will never be backed up, Backup will always be false.
+        /// </summary>
+        protected virtual bool CanBeBackedUp
         {
             get { return true; }
         }
@@ -877,15 +899,15 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public virtual void AttachToBackup()
         {
-            if (InSceneBackup)
+            if (CanBeBackedUp)
             {
                 //m_log.DebugFormat(
                 //    "[SCENE OBJECT GROUP]: Attaching object {0} {1} to scene presistence sweep", Name, UUID);
 
-                if (!m_isBackedUp)
+                if (!Backup)
                     m_scene.EventManager.OnBackup += ProcessBackup;
                 
-                m_isBackedUp = true;
+                Backup = true;
             }
         }
         
@@ -1555,7 +1577,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="datastore"></param>
         public virtual void ProcessBackup(ISimulationDataService datastore, bool forcedBackup)
         {
-            if (!m_isBackedUp)
+            if (!Backup)
             {
 //                m_log.DebugFormat(
 //                    "[WATER WARS]: Ignoring backup of {0} {1} since object is not marked to be backed up", Name, UUID);
@@ -1617,7 +1639,7 @@ namespace OpenSim.Region.Framework.Scenes
                         backup_group.RootPart.AngularVelocity = RootPart.AngularVelocity;
                         backup_group.RootPart.ParticleSystem = RootPart.ParticleSystem;
                         HasGroupChanged = false;
-                        HasGroupChangedDueToDelink = false;
+                        GroupContainsForeignPrims = false;
 
                         m_scene.EventManager.TriggerOnSceneObjectPreSave(backup_group, this);
                         datastore.StoreObject(backup_group, m_scene.RegionInfo.RegionID);
@@ -1677,30 +1699,9 @@ namespace OpenSim.Region.Framework.Scenes
         public SceneObjectGroup Copy(bool userExposed)
         {
             SceneObjectGroup dupe = (SceneObjectGroup)MemberwiseClone();
-            dupe.m_isBackedUp = false;
+            dupe.Backup = false;
             dupe.m_parts = new MapAndArray<OpenMetaverse.UUID, SceneObjectPart>();
-
-            // Warning, The following code related to previousAttachmentStatus is needed so that clones of 
-            // attachments do not bordercross while they're being duplicated.  This is hacktastic!
-            // Normally, setting AbsolutePosition will bordercross a prim if it's outside the region!
-            // unless IsAttachment is true!, so to prevent border crossing, we save it's attachment state 
-            // (which should be false anyway) set it as an Attachment and then set it's Absolute Position, 
-            // then restore it's attachment state
-
-            // This is only necessary when userExposed is false!
-
-            bool previousAttachmentStatus = dupe.IsAttachment;
-            
-            if (!userExposed)
-                dupe.IsAttachment = true;
-
             dupe.m_sittingAvatars = new List<UUID>();
-
-            if (!userExposed)
-            {
-                dupe.IsAttachment = previousAttachmentStatus;
-            }
-
             dupe.CopyRootPart(m_rootPart, OwnerID, GroupID, userExposed);
             dupe.m_rootPart.LinkNum = m_rootPart.LinkNum;
 
@@ -2381,6 +2382,8 @@ namespace OpenSim.Region.Framework.Scenes
             // If linking prims with different permissions, fix them
             AdjustChildPrimPermissions();
 
+            GroupContainsForeignPrims = true;
+
             AttachToBackup();
 
             // Here's the deal, this is ABSOLUTELY CRITICAL so the physics scene gets the update about the 
@@ -2524,9 +2527,16 @@ namespace OpenSim.Region.Framework.Scenes
 
             linkPart.Rezzed = RootPart.Rezzed;
 
-            // When we delete a group, we currently have to force persist to the database if the object id has changed
-            // (since delete works by deleting all rows which have a given object id)
-            objectGroup.HasGroupChangedDueToDelink = true;
+            // We must persist the delinked group to the database immediately, for safety. The problem
+            // is that although in memory the new group has a new SceneGroupID, in the database it
+            // still has the parent group's SceneGroupID (until the next backup). This means that if the
+            // parent group is deleted then the delinked group will also be deleted from the database.
+            // This problem will disappear if the region remains alive long enough for another backup,
+            // since at that time the delinked group's new SceneGroupID will be written to the database.
+            // But if the region crashes before that then the prims will be permanently gone, and this must
+            // not happen. (We can't use a just-in-time trick like GroupContainsForeignPrims in this case
+            // because the delinked group doesn't know when the source group is deleted.)
+            m_scene.ForceSceneObjectBackup(objectGroup);
 
             return objectGroup;
         }
@@ -2537,10 +2547,10 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="objectGroup"></param>
         public virtual void DetachFromBackup()
         {
-            if (m_isBackedUp && Scene != null)
+            if (Backup && Scene != null)
                 m_scene.EventManager.OnBackup -= ProcessBackup;
             
-            m_isBackedUp = false;
+            Backup = false;
         }
 
         // This links an SOP from a previous linkset into my linkset.
@@ -2816,12 +2826,22 @@ namespace OpenSim.Region.Framework.Scenes
         {
             SceneObjectPart selectionPart = GetPart(localID);
 
-            if (SetTemporary && Scene != null)
+            if (Scene != null)
             {
-                DetachFromBackup();
-                // Remove from database and parcel prim count
-                //
-                m_scene.DeleteFromStorage(UUID);
+                if (SetTemporary)
+                {
+                    DetachFromBackup();
+                    // Remove from database and parcel prim count
+                    //
+                    m_scene.DeleteFromStorage(UUID);
+                }
+                else if (!Backup)
+                {
+                    // Previously been temporary now switching back so make it
+                    // available for persisting again
+                    AttachToBackup();
+                }
+
                 m_scene.EventManager.TriggerParcelPrimCountTainted();
             }
 

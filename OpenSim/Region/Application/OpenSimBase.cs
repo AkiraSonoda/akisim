@@ -170,23 +170,32 @@ namespace OpenSim
 
         protected virtual void LoadPlugins()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
+            IConfig startupConfig = Config.Configs["Startup"];
+            string registryLocation = (startupConfig != null) ? startupConfig.GetString("RegistryLocation", String.Empty) : String.Empty;
 
-            using (PluginLoader<IApplicationPlugin> loader = new PluginLoader<IApplicationPlugin>(new ApplicationPluginInitialiser(this)))
+            // The location can also be specified in the environment. If there
+            // is no location in the configuration, we must call the constructor
+            // without a location parameter to allow that to happen.
+            if (registryLocation == String.Empty)
             {
-                loader.Load("/OpenSim/Startup");
-                m_plugins = loader.Plugins;
+                using (PluginLoader<IApplicationPlugin> loader = new PluginLoader<IApplicationPlugin>(new ApplicationPluginInitialiser(this)))
+                {
+                    loader.Load("/OpenSim/Startup");
+                    m_plugins = loader.Plugins;
+                }
+            }
+            else
+            {
+                using (PluginLoader<IApplicationPlugin> loader = new PluginLoader<IApplicationPlugin>(new ApplicationPluginInitialiser(this), registryLocation))
+                {
+                    loader.Load("/OpenSim/Startup");
+                    m_plugins = loader.Plugins;
+                }
             }
         }
 
         protected override List<string> GetHelpTopics()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             List<string> topics = base.GetHelpTopics();
             Scene s = SceneManager.CurrentOrFirstScene;
             if (s != null && s.GetCommanders() != null)
