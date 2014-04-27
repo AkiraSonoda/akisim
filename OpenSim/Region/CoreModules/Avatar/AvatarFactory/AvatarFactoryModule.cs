@@ -500,7 +500,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             m_log.InfoFormat ("AVATARFACTORY REQUESTREBAKE INDICES:{0}", AvatarAppearance.BAKE_INDICES.Length);
 
             int texturesRebaked = 0;
-            IImprovedAssetCache cache = m_scene.RequestModuleInterface<IImprovedAssetCache> ();
+//            IImprovedAssetCache cache = m_scene.RequestModuleInterface<IImprovedAssetCache>();
 
             for (int i = 0; i < AvatarAppearance.BAKE_INDICES.Length; i++) {
                 int idx = AvatarAppearance.BAKE_INDICES [i];

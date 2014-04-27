@@ -73,6 +73,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             Assert.That(part.GetSittingAvatarsCount(), Is.EqualTo(0));
             Assert.That(part.GetSittingAvatars(), Is.Null);
             Assert.That(m_sp.ParentID, Is.EqualTo(0));
+            Assert.AreEqual(startPos, m_sp.AbsolutePosition);
         }
 
         [Test]
@@ -87,15 +88,21 @@ namespace OpenSim.Region.Framework.Scenes.Tests
 
             SceneObjectPart part = SceneHelpers.AddSceneObject(m_scene).RootPart;
 
+            // We need to preserve this here because phys actor is removed by the sit.
+            Vector3 spPhysActorSize = m_sp.PhysicsActor.Size;
             m_sp.HandleAgentRequestSit(m_sp.ControllingClient, m_sp.UUID, part.UUID, Vector3.Zero);
 
             Assert.That(m_sp.PhysicsActor, Is.Null);
 
+            Assert.That(
+                m_sp.AbsolutePosition,
+                Is.EqualTo(part.AbsolutePosition + new Vector3(0, 0, spPhysActorSize.Z / 2)));
+
             Assert.That(part.SitTargetAvatar, Is.EqualTo(UUID.Zero));
             Assert.That(part.GetSittingAvatarsCount(), Is.EqualTo(1));
-            HashSet<UUID> sittingAvatars = part.GetSittingAvatars();
+            HashSet<ScenePresence> sittingAvatars = part.GetSittingAvatars();
             Assert.That(sittingAvatars.Count, Is.EqualTo(1));
-            Assert.That(sittingAvatars.Contains(m_sp.UUID));
+            Assert.That(sittingAvatars.Contains(m_sp));
             Assert.That(m_sp.ParentID, Is.EqualTo(part.LocalId));
         }
 
@@ -110,6 +117,36 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             m_sp.AbsolutePosition = startPos;
 
             SceneObjectPart part = SceneHelpers.AddSceneObject(m_scene).RootPart;
+
+            // We need to preserve this here because phys actor is removed by the sit.
+            Vector3 spPhysActorSize = m_sp.PhysicsActor.Size;
+            m_sp.HandleAgentRequestSit(m_sp.ControllingClient, m_sp.UUID, part.UUID, Vector3.Zero);
+
+            Assert.That(
+                m_sp.AbsolutePosition,
+                Is.EqualTo(part.AbsolutePosition + new Vector3(0, 0, spPhysActorSize.Z / 2)));
+
+            m_sp.StandUp();
+
+            Assert.That(part.SitTargetAvatar, Is.EqualTo(UUID.Zero));
+            Assert.That(part.GetSittingAvatarsCount(), Is.EqualTo(0));
+            Assert.That(part.GetSittingAvatars(), Is.Null);
+            Assert.That(m_sp.ParentID, Is.EqualTo(0));
+            Assert.That(m_sp.PhysicsActor, Is.Not.Null);
+        }
+
+        [Test]
+        public void TestSitAndStandWithNoSitTargetChildPrim()
+        {
+            TestHelpers.InMethod();
+//            log4net.Config.XmlConfigurator.Configure();
+
+            // Make sure we're within range to sit
+            Vector3 startPos = new Vector3(1, 1, 1);
+            m_sp.AbsolutePosition = startPos;
+
+            SceneObjectPart part = SceneHelpers.AddSceneObject(m_scene, 2, m_sp.UUID, "part", 0x10).Parts[1];
+            part.OffsetPosition = new Vector3(2, 3, 4);
 
             // We need to preserve this here because phys actor is removed by the sit.
             Vector3 spPhysActorSize = m_sp.PhysicsActor.Size;
@@ -145,15 +182,39 @@ namespace OpenSim.Region.Framework.Scenes.Tests
 
             Assert.That(part.SitTargetAvatar, Is.EqualTo(m_sp.UUID));
             Assert.That(m_sp.ParentID, Is.EqualTo(part.LocalId));
-//            Assert.That(
-//                m_sp.AbsolutePosition,
-//                Is.EqualTo(part.AbsolutePosition + part.SitTargetPosition + ScenePresence.SIT_TARGET_ADJUSTMENT));
+
+            // This section is copied from ScenePresence.HandleAgentSit().  Correctness is not guaranteed.
+            double x, y, z, m1, m2;
+
+            Quaternion r = part.SitTargetOrientation;;
+            m1 = r.X * r.X + r.Y * r.Y;
+            m2 = r.Z * r.Z + r.W * r.W;
+
+            // Rotate the vector <0, 0, 1>
+            x = 2 * (r.X * r.Z + r.Y * r.W);
+            y = 2 * (-r.X * r.W + r.Y * r.Z);
+            z = m2 - m1;
+
+            // Set m to be the square of the norm of r.
+            double m = m1 + m2;
+
+            // This constant is emperically determined to be what is used in SL.
+            // See also http://opensimulator.org/mantis/view.php?id=7096
+            double offset = 0.05;
+
+            Vector3 up = new Vector3((float)x, (float)y, (float)z);
+            Vector3 sitOffset = up * (float)offset;
+            // End of copied section.
+
+            Assert.That(
+                m_sp.AbsolutePosition,
+                Is.EqualTo(part.AbsolutePosition + part.SitTargetPosition - sitOffset + ScenePresence.SIT_TARGET_ADJUSTMENT));
             Assert.That(m_sp.PhysicsActor, Is.Null);
 
             Assert.That(part.GetSittingAvatarsCount(), Is.EqualTo(1));
-            HashSet<UUID> sittingAvatars = part.GetSittingAvatars();
+            HashSet<ScenePresence> sittingAvatars = part.GetSittingAvatars();
             Assert.That(sittingAvatars.Count, Is.EqualTo(1));
-            Assert.That(sittingAvatars.Contains(m_sp.UUID));
+            Assert.That(sittingAvatars.Contains(m_sp));
 
             m_sp.StandUp();
 

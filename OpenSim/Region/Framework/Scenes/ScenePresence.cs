@@ -272,7 +272,6 @@ namespace OpenSim.Region.Framework.Scenes
         //private int m_moveToPositionStateStatus;
         //*****************************************************
 
-        private bool m_collisionEventFlag = false;
         private object m_collisionEventLock = new Object();
 
         private int m_movementAnimationUpdateCounter = 0;
@@ -457,7 +456,19 @@ namespace OpenSim.Region.Framework.Scenes
         public string Firstname { get; private set; }
         public string Lastname { get; private set; }
 
-        public string Grouptitle { get; set; }
+        public string Grouptitle
+        {
+            get { return UseFakeGroupTitle ? "(Loading)" : m_groupTitle; }
+            set { m_groupTitle = value; }
+        }
+        private string m_groupTitle;
+
+        /// <summary>
+        /// When this is 'true', return a dummy group title instead of the real group title. This is
+        /// used as part of a hack to force viewers to update the displayed avatar name.
+        /// </summary>
+        public bool UseFakeGroupTitle { get; set; }
+
 
         // Agent's Draw distance.
         public float DrawDistance { get; set; }
@@ -544,7 +555,7 @@ namespace OpenSim.Region.Framework.Scenes
                     SceneObjectPart sitPart = ParentPart;
 
                     if (sitPart != null)
-                        return sitPart.AbsolutePosition + (m_pos * sitPart.GetWorldRotation());
+                        return sitPart.ParentGroup.AbsolutePosition + (m_pos * sitPart.GetWorldRotation());
                 }
                 
                 return m_pos;
@@ -1028,9 +1039,7 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                     else
                     {
-                        part.ParentGroup.AddAvatar(UUID);
-                        if (part.SitTargetPosition != Vector3.Zero)
-                            part.SitTargetAvatar = UUID;
+                        part.AddSittingAvatar(this);
     //                    ParentPosition = part.GetWorldPosition();
                         ParentID = part.LocalId;
                         ParentPart = part;
@@ -1058,6 +1067,17 @@ namespace OpenSim.Region.Framework.Scenes
             IGroupsModule gm = m_scene.RequestModuleInterface<IGroupsModule>();
             if (gm != null)
                 Grouptitle = gm.GetGroupTitle(m_uuid);
+
+            AgentCircuitData aCircuit = m_scene.AuthenticateHandler.GetAgentCircuitData(ControllingClient.CircuitCode);
+            uint teleportFlags = (aCircuit == null) ? 0 : aCircuit.teleportFlags;
+            if ((teleportFlags & (uint)TeleportFlags.ViaHGLogin) != 0)
+            {
+                // The avatar is arriving from another grid. This means that we may have changed the
+                // avatar's name to or from the special Hypergrid format ("First.Last @grid.example.com").
+                // Unfortunately, due to a viewer bug, viewers don't always show the new name.
+                // But we have a trick that can force them to update the name anyway.
+                ForceViewersUpdateName();
+            }
 
             RegionHandle = m_scene.RegionInfo.RegionHandle;
 
@@ -1253,6 +1273,36 @@ namespace OpenSim.Region.Framework.Scenes
             m_scene.EventManager.TriggerOnMakeRootAgent(this);
 
             return true;
+        }
+
+        /// <summary>
+        /// Force viewers to show the avatar's current name.
+        /// </summary>
+        /// <remarks>
+        /// The avatar name that is shown above the avatar in the viewers is sent in ObjectUpdate packets,
+        /// and they get the name from the ScenePresence. Unfortunately, viewers have a bug (as of April 2014)
+        /// where they ignore changes to the avatar name. However, tey don't ignore changes to the avatar's
+        /// Group Title. So the following trick makes viewers update the avatar's name by briefly changing
+        /// the group title (to "(Loading)"), and then restoring it.
+        /// </remarks>
+        public void ForceViewersUpdateName()
+        {
+            m_log.DebugFormat("[SCENE PRESENCE]: Forcing viewers to update the avatar name for " + Name);
+
+            UseFakeGroupTitle = true;
+            SendAvatarDataToAllAgents(false);
+
+            Util.FireAndForget(o =>
+            {
+                // Viewers only update the avatar name when idle. Therefore, we must wait long
+                // enough for the viewer to show the fake name that we had set above, and only
+                // then switch back to the true name. This delay was chosen because it has a high
+                // chance of succeeding (we don't want to choose a value that's too low).
+                Thread.Sleep(5000);
+
+                UseFakeGroupTitle = false;
+                SendAvatarDataToAllAgents(false);
+            });
         }
 
         public int GetStateSource()
@@ -2425,35 +2475,44 @@ namespace OpenSim.Region.Framework.Scenes
 //            }
 
             // Get terrain height for sub-region in a megaregion if necessary
-            int X = (int)((m_scene.RegionInfo.WorldLocX) + pos.X);
-            int Y = (int)((m_scene.RegionInfo.WorldLocY) + pos.Y);
-            GridRegion target_region = m_scene.GridService.GetRegionByPosition(m_scene.RegionInfo.ScopeID, X, Y);
-            // If X and Y is NaN, target_region will be null
-            if (target_region == null)
-                return;
-            UUID target_regionID = target_region.RegionID;
-            Scene targetScene = m_scene;
 
-            if (!SceneManager.Instance.TryGetScene(target_regionID, out targetScene))
-                targetScene = m_scene;
+				//COMMENT: If its only nessesary in a megaregion, why do it on normal region's too?
 
-            float terrainHeight = (float)targetScene.Heightmap[(int)(pos.X % regionSize.X), (int)(pos.Y % regionSize.Y)];
-            pos.Z = Math.Max(terrainHeight, pos.Z);
+			if (regionCombinerModule != null)
+			{
+	            int X = (int)((m_scene.RegionInfo.WorldLocX) + pos.X);
+	            int Y = (int)((m_scene.RegionInfo.WorldLocY) + pos.Y);
+	            GridRegion target_region = m_scene.GridService.GetRegionByPosition(m_scene.RegionInfo.ScopeID, X, Y);
+	            // If X and Y is NaN, target_region will be null
+	            if (target_region == null)
+	                return;
+	            UUID target_regionID = target_region.RegionID;
+	            Scene targetScene = m_scene;
 
-            // Fudge factor.  It appears that if one clicks "go here" on a piece of ground, the go here request is
-            // always slightly higher than the actual terrain height.
-            // FIXME: This constrains NPC movements as well, so should be somewhere else.
-            if (pos.Z - terrainHeight < 0.2)
-                pos.Z = terrainHeight;
+	            if (!SceneManager.Instance.TryGetScene(target_regionID, out targetScene))
+	                targetScene = m_scene;
+
+	            float terrainHeight = (float)targetScene.Heightmap[(int)(pos.X % regionSize.X), (int)(pos.Y % regionSize.Y)];
+	            pos.Z = Math.Max(terrainHeight, pos.Z);
+
+	            // Fudge factor.  It appears that if one clicks "go here" on a piece of ground, the go here request is
+	            // always slightly higher than the actual terrain height.
+	            // FIXME: This constrains NPC movements as well, so should be somewhere else.
+	            if (pos.Z - terrainHeight < 0.2)
+	                pos.Z = terrainHeight;
+
+				if (noFly)
+					Flying = false;
+				else if (pos.Z > terrainHeight)
+					Flying = true;
+			}
 
 //            m_log.DebugFormat(
 //                "[SCENE PRESENCE]: Avatar {0} set move to target {1} (terrain height {2}) in {3}",
 //                Name, pos, terrainHeight, m_scene.RegionInfo.RegionName);
 
-            if (noFly)
-                Flying = false;
-            else if (pos.Z > terrainHeight)
-                Flying = true;
+			if (noFly)
+				Flying = false;
 
             LandAtTarget = landAtTarget;
             MovingToTarget = true;
@@ -2529,7 +2588,6 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                 }
 
-                part.ParentGroup.DeleteAvatar(UUID);
                 Vector3 sitPartWorldPosition = part.GetWorldPosition();
                 ControllingClient.SendClearFollowCamProperties(part.ParentUUID);
 
@@ -2585,7 +2643,7 @@ namespace OpenSim.Region.Framework.Scenes
                 SendAvatarDataToAllAgents();
                 m_requestedSitTargetID = 0;
 
-                part.RemoveSittingAvatar(UUID);
+                part.RemoveSittingAvatar(this);
 
                 part.ParentGroup.TriggerScriptChangedEvent(Changed.LINK);
             }
@@ -2695,7 +2753,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 Velocity = Vector3.Zero;
 
-                part.AddSittingAvatar(UUID);
+                part.AddSittingAvatar(this);
 
                 cameraAtOffset = part.GetCameraAtOffset();
                 cameraEyeOffset = part.GetCameraEyeOffset();
@@ -2828,7 +2886,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             Velocity = Vector3.Zero;
 
-            part.AddSittingAvatar(UUID);
+            part.AddSittingAvatar(this);
 
             Vector3 cameraAtOffset = part.GetCameraAtOffset();
             Vector3 cameraEyeOffset = part.GetCameraEyeOffset();
@@ -2843,7 +2901,6 @@ namespace OpenSim.Region.Framework.Scenes
             m_pos = offset;
 
             m_requestedSitTargetID = 0;
-            part.ParentGroup.AddAvatar(UUID);
 
             ParentPart = part;
             ParentID = part.LocalId;
@@ -2855,7 +2912,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             part.ParentGroup.TriggerScriptChangedEvent(Changed.LINK);
         }
-
 
         public void HandleAgentSit(IClientAPI remoteClient, UUID agentID)
         {
@@ -2875,7 +2931,6 @@ namespace OpenSim.Region.Framework.Scenes
                     return;
                 }
 
-
                 if (part.SitTargetAvatar == UUID)
                 {
                     Vector3 sitTargetPos = part.SitTargetPosition;
@@ -2883,37 +2938,47 @@ namespace OpenSim.Region.Framework.Scenes
 
                     Vector3 newPos;
 
-                    double x, y, z, m;
+                    double x, y, z, m1, m2;
 
                     Quaternion r = sitTargetOrient;
-                    m = r.X * r.X + r.Y * r.Y + r.Z * r.Z + r.W * r.W;
+                    m1 = r.X * r.X + r.Y * r.Y;
+                    m2 = r.Z * r.Z + r.W * r.W;
 
-                    if (Math.Abs(1.0 - m) > 0.000001)
-                    {
-                        m = 1.0 / Math.Sqrt(m);
-                        r.X *= (float)m;
-                        r.Y *= (float)m;
-                        r.Z *= (float)m;
-                        r.W *= (float)m;
-                    }
-
+                    // Rotate the vector <0, 0, 1>
                     x = 2 * (r.X * r.Z + r.Y * r.W);
                     y = 2 * (-r.X * r.W + r.Y * r.Z);
-                    z = -r.X * r.X - r.Y * r.Y + r.Z * r.Z + r.W * r.W;
+                    z = m2 - m1;
+
+                    // Set m to be the square of the norm of r.
+                    double m = m1 + m2;
+
+                    // This constant is emperically determined to be what is used in SL.
+                    // See also http://opensimulator.org/mantis/view.php?id=7096
+                    double offset = 0.05;
+
+                    // Normally m will be ~ 1, but if someone passed a handcrafted quaternion
+                    // to llSitTarget with values so small that squaring them is rounded off
+                    // to zero, then m could be zero. The result of this floating point
+                    // round off error (causing us to skip this impossible normalization)
+                    // is only 5 cm.
+                    if (m > 0.000001)
+                    {
+                        offset /= m;
+                    }
 
                     Vector3 up = new Vector3((float)x, (float)y, (float)z);
-                    Vector3 sitOffset = up * Appearance.AvatarHeight * 0.02638f;
+                    Vector3 sitOffset = up * (float)offset;
 
-
+               
                     // SitTarget Compatibility Workaround 
                     if (m_scene.m_useWrongSitTarget) {
                         if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-                            newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
+                            newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
                         } else {
                             newPos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
                         }
                     } else {
-                        newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
+                        newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
                     }
                     Quaternion newRot;
 
@@ -2943,8 +3008,7 @@ namespace OpenSim.Region.Framework.Scenes
 //                            Name, part.AbsolutePosition, m_pos, ParentPosition, part.Name, part.LocalId);
                 }
 
-                part.ParentGroup.AddAvatar(UUID);
-                ParentPart = m_scene.GetSceneObjectPart(m_requestedSitTargetID);
+                ParentPart = part;
                 ParentID = m_requestedSitTargetID;
                 m_AngularVelocity = Vector3.Zero;
                 Velocity = Vector3.Zero;
@@ -3274,11 +3338,16 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        public void SendAvatarDataToAllAgents()
+        {
+            SendAvatarDataToAllAgents(true);
+        }
+
         /// <summary>
         /// Send this agent's avatar data to all other root and child agents in the scene
         /// This agent must be root. This avatar will receive its own update. 
         /// </summary>
-        public void SendAvatarDataToAllAgents()
+        public void SendAvatarDataToAllAgents(bool full)
         {
             //m_log.DebugFormat("[SCENE PRESENCE] SendAvatarDataToAllAgents: {0} ({1})", Name, UUID);
             // only send update from root agents to other clients; children are only "listening posts"
@@ -3295,10 +3364,13 @@ namespace OpenSim.Region.Framework.Scenes
 
             int count = 0;
             m_scene.ForEachScenePresence(delegate(ScenePresence scenePresence)
-                                         {
-                                             SendAvatarDataToAgent(scenePresence);
-                                             count++;
-                                         });
+            {
+                if (full)
+                    SendAvatarDataToAgent(scenePresence);
+                else
+                    scenePresence.ControllingClient.SendAvatarDataImmediate(this);
+                count++;
+            });
 
             m_scene.StatsReporter.AddAgentUpdates(count);
         }

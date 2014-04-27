@@ -94,11 +94,21 @@ namespace OpenSim.Server.Handlers.Hypergrid
             UUID regionID = UUID.Zero;
             UUID.TryParse(regionID_str, out regionID);
 
-            GridRegion regInfo = m_GatekeeperService.GetHyperlinkRegion(regionID);
+            UUID agentID = UUID.Zero;
+            string agentHomeURI = null;
+            if (requestData.ContainsKey("agent_id"))
+                agentID = UUID.Parse((string)requestData["agent_id"]);
+            if (requestData.ContainsKey("agent_home_uri"))
+                agentHomeURI = (string)requestData["agent_home_uri"];
+
+            string message;
+            GridRegion regInfo = m_GatekeeperService.GetHyperlinkRegion(regionID, agentID, agentHomeURI, out message);
 
             Hashtable hash = new Hashtable();
             if (regInfo == null)
+            {
                 hash["result"] = "false";
+            }
             else
             {
                 hash["result"] = "true";
@@ -112,6 +122,10 @@ namespace OpenSim.Server.Handlers.Hypergrid
                 hash["http_port"] = regInfo.HttpPort.ToString();
                 hash["internal_port"] = regInfo.InternalEndPoint.Port.ToString();
             }
+
+            if (message != null)
+                hash["message"] = message;
+
             XmlRpcResponse response = new XmlRpcResponse();
             response.Value = hash;
             return response;

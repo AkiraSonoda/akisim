@@ -497,8 +497,8 @@ namespace OpenSim.Framework.Servers.HttpServer
                 try
                 {
                     byte[] buffer500 = SendHTML500(response);
-                    response.Body.Write(buffer500,0,buffer500.Length);
-                    response.Body.Close();
+                    response.OutputStream.Write(buffer500, 0, buffer500.Length);
+                    response.Send();
                 }
                 catch
                 {
@@ -710,7 +710,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                             }
                         }
 
-                        WebUtil.LogResponseDetail(output);
+                        WebUtil.LogResponseDetail(null, output);
                     }
 
                     if (!response.SendChunked && response.ContentLength64 <= 0)
@@ -751,8 +751,8 @@ namespace OpenSim.Framework.Servers.HttpServer
                 try
                 {
                     byte[] buffer500 = SendHTML500(response);
-                    response.Body.Write(buffer500, 0, buffer500.Length);
-                    response.Body.Close();
+                    response.OutputStream.Write(buffer500, 0, buffer500.Length);
+                    response.Send();
                 }
                 catch
                 {
@@ -862,6 +862,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
         }
 
+        private readonly string HANDLER_SEPARATORS = "/?&#-";
+
         private bool TryGetStreamHandler(string handlerKey, out IRequestHandler streamHandler)
         {
             string bestMatch = null;
@@ -870,7 +872,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             {
                 foreach (string pattern in m_streamHandlers.Keys)
                 {
-                    if (handlerKey.StartsWith(pattern))
+                    if ((handlerKey == pattern)
+                        || (handlerKey.StartsWith(pattern) && (HANDLER_SEPARATORS.IndexOf(handlerKey[pattern.Length]) >= 0)))
                     {
                         if (String.IsNullOrEmpty(bestMatch) || pattern.Length > bestMatch.Length)
                         {
@@ -900,7 +903,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             {
                 foreach (string pattern in m_pollHandlers.Keys)
                 {
-                    if (handlerKey.StartsWith(pattern))
+                    if ((handlerKey == pattern)
+                        || (handlerKey.StartsWith(pattern) && (HANDLER_SEPARATORS.IndexOf(handlerKey[pattern.Length]) >= 0)))
                     {
                         if (String.IsNullOrEmpty(bestMatch) || pattern.Length > bestMatch.Length)
                         {
@@ -932,7 +936,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             {
                 foreach (string pattern in m_HTTPHandlers.Keys)
                 {
-                    if (handlerKey.StartsWith(pattern))
+                    if ((handlerKey == pattern)
+                        || (handlerKey.StartsWith(pattern) && (HANDLER_SEPARATORS.IndexOf(handlerKey[pattern.Length]) >= 0)))
                     {
                         if (String.IsNullOrEmpty(bestMatch) || pattern.Length > bestMatch.Length)
                         {

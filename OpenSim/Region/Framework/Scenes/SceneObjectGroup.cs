@@ -121,7 +121,6 @@ namespace OpenSim.Region.Framework.Scenes
         private bool m_hasGroupChanged = false;
         private long timeFirstChanged;
         private long timeLastChanged;
-        private List<ScenePresence> m_linkedAvatars = new List<ScenePresence>();
 
         /// <summary>
         /// This indicates whether the object has changed such that it needs to be repersisted to permenant storage
@@ -484,7 +483,7 @@ namespace OpenSim.Region.Framework.Scenes
                             m_rootPart.KeyframeMotion.StartCrossingCheck();
 
                         bool canCross = true;
-                        foreach (ScenePresence av in m_linkedAvatars)
+                        foreach (ScenePresence av in GetSittingAvatars())
                         {
                             // We need to cross these agents. First, let's find
                             // out if any of them can't cross for some reason.
@@ -511,7 +510,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                             List<avtocrossInfo> avsToCross = new List<avtocrossInfo>();
 
-                            foreach (ScenePresence av in m_linkedAvatars)
+                            foreach (ScenePresence av in GetSittingAvatars())
                             {
                                 avtocrossInfo avinfo = new avtocrossInfo();
                                 SceneObjectPart parentPart = m_scene.GetSceneObjectPart(av.ParentID);
@@ -526,7 +525,6 @@ namespace OpenSim.Region.Framework.Scenes
                                 av.ParentID = 0;
                             }
 
-                            //                            m_linkedAvatars.Clear();
                             m_scene.CrossPrimGroupIntoNewRegion(val, this, true);
 
                             // Normalize
@@ -542,7 +540,6 @@ namespace OpenSim.Region.Framework.Scenes
                             // If it's deleted, crossing was successful
                             if (IsDeleted)
                             {
-                                //                                foreach (ScenePresence av in m_linkedAvatars)
                                 foreach (avtocrossInfo avinfo in avsToCross)
                                 {
                                     ScenePresence av = avinfo.av;
@@ -552,13 +549,29 @@ namespace OpenSim.Region.Framework.Scenes
 
                                         av.IsInTransit = true;
 
-                                        CrossAgentToNewRegionDelegate d = entityTransfer.CrossAgentToNewRegionAsync;
-                                        d.BeginInvoke(av, val, destination, av.Flying, version, CrossAgentToNewRegionCompleted, d);
+                                        // A temporary measure to allow regression tests to work.
+                                        // Quite possibly, all BeginInvoke() calls should be replaced by Util.FireAndForget
+                                        // or similar since BeginInvoke() always uses the system threadpool to launch
+                                        // threads rather than any replace threadpool that we might be using.
+                                        if (Util.FireAndForgetMethod == FireAndForgetMethod.RegressionTest)
+                                        { 
+                                            entityTransfer.CrossAgentToNewRegionAsync(av, val, destination, av.Flying, version);
+                                            CrossAgentToNewRegionCompleted(av);
+                                        }
+                                        else
+                                        {
+                                            CrossAgentToNewRegionDelegate d = entityTransfer.CrossAgentToNewRegionAsync;
+                                            d.BeginInvoke(
+                                                av, val, destination, av.Flying, version, 
+                                                ar => CrossAgentToNewRegionCompleted(d.EndInvoke(ar)), null);
+                                        }
                                     }
                                     else
+                                    {
                                         m_log.DebugFormat("[SCENE OBJECT]: Crossing avatar alreasy in transit {0} to {1}", av.Name, val);
+                                    }
                                 }
-                                avsToCross.Clear();
+
                                 return;
                             }
                             else // cross failed, put avas back ??
@@ -568,11 +581,8 @@ namespace OpenSim.Region.Framework.Scenes
                                     ScenePresence av = avinfo.av;
                                     av.ParentUUID = UUID.Zero;
                                     av.ParentID = avinfo.ParentID;
-//                                    m_linkedAvatars.Add(av);
                                 }
                             }
-                            avsToCross.Clear();
-
                         }
                         else
                         {
@@ -584,6 +594,7 @@ namespace OpenSim.Region.Framework.Scenes
                                 RootPart.PhysActor.CrossingFailure();
                             }
                         }
+
                         Vector3 oldp = AbsolutePosition;
                         val.X = Util.Clamp<float>(oldp.X, 0.5f, (float)m_scene.RegionInfo.RegionSizeX - 0.5f);
                         val.Y = Util.Clamp<float>(oldp.Y, 0.5f, (float)m_scene.RegionInfo.RegionSizeY - 0.5f);
@@ -630,11 +641,8 @@ namespace OpenSim.Region.Framework.Scenes
             set { RootPart.Velocity = value; }
         }
 
-        private void CrossAgentToNewRegionCompleted(IAsyncResult iar)
+        private void CrossAgentToNewRegionCompleted(ScenePresence agent)
         {
-            CrossAgentToNewRegionDelegate icon = (CrossAgentToNewRegionDelegate)iar.AsyncState;
-            ScenePresence agent = icon.EndInvoke(iar);
-
             //// If the cross was successful, this agent is a child agent
             if (agent.IsChildAgent)
             {
@@ -829,7 +837,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// No avatar should appear more than once in this list.
         /// Do not manipulate this list directly - use the Add/Remove sitting avatar methods on SceneObjectPart.
         /// </remarks>
-        protected internal List<UUID> m_sittingAvatars = new List<UUID>();
+        protected internal List<ScenePresence> m_sittingAvatars = new List<ScenePresence>();
 
         #endregion
 
@@ -1272,46 +1280,6 @@ namespace OpenSim.Region.Framework.Scenes
             part.ParentID = m_rootPart.LocalId;
             part.ClearUndoState();
         }
-        /// <summary>
-        /// Add the avatar to this linkset (avatar is sat).
-        /// </summary>
-        /// <param name="agentID"></param>
-        public void AddAvatar(UUID agentID)
-        {
-            ScenePresence presence;
-            if (m_scene.TryGetScenePresence(agentID, out presence))
-            {
-                if (!m_linkedAvatars.Contains(presence))
-                {
-                    m_linkedAvatars.Add(presence);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Delete the avatar from this linkset (avatar is unsat).
-        /// </summary>
-        /// <param name="agentID"></param>
-        public void DeleteAvatar(UUID agentID)
-        {
-            ScenePresence presence;
-            if (m_scene.TryGetScenePresence(agentID, out presence))
-            {
-                if (m_linkedAvatars.Contains(presence))
-                {
-                    m_linkedAvatars.Remove(presence);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns the list of linked presences (avatars sat on this group)
-        /// </summary>
-        /// <param name="agentID"></param>
-        public List<ScenePresence> GetLinkedAvatars()
-        {
-            return m_linkedAvatars;
-        }
 
         public ushort GetTimeDilation()
         {
@@ -1698,10 +1666,14 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns></returns>
         public SceneObjectGroup Copy(bool userExposed)
         {
+            // FIXME: This is dangerous since it's easy to forget to reset some references when necessary and end up 
+            // with bugs that only occur in some circumstances (e.g. crossing between regions on the same simulator
+            // but not between regions on different simulators).  Really, all copying should be done explicitly.
             SceneObjectGroup dupe = (SceneObjectGroup)MemberwiseClone();
+
             dupe.Backup = false;
             dupe.m_parts = new MapAndArray<OpenMetaverse.UUID, SceneObjectPart>();
-            dupe.m_sittingAvatars = new List<UUID>();
+            dupe.m_sittingAvatars = new List<ScenePresence>();
             dupe.CopyRootPart(m_rootPart, OwnerID, GroupID, userExposed);
             dupe.m_rootPart.LinkNum = m_rootPart.LinkNum;
 
@@ -2380,7 +2352,7 @@ namespace OpenSim.Region.Framework.Scenes
 //            objectGroup.m_rootPart = null;
 
             // If linking prims with different permissions, fix them
-            AdjustChildPrimPermissions();
+            AdjustChildPrimPermissions(false);
 
             GroupContainsForeignPrims = true;
 
@@ -2892,7 +2864,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public void AdjustChildPrimPermissions()
+        public void AdjustChildPrimPermissions(bool forceTaskInventoryPermissive)
         {
             uint newOwnerMask = (uint)(PermissionMask.All | PermissionMask.Export) & 0xfffffff8; // Mask folded bits
             uint foldedPerms = RootPart.OwnerMask & 3;
@@ -2902,6 +2874,8 @@ namespace OpenSim.Region.Framework.Scenes
                 newOwnerMask &= part.BaseMask;
                 if (part != RootPart)
                     part.ClonePermissions(RootPart);
+                if (forceTaskInventoryPermissive)
+                    part.Inventory.ApplyGodPermissions(part.BaseMask);
             });
 
             uint lockMask = ~(uint)(PermissionMask.Move | PermissionMask.Modify);
@@ -2915,7 +2889,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             RootPart.UpdatePermissions(AgentID, field, localID, mask, addRemTF);
 
-            AdjustChildPrimPermissions();
+            AdjustChildPrimPermissions(Scene.Permissions.IsGod(AgentID));
 
             HasGroupChanged = true;
 
@@ -3819,10 +3793,10 @@ namespace OpenSim.Region.Framework.Scenes
         /// down after it move one place down the list.
         /// </remarks>
         /// <returns>A list of the sitting avatars.  Returns an empty list if there are no sitting avatars.</returns>
-        public List<UUID> GetSittingAvatars()
+        public List<ScenePresence> GetSittingAvatars()
         {
             lock (m_sittingAvatars)
-                return new List<UUID>(m_sittingAvatars);
+                return new List<ScenePresence>(m_sittingAvatars);
         }
 
         /// <summary>

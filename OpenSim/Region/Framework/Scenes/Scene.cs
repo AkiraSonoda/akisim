@@ -2693,6 +2693,18 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         /// <summary>
+        /// Returns the Home URI of the agent, or null if unknown.
+        /// </summary>
+        public string GetAgentHomeURI(UUID agentID)
+        {
+            AgentCircuitData circuit = AuthenticateHandler.GetAgentCircuitData(agentID);
+            if (circuit != null && circuit.ServiceURLs != null && circuit.ServiceURLs.ContainsKey("HomeURI"))
+                return circuit.ServiceURLs["HomeURI"].ToString();
+            else
+                return null;
+        }
+
+        /// <summary>
         /// Cache the user name for later use.
         /// </summary>
         /// <param name="sp"></param>
@@ -3387,12 +3399,13 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         /// <param name="agent">CircuitData of the agent who is connecting</param>
         /// <param name="teleportFlags"></param>
+        /// <param name="source">Source region (may be null)</param>
         /// <param name="reason">Outputs the reason for the false response on this string</param>
         /// <returns>True if the region accepts this agent.  False if it does not.  False will 
         /// also return a reason.</returns>
-        public bool NewUserConnection(AgentCircuitData agent, uint teleportFlags, out string reason)
+        public bool NewUserConnection(AgentCircuitData agent, uint teleportFlags, GridRegion source, out string reason)
         {
-            return NewUserConnection(agent, teleportFlags, out reason, true);
+            return NewUserConnection(agent, teleportFlags, source, out reason, true);
         }
 
         /// <summary>
@@ -3412,12 +3425,13 @@ namespace OpenSim.Region.Framework.Scenes
         /// the LLUDP stack).
         /// </remarks>
         /// <param name="acd">CircuitData of the agent who is connecting</param>
+        /// <param name="source">Source region (may be null)</param>
         /// <param name="reason">Outputs the reason for the false response on this string</param>
         /// <param name="requirePresenceLookup">True for normal presence. False for NPC
         /// or other applications where a full grid/Hypergrid presence may not be required.</param>
         /// <returns>True if the region accepts this agent.  False if it does not.  False will 
         /// also return a reason.</returns>
-        public bool NewUserConnection(AgentCircuitData acd, uint teleportFlags, out string reason, bool requirePresenceLookup)
+        public bool NewUserConnection(AgentCircuitData acd, uint teleportFlags, GridRegion source, out string reason, bool requirePresenceLookup)
         {
             if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -3439,9 +3453,8 @@ namespace OpenSim.Region.Framework.Scenes
 
             // Don't disable this log message - it's too helpful
             string curViewer = Util.GetViewerName(acd);
-
             m_log.InfoFormat(
-                "[SCENE]: Region {0} told of incoming {1} agent {2} {3} {4} (circuit code {5}, IP {6}, viewer {7}, teleportflags ({8}), position {9})",
+                "[SCENE]: Region {0} told of incoming {1} agent {2} {3} {4} (circuit code {5}, IP {6}, viewer {7}, teleportflags ({8}), position {9}. {10}",
                 RegionInfo.RegionName,
                 (acd.child ? "child" : "root"),
                 acd.firstname,
@@ -3451,7 +3464,8 @@ namespace OpenSim.Region.Framework.Scenes
                 acd.IPAddress,
                 curViewer,
                 ((TPFlags)teleportFlags).ToString(),
-                acd.startpos
+                acd.startpos,
+                (source == null) ? "" : string.Format("From region {0} ({1}){2}", source.RegionName, source.RegionID, (source.RawServerURI == null) ? "" : " @ " + source.ServerURI)
             );
 
             if (!LoginsEnabled)
@@ -4529,29 +4543,18 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         return true;
                     }
-                    else if ((parcel.LandData.Flags & (uint)ParcelFlags.AllowGroupScripts) != 0)
+                    else if ((part.OwnerID == parcel.LandData.OwnerID) || Permissions.IsGod(part.OwnerID))
                     {
-                        if (part.OwnerID == parcel.LandData.OwnerID
-                            || (parcel.LandData.IsGroupOwned && part.GroupID == parcel.LandData.GroupID)
-                            || Permissions.IsGod(part.OwnerID))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            return false;
-                        }
+                        return true;
+                    }
+                    else if (((parcel.LandData.Flags & (uint)ParcelFlags.AllowGroupScripts) != 0)
+                        && (parcel.LandData.GroupID != UUID.Zero) && (parcel.LandData.GroupID == part.GroupID))
+                    {
+                        return true;
                     }
                     else
                     {
-                        if (part.OwnerID == parcel.LandData.OwnerID)
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            return false;
-                        }
+                        return false;
                     }
                 }
                 else
@@ -5482,11 +5485,12 @@ namespace OpenSim.Region.Framework.Scenes
         /// or corssing the broder walking, but will NOT prevent
         /// child agent creation, thereby emulating the SL behavior.
         /// </remarks>
-        /// <param name='agentID'></param>
+        /// <param name='agentID'>The visitor's User ID</param>
+        /// <param name="agentHomeURI">The visitor's Home URI (may be null)</param>
         /// <param name='position'></param>
         /// <param name='reason'></param>
         /// <returns></returns>
-        public bool QueryAccess(UUID agentID, Vector3 position, out string reason)
+        public bool QueryAccess(UUID agentID, string agentHomeURI, Vector3 position, out string reason)
         {
             reason = "You are banned from the region";
 

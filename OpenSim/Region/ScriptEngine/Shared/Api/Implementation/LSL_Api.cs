@@ -87,6 +87,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
+        public int LlRequestAgentDataCacheTimeoutMs { get; set; }
+
         protected IScriptEngine m_ScriptEngine;
         protected SceneObjectPart m_host;
 
@@ -160,30 +162,44 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         /// </summary>
         private void LoadConfig()
         {
-            m_ScriptDelayFactor =
-                m_ScriptEngine.Config.GetFloat("ScriptDelayFactor", 1.0f);
-            m_ScriptDistanceFactor =
-                m_ScriptEngine.Config.GetFloat("ScriptDistanceLimitFactor", 1.0f);
-            m_MinTimerInterval =
-                m_ScriptEngine.Config.GetFloat("MinTimerInterval", 0.5f);
-            m_automaticLinkPermission =
-                m_ScriptEngine.Config.GetBoolean("AutomaticLinkPermission", false);
-            m_notecardLineReadCharsMax =
-                m_ScriptEngine.Config.GetInt("NotecardLineReadCharsMax", 255);
+            LlRequestAgentDataCacheTimeoutMs = 20000;
+
+            IConfig seConfig = m_ScriptEngine.Config;
+
+            if (seConfig != null)
+            {
+                m_ScriptDelayFactor =
+                    seConfig.GetFloat("ScriptDelayFactor", m_ScriptDelayFactor);
+                m_ScriptDistanceFactor =
+                    seConfig.GetFloat("ScriptDistanceLimitFactor", m_ScriptDistanceFactor);
+                m_MinTimerInterval =
+                    seConfig.GetFloat("MinTimerInterval", m_MinTimerInterval);
+                m_automaticLinkPermission =
+                    seConfig.GetBoolean("AutomaticLinkPermission", m_automaticLinkPermission);
+                m_notecardLineReadCharsMax =
+                    seConfig.GetInt("NotecardLineReadCharsMax", m_notecardLineReadCharsMax);
+
+                // Rezzing an object with a velocity can create recoil. This feature seems to have been
+                //    removed from recent versions of SL. The code computes recoil (vel*mass) and scales
+                //    it by this factor. May be zero to turn off recoil all together.
+                m_recoilScaleFactor = m_ScriptEngine.Config.GetFloat("RecoilScaleFactor", m_recoilScaleFactor);
+            }
+
             if (m_notecardLineReadCharsMax > 65535)
                 m_notecardLineReadCharsMax = 65535;
 
             // load limits for particular subsystems.
-            IConfig SMTPConfig;
-            if ((SMTPConfig = m_ScriptEngine.ConfigSource.Configs["SMTP"]) != null) {
-                // there's an smtp config, so load in the snooze time.
-                EMAIL_PAUSE_TIME = SMTPConfig.GetInt("email_pause_time", EMAIL_PAUSE_TIME);
-            }
+            IConfigSource seConfigSource = m_ScriptEngine.ConfigSource;
 
-            // Rezzing an object with a velocity can create recoil. This feature seems to have been
-            //    removed from recent versions of SL. The code computes recoil (vel*mass) and scales
-            //    it by this factor. May be zero to turn off recoil all together.
-            m_recoilScaleFactor = m_ScriptEngine.Config.GetFloat("RecoilScaleFactor", m_recoilScaleFactor);
+            if (seConfigSource != null)
+            {
+                IConfig smtpConfig = seConfigSource.Configs["SMTP"];
+                if (smtpConfig != null) 
+                {
+                    // there's an smtp config, so load in the snooze time.
+                    EMAIL_PAUSE_TIME = smtpConfig.GetInt("email_pause_time", EMAIL_PAUSE_TIME);
+                }
+            }
         }
 
         public override Object InitializeLifetimeService()
@@ -335,14 +351,14 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
 
             int actualPrimCount = part.ParentGroup.PrimCount;
-            List<UUID> sittingAvatarIds = part.ParentGroup.GetSittingAvatars();
-            int adjustedPrimCount = actualPrimCount + sittingAvatarIds.Count;
+            List<ScenePresence> sittingAvatars = part.ParentGroup.GetSittingAvatars();
+            int adjustedPrimCount = actualPrimCount + sittingAvatars.Count;
 
             // Special case for a single prim.  In this case the linknum is zero.  However, this will not match a single
             // prim that has any avatars sat upon it (in which case the root prim is link 1).
             if (linknum == 0)
             {
-                if (actualPrimCount == 1 && sittingAvatarIds.Count == 0)
+                if (actualPrimCount == 1 && sittingAvatars.Count == 0)
                     return part;
 
                 return null;
@@ -351,7 +367,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             // here we must match 1 (ScriptBaseClass.LINK_ROOT).
             else if (linknum == ScriptBaseClass.LINK_ROOT && actualPrimCount == 1)
             {
-                if (sittingAvatarIds.Count > 0)
+                if (sittingAvatars.Count > 0)
                     return part.ParentGroup.RootPart;
                 else
                     return null;
@@ -364,11 +380,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 }
                 else
                 {
-                    ScenePresence sp = World.GetScenePresence(sittingAvatarIds[linknum - actualPrimCount - 1]);
-                    if (sp != null)
-                        return sp;
-                    else
-                        return null;
+                    return sittingAvatars[linknum - actualPrimCount - 1];
                 }
             }
             else
@@ -3619,7 +3631,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
             else
             {
-                if (m_host.ParentGroup.GetSittingAvatars().Contains(agentID))
+                if (m_host.ParentGroup.GetSittingAvatars().SingleOrDefault(sp => sp.UUID == agentID) != null)
                 {
                     // When agent is sitting, certain permissions are implicit if requested from sitting agent
                     implicitPerms = ScriptBaseClass.PERMISSION_TRIGGER_ANIMATION |
@@ -3651,10 +3663,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
 
             ScenePresence presence = World.GetScenePresence(agentID);
+            
             if (presence != null)
             {
                 // If permissions are being requested from an NPC and were not implicitly granted above then
-                // auto grant all reuqested permissions if the script is owned by the NPC or the NPCs owner
+                // auto grant all requested permissions if the script is owned by the NPC or the NPCs owner
                 INPCModule npcModule = World.RequestModuleInterface<INPCModule>();
                 if (npcModule != null && npcModule.IsNPC(agentID, World))
                 {
@@ -4199,87 +4212,98 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             UserAccount account;
 
             UserInfoCacheEntry ce;
-            if (!m_userInfoCache.TryGetValue(uuid, out ce))
+
+            lock (m_userInfoCache)
             {
-                account = World.UserAccountService.GetUserAccount(World.RegionInfo.ScopeID, uuid);
-                if (account == null)
+                if (!m_userInfoCache.TryGetValue(uuid, out ce))
                 {
-                    m_userInfoCache[uuid] = null; // Cache negative
-                    return UUID.Zero.ToString();
-                }
-
-
-                PresenceInfo[] pinfos = World.PresenceService.GetAgents(new string[] { uuid.ToString() });
-                if (pinfos != null && pinfos.Length > 0)
-                {
-                    foreach (PresenceInfo p in pinfos)
+                    account = World.UserAccountService.GetUserAccount(World.RegionInfo.ScopeID, uuid);
+                    if (account == null)
                     {
-                        if (p.RegionID != UUID.Zero)
+                        m_userInfoCache[uuid] = null; // Cache negative
+                        return UUID.Zero.ToString();
+                    }
+
+                    PresenceInfo[] pinfos = World.PresenceService.GetAgents(new string[] { uuid.ToString() });
+                    if (pinfos != null && pinfos.Length > 0)
+                    {
+                        foreach (PresenceInfo p in pinfos)
                         {
-                            pinfo = p;
+                            if (p.RegionID != UUID.Zero)
+                            {
+                                pinfo = p;
+                            }
                         }
                     }
-                }
 
-                ce = new UserInfoCacheEntry();
-                ce.time = Util.EnvironmentTickCount();
-                ce.account = account;
-                ce.pinfo = pinfo;
-            }
-            else
-            {
-                if (ce == null)
-                    return UUID.Zero.ToString();
+                    ce = new UserInfoCacheEntry();
+                    ce.time = Util.EnvironmentTickCount();
+                    ce.account = account;
+                    ce.pinfo = pinfo;
 
-                account = ce.account;
-                pinfo = ce.pinfo;
-            }
-
-            if (Util.EnvironmentTickCount() < ce.time || (Util.EnvironmentTickCount() - ce.time) >= 20000)
-            {
-                PresenceInfo[] pinfos = World.PresenceService.GetAgents(new string[] { uuid.ToString() });
-                if (pinfos != null && pinfos.Length > 0)
-                {
-                    foreach (PresenceInfo p in pinfos)
-                    {
-                        if (p.RegionID != UUID.Zero)
-                        {
-                            pinfo = p;
-                        }
-                    }
+                    m_userInfoCache[uuid] = ce;
                 }
                 else
-                    pinfo = null;
+                {
+                    if (ce == null)
+                        return UUID.Zero.ToString();
 
-                ce.time = Util.EnvironmentTickCount();
-                ce.pinfo = pinfo;
+                    account = ce.account;
+
+                    if (Util.EnvironmentTickCount() < ce.time || (Util.EnvironmentTickCount() - ce.time) 
+                        >= LlRequestAgentDataCacheTimeoutMs)
+                    {
+                        PresenceInfo[] pinfos = World.PresenceService.GetAgents(new string[] { uuid.ToString() });
+                        if (pinfos != null && pinfos.Length > 0)
+                        {
+                            foreach (PresenceInfo p in pinfos)
+                            {
+                                if (p.RegionID != UUID.Zero)
+                                {
+                                    pinfo = p;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            pinfo = null;
+                        }
+
+                        ce.time = Util.EnvironmentTickCount();
+                        ce.pinfo = pinfo;
+                    }
+                    else
+                    {
+                        pinfo = ce.pinfo;
+                    }
+                }
             }
 
             string reply = String.Empty;
 
             switch (data)
             {
-            case 1: // DATA_ONLINE (0|1)
+            case ScriptBaseClass.DATA_ONLINE:
                 if (pinfo != null && pinfo.RegionID != UUID.Zero)
                     reply = "1";
                 else
                     reply = "0";
                 break;
-            case 2: // DATA_NAME (First Last)
+            case ScriptBaseClass.DATA_NAME: // (First Last)
                 reply = account.FirstName + " " + account.LastName;
                 break;
-            case 3: // DATA_BORN (YYYY-MM-DD)
+            case ScriptBaseClass.DATA_BORN: // (YYYY-MM-DD)
                 DateTime born = new DateTime(1970, 1, 1, 0, 0, 0, 0);
                 born = born.AddSeconds(account.Created);
                 reply = born.ToString("yyyy-MM-dd");
                 break;
-            case 4: // DATA_RATING (0,0,0,0,0,0)
+            case ScriptBaseClass.DATA_RATING: // (0,0,0,0,0,0)
                 reply = "0,0,0,0,0,0";
                 break;
-            case 7: // DATA_USERLEVEL (integer)
+            case 7: // DATA_USERLEVEL (integer).  This is not available in LL and so has no constant.
                 reply = account.UserLevel.ToString();
                 break;
-            case 8: // DATA_PAYINFO (0|1|2|3)
+            case ScriptBaseClass.DATA_PAYINFO: // (0|1|2|3)
                 reply = "0";
                 break;
             default:
@@ -5173,8 +5197,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             // so the OR check may be a little redundant, but it's being done
             // for completion and should LSL_Key ever be implemented
             // as it's own struct
+            // NOTE: 3rd case is needed because a NULL_KEY comes through as
+            // type 'obj' and wrongly returns ""
             else if (!(src.Data[index] is LSL_String ||
-                    src.Data[index] is LSL_Key))
+                       src.Data[index] is LSL_Key ||
+                       src.Data[index].ToString() == "00000000-0000-0000-0000-000000000000"))
             {
                 return "";
             }

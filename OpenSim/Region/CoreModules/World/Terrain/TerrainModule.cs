@@ -74,8 +74,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain
         #endregion
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+#pragma warning disable 414
         private static readonly string LogHeader = "[TERRAIN MODULE]";
-        
+#pragma warning restore 414
+
         private readonly Commander m_commander = new Commander("terrain");
 
         private readonly Dictionary<StandardTerrainEffects, ITerrainFloodEffect> m_floodeffects =
@@ -1168,7 +1171,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain
                     m_channel[x, y] -= (double) args[0];
         }
 
-        private void InterfaceFillTerrain(Object[] args)
+        public void InterfaceFillTerrain(Object[] args)
         {
             int x, y;
 

@@ -171,18 +171,18 @@ namespace OpenSim.Data.MySQL
                             dbcon))
                     {
                         string assetName = asset.Name;
-                        if (asset.Name.Length > 64)
+                        if (asset.Name.Length > AssetBase.MAX_ASSET_NAME)
                         {
-                            assetName = asset.Name.Substring(0, 64);
+                            assetName = asset.Name.Substring(0, AssetBase.MAX_ASSET_NAME);
                             m_log.WarnFormat(
                                 "[ASSET DB]: Name '{0}' for asset {1} truncated from {2} to {3} characters on add", 
                                 asset.Name, asset.ID, asset.Name.Length, assetName.Length);
                         }
     
                         string assetDescription = asset.Description;
-                        if (asset.Description.Length > 64)
+                        if (asset.Description.Length > AssetBase.MAX_ASSET_DESC)
                         {
-                            assetDescription = asset.Description.Substring(0, 64);
+                            assetDescription = asset.Description.Substring(0, AssetBase.MAX_ASSET_DESC);
                             m_log.WarnFormat(
                                 "[ASSET DB]: Description '{0}' for asset {1} truncated from {2} to {3} characters on add", 
                                 asset.Description, asset.ID, asset.Description.Length, assetDescription.Length);
@@ -257,46 +257,44 @@ namespace OpenSim.Data.MySQL
         }
 
         /// <summary>
-        /// Check if the asset exists in the database
+        /// Check if the assets exist in the database.
         /// </summary>
-        /// <param name="uuid">The asset UUID</param>
-        /// <returns>true if it exists, false otherwise.</returns>
-        override public bool ExistsAsset(UUID uuid)
+        /// <param name="uuidss">The assets' IDs</param>
+        /// <returns>For each asset: true if it exists, false otherwise</returns>
+        public override bool[] AssetsExist(UUID[] uuids)
         {
-//            m_log.DebugFormat("[ASSETS DB]: Checking for asset {0}", uuid);
+            if (uuids.Length == 0)
+                return new bool[0];
 
-            bool assetExists = false;
+            HashSet<UUID> exist = new HashSet<UUID>();
+
+            string ids = "'" + string.Join("','", uuids) + "'";
+            string sql = string.Format("SELECT id FROM assets WHERE id IN ({0})", ids);
 
             lock (m_dbLock)
             {
                 using (MySqlConnection dbcon = new MySqlConnection(m_connectionString))
                 {
                     dbcon.Open();
-                    using (MySqlCommand cmd = new MySqlCommand("SELECT id FROM assets WHERE id=?id", dbcon))
+                    using (MySqlCommand cmd = new MySqlCommand(sql, dbcon))
                     {
-                        cmd.Parameters.AddWithValue("?id", uuid.ToString());
-
-                        try
+                        using (MySqlDataReader dbReader = cmd.ExecuteReader())
                         {
-                            using (MySqlDataReader dbReader = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                            while (dbReader.Read())
                             {
-                                if (dbReader.Read())
-                                {
-//                                    m_log.DebugFormat("[ASSETS DB]: Found asset {0}", uuid);
-                                    assetExists = true;
-                                }
+                                UUID id = DBGuid.FromDB(dbReader["id"]);
+                                exist.Add(id);
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            m_log.Error(
-                                string.Format("[ASSETS DB]: MySql failure fetching asset {0}.  Exception  ", uuid), e);
                         }
                     }
                 }
             }
 
-            return assetExists;
+            bool[] results = new bool[uuids.Length];
+            for (int i = 0; i < uuids.Length; i++)
+                results[i] = exist.Contains(uuids[i]);
+
+            return results;
         }
 
         /// <summary>

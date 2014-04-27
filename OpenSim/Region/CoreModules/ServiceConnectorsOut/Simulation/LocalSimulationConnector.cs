@@ -205,7 +205,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
          * Agent-related communications
          */
 
-        public bool CreateAgent(GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, out string reason)
+        public bool CreateAgent(GridRegion source, GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.InfoFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -224,7 +224,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 				if(m_log.IsDebugEnabled) {
 					m_log.DebugFormat("Found region {0} to send SendCreateChildAgent", destination.RegionName);
 				}
-                return m_scenes[destination.RegionID].NewUserConnection(aCircuit, teleportFlags, out reason);
+                return m_scenes[destination.RegionID].NewUserConnection(aCircuit, teleportFlags, source, out reason);
             }
 
             reason = "Did not find region " + destination.RegionName;
@@ -271,7 +271,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             return true;
         }
 
-        public bool QueryAccess(GridRegion destination, UUID id, Vector3 position, out string version, out string reason)
+        public bool QueryAccess(GridRegion destination, UUID agentID, string agentHomeURI, Vector3 position, out string version, out string reason)
         {
             reason = "Communications failure";
             version = ServiceVersion;
@@ -284,7 +284,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 //                        "[LOCAL SIMULATION CONNECTOR]: Found region {0} {1} to send AgentUpdate",
 //                        s.RegionInfo.RegionName, destination.RegionHandle);
 
-                return m_scenes[destination.RegionID].QueryAccess(id, position, out reason);
+                return m_scenes[destination.RegionID].QueryAccess(agentID, agentHomeURI, position, out reason);
             }
 
             //m_log.Debug("[LOCAL COMMS]: region not found for QueryAccess");

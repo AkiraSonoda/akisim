@@ -75,6 +75,13 @@ namespace OpenSim.Services.Interfaces
         /// </param>
         /// <returns>True if the id was parseable, false otherwise</returns>
         bool Get(string id, Object sender, AssetRetrieved handler);
+        
+        /// <summary>
+        /// Check if assets exist in the database.
+        /// </summary>
+        /// <param name="ids">The assets' IDs</param>
+        /// <returns>For each asset: true if it exists, false otherwise</returns>
+        bool[] AssetsExist(string[] ids);
 
         /// <summary>
         /// Creates a new asset
@@ -83,7 +90,7 @@ namespace OpenSim.Services.Interfaces
         /// Returns a random ID if none is passed via the asset argument.
         /// </remarks>
         /// <param name="asset"></param>
-        /// <returns></returns>
+        /// <returns>The Asset ID, or string.Empty if an error occurred</returns>
         string Store(AssetBase asset);
 
         /// <summary>

@@ -111,6 +111,9 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         /// </remarks>
         private Stat m_interRegionTeleportFailures;
 
+        protected string m_ThisHomeURI;
+        protected string m_GatekeeperURI;
+
         protected bool m_Enabled = false;
 
         public Scene Scene { get; private set; }
@@ -206,6 +209,18 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         {
             string transferVersionName = "SIMULATION";
             float maxTransferVersion = 0.2f;
+
+            IConfig hypergridConfig = source.Configs["Hypergrid"];
+            if (hypergridConfig != null)
+            {
+                m_ThisHomeURI = hypergridConfig.GetString("HomeURI", string.Empty);
+                if (m_ThisHomeURI != string.Empty && !m_ThisHomeURI.EndsWith("/"))
+                    m_ThisHomeURI += '/';
+
+                m_GatekeeperURI = hypergridConfig.GetString("GatekeeperURI", string.Empty);
+                if (m_GatekeeperURI != string.Empty && !m_GatekeeperURI.EndsWith("/"))
+                    m_GatekeeperURI += '/';
+            }
 
             IConfig transferConfig = source.Configs["EntityTransfer"];
             if (transferConfig != null)
@@ -529,14 +544,17 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
             if (reg != null)
             {
-                finalDestination = GetFinalDestination(reg);
+                string homeURI = Scene.GetAgentHomeURI(sp.ControllingClient.AgentId);
+
+                string message;
+                finalDestination = GetFinalDestination(reg, sp.ControllingClient.AgentId, homeURI, out message);
 
                 if (finalDestination == null)
                 {
-                    m_log.WarnFormat( "{0} Final destination is having problems. Unable to teleport {1} {2}",
-                                            LogHeader, sp.Name, sp.UUID);
+                    m_log.WarnFormat( "{0} Final destination is having problems. Unable to teleport {1} {2}: {3}",
+                                            LogHeader, sp.Name, sp.UUID, message);
 
-                    sp.ControllingClient.SendTeleportFailed("Problem at destination");
+                    sp.ControllingClient.SendTeleportFailed(message);
                     return;
                 }
 
@@ -556,6 +574,9 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                     sp.ControllingClient.SendTeleportFailed(reason);
                     return;
                 }
+
+                if (message != null)
+                    sp.ControllingClient.SendAgentAlertMessage(message, true);
 
                 //
                 // This is it
@@ -657,7 +678,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 m_log.DebugFormat(
                     "[ENTITY TRANSFER MODULE]: Ignoring teleport request of {0} {1} to {2} ({3}) {4}/{5} - agent is already in transit.",
                     sp.Name, sp.UUID, reg.ServerURI, finalDestination.ServerURI, finalDestination.RegionName, position);
-
+                sp.ControllingClient.SendTeleportFailed("Agent is already in transit.");
                 return;
             }
             
@@ -693,6 +714,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 sp.ControllingClient.SendTeleportFailed("Unable to locate destination");
                 return;
             }
+
+            string homeURI = Scene.GetAgentHomeURI(sp.ControllingClient.AgentId);
 
             m_log.DebugFormat(
                 "[ENTITY TRANSFER MODULE]: Teleporting {0} {1} from {2} to {3} ({4}) {5}/{6}",
@@ -738,7 +761,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             string reason;
             string version;
             if (!Scene.SimulationService.QueryAccess(
-                finalDestination, sp.ControllingClient.AgentId, Vector3.Zero, out version, out reason))
+                finalDestination, sp.ControllingClient.AgentId, homeURI, position, out version, out reason))
             {
                 sp.ControllingClient.SendTeleportFailed(reason);
 
@@ -833,11 +856,11 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             {
                 m_interRegionTeleportFailures.Value++;
 
-                sp.ControllingClient.SendTeleportFailed(String.Format("Teleport refused: {0}", reason));
-
                 m_log.DebugFormat(
                     "[ENTITY TRANSFER MODULE]: Teleport of {0} from {1} to {2} was refused because {3}",
                     sp.Name, sp.Scene.RegionInfo.RegionName, finalDestination.RegionName, reason);
+
+                sp.ControllingClient.SendTeleportFailed(reason);
 
                 return;
             }
@@ -1082,11 +1105,11 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             {
                 m_interRegionTeleportFailures.Value++;
 
-                sp.ControllingClient.SendTeleportFailed(String.Format("Teleport refused: {0}", reason));
-
                 m_log.DebugFormat(
                     "[ENTITY TRANSFER MODULE]: Teleport of {0} from {1} to {2} was refused because {3}",
                     sp.Name, sp.Scene.RegionInfo.RegionName, finalDestination.RegionName, reason);
+
+                sp.ControllingClient.SendTeleportFailed(reason);
 
                 return;
             }
@@ -1288,8 +1311,11 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
         protected virtual bool CreateAgent(ScenePresence sp, GridRegion reg, GridRegion finalDestination, AgentCircuitData agentCircuit, uint teleportFlags, out string reason, out bool logout)
         {
+            GridRegion source = new GridRegion(Scene.RegionInfo);
+            source.RawServerURI = m_GatekeeperURI;
+
             logout = false;
-            bool success = Scene.SimulationService.CreateAgent(finalDestination, agentCircuit, teleportFlags, out reason);
+            bool success = Scene.SimulationService.CreateAgent(source, finalDestination, agentCircuit, teleportFlags, out reason);
 
             if (success)
                 sp.Scene.EventManager.TriggerTeleportStart(sp.ControllingClient, reg, finalDestination, teleportFlags, logout);
@@ -1327,8 +1353,9 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             scene.SendKillObject(new List<uint> { localID });
         }
 
-        protected virtual GridRegion GetFinalDestination(GridRegion region)
+        protected virtual GridRegion GetFinalDestination(GridRegion region, UUID agentID, string agentHomeURI, out string message)
         {
+            message = null;
             return region;
         }
 
@@ -1449,6 +1476,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             version = String.Empty;
             newpos = pos;
             failureReason = string.Empty;
+            string homeURI = scene.GetAgentHomeURI(agentID);
 
 //            m_log.DebugFormat(
 //                "[ENTITY TRANSFER MODULE]: Crossing agent {0} at pos {1} in {2}", agent.Name, pos, scene.Name);
@@ -1482,7 +1510,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
                 // Check to see if we have access to the target region.
                 if (neighbourRegion != null
-                    && !scene.SimulationService.QueryAccess(neighbourRegion, agentID, newpos, out version, out failureReason))
+                    && !scene.SimulationService.QueryAccess(neighbourRegion, agentID, homeURI, newpos, out version, out failureReason))
                 {
                     // remember banned
                     m_bannedRegionCache.Add(neighbourRegion.RegionHandle, agentID);
@@ -1512,8 +1540,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
         public bool Cross(ScenePresence agent, bool isFlying)
         {
-            uint x;
-            uint y;
             Vector3 newpos;
             string version;
             string failureReason;
@@ -1629,24 +1655,30 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                                 ScenePresence agent, Vector3 pos, GridRegion neighbourRegion,
                                 bool isFlying, string version)
         {
-            m_log.DebugFormat("{0} CrossAgentToNewRegionAsync: new region={1} at <{2},{3}>. newpos={4}",
-                        LogHeader, neighbourRegion.RegionName, neighbourRegion.RegionLocX, neighbourRegion.RegionLocY, pos);
-
-            if (!CrossAgentToNewRegionPrep(agent, neighbourRegion))
+            try
             {
-                m_log.DebugFormat("{0} CrossAgentToNewRegionAsync: prep failed. Resetting transfer state", LogHeader);
-                m_entityTransferStateMachine.ResetFromTransit(agent.UUID);
-                return agent;
+                m_log.DebugFormat("{0}: CrossAgentToNewRegionAsync: new region={1} at <{2},{3}>. newpos={4}",
+                            LogHeader, neighbourRegion.RegionName, neighbourRegion.RegionLocX, neighbourRegion.RegionLocY, pos);
+
+                if (!CrossAgentToNewRegionPrep(agent, neighbourRegion))
+                {
+                    m_log.DebugFormat("{0}: CrossAgentToNewRegionAsync: prep failed. Resetting transfer state", LogHeader);
+                    m_entityTransferStateMachine.ResetFromTransit(agent.UUID);
+                }
+
+                if (!CrossAgentIntoNewRegionMain(agent, pos, neighbourRegion, isFlying))
+                {
+                    m_log.DebugFormat("{0}: CrossAgentToNewRegionAsync: cross main failed. Resetting transfer state", LogHeader);
+                    m_entityTransferStateMachine.ResetFromTransit(agent.UUID);
+                }
+
+                CrossAgentToNewRegionPost(agent, pos, neighbourRegion, isFlying, version);
+            }
+            catch (Exception e)
+            {
+                m_log.Error(string.Format("{0}: CrossAgentToNewRegionAsync: failed with exception  ", LogHeader), e);
             }
 
-            if (!CrossAgentIntoNewRegionMain(agent, pos, neighbourRegion, isFlying))
-            {
-                m_log.DebugFormat("{0} CrossAgentToNewRegionAsync: cross main failed. Resetting transfer state", LogHeader);
-                m_entityTransferStateMachine.ResetFromTransit(agent.UUID);
-                return agent;
-            }
-
-            CrossAgentToNewRegionPost(agent, pos, neighbourRegion, isFlying, version);
             return agent;
         }
 
@@ -1759,11 +1791,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             // Next, let's close the child agent connections that are too far away.
             uint neighbourx;
             uint neighboury;
-
-            Utils.LongToUInts(neighbourRegion.RegionHandle, out neighbourx, out neighboury);
-
-            neighbourx /= Constants.RegionSize;
-            neighboury /= Constants.RegionSize;
+            Util.RegionHandleToRegionLoc(neighbourRegion.RegionHandle, out neighbourx, out neighboury);
 
             agent.CloseChildAgents(neighbourx, neighboury);
 
@@ -2250,7 +2278,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             Thread.Sleep(500);
 
             Scene scene = sp.Scene;
-
+            
             m_log.DebugFormat(
                 "[ENTITY TRANSFER MODULE]: Informing {0} {1} about neighbour {2} {3} at ({4},{5})",
                 sp.Name, sp.UUID, reg.RegionName, endPoint, reg.RegionCoordX, reg.RegionCoordY);
@@ -2259,7 +2287,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
             string reason = String.Empty;
 
-            bool regionAccepted = scene.SimulationService.CreateAgent(reg, a, (uint)TeleportFlags.Default, out reason);
+            bool regionAccepted = scene.SimulationService.CreateAgent(null, reg, a, (uint)TeleportFlags.Default, out reason);
 
             if (regionAccepted && newAgent)
             {

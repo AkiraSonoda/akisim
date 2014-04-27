@@ -71,7 +71,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         #region Events
 
-        public event GenericMessage OnGenericMessage;
         public event BinaryGenericMessage OnBinaryGenericMessage;
         public event Action<IClientAPI> OnLogout;
         public event ObjectPermissions OnObjectPermissions;
@@ -79,13 +78,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event ViewerEffectEventHandler OnViewerEffect;
         public event ImprovedInstantMessage OnInstantMessage;
         public event ChatMessage OnChatFromClient;
-        public event TextureRequest OnRequestTexture;
         public event RezObject OnRezObject;
         public event DeRezObject OnDeRezObject;
         public event ModifyTerrain OnModifyTerrain;
         public event Action<IClientAPI> OnRegionHandShakeReply;
         public event GenericCall1 OnRequestWearables;
-        public event CachedTextureRequest OnCachedTextureRequest;
         public event SetAppearance OnSetAppearance;
         public event AvatarNowWearing OnAvatarNowWearing;
         public event RezSingleAttachmentFromInv OnRezSingleAttachmentFromInv;
@@ -138,15 +135,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event UpdatePrimGroupRotation OnUpdatePrimGroupMouseRotation;
         public event UpdateVector OnUpdatePrimScale;
         public event UpdateVector OnUpdatePrimGroupScale;
-        public event StatusChange OnChildAgentStatus;
-        public event GenericCall2 OnStopMovement;
-        public event Action<UUID> OnRemoveAvatar;
         public event RequestMapBlocks OnRequestMapBlocks;
         public event RequestMapName OnMapNameRequest;
         public event TeleportLocationRequest OnTeleportLocationRequest;
         public event TeleportLandmarkRequest OnTeleportLandmarkRequest;
         public event TeleportCancel OnTeleportCancel;
-        public event DisconnectUser OnDisconnectUser;
         public event RequestAvatarProperties OnRequestAvatarProperties;
         public event SetAlwaysRun OnSetAlwaysRun;
         public event FetchInventory OnAgentDataUpdateRequest;
@@ -176,7 +169,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event UpdateTaskInventory OnUpdateTaskInventory;
         public event MoveTaskInventory OnMoveTaskItem;
         public event RemoveTaskInventory OnRemoveTaskItem;
-        public event RequestAsset OnRequestAsset;
         public event UUIDNameRequest OnNameFromUUIDRequest;
         public event ParcelAccessListRequest OnParcelAccessListRequest;
         public event ParcelAccessListUpdateRequest OnParcelAccessListUpdateRequest;
@@ -207,7 +199,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event RequestPayPrice OnRequestPayPrice;
         public event ObjectSaleInfo OnObjectSaleInfo;
         public event ObjectBuy OnObjectBuy;
-        public event BuyObjectInventory OnBuyObjectInventory;
         public event AgentSit OnUndo;
         public event AgentSit OnRedo;
         public event LandUndo OnLandUndo;
@@ -216,7 +207,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event RequestObjectPropertiesFamily OnObjectGroupRequest;
         public event DetailedEstateDataRequest OnDetailedEstateDataRequest;
         public event SetEstateFlagsRequest OnSetEstateFlagsRequest;
-        public event SetEstateTerrainBaseTexture OnSetEstateTerrainBaseTexture;
         public event SetEstateTerrainDetailTexture OnSetEstateTerrainDetailTexture;
         public event SetEstateTerrainTextureHeights OnSetEstateTerrainTextureHeights;
         public event CommitEstateTerrainTextureRequest OnCommitEstateTerrainTextureRequest;
@@ -239,7 +229,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event GetScriptRunning OnGetScriptRunning;
         public event SetScriptRunning OnSetScriptRunning;
         public event Action<Vector3, bool, bool> OnAutoPilotGo;
-        public event TerrainUnacked OnUnackedTerrain;
         public event ActivateGesture OnActivateGesture;
         public event DeactivateGesture OnDeactivateGesture;
         public event ObjectOwner OnObjectOwner;
@@ -296,6 +285,20 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public event MuteListEntryRemove OnRemoveMuteListEntry;
         public event GodlikeMessage onGodlikeMessage;
         public event GodUpdateRegionInfoUpdate OnGodUpdateRegionInfoUpdate;
+
+#pragma warning disable 0067
+        public event GenericMessage OnGenericMessage;
+        public event TextureRequest OnRequestTexture;
+        public event StatusChange OnChildAgentStatus;
+        public event GenericCall2 OnStopMovement;
+        public event Action<UUID> OnRemoveAvatar;
+        public event DisconnectUser OnDisconnectUser;
+        public event RequestAsset OnRequestAsset;
+        public event BuyObjectInventory OnBuyObjectInventory;
+        public event SetEstateTerrainBaseTexture OnSetEstateTerrainBaseTexture;
+        public event TerrainUnacked OnUnackedTerrain;
+        public event CachedTextureRequest OnCachedTextureRequest;
+#pragma warning restore 0067
 
         #endregion Events
 
@@ -401,9 +404,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         }
         public UUID AgentId { get { return m_agentId; } }
         public ISceneAgent SceneAgent { get; set; }
-        public UUID ActiveGroupId { get { return m_activeGroupID; } }
-        public string ActiveGroupName { get { return m_activeGroupName; } }
-        public ulong ActiveGroupPowers { get { return m_activeGroupPowers; } }
+        public UUID ActiveGroupId { get { return m_activeGroupID; } private set { m_activeGroupID = value; } }
+        public string ActiveGroupName { get { return m_activeGroupName; } private set { m_activeGroupName = value; } }
+        public ulong ActiveGroupPowers { get { return m_activeGroupPowers; } private set { m_activeGroupPowers = value; } }
         public bool IsGroupMember(UUID groupID) { return m_groupPowers.ContainsKey(groupID); }
 
         /// <summary>
@@ -1255,6 +1258,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             try
             {
+                /* test code using the terrain compressor in libOpenMetaverse
+                int[] patchInd = new int[1];
+                patchInd[0] = px + (py * Constants.TerrainPatchSize);
+                LayerDataPacket layerpack = TerrainCompressor.CreateLandPacket(terrData.GetFloatsSerialized(), patchInd);
+                 */
                 LayerDataPacket layerpack = OpenSimTerrainCompressor.CreateLandPacket(terrData, px, py);
                 
                 // When a user edits the terrain, so much data is sent, the data queues up fast and presents a sub optimal editing experience.  
@@ -1326,6 +1334,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (m_scene.RegionInfo.RegionSizeX > Constants.RegionSize || m_scene.RegionInfo.RegionSizeY > Constants.RegionSize)
                 layerType = (byte)TerrainPatch.LayerType.WindExtended;
 
+            // LayerDataPacket layerpack = TerrainCompressor.CreateLayerDataPacket(patches, (TerrainPatch.LayerType)layerType);
             LayerDataPacket layerpack = OpenSimTerrainCompressor.CreateLayerDataPacket(patches, layerType,
                                 (int)m_scene.RegionInfo.RegionSizeX, (int)m_scene.RegionInfo.RegionSizeY);
             layerpack.Header.Zerocoded = true;
@@ -1355,6 +1364,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (m_scene.RegionInfo.RegionSizeX > Constants.RegionSize || m_scene.RegionInfo.RegionSizeY > Constants.RegionSize)
                 layerType = (byte)TerrainPatch.LayerType.CloudExtended;
 
+            // LayerDataPacket layerpack = TerrainCompressor.CreateLayerDataPacket(patches, (TerrainPatch.LayerType)layerType);
             LayerDataPacket layerpack = OpenSimTerrainCompressor.CreateLayerDataPacket(patches, layerType,
                                 (int)m_scene.RegionInfo.RegionSizeX, (int)m_scene.RegionInfo.RegionSizeY);
             layerpack.Header.Zerocoded = true;
@@ -2273,9 +2283,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void SendAgentDataUpdate(UUID agentid, UUID activegroupid, string firstname, string lastname, ulong grouppowers, string groupname, string grouptitle)
         {
-            m_activeGroupID = activegroupid;
-            m_activeGroupName = groupname;
-            m_activeGroupPowers = grouppowers;
+            if (agentid == AgentId)
+            {
+                ActiveGroupId = activegroupid;
+                ActiveGroupName = groupname;
+                ActiveGroupPowers = grouppowers;
+            }
 
             AgentDataUpdatePacket sendAgentDataUpdate = (AgentDataUpdatePacket)PacketPool.Instance.GetPacket(PacketType.AgentDataUpdate);
             sendAgentDataUpdate.AgentData.ActiveGroupID = activegroupid;
@@ -5417,8 +5430,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public ulong GetGroupPowers(UUID groupID)
         {
-            if (groupID == m_activeGroupID)
-                return m_activeGroupPowers;
+            if (groupID == ActiveGroupId)
+                return ActiveGroupPowers;
 
             if (m_groupPowers.ContainsKey(groupID))
                 return m_groupPowers[groupID];
@@ -7168,7 +7181,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 {
                     handlerObjectDuplicate(dupe.ObjectData[i].ObjectLocalID, dupe.SharedData.Offset,
                                            dupe.SharedData.DuplicateFlags, AgentId,
-                                           m_activeGroupID);
+                                           ActiveGroupId);
                 }
             }
 
@@ -7781,7 +7794,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 if (handlerObjectDuplicateOnRay != null)
                 {
                     handlerObjectDuplicateOnRay(dupeOnRay.ObjectData[i].ObjectLocalID, dupeOnRay.AgentData.DuplicateFlags,
-                                                AgentId, m_activeGroupID, dupeOnRay.AgentData.RayTargetID, dupeOnRay.AgentData.RayEnd,
+                                                AgentId, ActiveGroupId, dupeOnRay.AgentData.RayTargetID, dupeOnRay.AgentData.RayEnd,
                                                 dupeOnRay.AgentData.RayStart, dupeOnRay.AgentData.BypassRaycast, dupeOnRay.AgentData.RayEndIsIntersection,
                                                 dupeOnRay.AgentData.CopyCenters, dupeOnRay.AgentData.CopyRotates);
                 }

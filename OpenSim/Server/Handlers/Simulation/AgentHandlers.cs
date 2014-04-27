@@ -117,15 +117,16 @@ namespace OpenSim.Server.Handlers.Simulation
 
         }
 
-        protected virtual void DoQueryAccess (Hashtable request, Hashtable responsedata, UUID id, UUID regionID)
-		{
-			m_log.InfoFormat("QUERYACCESS with agentID {0}", id);
+        protected virtual void DoQueryAccess(Hashtable request, Hashtable responsedata, UUID agentID, UUID regionID)
+        {
+            m_log.InfoFormat("QUERYACCESS with agentID {0}", agentID);
 
-			if (m_SimulationService == null) {
-				m_log.Debug ("[AGENT HANDLER]: Agent QUERY called. Harmless but useless.");
-				responsedata ["content_type"] = "application/json";
-				responsedata ["int_response_code"] = HttpStatusCode.NotImplemented;
-				responsedata ["str_response_string"] = string.Empty;
+            if (m_SimulationService == null)
+            {
+                m_log.Debug("[AGENT HANDLER]: Agent QUERY called. Harmless but useless.");
+                responsedata["content_type"] = "application/json";
+                responsedata["int_response_code"] = HttpStatusCode.NotImplemented;
+                responsedata["str_response_string"] = string.Empty;
 
 				return;
 			}
@@ -137,12 +138,16 @@ namespace OpenSim.Server.Handlers.Simulation
             if (args.ContainsKey("position"))
                 position = Vector3.Parse(args["position"].AsString());
 
+            string agentHomeURI = null;
+            if (args.ContainsKey("agent_home_uri"))
+                agentHomeURI = args["agent_home_uri"].AsString();
+
             GridRegion destination = new GridRegion();
             destination.RegionID = regionID;
 
             string reason;
             string version;
-            bool result = m_SimulationService.QueryAccess(destination, id, position, out version, out reason);
+            bool result = m_SimulationService.QueryAccess(destination, agentID, agentHomeURI, position, out version, out reason);
 
             responsedata["int_response_code"] = HttpStatusCode.OK;
 
@@ -308,13 +313,29 @@ namespace OpenSim.Server.Handlers.Simulation
                 return;
             }
 
+            GridRegion source = null;
+
+            if (args.ContainsKey("source_uuid"))
+            {
+                source = new GridRegion();
+                source.RegionLocX = Int32.Parse(args["source_x"].AsString());
+                source.RegionLocY = Int32.Parse(args["source_y"].AsString());
+                source.RegionName = args["source_name"].AsString();
+                source.RegionID = UUID.Parse(args["source_uuid"].AsString());
+                
+                if (args.ContainsKey("source_server_uri"))
+                    source.RawServerURI = args["source_server_uri"].AsString();
+                else
+                    source.RawServerURI = null;
+            }
+
             OSDMap resp = new OSDMap(2);
             string reason = String.Empty;
 
             // This is the meaning of POST agent
             //m_regionClient.AdjustUserInformation(aCircuit);
             //bool result = m_SimulationService.CreateAgent(destination, aCircuit, teleportFlags, out reason);
-            bool result = CreateAgent(gatekeeper, destination, aCircuit, data.flags, data.fromLogin, out reason);
+            bool result = CreateAgent(source, gatekeeper, destination, aCircuit, data.flags, data.fromLogin, out reason);
 
             resp["reason"] = OSD.FromString(reason);
             resp["success"] = OSD.FromBoolean(result);
@@ -388,13 +409,14 @@ namespace OpenSim.Server.Handlers.Simulation
         }
 
         // subclasses can override this
-        protected virtual bool CreateAgent(GridRegion gatekeeper, GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, out string reason)
+        protected virtual bool CreateAgent(GridRegion source, GridRegion gatekeeper, GridRegion destination,
+            AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
 			}
 
-            return m_SimulationService.CreateAgent(destination, aCircuit, teleportFlags, out reason);
+            return m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, out reason);
         }
     }
 

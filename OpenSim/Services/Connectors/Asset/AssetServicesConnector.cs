@@ -243,7 +243,7 @@ namespace OpenSim.Services.Connectors
                     AsynchronousRestObjectRequester.MakeRequest<int, AssetBase>("GET", uri, 0,
                         delegate(AssetBase a)
                         {
-                            if (m_Cache != null)
+                            if (a != null && m_Cache != null)
                                 m_Cache.Cache(a);
 
                             AssetRetrievedEx handlers;
@@ -274,6 +274,27 @@ namespace OpenSim.Services.Connectors
             }
 
             return true;
+        }
+
+        public virtual bool[] AssetsExist(string[] ids)
+        {
+            string uri = m_ServerURI + "/get_assets_exist";
+
+            bool[] exist = null;
+            try
+            {
+                exist = SynchronousRestObjectRequester.MakeRequest<string[], bool[]>("POST", uri, ids);
+            }
+            catch (Exception)
+            {
+                // This is most likely to happen because the server doesn't support this function,
+                // so just silently return "doesn't exist" for all the assets.
+            }
+            
+            if (exist == null)
+                exist = new bool[ids.Length];
+
+            return exist;
         }
 
         public string Store(AssetBase asset)
@@ -307,7 +328,7 @@ namespace OpenSim.Services.Connectors
 
                         int tickstart = Util.EnvironmentTickCount();
 
-      	               OSDMap surabayaAnswer = WebUtil.PostToService(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
+                            OSDMap surabayaAnswer = WebUtil.PostToServiceCompressed(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
 
                         if(surabayaAnswer != null) {
                            // m_log.InfoFormat("Caching baked Texture: {0}",surabayaAnswer.ToString());
@@ -337,7 +358,7 @@ namespace OpenSim.Services.Connectors
 
             string uri = m_ServerURI + "/assets/";
 
-            string newID = string.Empty;
+            string newID;
             try
             {
                 newID = SynchronousRestObjectRequester.
@@ -345,19 +366,25 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.WarnFormat("[ASSET CONNECTOR]: Unable to send asset {0} to asset server. Reason: {1}", asset.ID, e.Message);
+                m_log.Warn(string.Format("[ASSET CONNECTOR]: Unable to send asset {0} to asset server. Reason: {1} ", asset.ID, e.Message), e);
+                return string.Empty;
             }
 
-            if (newID != String.Empty)
+            // TEMPORARY: SRAS returns 'null' when it's asked to store existing assets
+            if (newID == null)
             {
-                // Placing this here, so that this work with old asset servers that don't send any reply back
-                // SynchronousRestObjectRequester returns somethins that is not an empty string
-                if (newID != null)
-                    asset.ID = newID;
-
-                if (m_Cache != null)
-                    m_Cache.Cache(asset);
+                m_log.DebugFormat("[ASSET CONNECTOR]: Storing of asset {0} returned null; assuming the asset already exists", asset.ID);
+                return asset.ID;
             }
+
+            if (string.IsNullOrEmpty(newID))
+                return string.Empty;
+
+            asset.ID = newID;
+
+            if (m_Cache != null)
+                m_Cache.Cache(asset);
+
             return newID;
         }
 
