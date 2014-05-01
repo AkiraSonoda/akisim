@@ -32,12 +32,12 @@ OSBAK="/home/opensim/backup"
 
 cd $OSINS
 
-# Lesen der Dateien "build_version.txt" ( Die Versionsnummer des gebauten Simulators )
+# Lesen der Dateien "metro_build_version.txt" ( Die Versionsnummer des gebauten Simulators )
 # in die entsprechende Variable.
-build_version=$(cat build_version.txt)
-# Lesen der Dateien "old_version.txt" ( Die Versionsnummer des laufenden Simulators )
+build_version=$(cat metro_build_version.txt)
+# Lesen der Dateien "metro_old_version.txt" ( Die Versionsnummer des laufenden Simulators )
 # in die entsprechende Variable.
-old_version=$(cat old_version.txt)
+old_version=$(cat metro_old_version.txt)
 
 # Vergleich der beiden Variablen. Falls beide Versionen identisch sind
 # wird das Script verlassen
