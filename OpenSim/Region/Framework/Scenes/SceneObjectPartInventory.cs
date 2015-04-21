@@ -400,6 +400,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         private UUID RestoreSavedScriptState(UUID loadedID, UUID oldID, UUID newID)
         {
+//            m_log.DebugFormat(
+//                "[PRIM INVENTORY]: Restoring scripted state for item {0}, oldID {1}, loadedID {2}", 
+//                newID, oldID, loadedID);
+
             IScriptModule[] engines = m_part.ParentGroup.Scene.RequestModuleInterfaces<IScriptModule>();
             if (engines.Length == 0) // No engine at all
                 return oldID;
@@ -412,7 +416,7 @@ namespace OpenSim.Region.Framework.Scenes
                 XmlDocument doc = new XmlDocument();
 
                 doc.LoadXml(m_part.ParentGroup.m_savedScriptState[stateID]);
-                
+
                 ////////// CRUFT WARNING ///////////////////////////////////
                 //
                 // Old objects will have <ScriptState><State> ...
@@ -441,6 +445,8 @@ namespace OpenSim.Region.Framework.Scenes
 
                     // This created document has only the minimun data
                     // necessary for XEngine to parse it successfully
+
+//                    m_log.DebugFormat("[PRIM INVENTORY]: Adding legacy state {0} in {1}", stateID, newID);
 
                     m_part.ParentGroup.m_savedScriptState[stateID] = newDoc.OuterXml;
                 }
@@ -751,7 +757,7 @@ namespace OpenSim.Region.Framework.Scenes
             Vector3 bbox;
             float offsetHeight;
 
-            bool single = m_part.ParentGroup.Scene.GetObjectsToRez(rezAsset.Data, false, out objlist, out veclist, out bbox, out offsetHeight);
+            m_part.ParentGroup.Scene.GetObjectsToRez(rezAsset.Data, false, out objlist, out veclist, out bbox, out offsetHeight);
 
             for (int i = 0; i < objlist.Count; i++)
             {
@@ -870,8 +876,8 @@ namespace OpenSim.Region.Framework.Scenes
                 int type = m_items[itemID].InvType;
                 if (type == 10) // Script
                 {
-                    m_part.RemoveScriptEvents(itemID);
-                    m_part.ParentGroup.Scene.EventManager.TriggerRemoveScript(m_part.LocalId, itemID);
+                    // route it through here, to handle script cleanup tasks
+                    RemoveScriptInstance(itemID, false);
                 }
                 m_items.Remove(itemID);
                 m_inventorySerial++;

@@ -178,8 +178,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
             acd.lastname = lastname;
             acd.ServiceURLs = new Dictionary<string, object>();
 
-            AvatarAppearance npcAppearance = new AvatarAppearance(appearance,
-                    true);
+            AvatarAppearance npcAppearance = new AvatarAppearance(appearance, true);
             acd.Appearance = npcAppearance;
 
             /*
@@ -235,6 +234,9 @@ namespace OpenSim.Region.OptionalModules.World.NPC
                     ScenePresence sp;
                     if (scene.TryGetScenePresence(agentID, out sp))
                     {
+                        if (sp.IsSatOnObject || sp.SitGround)
+                            return false;
+
 //                        m_log.DebugFormat(
 //                                "[NPC MODULE]: Moving {0} to {1} in {2}, noFly {3}, landAtTarget {4}",
 //                                sp.Name, pos, scene.RegionInfo.RegionName,
@@ -396,26 +398,30 @@ namespace OpenSim.Region.OptionalModules.World.NPC
 
         public bool DeleteNPC(UUID agentID, Scene scene)
         {
+            bool doRemove = false;
+            NPCAvatar av;
             lock (m_avatars)
             {
-                NPCAvatar av;
                 if (m_avatars.TryGetValue(agentID, out av))
                 {
                     /*
                     m_log.DebugFormat("[NPC MODULE]: Found {0} {1} to remove",
                             agentID, av.Name);
                     */
-
-                    scene.CloseAgent(agentID, false);
-
-                    m_avatars.Remove(agentID);
-
-                    /*
-                    m_log.DebugFormat("[NPC MODULE]: Removed NPC {0} {1}",
-                            agentID, av.Name);
-                    */
-                    return true;
+                    doRemove = true;
                 }
+            }
+
+            if (doRemove)
+            {
+                scene.CloseAgent(agentID, false);
+                lock (m_avatars)
+                {
+                    m_avatars.Remove(agentID);
+                }
+                m_log.DebugFormat("[NPC MODULE]: Removed NPC {0} {1}",
+                        agentID, av.Name);
+                return true;
             }
             /*
             m_log.DebugFormat("[NPC MODULE]: Could not find {0} to remove",
@@ -439,13 +445,20 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         /// <summary>
         /// Check if the caller has permission to manipulate the given NPC.
         /// </summary>
+        /// <remarks>
+        /// A caller has permission if
+        ///   * The caller UUID given is UUID.Zero.
+        ///   * The avatar is unowned (owner is UUID.Zero).
+        ///   * The avatar is owned and the owner and callerID match.
+        ///   * The avatar is owned and the callerID matches its agentID.
+        /// </remarks>
         /// <param name="av"></param>
         /// <param name="callerID"></param>
         /// <returns>true if they do, false if they don't.</returns>
         private bool CheckPermissions(NPCAvatar av, UUID callerID)
         {
             return callerID == UUID.Zero || av.OwnerID == UUID.Zero ||
-                    av.OwnerID == callerID;
+                av.OwnerID == callerID  || av.AgentId == callerID;
         }
     }
 }

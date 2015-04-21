@@ -101,7 +101,6 @@ namespace OpenSim.Framework
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string LogHeader = "[REGION INFO]";
 
-        public bool commFailTF = false;
         public string RegionFile = String.Empty;
         public bool isSandbox = false;
         public bool Persistent = true;
@@ -128,7 +127,6 @@ namespace OpenSim.Framework
         private int m_objectCapacity = 0;
         private int m_maxPrimsPerUser = -1;
         private int m_linksetCapacity = 0;
-        private int m_agentCapacity = 0;
         private string m_regionType = String.Empty;
         private RegionLightShareData m_windlight = new RegionLightShareData();
         protected uint m_httpPort;
@@ -147,8 +145,29 @@ namespace OpenSim.Framework
         public uint WorldLocX = 0;
         public uint WorldLocY = 0;
         public uint WorldLocZ = 0;
+
+        /// <summary>
+        /// X dimension of the region.
+        /// </summary>
+        /// <remarks>
+        /// If this is a varregion then the default size set here will be replaced when we load the region config.
+        /// </remarks>
         public uint RegionSizeX = Constants.RegionSize;
+
+        /// <summary>
+        /// X dimension of the region.
+        /// </summary>
+        /// <remarks>
+        /// If this is a varregion then the default size set here will be replaced when we load the region config.
+        /// </remarks>
         public uint RegionSizeY = Constants.RegionSize;
+
+        /// <summary>
+        /// Z dimension of the region.
+        /// </summary>
+        /// <remarks>
+        /// XXX: Unknown if this accounts for regions with negative Z.
+        /// </remarks>
         public uint RegionSizeZ = Constants.RegionHeight;
 
         private Dictionary<String, String> m_extraSettings = new Dictionary<string, string>();
@@ -331,10 +350,7 @@ namespace OpenSim.Framework
             get { return m_linksetCapacity; }
         }
 
-        public int AgentCapacity
-        {
-            get { return m_agentCapacity; }
-        }
+        public int AgentCapacity { get; set; }
 
         public byte AccessLevel
         {
@@ -728,7 +744,7 @@ namespace OpenSim.Framework
             
             #endregion
 
-            m_agentCapacity = config.GetInt("MaxAgents", 100);
+            AgentCapacity = config.GetInt("MaxAgents", 100);
             allKeys.Remove("MaxAgents");
 
             // Multi-tenancy
@@ -807,12 +823,14 @@ namespace OpenSim.Framework
             string location = String.Format("{0},{1}", RegionLocX, RegionLocY);
             config.Set("Location", location);
 
-            if (RegionSizeX != Constants.RegionSize || RegionSizeY != Constants.RegionSize)
-            {
+            if (RegionSizeX > 0)
                 config.Set("SizeX", RegionSizeX);
+
+            if (RegionSizeY > 0)
                 config.Set("SizeY", RegionSizeY);
-                config.Set("SizeZ", RegionSizeZ);
-            }
+
+//            if (RegionSizeZ > 0)
+//                config.Set("SizeZ", RegionSizeZ);
 
             config.Set("InternalAddress", m_internalEndPoint.Address.ToString());
             config.Set("InternalPort", m_internalEndPoint.Port);
@@ -844,8 +862,8 @@ namespace OpenSim.Framework
             if (m_linksetCapacity > 0)
                 config.Set("LinksetPrims", m_linksetCapacity);
 
-            if (m_agentCapacity > 0)
-                config.Set("MaxAgents", m_agentCapacity);
+            if (AgentCapacity > 0)
+                config.Set("MaxAgents", AgentCapacity);
 
             if (ScopeID != UUID.Zero)
                 config.Set("ScopeID", ScopeID.ToString());
@@ -856,13 +874,8 @@ namespace OpenSim.Framework
             if (m_maptileStaticUUID != UUID.Zero)
                 config.Set("MaptileStaticUUID", m_maptileStaticUUID.ToString());
 
-            if (MaptileStaticFile != String.Empty)
+            if (MaptileStaticFile != null && MaptileStaticFile != String.Empty)
                 config.Set("MaptileStaticFile", MaptileStaticFile);
-        }
-
-        public bool ignoreIncomingConfiguration(string configuration_key, object configuration_result)
-        {
-            return true;
         }
 
         public void SaveRegionToFile(string description, string filename)

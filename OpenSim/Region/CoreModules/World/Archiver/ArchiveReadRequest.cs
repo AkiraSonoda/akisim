@@ -36,6 +36,7 @@ using System.Xml;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Serialization;
 using OpenSim.Framework.Serialization.External;
 using OpenSim.Region.CoreModules.World.Terrain;
@@ -160,9 +161,21 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         private IAssetService m_assetService = null;
 
 
+        private UUID m_defaultUser;
+
         public ArchiveReadRequest(Scene scene, string loadPath, Guid requestId, Dictionary<string,object>options)
         {
             m_rootScene = scene;
+
+            if (options.ContainsKey("default-user"))
+            {
+                m_defaultUser = (UUID)options["default-user"];
+                m_log.InfoFormat("Using User {0} as default user", m_defaultUser.ToString());
+            }
+            else 
+            {
+                m_defaultUser = scene.RegionInfo.EstateSettings.EstateOwner;
+            }
 
             m_loadPath = loadPath;
             try
@@ -206,6 +219,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             m_merge = options.ContainsKey("merge");
             m_requestId = requestId;
 
+            m_defaultUser = scene.RegionInfo.EstateSettings.EstateOwner;
+     
             // Zero can never be a valid user id
             m_validUserUuids[UUID.Zero] = false;
 
@@ -357,7 +372,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             // Start the scripts. We delayed this because we want the OAR to finish loading ASAP, so
             // that users can enter the scene. If we allow the scripts to start in the loop above
             // then they significantly increase the time until the OAR finishes loading.
-            Util.RunThreadNoTimeout(delegate(object o)
+            WorkManager.RunInThread(o =>
             {
                 Thread.Sleep(15000);
                 m_log.Info("[ARCHIVER]: Starting scripts in scene objects");
@@ -372,7 +387,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
                     sceneContext.SceneObjects.Clear();
                 }
-            }, "ReadArchiveStartScripts", null);
+            }, null, string.Format("ReadArchiveStartScripts (request {0})", m_requestId));
 
             m_log.InfoFormat("[ARCHIVER]: Successfully loaded archive");
 
@@ -562,16 +577,16 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 if (string.IsNullOrEmpty(part.CreatorData))
                 {
                     if (!ResolveUserUuid(scene, part.CreatorID))
-                        part.CreatorID = scene.RegionInfo.EstateSettings.EstateOwner;
+                        part.CreatorID = m_defaultUser;
                 }
                 if (UserManager != null)
                     UserManager.AddUser(part.CreatorID, part.CreatorData);
 
                 if (!(ResolveUserUuid(scene, part.OwnerID) || ResolveGroupUuid(part.OwnerID)))
-                    part.OwnerID = scene.RegionInfo.EstateSettings.EstateOwner;
+                    part.OwnerID = m_defaultUser;
 
                 if (!(ResolveUserUuid(scene, part.LastOwnerID) || ResolveGroupUuid(part.LastOwnerID)))
-                    part.LastOwnerID = scene.RegionInfo.EstateSettings.EstateOwner;
+                    part.LastOwnerID = m_defaultUser;
 
                 if (!ResolveGroupUuid(part.GroupID))
                     part.GroupID = UUID.Zero;
@@ -590,13 +605,13 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     {
                         if (!(ResolveUserUuid(scene, kvp.Value.OwnerID) || ResolveGroupUuid(kvp.Value.OwnerID)))
                         {
-                            kvp.Value.OwnerID = scene.RegionInfo.EstateSettings.EstateOwner;
+                            kvp.Value.OwnerID = m_defaultUser;
                         }
 
                         if (string.IsNullOrEmpty(kvp.Value.CreatorData))
                         {
                             if (!ResolveUserUuid(scene, kvp.Value.CreatorID))
-                                kvp.Value.CreatorID = scene.RegionInfo.EstateSettings.EstateOwner;
+                                kvp.Value.CreatorID = m_defaultUser;
                         }
 
                         if (UserManager != null)
@@ -904,17 +919,18 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         {
             ITerrainModule terrainModule = scene.RequestModuleInterface<ITerrainModule>();
 
-            MemoryStream ms = new MemoryStream(data);
-            if (m_displacement != Vector3.Zero || m_rotation != 0f)
+            using (MemoryStream ms = new MemoryStream(data))
             {
-                Vector2 rotationCenter = new Vector2(m_rotationCenter.X, m_rotationCenter.Y);
-                terrainModule.LoadFromStream(terrainPath, m_displacement, m_rotation, rotationCenter, ms);
+                if (m_displacement != Vector3.Zero || m_rotation != 0f)
+                {
+                    Vector2 rotationCenter = new Vector2(m_rotationCenter.X, m_rotationCenter.Y);
+                    terrainModule.LoadFromStream(terrainPath, m_displacement, m_rotation, rotationCenter, ms);
+                }
+                else
+                {
+                    terrainModule.LoadFromStream(terrainPath, ms);
+                }
             }
-            else
-            {
-                terrainModule.LoadFromStream(terrainPath, ms);
-            }
-            ms.Close();
 
             m_log.DebugFormat("[ARCHIVER]: Restored terrain {0}", terrainPath);
 

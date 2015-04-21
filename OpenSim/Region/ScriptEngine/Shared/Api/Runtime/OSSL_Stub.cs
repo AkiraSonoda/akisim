@@ -420,6 +420,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
             return m_OSSL_Functions.osGetScriptEngineName();
         }
 
+        public LSL_Integer osCheckODE()
+        {
+            return m_OSSL_Functions.osCheckODE();
+        }
+
         public string osGetPhysicsEngineType()
         {
             return m_OSSL_Functions.osGetPhysicsEngineType();
@@ -918,6 +923,16 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public void osCauseHealing(string avatar, double healing)
         {
             m_OSSL_Functions.osCauseHealing(avatar, healing);
+        }
+
+        public void osForceOtherSit(string avatar)
+        {
+            m_OSSL_Functions.osForceOtherSit(avatar);
+        }
+
+        public void osForceOtherSit(string avatar, string target)
+        {
+            m_OSSL_Functions.osForceOtherSit(avatar, target);
         }
         
         public LSL_List osGetPrimitiveParams(LSL_Key prim, LSL_List rules)

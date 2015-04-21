@@ -53,6 +53,7 @@ namespace OpenSim.Framework.Servers.HttpServer
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private HttpServerLogWriter httpserverlog = new HttpServerLogWriter();
+        private static Encoding UTF8NoBOM = new System.Text.UTF8Encoding(false);
 
         /// <summary>
         /// This is a pending websocket request before it got an sucessful upgrade response.
@@ -710,7 +711,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                             }
                         }
 
-                        WebUtil.LogResponseDetail(null, output);
+                        WebUtil.LogResponseDetail(RequestNumber, output);
                     }
 
                     if (!response.SendChunked && response.ContentLength64 <= 0)
@@ -837,13 +838,18 @@ namespace OpenSim.Framework.Servers.HttpServer
                 return; // never log these; they're just binary data
 
             Stream inputStream = Util.Copy(request.InputStream);
-
-            if ((request.Headers["Content-Encoding"] == "gzip") || (request.Headers["X-Content-Encoding"] == "gzip"))
-                inputStream = new GZipStream(inputStream, System.IO.Compression.CompressionMode.Decompress);
-
-            using (StreamReader reader = new StreamReader(inputStream, Encoding.UTF8))
+            Stream innerStream = null;
+            try
             {
-                string output;
+                if ((request.Headers["Content-Encoding"] == "gzip") || (request.Headers["X-Content-Encoding"] == "gzip"))
+                {
+                    innerStream = inputStream;
+                    inputStream = new GZipStream(innerStream, System.IO.Compression.CompressionMode.Decompress);
+                }
+
+                using (StreamReader reader = new StreamReader(inputStream, Encoding.UTF8))
+                {
+                    string output;
 
                 if (m_log.IsDebugEnabled)
                 {
@@ -858,7 +864,14 @@ namespace OpenSim.Framework.Servers.HttpServer
                     output = reader.ReadToEnd();
                 }
 
-                m_log.DebugFormat("[LOGHTTP] {0}", Util.BinaryToASCII(output));
+                    m_log.DebugFormat("[LOGHTTP] {0}", Util.BinaryToASCII(output));
+                }
+            }
+            finally
+            {
+                if (innerStream != null)
+                    innerStream.Dispose();
+                inputStream.Dispose();
             }
         }
 
@@ -986,19 +999,33 @@ namespace OpenSim.Framework.Servers.HttpServer
         /// <param name="response"></param>
         private byte[] HandleXmlRpcRequests(OSHttpRequest request, OSHttpResponse response)
         {
+            String requestBody;
+
             Stream requestStream = request.InputStream;
+            Stream innerStream = null;
+            try
+            {
+                if ((request.Headers["Content-Encoding"] == "gzip") || (request.Headers["X-Content-Encoding"] == "gzip"))
+                {
+                    innerStream = requestStream;
+                    requestStream = new GZipStream(innerStream, System.IO.Compression.CompressionMode.Decompress);
+                }
 
-            if ((request.Headers["Content-Encoding"] == "gzip") || (request.Headers["X-Content-Encoding"] == "gzip"))
-                requestStream = new GZipStream(requestStream, System.IO.Compression.CompressionMode.Decompress);
+                using (StreamReader reader = new StreamReader(requestStream, Encoding.UTF8))
+                {
+                    requestBody = reader.ReadToEnd();
+                }
+            }
+            finally
+            {
+                if (innerStream != null)
+                    innerStream.Dispose();
+                requestStream.Dispose();
+            }
 
-            Encoding encoding = Encoding.UTF8;
-            StreamReader reader = new StreamReader(requestStream, encoding);
-
-            string requestBody = reader.ReadToEnd();
-            reader.Close();
-            requestStream.Close();
             //m_log.Debug(requestBody);
             requestBody = requestBody.Replace("<base64></base64>", "");
+
             string responseString = String.Empty;
             XmlRpcRequest xmlRprcRequest = null;
 
@@ -1082,18 +1109,16 @@ namespace OpenSim.Framework.Servers.HttpServer
 
                     response.ContentType = "text/xml";
                     using (MemoryStream outs = new MemoryStream())
+                    using (XmlTextWriter writer = new XmlTextWriter(outs, UTF8NoBOM))
                     {
-                        using (XmlTextWriter writer = new XmlTextWriter(outs, Encoding.UTF8))
+                        writer.Formatting = Formatting.None;
+                        XmlRpcResponseSerializer.Singleton.Serialize(writer, xmlRpcResponse);
+                        writer.Flush();
+                        outs.Flush();
+                        outs.Position = 0;
+                        using (StreamReader sr = new StreamReader(outs))
                         {
-                            writer.Formatting = Formatting.None;
-                            XmlRpcResponseSerializer.Singleton.Serialize(writer, xmlRpcResponse);
-                            writer.Flush();
-                            outs.Flush();
-                            outs.Position = 0;
-                            using (StreamReader sr = new StreamReader(outs))
-                            {
-                                responseString = sr.ReadToEnd();
-                            }
+                            responseString = sr.ReadToEnd();
                         }
                     }
                 }

@@ -167,7 +167,7 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
                 // Do Decode!
                 if (decode)
-                    Util.FireAndForget(delegate { Decode(assetID, j2kData); });
+                    Util.FireAndForget(delegate { Decode(assetID, j2kData); }, null, "J2KDecoderModule.BeginDecode");
             }
         }
 
@@ -231,7 +231,11 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
                 {
                     try
                     {
-                        List<int> layerStarts = CSJ2K.J2kImage.GetLayerBoundaries(new MemoryStream(j2kData));
+                        List<int> layerStarts;
+                        using (MemoryStream ms = new MemoryStream(j2kData))
+                        {
+                            layerStarts = CSJ2K.J2kImage.GetLayerBoundaries(ms);
+                        }
 
                         if (layerStarts != null && layerStarts.Count > 0)
                         {

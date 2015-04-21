@@ -210,10 +210,10 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     success = m_IMService.OutgoingInstantMessage(im, url, foreigner);
 
                 if (!success && !foreigner)
-                    HandleUndeliveredMessage(im, result);
+                    HandleUndeliverableMessage(im, result);
                 else
                     result(success);
-            });
+            }, null, "HGMessageTransferModule.SendInstantMessage");
 
             return;
         }
@@ -246,7 +246,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             return successful;
         }
 
-        protected void HandleUndeliveredMessage(GridInstantMessage im, MessageResultNotification result)
+        public void HandleUndeliverableMessage(GridInstantMessage im, MessageResultNotification result)
         {
             UndeliveredMessage handlerUndeliveredMessage = OnUndeliveredMessage;
 

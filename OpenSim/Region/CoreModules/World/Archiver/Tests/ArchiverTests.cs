@@ -45,7 +45,6 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups;
 using OpenSim.Tests.Common;
-using OpenSim.Tests.Common.Mock;
 using ArchiveConstants = OpenSim.Framework.Serialization.ArchiveConstants;
 using TarArchiveReader = OpenSim.Framework.Serialization.TarArchiveReader;
 using TarArchiveWriter = OpenSim.Framework.Serialization.TarArchiveWriter;
@@ -585,7 +584,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver.Tests
             ld.GlobalID = landID;
 
             string ldPath = ArchiveConstants.CreateOarLandDataPath(ld);
-            tar.WriteFile(ldPath, LandDataSerializer.Serialize(ld, null));
+            Dictionary<string, object> options = new Dictionary<string, object>();
+            tar.WriteFile(ldPath, LandDataSerializer.Serialize(ld, options));
             tar.Close();
 
             oarStream = new MemoryStream(oarStream.ToArray());

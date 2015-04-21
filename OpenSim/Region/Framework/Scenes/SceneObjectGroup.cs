@@ -75,6 +75,7 @@ namespace OpenSim.Region.Framework.Scenes
         touch = 8,
         touch_end = 536870912,
         touch_start = 2097152,
+        transaction_result = 33554432,
         object_rez = 4194304
     }
 
@@ -568,7 +569,7 @@ namespace OpenSim.Region.Framework.Scenes
                                     }
                                     else
                                     {
-                                        m_log.DebugFormat("[SCENE OBJECT]: Crossing avatar alreasy in transit {0} to {1}", av.Name, val);
+                                        m_log.DebugFormat("[SCENE OBJECT]: Not crossing avatar {0} to {1} because it's already in transit", av.Name, val);
                                     }
                                 }
 
@@ -828,6 +829,12 @@ namespace OpenSim.Region.Framework.Scenes
         public UUID FromFolderID { get; set; }
 
         /// <summary>
+        /// If true then grabs are blocked no matter what the individual part BlockGrab setting.
+        /// </summary>
+        /// <value><c>true</c> if block grab override; otherwise, <c>false</c>.</value>
+        public bool BlockGrabOverride { get; set; }
+
+        /// <summary>
         /// IDs of all avatars sat on this scene object.
         /// </summary>
         /// <remarks>
@@ -902,6 +909,46 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        public void LoadScriptState(XmlReader reader)
+        {
+//            m_log.DebugFormat("[SCENE OBJECT GROUP]: Looking for script state for {0}", Name);
+
+            while (true)
+            {
+                if (reader.Name == "SavedScriptState" && reader.NodeType == XmlNodeType.Element)
+                {
+//                    m_log.DebugFormat("[SCENE OBJECT GROUP]: Loading script state for {0}", Name);
+
+                    if (m_savedScriptState == null)
+                        m_savedScriptState = new Dictionary<UUID, string>();
+
+                    string uuid = reader.GetAttribute("UUID");
+
+                    // Even if there is no UUID attribute for some strange reason, we must always read the inner XML
+                    // so we don't continually keep checking the same SavedScriptedState element.
+                    string innerXml = reader.ReadInnerXml();
+
+                    if (uuid != null)
+                    {
+//                        m_log.DebugFormat("[SCENE OBJECT GROUP]: Found state for item ID {0} in object {1}", uuid, Name);
+
+                        UUID itemid = new UUID(uuid);
+                        if (itemid != UUID.Zero)
+                            m_savedScriptState[itemid] = innerXml;
+                    }
+                    else
+                    {
+                        m_log.WarnFormat("[SCENE OBJECT GROUP]: SavedScriptState element had no UUID in object {0}", Name);
+                    }
+                }
+                else
+                {
+                    if (!reader.Read())
+                        break;
+                }
+            }
+        }
+
         /// <summary>
         /// Hooks this object up to the backup event so that it is persisted to the database when the update thread executes.
         /// </summary>
@@ -909,8 +956,8 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if (CanBeBackedUp)
             {
-                //m_log.DebugFormat(
-                //    "[SCENE OBJECT GROUP]: Attaching object {0} {1} to scene presistence sweep", Name, UUID);
+//                m_log.DebugFormat(
+//                    "[SCENE OBJECT GROUP]: Attaching object {0} {1} to scene presistence sweep", Name, UUID);
 
                 if (!Backup)
                     m_scene.EventManager.OnBackup += ProcessBackup;
@@ -1421,7 +1468,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 Scene.ForEachScenePresence(sp =>
                 {
-                    if (!sp.IsChildAgent && sp.ParentID == LocalId)
+                    if (!sp.IsChildAgent && sp.ParentID == part.LocalId)
                         sp.StandUp();
 
                     if (!silent)
@@ -1851,15 +1898,14 @@ namespace OpenSim.Region.Framework.Scenes
             return Vector3.Zero;
         }
 
-        public void moveToTarget(Vector3 target, float tau)
+        public void MoveToTarget(Vector3 target, float tau)
         {
             if (IsAttachment)
             {
                 ScenePresence avatar = m_scene.GetScenePresence(AttachedAvatar);
+
                 if (avatar != null)
-                {
                     avatar.MoveToTarget(target, false, false);
-                }
             }
             else
             {
@@ -1874,12 +1920,26 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public void stopMoveToTarget()
+        public void StopMoveToTarget()
         {
-            PhysicsActor pa = RootPart.PhysActor;
+            if (IsAttachment)
+            {
+                ScenePresence avatar = m_scene.GetScenePresence(AttachedAvatar);
 
-            if (pa != null)
-                pa.PIDActive = false;
+                if (avatar != null)
+                    avatar.ResetMoveToTarget();
+            }
+            else
+            {
+                PhysicsActor pa = RootPart.PhysActor;
+
+                if (pa != null && pa.PIDActive)
+                {
+                    pa.PIDActive = false;
+                    
+                    ScheduleGroupForTerseUpdate();
+                }
+            }
         }
         
         /// <summary>
@@ -2582,20 +2642,26 @@ namespace OpenSim.Region.Framework.Scenes
         /// If object is physical, apply force to move it around
         /// If object is not physical, just put it at the resulting location
         /// </summary>
+        /// <param name="partID">Part ID to check for grab</param>
         /// <param name="offset">Always seems to be 0,0,0, so ignoring</param>
         /// <param name="pos">New position.  We do the math here to turn it into a force</param>
         /// <param name="remoteClient"></param>
-        public void GrabMovement(Vector3 offset, Vector3 pos, IClientAPI remoteClient)
+        public void GrabMovement(UUID partID, Vector3 offset, Vector3 pos, IClientAPI remoteClient)
         {
             if (m_scene.EventManager.TriggerGroupMove(UUID, pos))
             {
+                SceneObjectPart part = GetPart(partID);
+
+                if (part == null)
+                    return;
+
                 PhysicsActor pa = m_rootPart.PhysActor;
 
                 if (pa != null)
                 {
                     if (pa.IsPhysical)
                     {
-                        if (!m_rootPart.BlockGrab)
+                        if (!BlockGrabOverride && !part.BlockGrab)
                         {
                             Vector3 llmoveforce = pos - AbsolutePosition;
                             Vector3 grabforce = llmoveforce;
@@ -2606,20 +2672,26 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                     else
                     {
-                        //NonPhysicalGrabMovement(pos);
+                        NonPhysicalGrabMovement(pos);
                     }
                 }
                 else
                 {
-                    //NonPhysicalGrabMovement(pos);
+                    NonPhysicalGrabMovement(pos);
                 }
             }
         }
 
+        /// <summary>
+        /// Apply possition for grabbing non-physical linksets (ctrl+drag)
+        /// </summary>
+        /// <param name="pos">New Position</param>
         public void NonPhysicalGrabMovement(Vector3 pos)
         {
-            AbsolutePosition = pos;
-            m_rootPart.SendTerseUpdateToAllClients();
+            if((m_rootPart.Flags & PrimFlags.Scripted) == 0)
+            {
+                UpdateGroupPosition(pos);
+            }
         }
 
         /// <summary>
@@ -2715,13 +2787,25 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                     else
                     {
-                        //NonPhysicalSpinMovement(pos);
+                        NonPhysicalSpinMovement(newOrientation);
                     }
                 }
                 else
                 {
-                    //NonPhysicalSpinMovement(pos);
+                    NonPhysicalSpinMovement(newOrientation);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Apply rotation for spinning non-physical linksets (ctrl+shift+drag)
+        /// </summary>
+        /// <param name="newOrientation">New Rotation</param>
+        private void NonPhysicalSpinMovement(Quaternion newOrientation)
+        {
+            if ((m_rootPart.Flags & PrimFlags.Scripted) == 0)
+            {
+                UpdateGroupRotationR(newOrientation);
             }
         }
 
@@ -2881,6 +2965,11 @@ namespace OpenSim.Region.Framework.Scenes
             uint lockMask = ~(uint)(PermissionMask.Move | PermissionMask.Modify);
             uint lockBit = RootPart.OwnerMask & (uint)(PermissionMask.Move | PermissionMask.Modify);
             RootPart.OwnerMask = (RootPart.OwnerMask & lockBit) | ((newOwnerMask | foldedPerms) & lockMask);
+
+//            m_log.DebugFormat(
+//                "[SCENE OBJECT GROUP]: RootPart.OwnerMask now {0} for {1} in {2}", 
+//                (OpenMetaverse.PermissionMask)RootPart.OwnerMask, Name, Scene.Name);
+
             RootPart.ScheduleFullUpdate();
         }
 

@@ -38,6 +38,76 @@ using OMV = OpenMetaverse;
 
 namespace OpenSim.Region.Physics.BulletSPlugin
 {
+// Information class that holds stats for the shape. Which values mean
+//     something depends on the type of shape.
+// This information is used for debugging and stats and is not used
+//     for operational things.
+public class ShapeInfoInfo
+{
+    public int Vertices { get; set; }
+    private int m_hullCount;
+    private int[] m_verticesPerHull;
+    public ShapeInfoInfo()
+    {
+        Vertices = 0;
+        m_hullCount = 0;
+        m_verticesPerHull = null;
+    }
+    public int HullCount
+    {
+        set
+        {
+            m_hullCount = value;
+            m_verticesPerHull = new int[m_hullCount];
+            Array.Clear(m_verticesPerHull, 0, m_hullCount);
+        }
+        get { return m_hullCount; }
+    }
+    public void SetVerticesPerHull(int hullNum, int vertices)
+    {
+        if (m_verticesPerHull != null && hullNum < m_verticesPerHull.Length)
+        {
+            m_verticesPerHull[hullNum] = vertices;
+        }
+    }
+    public int GetVerticesPerHull(int hullNum)
+    {
+        if (m_verticesPerHull != null && hullNum < m_verticesPerHull.Length)
+        {
+            return m_verticesPerHull[hullNum];
+        }
+        return 0;
+    }
+    public override string ToString()
+    {
+        StringBuilder buff = new StringBuilder();
+        // buff.Append("ShapeInfo=<");
+        buff.Append("<");
+        if (Vertices > 0)
+        {
+            buff.Append("verts=");
+            buff.Append(Vertices.ToString());
+        }
+
+        if (Vertices > 0 && HullCount > 0) buff.Append(",");
+
+        if (HullCount > 0)
+        {
+            buff.Append("nHulls=");
+            buff.Append(HullCount.ToString());
+            buff.Append(",");
+            buff.Append("hullVerts=");
+            for (int ii = 0; ii < HullCount; ii++)
+            {
+                if (ii != 0) buff.Append(",");
+                buff.Append(GetVerticesPerHull(ii).ToString());
+            }
+        }
+        buff.Append(">");
+        return buff.ToString();
+    }
+}
+
 public abstract class BSShape
 {
     private static string LogHeader = "[BULLETSIM SHAPE]";
@@ -45,18 +115,21 @@ public abstract class BSShape
     public int referenceCount { get; set; }
     public DateTime lastReferenced { get; set; }
     public BulletShape physShapeInfo { get; set; }
+    public ShapeInfoInfo shapeInfo { get; private set; }
 
     public BSShape()
     {
         referenceCount = 1;
         lastReferenced = DateTime.Now;
         physShapeInfo = new BulletShape();
+        shapeInfo = new ShapeInfoInfo();
     }
     public BSShape(BulletShape pShape)
     {
         referenceCount = 1;
         lastReferenced = DateTime.Now;
         physShapeInfo = pShape;
+        shapeInfo = new ShapeInfoInfo();
     }
 
     // Get another reference to this shape.
@@ -177,8 +250,7 @@ public abstract class BSShape
         {
             // If this mesh has an underlying asset and we have not failed getting it before, fetch the asset
             if (prim.BaseShape.SculptEntry
-                && prim.PrimAssetState != BSPhysObject.PrimAssetCondition.FailedAssetFetch
-                && prim.PrimAssetState != BSPhysObject.PrimAssetCondition.FailedMeshing
+                && !prim.AssetFailed()
                 && prim.PrimAssetState != BSPhysObject.PrimAssetCondition.Waiting
                 && prim.BaseShape.SculptTexture != OMV.UUID.Zero
                 )
@@ -189,50 +261,46 @@ public abstract class BSShape
                 prim.PrimAssetState = BSPhysObject.PrimAssetCondition.Waiting;
 
                 BSPhysObject xprim = prim;
-                Util.FireAndForget(delegate
+                RequestAssetDelegate assetProvider = physicsScene.RequestAssetMethod;
+                if (assetProvider != null)
+                {
+                    BSPhysObject yprim = xprim; // probably not necessary, but, just in case.
+                    assetProvider(yprim.BaseShape.SculptTexture, delegate(AssetBase asset)
                     {
-                        // physicsScene.DetailLog("{0},BSShape.VerifyMeshCreated,inFireAndForget", xprim.LocalID);
-                        RequestAssetDelegate assetProvider = physicsScene.RequestAssetMethod;
-                        if (assetProvider != null)
+                        // physicsScene.DetailLog("{0},BSShape.VerifyMeshCreated,assetProviderCallback", xprim.LocalID);
+                        bool assetFound = false;
+                        string mismatchIDs = String.Empty;  // DEBUG DEBUG
+                        if (asset != null && yprim.BaseShape.SculptEntry)
                         {
-                            BSPhysObject yprim = xprim; // probably not necessary, but, just in case.
-                            assetProvider(yprim.BaseShape.SculptTexture, delegate(AssetBase asset)
+                            if (yprim.BaseShape.SculptTexture.ToString() == asset.ID)
                             {
-                                // physicsScene.DetailLog("{0},BSShape.VerifyMeshCreated,assetProviderCallback", xprim.LocalID);
-                                bool assetFound = false;
-                                string mismatchIDs = String.Empty;  // DEBUG DEBUG
-                                if (asset != null && yprim.BaseShape.SculptEntry)
-                                {
-                                    if (yprim.BaseShape.SculptTexture.ToString() == asset.ID)
-                                    {
-                                        yprim.BaseShape.SculptData = asset.Data;
-                                        // This will cause the prim to see that the filler shape is not the right
-                                        //    one and try again to build the object.
-                                        // No race condition with the normal shape setting since the rebuild is at taint time.
-                                        yprim.PrimAssetState = BSPhysObject.PrimAssetCondition.Fetched;
-                                        yprim.ForceBodyShapeRebuild(false /* inTaintTime */);
-                                        assetFound = true;
-                                    }
-                                    else
-                                    {
-                                        mismatchIDs = yprim.BaseShape.SculptTexture.ToString() + "/" + asset.ID;
-                                    }
-                                }
-                                if (!assetFound)
-                                {
-                                    yprim.PrimAssetState = BSPhysObject.PrimAssetCondition.FailedAssetFetch;
-                                }
-                                physicsScene.DetailLog("{0},BSShape.VerifyMeshCreated,fetchAssetCallback,found={1},isSculpt={2},ids={3}",
-                                            yprim.LocalID, assetFound, yprim.BaseShape.SculptEntry, mismatchIDs );
-                            });
+                                yprim.BaseShape.SculptData = asset.Data;
+                                // This will cause the prim to see that the filler shape is not the right
+                                //    one and try again to build the object.
+                                // No race condition with the normal shape setting since the rebuild is at taint time.
+                                yprim.PrimAssetState = BSPhysObject.PrimAssetCondition.Fetched;
+                                yprim.ForceBodyShapeRebuild(false /* inTaintTime */);
+                                assetFound = true;
+                            }
+                            else
+                            {
+                                mismatchIDs = yprim.BaseShape.SculptTexture.ToString() + "/" + asset.ID;
+                            }
                         }
-                        else
+                        if (!assetFound)
                         {
-                            xprim.PrimAssetState = BSPhysObject.PrimAssetCondition.FailedAssetFetch;
-                            physicsScene.Logger.ErrorFormat("{0} Physical object requires asset but no asset provider. Name={1}",
-                                                        LogHeader, physicsScene.Name);
+                            yprim.PrimAssetState = BSPhysObject.PrimAssetCondition.FailedAssetFetch;
                         }
+                        physicsScene.DetailLog("{0},BSShape.VerifyMeshCreated,fetchAssetCallback,found={1},isSculpt={2},ids={3}",
+                                    yprim.LocalID, assetFound, yprim.BaseShape.SculptEntry, mismatchIDs );
                     });
+                }
+                else
+                {
+                    xprim.PrimAssetState = BSPhysObject.PrimAssetCondition.FailedAssetFetch;
+                    physicsScene.Logger.ErrorFormat("{0} Physical object requires asset but no asset provider. Name={1}",
+                                                LogHeader, physicsScene.Name);
+                }
             }
             else
             {
@@ -288,6 +356,9 @@ public class BSShapeNull : BSShape
 }
 
 // ============================================================================================================
+// BSShapeNative is a wrapper for a Bullet 'native' shape -- cube and sphere.
+// They are odd in that they don't allocate meshes but are computated/procedural.
+// This means allocation and freeing is different than meshes.
 public class BSShapeNative : BSShape
 {
     private static string LogHeader = "[BULLETSIM SHAPE NATIVE]";
@@ -366,6 +437,7 @@ public class BSShapeNative : BSShape
 }
 
 // ============================================================================================================
+// BSShapeMesh is a simple mesh.
 public class BSShapeMesh : BSShape
 {
     private static string LogHeader = "[BULLETSIM SHAPE MESH]";
@@ -395,9 +467,7 @@ public class BSShapeMesh : BSShape
 
                 // Check to see if mesh was created (might require an asset).
                 newShape = VerifyMeshCreated(physicsScene, newShape, prim);
-                if (!newShape.isNativeShape
-                            || prim.PrimAssetState == BSPhysObject.PrimAssetCondition.FailedMeshing
-                            || prim.PrimAssetState == BSPhysObject.PrimAssetCondition.FailedAssetFetch)
+                if (!newShape.isNativeShape || prim.AssetFailed() )
                 {
                     // If a mesh was what was created, remember the built shape for later sharing.
                     // Also note that if meshing failed we put it in the mesh list as there is nothing else to do about the mesh.
@@ -464,7 +534,11 @@ public class BSShapeMesh : BSShape
                                             PrimitiveBaseShape pbs, OMV.Vector3 size, float lod)
     {
         return BSShapeMesh.CreatePhysicalMeshShape(physicsScene, prim, newMeshKey, pbs, size, lod,
-                            (w, iC, i, vC, v) => physicsScene.PE.CreateMeshShape(w, iC, i, vC, v) );
+                            (w, iC, i, vC, v) =>
+                            {
+                                shapeInfo.Vertices = vC;
+                                return physicsScene.PE.CreateMeshShape(w, iC, i, vC, v);
+                            });
     }
 
     // Code that uses the mesher to create the index/vertices info for a trimesh shape.
@@ -552,6 +626,9 @@ public class BSShapeMesh : BSShape
 }
 
 // ============================================================================================================
+// BSShapeHull is a physical shape representation htat is made up of many convex hulls.
+// The convex hulls are either supplied with the asset or are approximated by one of the
+//     convex hull creation routines (in OpenSim or in Bullet).
 public class BSShapeHull : BSShape
 {
 #pragma warning disable 414
@@ -559,6 +636,7 @@ public class BSShapeHull : BSShape
 #pragma warning restore 414
 
     public static Dictionary<System.UInt64, BSShapeHull> Hulls = new Dictionary<System.UInt64, BSShapeHull>();
+
 
     public BSShapeHull(BulletShape pShape) : base(pShape)
     {
@@ -584,9 +662,7 @@ public class BSShapeHull : BSShape
 
                 // Check to see if hull was created (might require an asset).
                 newShape = VerifyMeshCreated(physicsScene, newShape, prim);
-                if (!newShape.isNativeShape
-                            || prim.PrimAssetState == BSPhysObject.PrimAssetCondition.FailedMeshing
-                            || prim.PrimAssetState == BSPhysObject.PrimAssetCondition.FailedAssetFetch)
+                if (!newShape.isNativeShape || prim.AssetFailed())
                 {
                     // If a mesh was what was created, remember the built shape for later sharing.
                     Hulls.Add(newHullKey, retHull);
@@ -624,6 +700,7 @@ public class BSShapeHull : BSShape
             // TODO: schedule aging and destruction of unused meshes.
         }
     }
+
     List<ConvexResult> m_hulls;
     private BulletShape CreatePhysicalHull(BSScene physicsScene, BSPhysObject prim, System.UInt64 newHullKey,
                                             PrimitiveBaseShape pbs, OMV.Vector3 size, float lod)
@@ -656,6 +733,7 @@ public class BSShapeHull : BSShape
         if (allHulls != null && BSParam.ShouldUseAssetHulls)
         {
             int hullCount = allHulls.Count;
+            shapeInfo.HullCount = hullCount;
             int totalVertices = 1;      // include one for the count of the hulls
             // Using the structure described for HACD hulls, create the memory sturcture
             //     to pass the hull data to the creater.
@@ -668,6 +746,7 @@ public class BSShapeHull : BSShape
 
             convHulls[0] = (float)hullCount;
             int jj = 1;
+            int hullIndex = 0;
             foreach (List<OMV.Vector3> hullVerts in allHulls)
             {
                 convHulls[jj + 0] = hullVerts.Count;
@@ -682,6 +761,8 @@ public class BSShapeHull : BSShape
                     convHulls[jj + 2] = oneVert.Z;
                     jj += 3;
                 }
+                shapeInfo.SetVerticesPerHull(hullIndex, hullVerts.Count);
+                hullIndex++;
             }
 
             // create the hull data structure in Bullet
@@ -701,7 +782,7 @@ public class BSShapeHull : BSShape
 
             if (meshShape.physShapeInfo.HasPhysicalShape)
             {
-                HACDParams parms;
+                HACDParams parms = new HACDParams();
                 parms.maxVerticesPerHull = BSParam.BHullMaxVerticesPerHull;
                 parms.minClusters = BSParam.BHullMinClusters;
                 parms.compacityWeight = BSParam.BHullCompacityWeight;
@@ -711,12 +792,17 @@ public class BSShapeHull : BSShape
                 parms.addNeighboursDistPoints = BSParam.NumericBool(BSParam.BHullAddNeighboursDistPoints);
                 parms.addFacesPoints = BSParam.NumericBool(BSParam.BHullAddFacesPoints);
                 parms.shouldAdjustCollisionMargin = BSParam.NumericBool(BSParam.BHullShouldAdjustCollisionMargin);
+                parms.whichHACD = 0;    // Use the HACD routine that comes with Bullet
 
                 physicsScene.DetailLog("{0},BSShapeHull.CreatePhysicalHull,hullFromMesh,beforeCall", prim.LocalID, newShape.HasPhysicalShape);
                 newShape = physicsScene.PE.BuildHullShapeFromMesh(physicsScene.World, meshShape.physShapeInfo, parms);
                 physicsScene.DetailLog("{0},BSShapeHull.CreatePhysicalHull,hullFromMesh,shape={1}", prim.LocalID, newShape);
 
                 // Now done with the mesh shape.
+                shapeInfo.HullCount = 1;
+                BSShapeMesh maybeMesh = meshShape as BSShapeMesh;
+                if (maybeMesh != null)
+                    shapeInfo.SetVerticesPerHull(0, maybeMesh.shapeInfo.Vertices);
                 meshShape.Dereference(physicsScene);
             }
             physicsScene.DetailLog("{0},BSShapeHull.CreatePhysicalHull,bulletHACD,exit,hasBody={1}", prim.LocalID, newShape.HasPhysicalShape);
@@ -866,6 +952,8 @@ public class BSShapeHull : BSShape
 }
 
 // ============================================================================================================
+// BSShapeCompound is a wrapper for the Bullet compound shape which is built from multiple, separate
+//    meshes. Used by BulletSim for complex shapes like linksets.
 public class BSShapeCompound : BSShape
 {
     private static string LogHeader = "[BULLETSIM SHAPE COMPOUND]";
@@ -994,6 +1082,11 @@ public class BSShapeCompound : BSShape
                                 BSShapeNative nativeShape = new BSShapeNative(pShape);
                                 nativeShape.Dereference(physicsScene);
                             }
+                            else
+                            {
+                                physicsScene.Logger.WarnFormat("{0} DereferenceAnonCollisionShape. Did not find shape. {1}",
+                                    LogHeader, pShape);
+                            }
                         }
                     }
                 }
@@ -1003,6 +1096,9 @@ public class BSShapeCompound : BSShape
 }
 
 // ============================================================================================================
+// BSShapeConvexHull is a wrapper for a Bullet single convex hull. A BSShapeHull contains multiple convex
+//     hull shapes. This is used for simple prims that are convex and thus can be made into a simple
+//     collision shape (a single hull). More complex physical shapes will be BSShapeHull's.
 public class BSShapeConvexHull : BSShape
 {
 #pragma warning disable 414
@@ -1102,6 +1198,9 @@ public class BSShapeConvexHull : BSShape
     }
 }
 // ============================================================================================================
+// BSShapeGImpact is a wrapper for the Bullet GImpact shape which is a collision mesh shape that
+//     can handle concave as well as convex shapes. Much slower computationally but creates smoother
+//     shapes than multiple convex hull approximations.
 public class BSShapeGImpact : BSShape
 {
 #pragma warning disable 414
@@ -1137,9 +1236,7 @@ public class BSShapeGImpact : BSShape
                 // Check to see if mesh was created (might require an asset).
                 newShape = VerifyMeshCreated(physicsScene, newShape, prim);
                 newShape.shapeKey = newMeshKey;
-                if (!newShape.isNativeShape 
-                            || prim.PrimAssetState == BSPhysObject.PrimAssetCondition.FailedMeshing
-                            || prim.PrimAssetState == BSPhysObject.PrimAssetCondition.FailedAssetFetch)
+                if (!newShape.isNativeShape || prim.AssetFailed())
                 {
                     // If a mesh was what was created, remember the built shape for later sharing.
                     // Also note that if meshing failed we put it in the mesh list as there is nothing
@@ -1157,7 +1254,11 @@ public class BSShapeGImpact : BSShape
                                             PrimitiveBaseShape pbs, OMV.Vector3 size, float lod)
     {
         return BSShapeMesh.CreatePhysicalMeshShape(physicsScene, prim, newMeshKey, pbs, size, lod,
-                            (w, iC, i, vC, v) => physicsScene.PE.CreateGImpactShape(w, iC, i, vC, v) );
+                            (w, iC, i, vC, v) =>
+                            {
+                                shapeInfo.Vertices = vC;
+                                return physicsScene.PE.CreateGImpactShape(w, iC, i, vC, v);
+                            });
     }
 
     public override BSShape GetReference(BSScene pPhysicsScene, BSPhysObject pPrim)
@@ -1212,6 +1313,7 @@ public class BSShapeGImpact : BSShape
 }
 
 // ============================================================================================================
+// BSShapeAvatar is a specialized mesh shape for avatars.
 public class BSShapeAvatar : BSShape
 {
 #pragma warning disable 414

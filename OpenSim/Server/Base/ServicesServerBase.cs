@@ -129,6 +129,8 @@ namespace OpenSim.Server.Base
             // Merge the configuration from the command line into the loaded file
             Config.Merge(argvConfig);
 
+            Config.ReplaceKeyValues();
+
             // Refresh the startupConfig post merge
             if (Config.Configs["Startup"] != null)
             {
@@ -158,7 +160,7 @@ namespace OpenSim.Server.Base
             }
             else
             {
-                MainConsole.Instance = new LocalConsole(prompt);
+                MainConsole.Instance = new LocalConsole(prompt, startupConfig);
             }
 
             m_console = MainConsole.Instance;

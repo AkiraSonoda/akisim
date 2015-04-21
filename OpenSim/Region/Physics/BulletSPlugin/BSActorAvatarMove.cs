@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) Contributors, http://opensimulator.org/
  * See CONTRIBUTORS.TXT for a full list of copyright holders.
  *
@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+using OpenSim.Framework;
 using OpenSim.Region.Physics.Manager;
 
 using OMV = OpenMetaverse;
@@ -109,6 +110,10 @@ public class BSActorAvatarMove : BSActor
         {
             if (m_velocityMotor != null)
             {
+//                    if (targ == OMV.Vector3.Zero)
+//                        Util.PrintCallStack();
+//
+//                    Console.WriteLine("SetVelocityAndTarget, {0} {1}", vel, targ);
                 m_velocityMotor.Reset();
                 m_velocityMotor.SetTarget(targ);
                 m_velocityMotor.SetCurrent(vel);
@@ -205,6 +210,17 @@ public class BSActorAvatarMove : BSActor
                     // Flying and not colliding and velocity nearly zero.
                     m_controllingPrim.ZeroMotion(true /* inTaintTime */);
                 }
+                else
+                {
+                    //We are falling but are not touching any keys make sure not falling too fast
+                    if (m_controllingPrim.RawVelocity.Z < BSParam.AvatarTerminalVelocity)
+                    {
+
+                        OMV.Vector3 slowingForce = new OMV.Vector3(0f, 0f, BSParam.AvatarTerminalVelocity - m_controllingPrim.RawVelocity.Z) * m_controllingPrim.Mass;
+                        m_physicsScene.PE.ApplyCentralImpulse(m_controllingPrim.PhysBody, slowingForce);
+                    }
+
+                }
             }
 
             m_physicsScene.DetailLog("{0},BSCharacter.MoveMotor,taint,stopping,target={1},colliding={2}",
@@ -226,7 +242,6 @@ public class BSActorAvatarMove : BSActor
             {
                 stepVelocity.Z = m_controllingPrim.RawVelocity.Z;
             }
-
 
             // Colliding and not flying with an upward force. The avatar must be trying to jump.
             if (!m_controllingPrim.Flying && m_controllingPrim.IsColliding && stepVelocity.Z > 0)
@@ -253,10 +268,32 @@ public class BSActorAvatarMove : BSActor
                 }
                 else
                 {
-                    // Since we're not affected by anything, whatever vertical motion the avatar has, continue that.
-                    stepVelocity.Z = m_controllingPrim.RawVelocity.Z;
+                    
+                    // Since we're not affected by anything, the avatar must be falling and we do not want that to be too fast.
+                    if (m_controllingPrim.RawVelocity.Z < BSParam.AvatarTerminalVelocity)
+                    {
+                        
+                        stepVelocity.Z = BSParam.AvatarTerminalVelocity;
+                    }
+                    else
+                    {
+                        stepVelocity.Z = m_controllingPrim.RawVelocity.Z;
+                    }
                 }
                 // DetailLog("{0},BSCharacter.MoveMotor,taint,overrideStepZWithWorldZ,stepVel={1}", LocalID, stepVelocity);
+            }
+
+            //Alicia: Maintain minimum height when flying.
+            // SL has a flying effect that keeps the avatar flying above the ground by some margin
+            if (m_controllingPrim.Flying)
+            {
+                float hover_height = m_physicsScene.TerrainManager.GetTerrainHeightAtXYZ(m_controllingPrim.RawPosition)
+                                                        + BSParam.AvatarFlyingGroundMargin;
+
+                if( m_controllingPrim.Position.Z < hover_height)
+                {
+                    stepVelocity.Z += BSParam.AvatarFlyingGroundUpForce;
+                }
             }
 
             // 'stepVelocity' is now the speed we'd like the avatar to move in. Turn that into an instantanous force.
@@ -304,7 +341,7 @@ public class BSActorAvatarMove : BSActor
             // float nearFeetHeightMin = m_controllingPrim.RawPosition.Z - (m_controllingPrim.Size.Z / 2f) + 0.05f;
             // Note: there is a problem with the computation of the capsule height. Thus RawPosition is off
             //    from the height. Revisit size and this computation when height is scaled properly.
-            float nearFeetHeightMin = m_controllingPrim.RawPosition.Z - (m_controllingPrim.Size.Z / 2f) - 0.05f;
+            float nearFeetHeightMin = m_controllingPrim.RawPosition.Z - (m_controllingPrim.Size.Z / 2f) - BSParam.AvatarStepGroundFudge;
             float nearFeetHeightMax = nearFeetHeightMin + BSParam.AvatarStepHeight;
 
             // Look for a collision point that is near the character's feet and is oriented the same as the charactor is.
@@ -326,15 +363,25 @@ public class BSActorAvatarMove : BSActor
                             if (touchPosition.Z >= nearFeetHeightMin && touchPosition.Z <= nearFeetHeightMax)
                             {
                                 // This contact is within the 'near the feet' range.
-                                // The normal should be our contact point to the object so it is pointing away
-                                //    thus the difference between our facing orientation and the normal should be small.
+                                // The step is presumed to be more or less vertical. Thus the Z component should
+                                //    be nearly horizontal.
                                 OMV.Vector3 directionFacing = OMV.Vector3.UnitX * m_controllingPrim.RawOrientation;
                                 OMV.Vector3 touchNormal = OMV.Vector3.Normalize(kvp.Value.SurfaceNormal);
-                                float diff = Math.Abs(OMV.Vector3.Distance(directionFacing, touchNormal));
-                                if (diff < BSParam.AvatarStepApproachFactor)
+                                const float PIOver2 = 1.571f; // Used to make unit vector axis into approx radian angles
+                                // m_physicsScene.DetailLog("{0},BSCharacter.WalkUpStairs,avNormal={1},colNormal={2},diff={3}",
+                                //             m_controllingPrim.LocalID, directionFacing, touchNormal,
+                                //             Math.Abs(OMV.Vector3.Distance(directionFacing, touchNormal)) );
+                                if ((Math.Abs(directionFacing.Z) * PIOver2) < BSParam.AvatarStepAngle
+                                    && (Math.Abs(touchNormal.Z) * PIOver2) < BSParam.AvatarStepAngle)
                                 {
-                                    if (highestTouchPosition.Z < touchPosition.Z)
-                                        highestTouchPosition = touchPosition;
+                                    // The normal should be our contact point to the object so it is pointing away
+                                    //    thus the difference between our facing orientation and the normal should be small.
+                                    float diff = Math.Abs(OMV.Vector3.Distance(directionFacing, touchNormal));
+                                    if (diff < BSParam.AvatarStepApproachFactor)
+                                    {
+                                        if (highestTouchPosition.Z < touchPosition.Z)
+                                            highestTouchPosition = touchPosition;
+                                    }
                                 }
                             }
                         }
@@ -399,8 +446,8 @@ public class BSActorAvatarMove : BSActor
                     m_controllingPrim.ForcePosition = m_controllingPrim.RawPosition + displacement;
                 }
             }
-            m_physicsScene.DetailLog("{0},BSCharacter.WalkUpStairs.ComputeStairCorrection,disp={1},force={2}",
-                                        m_controllingPrim.LocalID, displacement, ret);
+            m_physicsScene.DetailLog("{0},BSCharacter.WalkUpStairs.ComputeStairCorrection,stepUp={1},isp={2},force={3}",
+                                        m_controllingPrim.LocalID, stepUp, displacement, ret);
 
         }
         return ret;

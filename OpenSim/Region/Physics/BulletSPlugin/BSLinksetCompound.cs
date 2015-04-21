@@ -100,20 +100,41 @@ public sealed class BSLinksetCompound : BSLinkset
     // Schedule a refresh to happen after all the other taint processing.
     private void ScheduleRebuild(BSPrimLinkable requestor)
     {
-        DetailLog("{0},BSLinksetCompound.ScheduleRebuild,,rebuilding={1},hasChildren={2},actuallyScheduling={3}",
-                            requestor.LocalID, Rebuilding, HasAnyChildren, (!Rebuilding && HasAnyChildren));
-
         // When rebuilding, it is possible to set properties that would normally require a rebuild.
         //    If already rebuilding, don't request another rebuild.
         //    If a linkset with just a root prim (simple non-linked prim) don't bother rebuilding.
-        if (!Rebuilding && HasAnyChildren)
+        lock (m_linksetActivityLock)
         {
-            m_physicsScene.PostTaintObject("BSLinksetCompound.ScheduleRebuild", LinksetRoot.LocalID, delegate()
+            if (!RebuildScheduled && !Rebuilding && HasAnyChildren)
             {
-                if (HasAnyChildren)
-                    RecomputeLinksetCompound();
-            });
+                InternalScheduleRebuild(requestor);
+            }
         }
+    }
+
+    // Must be called with m_linksetActivityLock or race conditions will haunt you.
+    private void InternalScheduleRebuild(BSPrimLinkable requestor)
+    {
+        DetailLog("{0},BSLinksetCompound.InternalScheduleRebuild,,rebuilding={1},hasChildren={2}",
+                            requestor.LocalID, Rebuilding, HasAnyChildren);
+        RebuildScheduled = true;
+        m_physicsScene.PostTaintObject("BSLinksetCompound.ScheduleRebuild", LinksetRoot.LocalID, delegate()
+        {
+            if (HasAnyChildren)
+            {
+                if (this.AllPartsComplete)
+                {
+                    RecomputeLinksetCompound();
+                }
+                else
+                {
+                    DetailLog("{0},BSLinksetCompound.InternalScheduleRebuild,,rescheduling because not all children complete",
+                                                    requestor.LocalID);
+                    InternalScheduleRebuild(requestor);
+                }
+            }
+            RebuildScheduled = false;
+        });
     }
 
     // The object is going dynamic (physical). Do any setup necessary for a dynamic linkset.
@@ -180,7 +201,10 @@ public sealed class BSLinksetCompound : BSLinkset
             if ((whichUpdated & ~(UpdatedProperties.Position | UpdatedProperties.Orientation)) == 0)
             {
                 // Find the physical instance of the child
-                if (LinksetRoot.PhysShape.HasPhysicalShape && m_physicsScene.PE.IsCompound(LinksetRoot.PhysShape.physShapeInfo))
+                if (!RebuildScheduled   // if rebuilding, let the rebuild do it
+                        && !LinksetRoot.IsIncomplete    // if waiting for assets or whatever, don't change
+                        && LinksetRoot.PhysShape.HasPhysicalShape   // there must be a physical shape assigned
+                        && m_physicsScene.PE.IsCompound(LinksetRoot.PhysShape.physShapeInfo))
                 {
                     // It is possible that the linkset is still under construction and the child is not yet
                     //    inserted into the compound shape. A rebuild of the linkset in a pre-step action will
@@ -305,6 +329,10 @@ public sealed class BSLinksetCompound : BSLinkset
     // Note that this works for rebuilding just the root after a linkset is taken apart.
     // Called at taint time!!
     private bool UseBulletSimRootOffsetHack = false;    // Attempt to have Bullet track the coords of root compound shape
+    // Number of times to perform rebuilds on broken linkset children. This should only happen when
+    //    a linkset is initially being created and should happen only one or two times at the most.
+    //    This exists to cause a looping problem to be reported while not rebuilding a linkset forever.
+    private static int LinksetRebuildFailureLoopPrevention = 10;
     private void RecomputeLinksetCompound()
     {
         try
@@ -371,23 +399,47 @@ public sealed class BSLinksetCompound : BSLinkset
                 // Get a reference to the shape of the child for adding of that shape to the linkset compound shape
                 BSShape childShape = cPrim.PhysShape.GetReference(m_physicsScene, cPrim);
 
-                // Offset the child shape from the center-of-mass and rotate it to vehicle relative.
+                // Offset the child shape from the center-of-mass and rotate it to root relative.
                 OMV.Vector3 offsetPos = (cPrim.RawPosition - origRootPosition) * invRootOrientation - centerDisplacementV;
                 OMV.Quaternion offsetRot = OMV.Quaternion.Normalize(cPrim.RawOrientation) * invRootOrientation;
 
                 // Add the child shape to the compound shape being built
-                m_physicsScene.PE.AddChildShapeToCompoundShape(linksetShape.physShapeInfo, childShape.physShapeInfo, offsetPos, offsetRot);
-                DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,addChild,indx={1},cShape={2},offPos={3},offRot={4}",
-                                    LinksetRoot.LocalID, cPrim.LinksetChildIndex, childShape, offsetPos, offsetRot);
-
-                // Since we are borrowing the shape of the child, disable the origional child body
-                if (!IsRoot(cPrim))
+                if (childShape.physShapeInfo.HasPhysicalShape)
                 {
-                    m_physicsScene.PE.AddToCollisionFlags(cPrim.PhysBody, CollisionFlags.CF_NO_CONTACT_RESPONSE);
-                    m_physicsScene.PE.ForceActivationState(cPrim.PhysBody, ActivationState.DISABLE_SIMULATION);
-                    // We don't want collisions from the old linkset children.
-                    m_physicsScene.PE.RemoveFromCollisionFlags(cPrim.PhysBody, CollisionFlags.BS_SUBSCRIBE_COLLISION_EVENTS);
-                    cPrim.PhysBody.collisionType = CollisionType.LinksetChild;
+                    m_physicsScene.PE.AddChildShapeToCompoundShape(linksetShape.physShapeInfo, childShape.physShapeInfo, offsetPos, offsetRot);
+                    DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,addChild,indx={1},cShape={2},offPos={3},offRot={4}",
+                                LinksetRoot.LocalID, cPrim.LinksetChildIndex, childShape, offsetPos, offsetRot);
+
+                    // Since we are borrowing the shape of the child, disable the origional child body
+                    if (!IsRoot(cPrim))
+                    {
+                        m_physicsScene.PE.AddToCollisionFlags(cPrim.PhysBody, CollisionFlags.CF_NO_CONTACT_RESPONSE);
+                        m_physicsScene.PE.ForceActivationState(cPrim.PhysBody, ActivationState.DISABLE_SIMULATION);
+                        // We don't want collisions from the old linkset children.
+                        m_physicsScene.PE.RemoveFromCollisionFlags(cPrim.PhysBody, CollisionFlags.BS_SUBSCRIBE_COLLISION_EVENTS);
+                        cPrim.PhysBody.collisionType = CollisionType.LinksetChild;
+                    }
+                }
+                else
+                {
+                    // The linkset must be in an intermediate state where all the children have not yet
+                    //    been constructed. This sometimes happens on startup when everything is getting
+                    //    built and some shapes have to wait for assets to be read in.
+                    // Just skip this linkset for the moment and cause the shape to be rebuilt next tick.
+                    // One problem might be that the shape is broken somehow and it never becomes completely
+                    //    available. This might cause the rebuild to happen over and over.
+                    InternalScheduleRebuild(LinksetRoot);
+                    DetailLog("{0},BSLinksetCompound.RecomputeLinksetCompound,addChildWithNoShape,indx={1},cShape={2},offPos={3},offRot={4}",
+                                    LinksetRoot.LocalID, cPrim.LinksetChildIndex, childShape, offsetPos, offsetRot);
+                    // Output an annoying warning. It should only happen once but if it keeps coming out,
+                    //    the user knows there is something wrong and will report it.
+                    m_physicsScene.Logger.WarnFormat("{0} Linkset rebuild warning. If this happens more than one or two times, please report in Mantis 7191", LogHeader);
+                    m_physicsScene.Logger.WarnFormat("{0} pName={1}, childIdx={2}, shape={3}",
+                                    LogHeader, LinksetRoot.Name, cPrim.LinksetChildIndex, childShape);
+
+                    // This causes the loop to bail on building the rest of this linkset.
+                    // The rebuild operation will fix it up next tick or declare the object unbuildable.
+                    return true;
                 }
 
                 return false;   // 'false' says to move onto the next child in the list

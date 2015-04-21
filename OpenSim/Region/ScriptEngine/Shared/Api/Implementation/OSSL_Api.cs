@@ -153,7 +153,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             m_UrlModule = m_ScriptEngine.World.RequestModuleInterface<IUrlModule>();
 
             if (m_ScriptEngine.Config.GetBoolean("AllowOSFunctions", false))
+            {
                 m_OSFunctionsEnabled = true;
+                // m_log.Warn("[OSSL] OSSL FUNCTIONS ENABLED");
+            }
 
             m_ScriptDelayFactor =
                     m_ScriptEngine.Config.GetFloat("ScriptDelayFactor", 1.0f);
@@ -790,9 +793,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                         // We will launch the teleport on a new thread so that when the script threads are terminated
                         // before teleport in ScriptInstance.GetXMLState(), we don't end up aborting the one doing the teleporting.                        
-                        Util.FireAndForget(o => World.RequestTeleportLocation(
-                            presence.ControllingClient, regionName, position,
-                            lookat, (uint)TPFlags.ViaLocation));
+                        Util.FireAndForget(
+                            o => World.RequestTeleportLocation(
+                                presence.ControllingClient, regionName, position,
+                                lookat, (uint)TPFlags.ViaLocation), 
+                            null, "OSSL_Api.TeleportAgentByRegionCoords");
 
                         ScriptSleep(5000);
 
@@ -836,9 +841,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                         // We will launch the teleport on a new thread so that when the script threads are terminated
                         // before teleport in ScriptInstance.GetXMLState(), we don't end up aborting the one doing the teleporting.
-                        Util.FireAndForget(o => World.RequestTeleportLocation(
-                            presence.ControllingClient, regionHandle, 
-                            position, lookat, (uint)TPFlags.ViaLocation));
+                        Util.FireAndForget(
+                            o => World.RequestTeleportLocation(
+                                presence.ControllingClient, regionHandle, 
+                                position, lookat, (uint)TPFlags.ViaLocation), 
+                            null, "OSSL_Api.TeleportAgentByRegionName");
 
                         ScriptSleep(5000);
 
@@ -871,6 +878,59 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             CheckThreatLevel(ThreatLevel.None, "osTeleportOwner");
 
             TeleportAgent(m_host.OwnerID.ToString(), regionX, regionY, position, lookat, true);
+        }
+
+        ///<summary>
+        /// Allows a script IN the target prim to force an avatar to sit on it using normal methods
+        /// as if called by the client.
+        /// Silent fail if agent (or target if overloaded) not found.
+        /// Does work if passed key (or keys if overloaded).
+        /// </summary>
+        /// <param name="avatar"></param>
+        public void osForceOtherSit(string avatar)
+        {
+            CheckThreatLevel(ThreatLevel.VeryHigh, "osForceOtherSit");
+
+            m_host.AddScriptLPS(1);
+
+            ForceSit(avatar, m_host.UUID);
+        }
+
+        /// <summary>
+        /// Overload method of osForceOtherSit(string avatar) to allow a script NOT in the target prim to force
+        /// an avatar to sit on the target prim using normal methods as if called by the client.
+        /// </summary>
+        /// <param name="avatar"></param>
+        /// <param name="target"></param>
+        public void osForceOtherSit(string avatar, string target)
+        {
+            CheckThreatLevel(ThreatLevel.VeryHigh, "osForceOtherSit");
+
+            m_host.AddScriptLPS(1);
+
+            UUID targetID = new UUID(target);
+            
+            ForceSit(avatar, targetID);             
+        }
+
+        public void ForceSit(string avatar, UUID targetID)
+        {
+            UUID agentID; 
+
+            if (!UUID.TryParse(avatar, out agentID))
+                return;
+
+            ScenePresence presence = World.GetScenePresence(agentID);
+
+            SceneObjectPart part = World.GetSceneObjectPart(targetID);
+
+            if (presence != null &&
+                part != null &&
+                part.SitTargetAvatar == UUID.Zero)
+                presence.HandleAgentRequestSit(presence.ControllingClient,
+                    agentID,
+                    targetID,
+                    part.SitTargetPosition);
         }
 
         // Functions that get information from the agent itself.
@@ -1246,7 +1306,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             World.RegionInfo.EstateSettings.UseGlobalTime = !sunFixed;
             World.RegionInfo.EstateSettings.SunPosition = sunHour;
             World.RegionInfo.EstateSettings.FixedSun = sunFixed;
-            World.RegionInfo.EstateSettings.Save();
+            World.EstateDataService.StoreEstateSettings(World.RegionInfo.EstateSettings);
 
             World.EventManager.TriggerEstateToolsSunUpdate(World.RegionInfo.RegionHandle);
         }
@@ -1570,6 +1630,21 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
         }
 
+        public LSL_Integer osCheckODE()
+        {
+            m_host.AddScriptLPS(1);
+            LSL_Integer ret = 0;    // false
+            if (m_ScriptEngine.World.PhysicsScene != null)
+            {
+                string physEngine = m_ScriptEngine.World.PhysicsScene.EngineType;
+                if (physEngine == "OpenDynamicsEngine")
+                {
+                    ret = 1;    // true
+                }
+            }
+            return ret;
+        }
+
         public string osGetPhysicsEngineType()
         {
             // High because it can be used to target attacks to known weaknesses
@@ -1768,13 +1843,23 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             // Create new asset
             AssetBase asset = new AssetBase(UUID.Random(), name, (sbyte)AssetType.Notecard, m_host.OwnerID.ToString());
             asset.Description = description;
+            byte[] a;
+            byte[] b;
+            byte[] c;
 
-            int textLength = data.Length;
-            data
-                = "Linden text version 2\n{\nLLEmbeddedItems version 1\n{\ncount 0\n}\nText length "
-                    + textLength.ToString() + "\n" + data + "}\n";
+            b = Util.UTF8.GetBytes(data);
 
-            asset.Data = Util.UTF8.GetBytes(data);
+            a = Util.UTF8.GetBytes(
+                "Linden text version 2\n{\nLLEmbeddedItems version 1\n{\ncount 0\n}\nText length " + b.Length.ToString() + "\n");
+
+            c = Util.UTF8.GetBytes("}");
+
+            byte[] d = new byte[a.Length + b.Length + c.Length];
+            Buffer.BlockCopy(a, 0, d, 0, a.Length);
+            Buffer.BlockCopy(b, 0, d, a.Length, b.Length);
+            Buffer.BlockCopy(c, 0, d, a.Length + b.Length, c.Length);
+
+            asset.Data = d;
             World.AssetService.Store(asset);
 
             // Create Task Entry
@@ -1869,8 +1954,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 if (a == null)
                     return UUID.Zero;
 
-                string data = Encoding.UTF8.GetString(a.Data);
-                NotecardCache.Cache(assetID, data);
+                NotecardCache.Cache(assetID, a.Data);
             };
 
             return assetID;
@@ -3353,7 +3437,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public void osForceAttachToOtherAvatarFromInventory(string rawAvatarId, string itemName, int attachmentPoint)
         {
-            CheckThreatLevel(ThreatLevel.Severe, "osForceAttachToOtherAvatarFromInventory");
+            CheckThreatLevel(ThreatLevel.VeryHigh, "osForceAttachToOtherAvatarFromInventory");
 
             m_host.AddScriptLPS(1);
 
@@ -3397,14 +3481,15 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             if (sp == null)
                 return;
 
-            InventoryItemBase newItem = World.MoveTaskInventoryItem(sp.UUID, UUID.Zero, m_host, item.ItemID);
+            string message;
+            InventoryItemBase newItem = World.MoveTaskInventoryItem(sp.UUID, UUID.Zero, m_host, item.ItemID, out message);
 
             if (newItem == null)
             {
                 m_log.ErrorFormat(
-                    "[OSSL API]: Could not create user inventory item {0} for {1}, attach point {2} in {3}",
-                    itemName, m_host.Name, attachmentPoint, World.Name);
-
+                    "[OSSL API]: Could not create user inventory item {0} for {1}, attach point {2} in {3}: {4}",
+                    itemName, m_host.Name, attachmentPoint, World.Name, message);
+                ((LSL_Api)m_LSL_Api).llSay(0, message);
                 return;
             }
 

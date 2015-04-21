@@ -145,10 +145,6 @@ namespace OpenSim.Region.Framework.Scenes
             get { return 1.0f; }
         }
 
-        protected ulong m_regionHandle;
-        protected string m_regionName;
-        protected RegionInfo m_regInfo;
-
         public ITerrainChannel Heightmap;
 
         /// <value>
@@ -196,7 +192,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// Number of frames to update.  Exits on shutdown even if there are frames remaining.
         /// If -1 then updates until shutdown.
         /// </param>
-        public abstract void Update(int frames);
+        /// <returns>true if update completed within minimum frame time, false otherwise.</returns>
+        public abstract bool Update(int frames);
 
         #endregion
 
@@ -213,7 +210,12 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="RemoteClient">Client to send to</param>
         public virtual void SendLayerData(IClientAPI RemoteClient)
         {
-            RemoteClient.SendLayerData(Heightmap.GetFloatsSerialised());
+            // RemoteClient.SendLayerData(Heightmap.GetFloatsSerialised());
+            ITerrainModule terrModule = RequestModuleInterface<ITerrainModule>();
+            if (terrModule != null)
+            {
+                terrModule.PushTerrain(RemoteClient);
+            }
         }
 
         #endregion

@@ -47,7 +47,6 @@ using OpenSim.Region.CoreModules.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Tests.Common;
-using OpenSim.Tests.Common.Mock;
 using OSDArray = OpenMetaverse.StructuredData.OSDArray;
 using OSDMap = OpenMetaverse.StructuredData.OSDMap;
 
@@ -152,7 +151,7 @@ namespace OpenSim.Region.ClientStack.Linden.Caps.Tests
            
             // A sanity check that the response has the expected number of descendents for a default inventory
             // TODO: Need a more thorough check.
-            Assert.That((int)folderOsd["descendents"], Is.EqualTo(14));
+            Assert.That((int)folderOsd["descendents"], Is.EqualTo(16));
         }
     }
 }

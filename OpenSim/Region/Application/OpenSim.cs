@@ -122,7 +122,7 @@ namespace OpenSim
                     Util.FireAndForgetMethod = asyncCallMethod;
 
                 stpMinThreads = startupConfig.GetInt("MinPoolThreads", 15);
-                stpMaxThreads = startupConfig.GetInt("MaxPoolThreads", 15);
+                stpMaxThreads = startupConfig.GetInt("MaxPoolThreads", 300);
                 m_consolePrompt = startupConfig.GetString("ConsolePrompt", @"Region (\R) ");
             }
 
@@ -162,7 +162,7 @@ namespace OpenSim
                     ((RemoteConsole)m_console).ReadConfig(Config);
                     break;
                 default:
-                    m_console = new LocalConsole("Region");
+                    m_console = new LocalConsole("Region", Config.Configs["Startup"]);
                     break;
                 }
             }
@@ -275,22 +275,24 @@ namespace OpenSim
 
             m_console.Commands.AddCommand("Archiving", false, "load oar",
                                           "load oar [--merge] [--skip-assets]"
+                                             + " [--default-user \"User Name\"]"
                                              + " [--force-terrain] [--force-parcels]"
                                              + " [--no-objects]"
                                              + " [--rotation degrees] [--rotation-center \"<x,y,z>\"]"
-                                             + " [--displacement \"<x,y,z>\"]"
+                                             + " [--displacement \"<x,y,z>\"]"                                             
                                              + " [<OAR path>]",
                                           "Load a region's data from an OAR archive.",
-                                          "--merge will merge the OAR with the existing scene (suppresses terrain and parcel info loading)." + Environment.NewLine
-                                          + "--skip-assets will load the OAR but ignore the assets it contains." + Environment.NewLine
-                                          + "--displacement will add this value to the position of every object loaded" + Environment.NewLine
-                                          + "--force-terrain forces the loading of terrain from the oar (undoes suppression done by --merge)" + Environment.NewLine
-                                          + "--force-parcels forces the loading of parcels from the oar (undoes suppression done by --merge)" + Environment.NewLine
-                                          + "--rotation specified rotation to be applied to the oar. Specified in degrees." + Environment.NewLine
-                                          + "--rotation-center Location (relative to original OAR) to apply rotation. Default is <128,128,0>" + Environment.NewLine
-                                          + "--no-objects suppresses the addition of any objects (good for loading only the terrain)" + Environment.NewLine
-                                          + "The path can be either a filesystem location or a URI."
-                                          + "  If this is not given then the command looks for an OAR named region.oar in the current directory.",
+                                          "--merge will merge the OAR with the existing scene (suppresses terrain and parcel info loading).\n"
+                                            + "--default-user will use this user for any objects with an owner whose UUID is not found in the grid.\n"
+                                            + "--displacement will add this value to the position of every object loaded.\n"
+                                            + "--force-terrain forces the loading of terrain from the oar (undoes suppression done by --merge).\n"
+                                            + "--force-parcels forces the loading of parcels from the oar (undoes suppression done by --merge).\n"
+                                            + "--no-objects suppresses the addition of any objects (good for loading only the terrain).\n"
+                                            + "--rotation specified rotation to be applied to the oar. Specified in degrees.\n"
+                                            + "--rotation-center Location (relative to original OAR) to apply rotation. Default is <128,128,0>.\n"
+                                            + "--skip-assets will load the OAR but ignore the assets it contains.\n\n"
+                                            + "The path can be either a filesystem location or a URI.\n"
+                                            + "  If this is not given then the command looks for an OAR named region.oar in the current directory.",
                                           LoadOar);
 
             m_console.Commands.AddCommand("Archiving", false, "save oar",
@@ -396,7 +398,7 @@ namespace OpenSim
 
             m_console.Commands.AddCommand("Regions", false, "restart",
                                           "restart",
-                                          "Restart all sims in this instance", 
+                                          "Restart the currently selected region(s) in this instance", 
                                           RunCommand);
 
             m_console.Commands.AddCommand("General", false, "command-script",
@@ -414,6 +416,12 @@ namespace OpenSim
                                           "Delete a region from disk", 
                                           RunCommand);
 
+            m_console.Commands.AddCommand("Estates", false, "estate create",
+                                          "estate create <owner UUID> <estate name>",
+                                          "Creates a new estate with the specified name, owned by the specified user."
+                                          + " Estate name must be unique.",
+                                          CreateEstateCommand);
+
             m_console.Commands.AddCommand("Estates", false, "estate set owner",
                                           "estate set owner <estate-id>[ <UUID> | <Firstname> <Lastname> ]",
                                           "Sets the owner of the specified estate to the specified UUID or user. ",
@@ -424,10 +432,15 @@ namespace OpenSim
                                           "Sets the name of the specified estate to the specified value. New name must be unique.",
                                           SetEstateNameCommand);
 
+            m_console.Commands.AddCommand("Estates", false, "estate link region",
+                                          "estate link region <estate ID> <region ID>",
+                                          "Attaches the specified region to the specified estate.",
+                                          EstateLinkRegionCommand);
+
             m_console.Commands.AddCommand ("General", false, "show kpi",
-                                          "show kpi",
-                                          "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", 
-                                          HandleShowKPI);
+                                           "show kpi",
+                                           "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", 
+                                           HandleShowKPI);
         }
 
         protected override void ShutdownSpecific()
@@ -768,7 +781,9 @@ namespace OpenSim
             CreateRegion(regInfo, true, out scene);
 
             if (changed)
-	            regInfo.EstateSettings.Save();
+	            m_estateDataService.StoreEstateSettings(regInfo.EstateSettings);
+        
+            scene.Start();
         }
 
         /// <summary>
@@ -1006,7 +1021,7 @@ namespace OpenSim
 
                             foreach (IRegionModuleBase module in scene.RegionModules.Values)
                             {
-                                if (module.GetType().GetInterface("ISharedRegionModule") != null)
+                                if (module.GetType().GetInterface("ISharedRegionModule") == null)
                                     nonSharedModules.Add(module);
                                 else
                                     sharedModules.Add(module);
@@ -1028,6 +1043,7 @@ namespace OpenSim
                     cdt.AddColumn("Name", ConsoleDisplayUtil.RegionNameSize);
                     cdt.AddColumn("ID", ConsoleDisplayUtil.UuidSize);
                     cdt.AddColumn("Position", ConsoleDisplayUtil.CoordTupleSize);
+                    cdt.AddColumn("Size", 11);
                     cdt.AddColumn("Port", ConsoleDisplayUtil.PortSize);
                     cdt.AddColumn("Ready?", 6);
                     cdt.AddColumn("Estate", ConsoleDisplayUtil.EstateNameSize);
@@ -1036,8 +1052,13 @@ namespace OpenSim
                         { 
                             RegionInfo ri = scene.RegionInfo; 
                             cdt.AddRow(
-                                ri.RegionName, ri.RegionID, string.Format("{0},{1}", ri.RegionLocX, ri.RegionLocY), 
-                                ri.InternalEndPoint.Port, scene.Ready ? "Yes" : "No", ri.EstateSettings.EstateName);
+                                ri.RegionName, 
+                                ri.RegionID, 
+                                string.Format("{0},{1}", ri.RegionLocX, ri.RegionLocY), 
+                                string.Format("{0}x{1}", ri.RegionSizeX, ri.RegionSizeY),
+                                ri.InternalEndPoint.Port, 
+                                scene.Ready ? "Yes" : "No", 
+                                ri.EstateSettings.EstateName);
                         }
                     );
 
@@ -1308,6 +1329,58 @@ namespace OpenSim
             SceneManager.SaveCurrentSceneToArchive(cmdparams);
         }
 
+        protected void CreateEstateCommand(string module, string[] args)
+        {
+            string response = null;
+            UUID userID;
+
+            if (args.Length == 2)
+            {
+                response = "No user specified.";
+            }
+            else if (!UUID.TryParse(args[2], out userID))
+            {
+                response = String.Format("{0} is not a valid UUID", args[2]);
+            }
+            else if (args.Length == 3)
+            {
+                response = "No estate name specified.";
+            }
+            else
+            {
+                Scene scene = SceneManager.CurrentOrFirstScene;
+
+                // TODO: Is there a better choice here?
+                UUID scopeID = UUID.Zero;
+                UserAccount account = scene.UserAccountService.GetUserAccount(scopeID, userID);
+                if (account == null)
+                {
+                    response = String.Format("Could not find user {0}", userID);
+                }
+                else
+                {
+                    // concatenate it all to "name"
+                    StringBuilder sb = new StringBuilder(args[3]);
+                    for (int i = 4; i < args.Length; i++)
+                        sb.Append (" " + args[i]);
+                    string estateName = sb.ToString().Trim();
+
+                    // send it off for processing.
+                    IEstateModule estateModule = scene.RequestModuleInterface<IEstateModule>();
+                    response = estateModule.CreateEstate(estateName, userID);
+                    if (response == String.Empty)
+                    {
+                        List<int> estates = scene.EstateDataService.GetEstates(estateName);
+                        response = String.Format("Estate {0} created as \"{1}\"", estates.ElementAt(0), estateName);
+                    }
+                }
+            }
+
+            // give the user some feedback
+            if (response != null)
+                MainConsole.Instance.Output(response);
+        }
+
         protected void SetEstateOwnerCommand(string module, string[] args)
         {
             string response = null;
@@ -1428,6 +1501,56 @@ namespace OpenSim
             // give the user some feedback
             if (response != null)
                 MainConsole.Instance.Output(response);
+        }
+
+        private void EstateLinkRegionCommand(string module, string[] args)
+        {
+            int estateId =-1;
+            UUID regionId = UUID.Zero;
+            Scene scene = null;
+            string response = null;
+
+            if (args.Length == 3)
+            {
+                response = "No estate specified.";
+            }
+            else if (!int.TryParse(args [3], out estateId))
+            {
+                response = String.Format("\"{0}\" is not a valid ID for an Estate", args [3]);
+            }
+            else if (args.Length == 4)
+            {
+                response = "No region specified.";
+            }
+            else if (!UUID.TryParse(args[4], out regionId))
+            {
+                response = String.Format("\"{0}\" is not a valid UUID for a Region", args [4]);
+            }
+            else if (!SceneManager.TryGetScene(regionId, out scene))
+            {
+                // region may exist, but on a different sim.
+                response = String.Format("No access to Region \"{0}\"", args [4]);
+            }
+
+            if (response != null)
+            {
+                MainConsole.Instance.Output(response);
+                return;
+            }
+
+            // send it off for processing.
+            IEstateModule estateModule = scene.RequestModuleInterface<IEstateModule>();
+            response = estateModule.SetRegionEstate(scene.RegionInfo, estateId);
+            if (response == String.Empty)
+            {
+                estateModule.TriggerRegionInfoChange();
+                estateModule.sendRegionHandshakeToAll();
+                response = String.Format ("Region {0} is now attached to estate {1}", regionId, estateId);
+            }
+
+            // give the user some feedback
+            if (response != null)
+                MainConsole.Instance.Output (response);
         }
 
         #endregion

@@ -32,6 +32,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using OpenSim.Framework;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework;
 using OpenSim.Region.CoreModules;
 using Logging = OpenSim.Region.CoreModules.Framework.Statistics.Logging;
@@ -128,6 +129,11 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
 
     internal int m_maxUpdatesPerFrame;
     internal EntityProperties[] m_updateArray;
+
+    /// <summary>
+    /// Used to control physics simulation timing if Bullet is running on its own thread.
+    /// </summary>
+    private ManualResetEvent m_updateWaitEvent;
 
     public const uint TERRAIN_ID = 0;       // OpenSim senses terrain with a localID of zero
     public const uint GROUNDPLANE_ID = 1;
@@ -286,9 +292,13 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
         if (BSParam.UseSeparatePhysicsThread)
         {
             // The physics simulation should happen independently of the heartbeat loop
-            m_physicsThread = new Thread(BulletSPluginPhysicsThread);
-            m_physicsThread.Name = BulletEngineName;
-            m_physicsThread.Start();
+            m_physicsThread 
+                = WorkManager.StartThread(
+                    BulletSPluginPhysicsThread, 
+                    string.Format("{0} ({1})", BulletEngineName, RegionName), 
+                    ThreadPriority.Normal, 
+                    true, 
+                    true);
         }
     }
 
@@ -451,19 +461,19 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
 
     #region Prim and Avatar addition and removal
 
-    public override PhysicsActor AddAvatar(string avName, Vector3 position, Vector3 size, bool isFlying)
+    public override PhysicsActor AddAvatar(string avName, Vector3 position, Vector3 velocity, Vector3 size, bool isFlying)
     {
         m_log.ErrorFormat("{0}: CALL TO AddAvatar in BSScene. NOT IMPLEMENTED", LogHeader);
         return null;
     }
 
-    public override PhysicsActor AddAvatar(uint localID, string avName, Vector3 position, Vector3 size, bool isFlying)
+    public override PhysicsActor AddAvatar(uint localID, string avName, Vector3 position, Vector3 velocity, Vector3 size, bool isFlying)
     {
         // m_log.DebugFormat("{0}: AddAvatar: {1}", LogHeader, avName);
 
         if (!m_initialized) return null;
 
-        BSCharacter actor = new BSCharacter(localID, avName, this, position, size, isFlying);
+        BSCharacter actor = new BSCharacter(localID, avName, this, position, velocity, size, isFlying);
         lock (PhysObjects)
             PhysObjects.Add(localID, actor);
 
@@ -471,7 +481,14 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
         // We must generate a collision for avatars whether they collide or not.
         // This is required by OpenSim to update avatar animations, etc.
         lock (m_avatars)
-            m_avatars.Add(actor);
+        {
+            // The funky copy is because this list has few and infrequent changes but is
+            //    read zillions of times. This allows the reader/iterator to use the
+            //    list and this creates a new list with any updates.
+            HashSet<BSPhysObject> avatarTemp = new HashSet<BSPhysObject>(m_avatars);
+            avatarTemp.Add(actor);
+            m_avatars = avatarTemp;
+        }
 
         return actor;
     }
@@ -491,7 +508,11 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
                     PhysObjects.Remove(bsactor.LocalID);
                 // Remove kludge someday
                 lock (m_avatars)
-                    m_avatars.Remove(bsactor);
+                {
+                    HashSet<BSPhysObject> avatarTemp = new HashSet<BSPhysObject>(m_avatars);
+                    avatarTemp.Remove(bsactor);
+                    m_avatars = avatarTemp;
+                }
             }
             catch (Exception e)
             {
@@ -639,15 +660,18 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
         {
             if (collidersCount > 0)
             {
-                for (int ii = 0; ii < collidersCount; ii++)
+                lock (PhysObjects)
                 {
-                    uint cA = m_collisionArray[ii].aID;
-                    uint cB = m_collisionArray[ii].bID;
-                    Vector3 point = m_collisionArray[ii].point;
-                    Vector3 normal = m_collisionArray[ii].normal;
-                    float penetration = m_collisionArray[ii].penetration;
-                    SendCollision(cA, cB, point, normal, penetration);
-                    SendCollision(cB, cA, point, -normal, penetration);
+                    for (int ii = 0; ii < collidersCount; ii++)
+                    {
+                        uint cA = m_collisionArray[ii].aID;
+                        uint cB = m_collisionArray[ii].bID;
+                        Vector3 point = m_collisionArray[ii].point;
+                        Vector3 normal = m_collisionArray[ii].normal;
+                        float penetration = m_collisionArray[ii].penetration;
+                        SendCollision(cA, cB, point, normal, penetration);
+                        SendCollision(cB, cA, point, -normal, penetration);
+                    }
                 }
             }
         }
@@ -658,14 +682,17 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
         {
             if (updatedEntityCount > 0)
             {
-                for (int ii = 0; ii < updatedEntityCount; ii++)
+                lock (PhysObjects)
                 {
-                    EntityProperties entprop = m_updateArray[ii];
-                    BSPhysObject pobj;
-                    if (PhysObjects.TryGetValue(entprop.ID, out pobj))
+                    for (int ii = 0; ii < updatedEntityCount; ii++)
                     {
-                        if (pobj.IsInitialized)
-                            pobj.UpdateProperties(entprop);
+                        EntityProperties entprop = m_updateArray[ii];
+                        BSPhysObject pobj;
+                        if (PhysObjects.TryGetValue(entprop.ID, out pobj))
+                        {
+                            if (pobj.IsInitialized)
+                                pobj.UpdateProperties(entprop);
+                        }
                     }
                 }
             }
@@ -699,7 +726,10 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
     //    this is is under UpdateLock.
     public void PostUpdate(BSPhysObject updatee)
     {
-        ObjectsWithUpdates.Add(updatee);
+        lock (UpdateLock)
+        {
+            ObjectsWithUpdates.Add(updatee);
+        }
     }
 
     // The simulator thinks it is physics time so return all the collisions and position
@@ -727,9 +757,13 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
             // The simulator expects collisions for avatars even if there are have been no collisions.
             //    The event updates avatar animations and stuff.
             // If you fix avatar animation updates, remove this overhead and let normal collision processing happen.
-            foreach (BSPhysObject bsp in m_avatars)
+            // Note that we copy the root of the list to search. Any updates will create a new list
+            //    thus freeing this code from having to do an extra lock for every collision.
+            HashSet<BSPhysObject> avatarTemp = m_avatars;
+            foreach (BSPhysObject bsp in avatarTemp)
                 if (!ObjectsWithCollisions.Contains(bsp))   // don't call avatars twice
                     bsp.SendCollisions();
+            avatarTemp = null;
 
             // Objects that are done colliding are removed from the ObjectsWithCollisions list.
             // Not done above because it is inside an iteration of ObjectWithCollisions.
@@ -797,7 +831,10 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
             if (collider.Collide(collidingWith, collidee, collidePoint, collideNormal, penetration))
             {
                 // If a collision was 'good', remember to send it to the simulator
-                ObjectsWithCollisions.Add(collider);
+                lock (CollisionLock)
+                {
+                    ObjectsWithCollisions.Add(collider);
+                }
             }
         }
 
@@ -806,18 +843,25 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
 
     public void BulletSPluginPhysicsThread()
     {
+        Thread.CurrentThread.Priority = ThreadPriority.Highest;
+        m_updateWaitEvent = new ManualResetEvent(false);
+
         while (m_initialized)
         {
             int beginSimulationRealtimeMS = Util.EnvironmentTickCount();
-            DoPhysicsStep(BSParam.PhysicsTimeStep);
+
+            if (BSParam.Active)
+                DoPhysicsStep(BSParam.PhysicsTimeStep);
+
             int simulationRealtimeMS = Util.EnvironmentTickCountSubtract(beginSimulationRealtimeMS);
             int simulationTimeVsRealtimeDifferenceMS = ((int)(BSParam.PhysicsTimeStep*1000f)) - simulationRealtimeMS;
 
             if (simulationTimeVsRealtimeDifferenceMS > 0)
             {
                 // The simulation of the time interval took less than realtime.
-                // Do a sleep for the rest of realtime.
-                Thread.Sleep(simulationTimeVsRealtimeDifferenceMS);
+                // Do a wait for the rest of realtime.
+                 m_updateWaitEvent.WaitOne(simulationTimeVsRealtimeDifferenceMS);
+                //Thread.Sleep(simulationTimeVsRealtimeDifferenceMS);
             }
             else
             {
@@ -826,7 +870,11 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
                 // TODO.
                 DetailLog("{0},BulletSPluginPhysicsThread,longerThanRealtime={1}", BSScene.DetailLogZero, simulationTimeVsRealtimeDifferenceMS);
             }
+
+            Watchdog.UpdateThread();
         }
+
+        Watchdog.RemoveThread();
     }
 
     #endregion // Simulation
@@ -898,6 +946,75 @@ public sealed class BSScene : PhysicsScene, IPhysicsParameters
         return base.Extension(pFunct, pParams);
     }
     #endregion // Extensions
+
+    public static string PrimitiveBaseShapeToString(PrimitiveBaseShape pbs)
+    {
+        float pathShearX = pbs.PathShearX < 128 ? (float)pbs.PathShearX * 0.01f : (float)(pbs.PathShearX - 256) * 0.01f;
+        float pathShearY = pbs.PathShearY < 128 ? (float)pbs.PathShearY * 0.01f : (float)(pbs.PathShearY - 256) * 0.01f;
+        float pathBegin = (float)pbs.PathBegin * 2.0e-5f;
+        float pathEnd = 1.0f - (float)pbs.PathEnd * 2.0e-5f;
+        float pathScaleX = (float)(200 - pbs.PathScaleX) * 0.01f;
+        float pathScaleY = (float)(200 - pbs.PathScaleY) * 0.01f;
+        float pathTaperX = pbs.PathTaperX * 0.01f;
+        float pathTaperY = pbs.PathTaperY * 0.01f;
+
+        float profileBegin = (float)pbs.ProfileBegin * 2.0e-5f;
+        float profileEnd = 1.0f - (float)pbs.ProfileEnd * 2.0e-5f;
+        float profileHollow = (float)pbs.ProfileHollow * 2.0e-5f;
+        if (profileHollow > 0.95f)
+            profileHollow = 0.95f;
+
+        StringBuilder buff = new StringBuilder();
+        buff.Append("shape=");
+        buff.Append(((ProfileShape)pbs.ProfileShape).ToString());
+        buff.Append(",");
+        buff.Append("hollow=");
+        buff.Append(((HollowShape)pbs.HollowShape).ToString());
+        buff.Append(",");
+        buff.Append("pathCurve=");
+        buff.Append(((Extrusion)pbs.PathCurve).ToString());
+        buff.Append(",");
+        buff.Append("profCurve=");
+        buff.Append(((Extrusion)pbs.ProfileCurve).ToString());
+        buff.Append(",");
+        buff.Append("profHollow=");
+        buff.Append(profileHollow.ToString());
+        buff.Append(",");
+        buff.Append("pathBegEnd=");
+        buff.Append(pathBegin.ToString());
+        buff.Append("/");
+        buff.Append(pathEnd.ToString());
+        buff.Append(",");
+        buff.Append("profileBegEnd=");
+        buff.Append(profileBegin.ToString());
+        buff.Append("/");
+        buff.Append(profileEnd.ToString());
+        buff.Append(",");
+        buff.Append("scaleXY=");
+        buff.Append(pathScaleX.ToString());
+        buff.Append("/");
+        buff.Append(pathScaleY.ToString());
+        buff.Append(",");
+        buff.Append("shearXY=");
+        buff.Append(pathShearX.ToString());
+        buff.Append("/");
+        buff.Append(pathShearY.ToString());
+        buff.Append(",");
+        buff.Append("taperXY=");
+        buff.Append(pbs.PathTaperX.ToString());
+        buff.Append("/");
+        buff.Append(pbs.PathTaperY.ToString());
+        buff.Append(",");
+        buff.Append("skew=");
+        buff.Append(pbs.PathSkew.ToString());
+        buff.Append(",");
+        buff.Append("twist/Beg=");
+        buff.Append(pbs.PathTwist.ToString());
+        buff.Append("/");
+        buff.Append(pbs.PathTwistBegin.ToString());
+
+        return buff.ToString();
+    }
 
     #region Taints
     // The simulation execution order is:

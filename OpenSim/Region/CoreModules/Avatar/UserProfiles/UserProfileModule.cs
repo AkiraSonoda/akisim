@@ -48,6 +48,8 @@ using Mono.Addins;
 using OpenSim.Services.Connectors.Hypergrid;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Services.UserProfilesService;
+using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+using Microsoft.CSharp;
 
 namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
 {
@@ -78,7 +80,8 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
         /// <value>
         /// The configuration
         /// </value>
-        public IConfigSource Config {
+        public IConfigSource Config 
+        {
             get;
             set;
         }
@@ -89,7 +92,8 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
         /// <value>
         /// The profile server URI.
         /// </value>
-        public string ProfileServerUri {
+        public string ProfileServerUri 
+        {
             get;
             set;
         }
@@ -111,9 +115,15 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
         /// <value>
         /// <c>true</c> if enabled; otherwise, <c>false</c>.
         /// </value>
-        public bool Enabled {
+        public bool Enabled 
+        {
             get;
             set;
+        }
+
+        public string MyGatekeeper 
+        {
+            get; private set;
         }
 
 
@@ -152,6 +162,9 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             m_log.Debug("[PROFILES]: Full Profiles Enabled");
             ReplaceableInterface = null;
             Enabled = true;
+
+            MyGatekeeper = Util.GetConfigVarFromSections<string>(source, "GatekeeperURI",
+                new string[] { "Startup", "Hypergrid", "UserProfiles" }, String.Empty);
         }
 
         /// <summary>
@@ -181,7 +194,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             Util.FireAndForget(delegate
             {
                 GetImageAssets(((IScenePresence)obj).UUID);
-            });
+            }, null, "UserProfileModule.GetImageAssets");
         }
 
         /// <summary>
@@ -484,6 +497,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             {
                 remoteClient.SendAgentAlertMessage(
                         "Error updating classified", false);
+                return;
             }
         }
 
@@ -510,6 +524,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             {
                 remoteClient.SendAgentAlertMessage(
                         "Error classified delete", false);
+                return;
             }
 
             parameters = (OSDMap)Params;
@@ -597,31 +612,66 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
                 return;
 
             UUID targetID;
-            UUID.TryParse(args[0], out targetID);
+            UUID.TryParse (args [0], out targetID);
             string serverURI = string.Empty;
-            GetUserProfileServerURI(targetID, out serverURI);
+            GetUserProfileServerURI (targetID, out serverURI);
+
+            string theirGatekeeperURI;
+            GetUserGatekeeperURI (targetID, out theirGatekeeperURI);
+
             IClientAPI remoteClient = (IClientAPI)sender;
 
-            UserProfilePick pick = new UserProfilePick();
-            UUID.TryParse(args[0], out pick.CreatorId);
-            UUID.TryParse(args[1], out pick.PickId);
+            UserProfilePick pick = new UserProfilePick ();
+            UUID.TryParse (args [0], out pick.CreatorId);
+            UUID.TryParse (args [1], out pick.PickId);
 
                 
             object Pick = (object)pick;
-            if(!rpc.JsonRpcRequest(ref Pick, "pickinforequest", serverURI, UUID.Random().ToString()))
-            {
-                remoteClient.SendAgentAlertMessage(
+            if (!rpc.JsonRpcRequest (ref Pick, "pickinforequest", serverURI, UUID.Random ().ToString ())) {
+                remoteClient.SendAgentAlertMessage (
                         "Error selecting pick", false);
+                return;
             }
-            pick = (UserProfilePick) Pick;
-             
-            Vector3 globalPos;
-            Vector3.TryParse(pick.GlobalPos,out globalPos);
+            pick = (UserProfilePick)Pick;
+            
+            Vector3 globalPos = new Vector3(Vector3.Zero);
+            
+            // Smoke and mirrors
+            if (pick.Gatekeeper == MyGatekeeper) 
+            {
+                Vector3.TryParse(pick.GlobalPos,out globalPos);
+            } 
+            else 
+            {
+                // Setup the illusion
+                string region = string.Format("{0} {1}",pick.Gatekeeper,pick.SimName);
+                GridRegion target = Scene.GridService.GetRegionByName(Scene.RegionInfo.ScopeID, region);
+
+                if(target == null)
+                {
+                    // This is a dead or unreachable region
+                }
+                else
+                {
+                    // Work our slight of hand
+                    int x = target.RegionLocX;
+                    int y = target.RegionLocY;
+
+                    dynamic synthX = globalPos.X - (globalPos.X/Constants.RegionSize) * Constants.RegionSize;
+                    synthX += x;
+                    globalPos.X = synthX;
+
+                    dynamic synthY = globalPos.Y - (globalPos.Y/Constants.RegionSize) * Constants.RegionSize;
+                    synthY += y;
+                    globalPos.Y = synthY;
+                }
+            }
 
             m_log.DebugFormat("[PROFILES]: PickInfoRequest: {0} : {1}", pick.Name.ToString(), pick.SnapshotId.ToString());
 
+            // Pull the rabbit out of the hat
             remoteClient.SendPickInfoReply(pick.PickId,pick.CreatorId,pick.TopPick,pick.ParcelId,pick.Name,
-                                           pick.Desc,pick.SnapshotId,pick.User,pick.OriginalName,pick.SimName,
+                                           pick.Desc,pick.SnapshotId,pick.ParcelName,pick.OriginalName,pick.SimName,
                                            globalPos,pick.SortOrder,pick.Enabled);
         }
 
@@ -656,7 +706,8 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
         /// Enabled.
         /// </param>
         public void PickInfoUpdate(IClientAPI remoteClient, UUID pickID, UUID creatorID, bool topPick, string name, string desc, UUID snapshotID, int sortOrder, bool enabled)
-        {            
+        {        
+            //TODO: See how this works with NPC, May need to test
             m_log.DebugFormat("[PROFILES]: Start PickInfoUpdate Name: {0} PickId: {1} SnapshotId: {2}", name, pickID.ToString(), snapshotID.ToString());
 
             UserProfilePick pick = new UserProfilePick();
@@ -670,24 +721,16 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
                                             remoteClient.Scene.RegionInfo.WorldLocY + avaPos.Y,
                                             avaPos.Z);
 
-            string landOwnerName = string.Empty;
+            string  landParcelName  = "My Parcel";
+            UUID    landParcelID    = p.currentParcelUUID;
+
             ILandObject land = p.Scene.LandChannel.GetLandObject(avaPos.X, avaPos.Y);
 
             if (land != null)
             {
-                if (land.LandData.IsGroupOwned)
-                {
-                    IGroupsModule groupMod = p.Scene.RequestModuleInterface<IGroupsModule>();
-                    UUID groupId = land.LandData.GroupID;
-                    GroupRecord groupRecord = groupMod.GetGroupRecord(groupId);
-                    landOwnerName = groupRecord.GroupName;
-                }
-                else
-                {
-                    IUserAccountService accounts = p.Scene.RequestModuleInterface<IUserAccountService>();
-                    UserAccount user = accounts.GetUserAccount(p.Scene.RegionInfo.ScopeID, land.LandData.OwnerID);
-                    landOwnerName = user.Name;
-                }
+                // If land found, use parcel uuid from here because the value from SP will be blank if the avatar hasnt moved
+                landParcelName  = land.LandData.Name;
+                landParcelID    = land.LandData.GlobalID;
             }
             else
             {
@@ -696,15 +739,17 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
                     avaPos.X, avaPos.Y, p.Scene.Name);
             }
 
+
             pick.PickId = pickID;
             pick.CreatorId = creatorID;
             pick.TopPick = topPick;
             pick.Name = name;
             pick.Desc = desc;
-            pick.ParcelId = p.currentParcelUUID;
+            pick.ParcelId = landParcelID;
             pick.SnapshotId = snapshotID;
-            pick.User = landOwnerName;
+            pick.ParcelName = landParcelName;
             pick.SimName = remoteClient.Scene.RegionInfo.RegionName;
+            pick.Gatekeeper = MyGatekeeper;
             pick.GlobalPos = posGlobal.ToString();
             pick.SortOrder = sortOrder;
             pick.Enabled = enabled;
@@ -714,6 +759,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             {
                 remoteClient.SendAgentAlertMessage(
                         "Error updating pick", false);
+                return;
             }
 
             m_log.DebugFormat("[PROFILES]: Finish PickInfoUpdate {0} {1}", pick.Name, pick.PickId.ToString());
@@ -740,6 +786,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             {
                 remoteClient.SendAgentAlertMessage(
                         "Error picks delete", false);
+                return;
             }
         }
         #endregion Picks
@@ -807,6 +854,8 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             object Note = note;
             if(!rpc.JsonRpcRequest(ref Note, "avatar_notes_update", serverURI, UUID.Random().ToString()))
             {
+                remoteClient.SendAgentAlertMessage(
+                        "Error updating note", false);
                 return;
             }
         }
@@ -864,8 +913,8 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             object Pref = (object)pref;
             if(!rpc.JsonRpcRequest(ref Pref, "user_preferences_request", serverURI, UUID.Random().ToString()))
             {
-                m_log.InfoFormat("[PROFILES]: UserPreferences request error");
-                remoteClient.SendAgentAlertMessage("Error requesting preferences", false);
+//                m_log.InfoFormat("[PROFILES]: UserPreferences request error");
+//                remoteClient.SendAgentAlertMessage("Error requesting preferences", false);
                 return;
             }
             pref = (UserPreferences) Pref;
@@ -916,6 +965,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             {
                 remoteClient.SendAgentAlertMessage(
                         "Error updating interests", false);
+                return;
             }
         }
 
@@ -1001,7 +1051,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
 
             if (!GetProfileData(ref props, foreign, out result))
             {
-                m_log.DebugFormat("Error getting profile for {0}: {1}", avatarID, result);
+//                m_log.DebugFormat("Error getting profile for {0}: {1}", avatarID, result);
                 return;
             }
 
@@ -1044,6 +1094,7 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
                 {
                     remoteClient.SendAgentAlertMessage(
                             "Error updating properties", false);
+                    return;
                 }
 
                 RequestAvatarProperties(remoteClient, newProfile.ID);
@@ -1096,7 +1147,12 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
                     }
                     catch (Exception e)
                     {
-                        m_log.Debug(string.Format("Request using the OpenProfile API to {0} failed", serverURI), e);
+                        m_log.Debug(
+                            string.Format(
+                                "[PROFILES]: Request using the OpenProfile API for user {0} to {1} failed", 
+                                properties.UserId, serverURI),
+                            e);
+
                         // Allow the return 'message' to say "JsonRpcRequest" and not "OpenProfile", because
                         // the most likely reason that OpenProfile failed is that the remote server
                         // doesn't support OpenProfile, and that's not very interesting.
@@ -1105,7 +1161,9 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
 
                 if (!secondChanceSuccess)
                 {
-                    message = string.Format("JsonRpcRequest to {0} failed", serverURI);
+                    message = string.Format("JsonRpcRequest for user {0} to {1} failed", properties.UserId, serverURI);
+                    m_log.DebugFormat("[PROFILES]: {0}", message);
+
                     return false;
                 }
                 // else, continue below
@@ -1143,16 +1201,24 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
             }
             
             parameters = (OSDMap)Params;
-            
-            OSDArray list = (OSDArray)parameters["result"];
-            
-            foreach(OSD asset in list)
-            {
-                OSDString assetId = (OSDString)asset;
 
-                Scene.AssetService.Get(string.Format("{0}/{1}",assetServerURI, assetId.AsString()));
+            if (parameters.ContainsKey("result"))
+            {
+                OSDArray list = (OSDArray)parameters["result"];
+
+                foreach (OSD asset in list)
+                {
+                    OSDString assetId = (OSDString)asset;
+
+                    Scene.AssetService.Get(string.Format("{0}/{1}", assetServerURI, assetId.AsString()));
+                }
+                return true;
             }
-            return true;
+            else
+            {
+                m_log.ErrorFormat("[PROFILES]: Problematic response for image_assets_request from {0}", profileServerURI);
+                return false;
+            }
         }
 
         /// <summary>
@@ -1239,6 +1305,37 @@ namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
                 }
                 userInfo = info;
                 return true;
+            }
+        }
+
+        /// <summary>
+        /// Gets the user gatekeeper server URI.
+        /// </summary>
+        /// <returns>
+        /// The user gatekeeper server URI.
+        /// </returns>
+        /// <param name='userID'>
+        /// If set to <c>true</c> user URI.
+        /// </param>
+        /// <param name='serverURI'>
+        /// If set to <c>true</c> server URI.
+        /// </param>
+        bool GetUserGatekeeperURI(UUID userID, out string serverURI)
+        {
+            bool local;
+            local = UserManagementModule.IsLocalGridUser(userID);
+            
+            if (!local)
+            {
+                serverURI = UserManagementModule.GetUserServerURL(userID, "GatekeeperURI");
+                // Is Foreign
+                return true;
+            }
+            else
+            {
+                serverURI = MyGatekeeper;
+                // Is local
+                return false;
             }
         }
 

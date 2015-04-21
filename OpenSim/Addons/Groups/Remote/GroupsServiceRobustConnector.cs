@@ -36,6 +36,7 @@ using OpenSim.Framework;
 using OpenSim.Server.Base;
 using OpenSim.Services.Interfaces;
 using OpenSim.Framework.Servers.HttpServer;
+using OpenSim.Framework.ServiceAuth;
 using OpenSim.Server.Handlers.Base;
 using log4net;
 using OpenMetaverse;
@@ -52,14 +53,26 @@ namespace OpenSim.Groups
         public GroupsServiceRobustConnector(IConfigSource config, IHttpServer server, string configName) :
             base(config, server, configName)
         {
+            string key = string.Empty;
             if (configName != String.Empty)
                 m_ConfigName = configName;
 
             m_log.DebugFormat("[Groups.RobustConnector]: Starting with config name {0}", m_ConfigName);
 
+            IConfig groupsConfig = config.Configs[m_ConfigName];
+            if (groupsConfig != null)
+            {
+                key = groupsConfig.GetString("SecretKey", string.Empty);
+                m_log.DebugFormat("[Groups.RobustConnector]: Starting with secret key {0}", key);
+            }
+//            else
+//                m_log.DebugFormat("[Groups.RobustConnector]: Unable to find {0} section in configuration", m_ConfigName);
+
             m_GroupsService = new GroupsService(config);
 
-            server.AddStreamHandler(new GroupsServicePostHandler(m_GroupsService));
+            IServiceAuth auth = ServiceAuth.Create(config, m_ConfigName);
+
+            server.AddStreamHandler(new GroupsServicePostHandler(m_GroupsService, auth));
         }
     }
 
@@ -69,8 +82,8 @@ namespace OpenSim.Groups
 
         private GroupsService m_GroupsService;
 
-        public GroupsServicePostHandler(GroupsService service) :
-            base("POST", "/groups")
+        public GroupsServicePostHandler(GroupsService service, IServiceAuth auth) :
+            base("POST", "/groups", auth)
         {
             m_GroupsService = service;
         }
@@ -96,7 +109,7 @@ namespace OpenSim.Groups
                 string method = request["METHOD"].ToString();
                 request.Remove("METHOD");
 
-                m_log.DebugFormat("[Groups.Handler]: {0}", method);
+//                m_log.DebugFormat("[Groups.Handler]: {0}", method);
                 switch (method)
                 {
                     case "PUTGROUP":
@@ -272,11 +285,13 @@ namespace OpenSim.Groups
                 string agentID = request["AgentID"].ToString();
                 string requestingAgentID = request["RequestingAgentID"].ToString();
 
-                m_GroupsService.RemoveAgentFromGroup(requestingAgentID, agentID, groupID);
+                if (!m_GroupsService.RemoveAgentFromGroup(requestingAgentID, agentID, groupID))
+                    NullResult(result, string.Format("Insufficient permissions.", agentID));
+                else
+                    result["RESULT"] = "true";
             }
 
             //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
-            result["RESULT"] = "true";
             return Util.UTF8NoBomEncoding.GetBytes(ServerUtils.BuildXmlResponse(result));
         }
 
@@ -652,7 +667,11 @@ namespace OpenSim.Groups
                     GroupInviteInfo invite = m_GroupsService.GetAgentToGroupInvite(request["RequestingAgentID"].ToString(), 
                         new UUID(request["InviteID"].ToString()));
 
-                    result["RESULT"] = GroupsDataUtils.GroupInviteInfo(invite);
+                    if (invite != null)
+                        result["RESULT"] = GroupsDataUtils.GroupInviteInfo(invite);
+                    else
+                        result["RESULT"] = "NULL";
+
                     return Util.UTF8NoBomEncoding.GetBytes(ServerUtils.BuildXmlResponse(result));
                 }
 
@@ -781,6 +800,14 @@ namespace OpenSim.Groups
         {
             Dictionary<string, object> result = new Dictionary<string, object>();
             NullResult(result, "Unknown method");
+            string xmlString = ServerUtils.BuildXmlResponse(result);
+            return Util.UTF8NoBomEncoding.GetBytes(xmlString);
+        }
+
+        private byte[] FailureResult(string reason)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            NullResult(result, reason);
             string xmlString = ServerUtils.BuildXmlResponse(result);
             return Util.UTF8NoBomEncoding.GetBytes(xmlString);
         }

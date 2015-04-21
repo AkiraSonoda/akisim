@@ -75,6 +75,13 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
             get { return "HGAssetBroker"; }
         }
 
+        public HGAssetBroker() {}
+
+        public HGAssetBroker(IConfigSource config)
+        {
+            Initialise(config);
+        }
+
         public void Initialise(IConfigSource source)
         {
             // AKIDO get the Surabaya Server Config
@@ -306,7 +313,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
 
             if (asset != null)
             {
-                Util.FireAndForget(delegate { handler(id, sender, asset); });
+                Util.FireAndForget(delegate { handler(id, sender, asset); }, null, "HGAssetBroker.GotFromCache");
                 return true;
             }
 

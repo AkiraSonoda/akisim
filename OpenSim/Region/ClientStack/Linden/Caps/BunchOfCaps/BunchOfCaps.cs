@@ -47,6 +47,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
+using OpenSim.Framework.Client;
 using OpenSim.Services.Interfaces;
 
 using Caps = OpenSim.Framework.Capabilities.Caps;
@@ -646,6 +647,41 @@ namespace OpenSim.Region.ClientStack.Linden
                 OSDArray texture_list = (OSDArray)request["texture_list"];
                 SceneObjectGroup grp = null;
 
+                InventoryFolderBase textureUploadFolder = null;
+
+                List<InventoryFolderBase> foldersToUpdate = new List<InventoryFolderBase>();
+                List<InventoryItemBase> itemsToUpdate = new List<InventoryItemBase>();
+                IClientInventory clientInv = null;
+                
+                if (texture_list.Count > 0)
+                {
+                    ScenePresence avatar = null;
+                    m_Scene.TryGetScenePresence(m_HostCapsObj.AgentID, out avatar);
+
+                    if (avatar != null)
+                    {
+                        IClientCore core = (IClientCore)avatar.ControllingClient;
+
+                        if (core.TryGet<IClientInventory>(out clientInv))
+                        {
+                            var systemTextureFolder = m_Scene.InventoryService.GetFolderForType(m_HostCapsObj.AgentID, AssetType.Texture);
+                            textureUploadFolder = new InventoryFolderBase(UUID.Random(), assetName, m_HostCapsObj.AgentID, (short)AssetType.Unknown, systemTextureFolder.ID, 1);
+                            if (m_Scene.InventoryService.AddFolder(textureUploadFolder))
+                            {
+                                foldersToUpdate.Add(textureUploadFolder);
+
+                                m_log.DebugFormat(
+                                    "[BUNCH OF CAPS]: Created new folder '{0}' ({1}) for textures uploaded with mesh object {2}", 
+                                    textureUploadFolder.Name, textureUploadFolder.ID, assetName);
+                            }
+                            else
+                            {
+                                textureUploadFolder = null;
+                            }
+                        }
+                    }
+                }
+
                 List<UUID> textures = new List<UUID>();
                 for (int i = 0; i < texture_list.Count; i++)
                 {
@@ -653,6 +689,38 @@ namespace OpenSim.Region.ClientStack.Linden
                     textureAsset.Data = texture_list[i].AsBinary();
                     m_assetService.Store(textureAsset);
                     textures.Add(textureAsset.FullID);
+
+                    if (textureUploadFolder != null)
+                    {
+                        InventoryItemBase textureItem = new InventoryItemBase();
+                        textureItem.Owner = m_HostCapsObj.AgentID;
+                        textureItem.CreatorId = m_HostCapsObj.AgentID.ToString();
+                        textureItem.CreatorData = String.Empty;
+                        textureItem.ID = UUID.Random();
+                        textureItem.AssetID = textureAsset.FullID;
+                        textureItem.Description = assetDescription;
+                        textureItem.Name = assetName + " - Texture " + (i + 1).ToString();
+                        textureItem.AssetType = (int)AssetType.Texture;
+                        textureItem.InvType = (int)InventoryType.Texture;
+                        textureItem.Folder = textureUploadFolder.ID;
+                        textureItem.CurrentPermissions
+                            = (uint)(PermissionMask.Move | PermissionMask.Copy | PermissionMask.Modify | PermissionMask.Transfer | PermissionMask.Export);
+                        textureItem.BasePermissions = (uint)PermissionMask.All | (uint)PermissionMask.Export;
+                        textureItem.EveryOnePermissions = 0;
+                        textureItem.NextPermissions = (uint)PermissionMask.All;
+                        textureItem.CreationDate = Util.UnixTimeSinceEpoch();
+                        m_Scene.InventoryService.AddItem(textureItem);
+                        itemsToUpdate.Add(textureItem);
+
+                        m_log.DebugFormat(
+                            "[BUNCH OF CAPS]: Created new inventory item '{0}' ({1}) for texture uploaded with mesh object {2}", 
+                            textureItem.Name, textureItem.ID, assetName);
+                    }
+                }
+
+                if (clientInv != null && (foldersToUpdate.Count > 0 || itemsToUpdate.Count > 0))
+                {
+                    clientInv.SendBulkUpdateInventory(foldersToUpdate.ToArray(), itemsToUpdate.ToArray());
                 }
 
                 for (int i = 0; i < mesh_list.Count; i++)
@@ -981,18 +1049,26 @@ namespace OpenSim.Region.ClientStack.Linden
                 item = m_Scene.InventoryService.GetItem(new InventoryItemBase(itemID));
                 if (item != null)
                 {
-                    copyItem = m_Scene.GiveInventoryItem(m_HostCapsObj.AgentID, item.Owner, itemID, folderID);
-                    if (copyItem != null && client != null)
+                    string message;
+                    copyItem = m_Scene.GiveInventoryItem(m_HostCapsObj.AgentID, item.Owner, itemID, folderID, out message);
+                    if (client != null)
                     {
-                        m_log.InfoFormat("[CAPS]: CopyInventoryFromNotecard, ItemID:{0}, FolderID:{1}", copyItem.ID, copyItem.Folder);
-                        client.SendBulkUpdateInventory(copyItem);
+                        if (copyItem != null)
+                        {
+                            m_log.InfoFormat("[CAPS]: CopyInventoryFromNotecard, ItemID:{0}, FolderID:{1}", copyItem.ID, copyItem.Folder);
+                            client.SendBulkUpdateInventory(copyItem);
+                        }
+                        else
+                        {
+                            client.SendAgentAlertMessage(message, false);
+                        }
                     }
                 }
                 else
                 {
                     m_log.ErrorFormat("[CAPS]: CopyInventoryFromNotecard - Failed to retrieve item {0} from notecard {1}", itemID, notecardID);
                     if (client != null)
-                        client.SendAlertMessage("Failed to retrieve item");
+                        client.SendAgentAlertMessage("Failed to retrieve item", false);
                 }
             }
             catch (Exception e)
@@ -1047,13 +1123,14 @@ namespace OpenSim.Region.ClientStack.Linden
 				m_log.DebugFormat("[BunchOfCaps]: UpdateAgentInformation ( request: {0}, path: {1}, param: {2}, httpResponse: n/a )", request, path, param);
 			}
 
-//            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
+            OSDMap req = (OSDMap)OSDParser.DeserializeLLSDXml(request);
+            OSDMap accessPrefs = (OSDMap)req["access_prefs"];
+            string desiredMaturity = accessPrefs["max"];
+
             OSDMap resp = new OSDMap();
-
-            OSDMap accessPrefs = new OSDMap();
-            accessPrefs["max"] = "A";
-
-            resp["access_prefs"] = accessPrefs;
+            OSDMap respAccessPrefs = new OSDMap();
+            respAccessPrefs["max"] = desiredMaturity;   // echoing the maturity back means success
+            resp["access_prefs"] = respAccessPrefs;
 
             string response = OSDParser.SerializeLLSDXmlString(resp);
             return response; 

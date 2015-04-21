@@ -126,14 +126,14 @@ namespace OpenSim.Server.Handlers
             }
             
             OSDMap request = (OSDMap)json["params"];
-            UUID classifiedId = new UUID(request["classifiedID"].AsString());
+            UUID classifiedId = new UUID(request["classifiedId"].AsString());
             
-            OSDMap res = new OSDMap();
-            res["result"] = OSD.FromString("success");
-            response.Result = res;
-            
-            return true;
-            
+            if (Service.ClassifiedDelete(classifiedId))
+                return true;
+
+            response.Error.Code = ErrorCode.InternalError;
+            response.Error.Message = "data error removing record";
+            return false;
         }
         
         public bool ClassifiedInfoRequest(OSDMap json, ref JsonRpcResponse response)
@@ -263,8 +263,7 @@ namespace OpenSim.Server.Handlers
                 m_log.DebugFormat ("Avatar Notes Request");
                 return false;
             }
-            
-            string result = string.Empty;
+
             UserProfileNotes note = new UserProfileNotes();
             object Note = (object)note;
             OSD.DeserializeMembers(ref Note, (OSDMap)json["params"]);
@@ -403,7 +402,7 @@ namespace OpenSim.Server.Handlers
             
             response.Error.Code = ErrorCode.InternalError;
             response.Error.Message = string.Format("{0}", result);
-            m_log.InfoFormat("[PROFILES]: User preferences request error - {0}", response.Error.Message);
+//            m_log.InfoFormat("[PROFILES]: User preferences request error - {0}", response.Error.Message);
             return false;
         }
 

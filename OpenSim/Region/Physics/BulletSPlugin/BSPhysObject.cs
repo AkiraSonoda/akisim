@@ -136,6 +136,15 @@ public abstract class BSPhysObject : PhysicsActor
     // This mostly prevents property updates and collisions until the object is completely here.
     public bool IsInitialized { get; protected set; }
 
+    // Set to 'true' if an object (mesh/linkset/sculpty) is not completely constructed.
+    // This test is used to prevent some updates to the object when it only partially exists.
+    // There are several reasons and object might be incomplete:
+    //     Its underlying mesh/sculpty is an asset which must be fetched from the asset store
+    //     It is a linkset who is being added to or removed from
+    //     It is changing state (static to physical, for instance) which requires rebuilding
+    // This is a computed value based on the underlying physical object construction
+    abstract public bool IsIncomplete { get; }
+
     // Return the object mass without calculating it or having side effects
     public abstract float RawMass { get; }
     // Set the raw mass but also update physical mass properties (inertia, ...)
@@ -159,6 +168,11 @@ public abstract class BSPhysObject : PhysicsActor
         Unknown, Waiting, FailedAssetFetch, FailedMeshing, Fetched
     }
     public PrimAssetCondition PrimAssetState { get; set; }
+    public virtual bool AssetFailed()
+    {
+        return ( (this.PrimAssetState == PrimAssetCondition.FailedAssetFetch)
+              || (this.PrimAssetState == PrimAssetCondition.FailedMeshing) );
+    }
 
     // The objects base shape information. Null if not a prim type shape.
     public PrimitiveBaseShape BaseShape { get; protected set; }
@@ -223,7 +237,7 @@ public abstract class BSPhysObject : PhysicsActor
     public virtual OMV.Quaternion RawOrientation { get; set; }
     public abstract OMV.Quaternion ForceOrientation { get; set; }
 
-    public OMV.Vector3 RawVelocity { get; set; }
+    public virtual OMV.Vector3 RawVelocity { get; set; }
     public abstract OMV.Vector3 ForceVelocity { get; set; }
 
     public OMV.Vector3 RawForce { get; set; }
@@ -241,7 +255,12 @@ public abstract class BSPhysObject : PhysicsActor
 
     public virtual bool ForceBodyShapeRebuild(bool inTaintTime) { return false; }
 
-    public override bool PIDActive { set { MoveToTargetActive = value; } }
+    public override bool PIDActive 
+    {
+        get { return MoveToTargetActive; }
+        set { MoveToTargetActive = value; } 
+    }
+
     public override OMV.Vector3 PIDTarget { set { MoveToTargetTarget = value; } }
     public override float PIDTau { set { MoveToTargetTau = value; } }
 
@@ -290,10 +309,19 @@ public abstract class BSPhysObject : PhysicsActor
     // Note this is a displacement from the root's coordinates. Zero means use the root prim as center-of-mass.
     public OMV.Vector3? UserSetCenterOfMassDisplacement { get; set; }
 
-    public OMV.Vector3 LockedLinearAxis { get; set; } // zero means locked. one means free.
-    public OMV.Vector3 LockedAngularAxis { get; set; } // zero means locked. one means free.
+    public OMV.Vector3 LockedLinearAxis;   // zero means locked. one means free.
+    public OMV.Vector3 LockedAngularAxis;  // zero means locked. one means free.
     public const float FreeAxis = 1f;
+    public const float LockedAxis = 0f;
     public readonly OMV.Vector3 LockedAxisFree = new OMV.Vector3(FreeAxis, FreeAxis, FreeAxis);  // All axis are free
+
+    // If an axis is locked (flagged above) then the limits of that axis are specified here.
+    // Linear axis limits are relative to the object's starting coordinates.
+    // Angular limits are limited to -PI to +PI
+    public OMV.Vector3 LockedLinearAxisLow;
+    public OMV.Vector3 LockedLinearAxisHigh;
+    public OMV.Vector3 LockedAngularAxisLow;
+    public OMV.Vector3 LockedAngularAxisHigh;
 
     // Enable physical actions. Bullet will keep sleeping non-moving physical objects so
     //     they need waking up when parameters are changed.
@@ -462,7 +490,10 @@ public abstract class BSPhysObject : PhysicsActor
 
         // If someone has subscribed for collision events log the collision so it will be reported up
         if (SubscribedEvents()) {
-            CollisionCollection.AddCollider(collidingWith, new ContactPoint(contactPoint, contactNormal, pentrationDepth));
+            lock (PhysScene.CollisionLock)
+            {
+                CollisionCollection.AddCollider(collidingWith, new ContactPoint(contactPoint, contactNormal, pentrationDepth));
+            }
             DetailLog("{0},{1}.Collison.AddCollider,call,with={2},point={3},normal={4},depth={5},colliderMoving={6}",
                             LocalID, TypeName, collidingWith, contactPoint, contactNormal, pentrationDepth, ColliderIsMoving);
 
@@ -474,12 +505,14 @@ public abstract class BSPhysObject : PhysicsActor
     // Send the collected collisions into the simulator.
     // Called at taint time from within the Step() function thus no locking problems
     //      with CollisionCollection and ObjectsWithNoMoreCollisions.
+    // Called with BSScene.CollisionLock locked to protect the collision lists.
     // Return 'true' if there were some actual collisions passed up
     public virtual bool SendCollisions()
     {
         bool ret = true;
 
-        // If the 'no collision' call, force it to happen right now so quick collision_end
+        // If no collisions this call but there were collisions last call, force the collision
+        //     event to be happen right now so quick collision_end.
         bool force = (CollisionCollection.Count == 0 && CollisionsLastReported.Count != 0);
 
         // throttle the collisions to the number of milliseconds specified in the subscription

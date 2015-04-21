@@ -68,13 +68,16 @@ what it is today.
 * alex_carnell
 * Alan Webb (IBM)
 * Aleric
+* Alicia Raven
 * Allen Kerensky
 * BigFootAg
 * BlueWall Slade
+* bobshaffer2
 * brianw/Sir_Ahzz
 * CharlieO
 * ChrisDown
 * Chris Yeoh (IBM)
+* cinderblocks
 * controlbreak
 * coyled
 * ctrlaltdavid (David Rowe)
@@ -87,7 +90,9 @@ what it is today.
 * DoranZemlja
 * dr0b3rts
 * dslake
+* eeyore
 * FredoChaplin
+* FreakyTech
 * Garmin Kawaguichi
 * Gerhard
 * Godfrey
@@ -124,15 +129,18 @@ what it is today.
 * LuciusSirnah
 * lulurun 
 * M.Igarashi
+* Magnuz Binder
 * maimedleech
 * Mana Janus
 * MarcelEdward
+* Matt Lehmann
 * Mic Bowman
 * Michelle Argus
 * Michael Cortez (The Flotsam Project, http://osflotsam.org/)
 * Micheil Merlin
 * Mike Osias (IBM)
 * Mike Pitman (IBM)
+* mikemig
 * mikkopa/_someone - RealXtend
 * Misterblue
 * Mircea Kitsune
@@ -158,6 +166,7 @@ what it is today.
 * Salahzar Stenvaag
 * satguru p srivastava
 * sempuki
+* Shy Robbiani
 * SignpostMarv
 * SpotOn3D
 * Stefan_Boom / stoehr

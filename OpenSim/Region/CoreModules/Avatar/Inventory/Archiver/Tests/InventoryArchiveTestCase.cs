@@ -43,7 +43,6 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Services.Interfaces;
 using OpenSim.Tests.Common;
-using OpenSim.Tests.Common.Mock;
 
 namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver.Tests
 {
@@ -163,14 +162,14 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver.Tests
             scene.AddInventoryItem(coaItem);            
             
             archiverModule.ArchiveInventory(
-                Guid.NewGuid(), m_uaLL1.FirstName, m_uaLL1.LastName, "/*", "hampshire", archiveWriteStream);            
+                UUID.Random(), m_uaLL1.FirstName, m_uaLL1.LastName, "/*", "hampshire", archiveWriteStream);            
             
             m_iarStreamBytes = archiveWriteStream.ToArray();
         }
         
         protected void SaveCompleted(
-            Guid id, bool succeeded, UserAccount userInfo, string invPath, Stream saveStream, 
-            Exception reportedException)
+            UUID id, bool succeeded, UserAccount userInfo, string invPath, Stream saveStream, 
+            Exception reportedException, int SaveCount, int FilterCount)
         {
             mre.Set();
         }        

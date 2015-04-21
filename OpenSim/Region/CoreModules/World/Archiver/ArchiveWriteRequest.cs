@@ -36,6 +36,7 @@ using System.Xml;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Serialization;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.Framework.Interfaces;
@@ -43,6 +44,7 @@ using OpenSim.Region.Framework.Scenes;
 using Ionic.Zlib;
 using GZipStream = Ionic.Zlib.GZipStream;
 using CompressionMode = Ionic.Zlib.CompressionMode;
+using CompressionLevel = Ionic.Zlib.CompressionLevel;
 using OpenSim.Framework.Serialization.External;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 
@@ -79,7 +81,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// Determines which objects will be included in the archive, according to their permissions.
         /// Default is null, meaning no permission checks.
         /// </summary>
-        public string CheckPermissions { get; set; }
+        public string FilterContent { get; set; }
 
         protected Scene m_rootScene;
         protected Stream m_saveStream;
@@ -130,7 +132,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             MultiRegionFormat = false;
             SaveAssets = true;
-            CheckPermissions = null;
+            FilterContent = null;
         }
 
         /// <summary>
@@ -149,7 +151,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             Object temp;
             if (options.TryGetValue("checkPermissions", out temp))
-                CheckPermissions = (string)temp;
+                FilterContent = (string)temp;
 
 
             // Find the regions to archive
@@ -199,7 +201,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                             m_rootScene.AssetService, m_rootScene.UserAccountService,
                             m_rootScene.RegionInfo.ScopeID, options, ReceivedAllAssets);
 
-                    Util.RunThreadNoTimeout(o => ar.Execute(), "AssetsRequest", null);
+                    WorkManager.RunInThread(o => ar.Execute(), null, "Archive Assets Request");
 
                     // CloseArchive() will be called from ReceivedAllAssets()
                 }
@@ -218,7 +220,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
         private void ArchiveOneRegion(Scene scene, string regionDir, Dictionary<UUID, sbyte> assetUuids)
         {
-            m_log.InfoFormat("[ARCHIVER]: Writing region {0}", scene.RegionInfo.RegionName);
+            m_log.InfoFormat("[ARCHIVER]: Writing region {0}", scene.Name);
 
             EntityBase[] entities = scene.GetEntities();
             List<SceneObjectGroup> sceneObjects = new List<SceneObjectGroup>();
@@ -237,7 +239,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
                     if (!sceneObject.IsDeleted && !sceneObject.IsAttachment)
                     {
-                        if (!CanUserArchiveObject(scene.RegionInfo.EstateSettings.EstateOwner, sceneObject, CheckPermissions, permissionsModule))
+                        if (!CanUserArchiveObject(scene.RegionInfo.EstateSettings.EstateOwner, sceneObject, FilterContent, permissionsModule))
                         {
                             // The user isn't allowed to copy/transfer this object, so it will not be included in the OAR.
                             ++numObjectsSkippedPermissions;
@@ -252,13 +254,13 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             if (SaveAssets)
             {
-                UuidGatherer assetGatherer = new UuidGatherer(scene.AssetService);
+                UuidGatherer assetGatherer = new UuidGatherer(scene.AssetService, assetUuids);
                 int prevAssets = assetUuids.Count;
                     
                 foreach (SceneObjectGroup sceneObject in sceneObjects)
-                {
-                    assetGatherer.GatherAssetUuids(sceneObject, assetUuids);
-                }
+                    assetGatherer.AddForInspection(sceneObject);
+
+                assetGatherer.GatherAll();
 
                 m_log.DebugFormat(
                     "[ARCHIVER]: {0} scene objects to serialize requiring save of {1} assets",
@@ -295,12 +297,12 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// </summary>
         /// <param name="user">The user</param>
         /// <param name="objGroup">The object group</param>
-        /// <param name="checkPermissions">Which permissions to check: "C" = Copy, "T" = Transfer</param>
+        /// <param name="filterContent">Which permissions to check: "C" = Copy, "T" = Transfer</param>
         /// <param name="permissionsModule">The scene's permissions module</param>
         /// <returns>Whether the user is allowed to export the object to an OAR</returns>
-        private bool CanUserArchiveObject(UUID user, SceneObjectGroup objGroup, string checkPermissions, IPermissionsModule permissionsModule)
+        private bool CanUserArchiveObject(UUID user, SceneObjectGroup objGroup, string filterContent, IPermissionsModule permissionsModule)
         {
-            if (checkPermissions == null)
+            if (filterContent == null)
                 return true;
 
             if (permissionsModule == null)
@@ -342,9 +344,9 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     canTransfer |= (obj.EveryoneMask & (uint)PermissionMask.Copy) != 0;
 
                 bool partPermitted = true;
-                if (checkPermissions.Contains("C") && !canCopy)
+                if (filterContent.Contains("C") && !canCopy)
                     partPermitted = false;
-                if (checkPermissions.Contains("T") && !canTransfer)
+                if (filterContent.Contains("T") && !canTransfer)
                     partPermitted = false;
 
                 // If the user is the Creator of the object then it can always be included in the OAR
@@ -569,10 +571,11 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             string terrainPath = String.Format("{0}{1}{2}.r32",
                 regionDir, ArchiveConstants.TERRAINS_PATH, scene.RegionInfo.RegionName);
 
-            MemoryStream ms = new MemoryStream();
-            scene.RequestModuleInterface<ITerrainModule>().SaveToStream(terrainPath, ms);
-            m_archiveWriter.WriteFile(terrainPath, ms.ToArray());
-            ms.Close();
+            using (MemoryStream ms = new MemoryStream())
+            {
+                scene.RequestModuleInterface<ITerrainModule>().SaveToStream(terrainPath, ms);
+                m_archiveWriter.WriteFile(terrainPath, ms.ToArray());
+            }
 
             m_log.InfoFormat("[ARCHIVER]: Adding scene objects to archive.");
 

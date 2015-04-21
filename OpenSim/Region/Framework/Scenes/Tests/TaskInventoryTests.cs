@@ -45,7 +45,6 @@ using OpenSim.Region.CoreModules.World.Serialiser;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Services.Interfaces;
 using OpenSim.Tests.Common;
-using OpenSim.Tests.Common.Mock;
 
 namespace OpenSim.Region.Framework.Tests
 {
@@ -65,7 +64,7 @@ namespace OpenSim.Region.Framework.Tests
 
             // Create an object embedded inside the first
             UUID taskSceneObjectItemId = UUID.Parse("00000000-0000-0000-0000-100000000000");
-            TaskInventoryHelpers.AddSceneObject(scene, sop1, "tso", taskSceneObjectItemId, user1.PrincipalID);
+            TaskInventoryHelpers.AddSceneObject(scene.AssetService, sop1, "tso", taskSceneObjectItemId, user1.PrincipalID);
 
             TaskInventoryItem addedItem = sop1.Inventory.GetInventoryItem(taskSceneObjectItemId);
             Assert.That(addedItem.ItemID, Is.EqualTo(taskSceneObjectItemId));
@@ -89,7 +88,7 @@ namespace OpenSim.Region.Framework.Tests
             // Create an object embedded inside the first
             UUID taskSceneObjectItemId = UUID.Parse("00000000-0000-0000-0000-100000000000");
             TaskInventoryItem taskSceneObjectItem
-                = TaskInventoryHelpers.AddSceneObject(scene, sop1, "tso", taskSceneObjectItemId, user1.PrincipalID);
+                = TaskInventoryHelpers.AddSceneObject(scene.AssetService, sop1, "tso", taskSceneObjectItemId, user1.PrincipalID);
 
             scene.AddSceneObject(sog1);
 
@@ -130,13 +129,14 @@ namespace OpenSim.Region.Framework.Tests
             SceneObjectPart sop1 = sog1.RootPart;
             TaskInventoryItem sopItem1
                 = TaskInventoryHelpers.AddNotecard(
-                    scene, sop1, "ncItem", TestHelpers.ParseTail(0x800), TestHelpers.ParseTail(0x900), "Hello World!");
+                    scene.AssetService, sop1, "ncItem", TestHelpers.ParseTail(0x800), TestHelpers.ParseTail(0x900), "Hello World!");
 
             InventoryFolderBase folder 
                 = InventoryArchiveUtils.FindFoldersByPath(scene.InventoryService, user1.PrincipalID, "Objects")[0];
             
             // Perform test
-            scene.MoveTaskInventoryItem(user1.PrincipalID, folder.ID, sop1, sopItem1.ItemID);
+            string message;
+            scene.MoveTaskInventoryItem(user1.PrincipalID, folder.ID, sop1, sopItem1.ItemID, out message);
                 
             InventoryItemBase ncUserItem
                 = InventoryArchiveUtils.FindItemByPath(scene.InventoryService, user1.PrincipalID, "Objects/ncItem");
@@ -162,10 +162,11 @@ namespace OpenSim.Region.Framework.Tests
             SceneObjectPart sop1 = sog1.RootPart;
             TaskInventoryItem sopItem1
                 = TaskInventoryHelpers.AddNotecard(
-                    scene, sop1, "ncItem", TestHelpers.ParseTail(0x800), TestHelpers.ParseTail(0x900), "Hello World!");
+                    scene.AssetService, sop1, "ncItem", TestHelpers.ParseTail(0x800), TestHelpers.ParseTail(0x900), "Hello World!");
             
             // Perform test
-            scene.MoveTaskInventoryItem(user1.PrincipalID, UUID.Zero, sop1, sopItem1.ItemID);
+            string message;
+            scene.MoveTaskInventoryItem(user1.PrincipalID, UUID.Zero, sop1, sopItem1.ItemID, out message);
                 
             InventoryItemBase ncUserItem
                 = InventoryArchiveUtils.FindItemByPath(scene.InventoryService, user1.PrincipalID, "Notecards/ncItem");

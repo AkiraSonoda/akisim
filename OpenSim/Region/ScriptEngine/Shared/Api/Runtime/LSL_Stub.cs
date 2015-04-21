@@ -464,6 +464,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
             return m_LSL_Functions.llGetEnergy();
         }
 
+        public LSL_String llGetEnv(LSL_String name)
+        {
+            return m_LSL_Functions.llGetEnv(name);
+        }
+
         public LSL_Vector llGetForce()
         {
             return m_LSL_Functions.llGetForce();
@@ -582,6 +587,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_Float llGetMass()
         {
             return m_LSL_Functions.llGetMass();
+        }
+
+        public LSL_Float llGetMassMKS()
+        {
+            return m_LSL_Functions.llGetMassMKS();
         }
 
         public LSL_Integer llGetMemoryLimit()

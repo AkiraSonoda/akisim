@@ -217,6 +217,8 @@ namespace OpenSim
             // Make sure command line options take precedence
             m_config.Source.Merge(argvSource);
 
+            m_config.Source.ReplaceKeyValues();
+
             ReadConfigSettings();
 
             return m_config;

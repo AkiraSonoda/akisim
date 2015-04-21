@@ -182,7 +182,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             {
                 // Start the thread that will be doing the work
                 cmdHandlerThread
-                    = Watchdog.StartThread(
+                    = WorkManager.StartThread(
                         CmdHandlerThreadLoop, "AsyncLSLCmdHandlerThread", ThreadPriority.Normal, true, true);
             }
         }
@@ -298,6 +298,28 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 // Remove Sensors
                 m_SensorRepeat[engine].UnSetSenseRepeaterEvents(localID, itemID);
             }
+        }
+
+        public static void StateChange(IScriptEngine engine, uint localID, UUID itemID)
+        {
+            // Remove a specific script
+
+            // Remove dataserver events
+            m_Dataserver[engine].RemoveEvents(localID, itemID);
+
+            IWorldComm comms = engine.World.RequestModuleInterface<IWorldComm>();
+            if (comms != null)
+                comms.DeleteListener(itemID);
+
+            IXMLRPC xmlrpc = engine.World.RequestModuleInterface<IXMLRPC>();
+            if (xmlrpc != null)
+            {
+                xmlrpc.DeleteChannels(itemID);
+                xmlrpc.CancelSRDRequests(itemID);
+            }
+            // Remove Sensors
+            m_SensorRepeat[engine].UnSetSenseRepeaterEvents(localID, itemID);
+
         }
 
         /// <summary>

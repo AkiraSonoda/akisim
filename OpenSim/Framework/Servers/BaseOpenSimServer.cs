@@ -45,6 +45,7 @@ using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using Timer=System.Timers.Timer;
+using Nini.Config;
 
 namespace OpenSim.Framework.Servers
 {
@@ -58,9 +59,15 @@ namespace OpenSim.Framework.Servers
 
 
         /// <summary>
+        /// Used by tests to suppress Environment.Exit(0) so that post-run operations are possible.
+        /// </summary>
+        public bool SuppressExit { get; set; }
+
+        /// <summary>
         /// This will control a periodic log printout of the current 'show stats' (if they are active) for this
         /// server.
         /// </summary>
+        private int m_periodDiagnosticTimerMS = 60 * 60 * 1000;
         private Timer m_periodicDiagnosticsTimer = new Timer(60 * 60 * 1000);
         
         /// <summary>
@@ -83,8 +90,6 @@ namespace OpenSim.Framework.Servers
             // Random uuid for private data
             m_osSecret = UUID.Random().ToString();
 
-            m_periodicDiagnosticsTimer.Elapsed += new ElapsedEventHandler(LogDiagnostics);
-            m_periodicDiagnosticsTimer.Enabled = true;
         }
         
         /// <summary>
@@ -100,6 +105,16 @@ namespace OpenSim.Framework.Servers
             StatsManager.SimExtraStats = new SimExtraStatsCollector();
             RegisterCommonCommands();
             RegisterCommonComponents(Config);
+
+            IConfig startupConfig = Config.Configs["Startup"];
+            int logShowStatsSeconds = startupConfig.GetInt("LogShowStatsSeconds", m_periodDiagnosticTimerMS / 1000);
+            m_periodDiagnosticTimerMS = logShowStatsSeconds * 1000;
+            m_periodicDiagnosticsTimer.Elapsed += new ElapsedEventHandler(LogDiagnostics);
+            if (m_periodDiagnosticTimerMS != 0)
+            {
+                m_periodicDiagnosticsTimer.Interval = m_periodDiagnosticTimerMS;
+                m_periodicDiagnosticsTimer.Enabled = true;
+            }
         }       
 
         protected override void ShutdownSpecific()
@@ -110,7 +125,8 @@ namespace OpenSim.Framework.Servers
 
             base.ShutdownSpecific();
 
-            Environment.Exit(0);
+            if (!SuppressExit)
+                Environment.Exit(0);
         }
         
         /// <summary>

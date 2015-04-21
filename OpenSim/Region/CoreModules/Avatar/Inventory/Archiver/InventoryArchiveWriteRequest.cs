@@ -34,6 +34,7 @@ using System.Xml;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Serialization;
 using OpenSim.Framework.Serialization.External;
 using OpenSim.Region.CoreModules.World.Archiver;
@@ -42,6 +43,8 @@ using OpenSim.Services.Interfaces;
 using Ionic.Zlib;
 using GZipStream = Ionic.Zlib.GZipStream;
 using CompressionMode = Ionic.Zlib.CompressionMode;
+using CompressionLevel = Ionic.Zlib.CompressionLevel;
+using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
 {
@@ -53,6 +56,22 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
         /// Determine whether this archive will save assets.  Default is true.
         /// </summary>
         public bool SaveAssets { get; set; }
+
+        /// <summary>
+        /// Determines which items will be included in the archive, according to their permissions.
+        /// Default is null, meaning no permission checks.
+        /// </summary>
+        public string FilterContent { get; set; }
+
+        /// <summary>
+        /// Counter for inventory items saved to archive for passing to compltion event
+        /// </summary>
+        public int CountItems { get; set; }
+
+        /// <summary>
+        /// Counter for inventory items skipped due to permission filter option for passing to compltion event
+        /// </summary>
+        public int CountFiltered { get; set; }
 
         /// <value>
         /// Used to select all inventory nodes in a folder but not the folder itself
@@ -73,12 +92,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
         /// <value>
         /// ID of this request
         /// </value>
-        protected Guid m_id;
-
-        /// <value>
-        /// Used to collect the uuids of the assets that we need to save into the archive
-        /// </value>
-        protected Dictionary<UUID, sbyte> m_assetUuids = new Dictionary<UUID, sbyte>();
+        protected UUID m_id;
 
         /// <value>
         /// Used to collect the uuids of the users that we need to save into the archive
@@ -94,7 +108,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
         /// Constructor
         /// </summary>
         public InventoryArchiveWriteRequest(
-            Guid id, InventoryArchiverModule module, Scene scene,
+            UUID id, InventoryArchiverModule module, Scene scene,
             UserAccount userInfo, string invPath, string savePath)
             : this(
                 id,
@@ -110,7 +124,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
         /// Constructor
         /// </summary>
         public InventoryArchiveWriteRequest(
-            Guid id, InventoryArchiverModule module, Scene scene,
+            UUID id, InventoryArchiverModule module, Scene scene,
             UserAccount userInfo, string invPath, Stream saveStream)
         {
             m_id = id;
@@ -122,6 +136,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
             m_assetGatherer = new UuidGatherer(m_scene.AssetService);
 
             SaveAssets = true;
+            FilterContent = null;
         }
 
         protected void ReceivedAllAssets(ICollection<UUID> assetsFoundUuids, ICollection<UUID> assetsNotFoundUuids, bool timedOut)
@@ -150,7 +165,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
             }
 
             m_module.TriggerInventoryArchiveSaved(
-                m_id, succeeded, m_userInfo, m_invPath, m_saveStream, reportedException);
+                m_id, succeeded, m_userInfo, m_invPath, m_saveStream, reportedException, CountItems, CountFiltered);
         }
 
         protected void SaveInvItem(InventoryItemBase inventoryItem, string path, Dictionary<string, object> options, IUserAccountService userAccountService)
@@ -166,8 +181,24 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
                             "[INVENTORY ARCHIVER]: Skipping inventory item {0} {1} at {2}",
                             inventoryItem.Name, inventoryItem.ID, path);
                     }
+
+                    CountFiltered++;
+
                     return;
                 }
+            }
+
+            // Check For Permissions Filter Flags
+            if (!CanUserArchiveObject(m_userInfo.PrincipalID, inventoryItem))
+            {
+                m_log.InfoFormat(
+                            "[INVENTORY ARCHIVER]: Insufficient permissions, skipping inventory item {0} {1} at {2}",
+                            inventoryItem.Name, inventoryItem.ID, path);
+
+                // Count Items Excluded
+                CountFiltered++;
+
+                return;
             }
 
             if (options.ContainsKey("verbose"))
@@ -185,9 +216,12 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
 
             AssetType itemAssetType = (AssetType)inventoryItem.AssetType;
 
+            // Count inventory items (different to asset count)
+            CountItems++;
+
             // Don't chase down link asset items as they actually point to their target item IDs rather than an asset
             if (SaveAssets && itemAssetType != AssetType.Link && itemAssetType != AssetType.LinkFolder)
-                m_assetGatherer.GatherAssetUuids(inventoryItem.AssetID, (sbyte)inventoryItem.AssetType, m_assetUuids);
+                m_assetGatherer.AddForInspection(inventoryItem.AssetID);
         }
 
         /// <summary>
@@ -243,12 +277,49 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
         }
 
         /// <summary>
+        /// Checks whether the user has permission to export an inventory item to an IAR.
+        /// </summary>
+        /// <param name="UserID">The user</param>
+        /// <param name="InvItem">The inventory item</param>
+        /// <returns>Whether the user is allowed to export the object to an IAR</returns>
+        private bool CanUserArchiveObject(UUID UserID, InventoryItemBase InvItem)
+        {
+            if (FilterContent == null)
+                return true;// Default To Allow Export
+
+            bool permitted = true;
+
+            bool canCopy = (InvItem.CurrentPermissions & (uint)PermissionMask.Copy) != 0;
+            bool canTransfer = (InvItem.CurrentPermissions & (uint)PermissionMask.Transfer) != 0;
+            bool canMod = (InvItem.CurrentPermissions & (uint)PermissionMask.Modify) != 0;
+
+            if (FilterContent.Contains("C") && !canCopy)
+                permitted = false;
+
+            if (FilterContent.Contains("T") && !canTransfer)
+                permitted = false;
+
+            if (FilterContent.Contains("M") && !canMod)
+                permitted = false;
+
+            return permitted;
+        }
+
+        /// <summary>
         /// Execute the inventory write request
         /// </summary>
         public void Execute(Dictionary<string, object> options, IUserAccountService userAccountService)
         {
             if (options.ContainsKey("noassets") && (bool)options["noassets"])
                 SaveAssets = false;
+
+            // Set Permission filter if flag is set
+            if (options.ContainsKey("checkPermissions"))
+            {
+                Object temp;
+                if (options.TryGetValue("checkPermissions", out temp))
+                    FilterContent = temp.ToString().ToUpper();
+            }
 
             try
             {
@@ -309,7 +380,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
                     // We couldn't find the path indicated
                     string errorMessage = string.Format("Aborted save.  Could not find inventory path {0}", m_invPath);
                     Exception e = new InventoryArchiverException(errorMessage);
-                    m_module.TriggerInventoryArchiveSaved(m_id, false, m_userInfo, m_invPath, m_saveStream, e);
+                    m_module.TriggerInventoryArchiveSaved(m_id, false, m_userInfo, m_invPath, m_saveStream, e, 0, 0);
                     throw e;
                 }
 
@@ -347,16 +418,19 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Archiver
 
                 if (SaveAssets)
                 {
-                    m_log.DebugFormat("[INVENTORY ARCHIVER]: Saving {0} assets for items", m_assetUuids.Count);
+                    m_assetGatherer.GatherAll();
+
+                    m_log.DebugFormat(
+                        "[INVENTORY ARCHIVER]: Saving {0} assets for items", m_assetGatherer.GatheredUuids.Count);
 
                     AssetsRequest ar
                         = new AssetsRequest(
                             new AssetsArchiver(m_archiveWriter),
-                            m_assetUuids, m_scene.AssetService,
+                            m_assetGatherer.GatheredUuids, m_scene.AssetService,
                             m_scene.UserAccountService, m_scene.RegionInfo.ScopeID,
                             options, ReceivedAllAssets);
 
-                    Util.RunThreadNoTimeout(o => ar.Execute(), "AssetsRequest", null);
+                    WorkManager.RunInThread(o => ar.Execute(), null, string.Format("AssetsRequest ({0})", m_scene.Name));
                 }
                 else
                 {

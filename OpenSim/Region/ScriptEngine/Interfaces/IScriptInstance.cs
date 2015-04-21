@@ -86,6 +86,12 @@ namespace OpenSim.Region.ScriptEngine.Interfaces
         string State { get; set; }
 
         /// <summary>
+        /// If true then the engine is responsible for persisted state.  If false then some other component may 
+        /// persist state (e.g. attachments persisting in assets).
+        /// </summary>
+        bool StatePersistedHere { get; }
+
+        /// <summary>
         /// Time the script was last started
         /// </summary>
         DateTime TimeStarted { get; }
@@ -160,8 +166,9 @@ namespace OpenSim.Region.ScriptEngine.Interfaces
         /// <param name="timeout"></param>
         /// How many milliseconds we will wait for an existing script event to finish before
         /// forcibly aborting that event.
+        /// <param name="clearEventQueue">If true then the event queue is also cleared</param>
         /// <returns>true if the script was successfully stopped, false otherwise</returns>
-        bool Stop(int timeout);
+        bool Stop(int timeout, bool clearEventQueue = false);
 
         void SetState(string state);
 
@@ -210,7 +217,7 @@ namespace OpenSim.Region.ScriptEngine.Interfaces
         void SetVars(Dictionary<string, object> vars);
         DetectParams GetDetectParams(int idx);
         UUID GetDetectID(int idx);
-        void SaveState(string assembly);
+        void SaveState();
         void DestroyScriptInstance();
 
         IScriptApi GetApi(string name);

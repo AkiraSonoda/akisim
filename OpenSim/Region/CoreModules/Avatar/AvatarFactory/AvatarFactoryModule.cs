@@ -265,7 +265,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         private void SendAppearance (ScenePresence sp)
         {
             // Send the appearance to everyone in the scene
-            sp.SendAppearanceToAllOtherAgents ();
+            sp.SendAppearanceToAllOtherClients();
 
             // Send animations back to the avatar as well
             sp.Animator.SendAnimPack ();
@@ -604,9 +604,10 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
                     m_log.DebugFormat ("[AvatarFactoryModule]: Handling queued appearance updates for {0}, update delta to now is {1}", avatarID, sendTime - now);
 
-                    if (sendTime < now) {
-                        Util.FireAndForget (o => SendAppearance (avatarID));
-                        m_sendqueue.Remove (avatarID);
+                    if (sendTime < now)
+                    {
+                        Util.FireAndForget(o => SendAppearance(avatarID), null, "AvatarFactoryModule.SendAppearance");
+                        m_sendqueue.Remove(avatarID);
                     }
                 }
             }
@@ -619,9 +620,10 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     UUID avatarID = kvp.Key;
                     long sendTime = kvp.Value;
 
-                    if (sendTime < now) {
-                        Util.FireAndForget (o => SaveAppearance (avatarID));
-                        m_savequeue.Remove (avatarID);
+                    if (sendTime < now)
+                    {
+                        Util.FireAndForget(o => SaveAppearance(avatarID), null, "AvatarFactoryModule.SaveAppearance");
+                        m_savequeue.Remove(avatarID);
                     }
                 }
 
@@ -1003,8 +1005,8 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 if (sp != null)
                     client.SendWearables (sp.Appearance.Wearables, sp.Appearance.Serial++);
                 else
-                    m_log.WarnFormat ("[AVFACTORY]: Client_OnRequestWearables unable to find presence for {0}", client.AgentId);
-            });
+                    m_log.WarnFormat("[AVFACTORY]: Client_OnRequestWearables unable to find presence for {0}", client.AgentId);
+            }, null, "AvatarFactoryModule.OnClientRequestWearables");
         }
 
         /// <summary>

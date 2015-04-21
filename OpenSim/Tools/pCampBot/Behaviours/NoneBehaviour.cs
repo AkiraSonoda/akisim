@@ -43,5 +43,18 @@ namespace pCampBot
             AbbreviatedName = "n";
             Name = "None"; 
         }
+
+        public override void Action()
+        {
+            Bot.Client.Self.Jump(false);
+            Bot.Client.Self.Movement.Stop = true;
+            m_interruptEvent.WaitOne();
+            Bot.Client.Self.Movement.Stop = false;
+        }
+
+        public override void Interrupt() 
+        {
+            m_interruptEvent.Set();
+        }
     }
 }

@@ -44,7 +44,6 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Services.Interfaces;
 using OpenSim.Tests.Common;
-using OpenSim.Tests.Common.Mock;
 
 namespace OpenSim.Region.CoreModules.Framework.InventoryAccess.Tests
 {
@@ -111,6 +110,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess.Tests
             InventoryFolderBase objsFolder 
                 = InventoryArchiveUtils.FindFoldersByPath(m_scene.InventoryService, m_userId, "Objects")[0];
             item1.Folder = objsFolder.ID;
+            item1.Flags |= (uint)InventoryItemFlags.ObjectHasMultipleItems;
             m_scene.AddInventoryItem(item1);
             
             SceneObjectGroup so 

@@ -51,7 +51,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
+        private List<Scene> m_scenes = new List<Scene>();
+
 //        private IAvatarFactoryModule m_avatarFactory;
         
         public string Name { get { return "Appearance Information Module"; } }        
@@ -98,7 +99,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             
             lock (m_scenes)
-                m_scenes.Remove(scene.RegionInfo.RegionID);
+                m_scenes.Remove(scene);
         }        
         
         public void RegionLoaded(Scene scene)
@@ -106,7 +107,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 //            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
             
             lock (m_scenes)
-                m_scenes[scene.RegionInfo.RegionID] = scene;
+                m_scenes.Add(scene);
 
             scene.AddCommand(
                 "Users", this, "show appearance",
@@ -117,7 +118,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
             scene.AddCommand(
                 "Users", this, "appearance show",
                 "appearance show [<first-name> <last-name>]",
-                "Show appearance information for each avatar in the simulator.",
+                "Show appearance information for avatars.",
                 "This command checks whether the simulator has all the baked textures required to display an avatar to other viewers.  "
                     + "\nIf not, then appearance is 'corrupt' and other avatars will continue to see it as a cloud."
                     + "\nOptionally, you can view just a particular avatar's appearance information."
@@ -147,6 +148,21 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                 "Find out which avatar uses the given asset as a baked texture, if any.",
                 "You can specify just the beginning of the uuid, e.g. 2008a8d.  A longer UUID must be in dashed format.",
                 HandleFindAppearanceCommand);
+
+            scene.AddCommand(
+                "Users", this, "wearables show",
+                "wearables show [<first-name> <last-name>]",
+                "Show information about wearables for avatars.",
+                "If no avatar name is given then a general summary for all avatars in the scene is shown.\n"
+                + "If an avatar name is given then specific information about current wearables is shown.",
+                HandleShowWearablesCommand);
+
+            scene.AddCommand(
+                "Users", this, "wearables check",
+                "wearables check <first-name> <last-name>",
+                "Check that the wearables of a given avatar in the scene are valid.",
+                "This currently checks that the wearable assets themselves and any assets referenced by them exist.",
+                HandleCheckWearablesCommand);
         }
 
         private void HandleSendAppearanceCommand(string module, string[] cmd)
@@ -170,7 +186,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             lock (m_scenes)
             {
-                foreach (Scene scene in m_scenes.Values)
+                foreach (Scene scene in m_scenes)
                 {
                     if (targetNameSupplied)
                     {
@@ -201,7 +217,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
             }
         }
 
-        protected void HandleShowAppearanceCommand(string module, string[] cmd)
+        private void HandleShowAppearanceCommand(string module, string[] cmd)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -226,7 +242,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             lock (m_scenes)
             {   
-                foreach (Scene scene in m_scenes.Values)
+                foreach (Scene scene in m_scenes)
                 {
                     if (targetNameSupplied)
                     {
@@ -272,7 +288,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             lock (m_scenes)
             {
-                foreach (Scene scene in m_scenes.Values)
+                foreach (Scene scene in m_scenes)
                 {
                     ScenePresence sp = scene.GetScenePresence(firstname, lastname);
                     if (sp != null && !sp.IsChildAgent)
@@ -294,7 +310,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
             }
         }
 
-        protected void HandleFindAppearanceCommand(string module, string[] cmd)
+        private void HandleFindAppearanceCommand(string module, string[] cmd)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -312,7 +328,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             lock (m_scenes)
             {
-                foreach (Scene scene in m_scenes.Values)
+                foreach (Scene scene in m_scenes)
                 {
                     scene.ForEachRootScenePresence(
                         sp =>
@@ -338,6 +354,164 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     rawUuid,
                     string.Join(", ", matchedAvatars.ToList().ConvertAll<string>(sp => sp.Name).ToArray()));
             }
+        }
+
+        protected void HandleShowWearablesCommand(string module, string[] cmd)
+        {
+            if (cmd.Length != 2 && cmd.Length < 4)
+            {
+                MainConsole.Instance.OutputFormat("Usage: wearables show [<first-name> <last-name>]");
+                return;
+            }
+
+            bool targetNameSupplied = false;
+            string optionalTargetFirstName = null;
+            string optionalTargetLastName = null;
+
+            if (cmd.Length >= 4)
+            {
+                targetNameSupplied = true;
+                optionalTargetFirstName = cmd[2];
+                optionalTargetLastName = cmd[3];
+            }
+
+            StringBuilder sb = new StringBuilder();
+
+            if (targetNameSupplied)
+            {
+                lock (m_scenes)   
+                {
+                    foreach (Scene scene in m_scenes)
+                    {
+                        ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
+                        if (sp != null && !sp.IsChildAgent)
+                            AppendWearablesDetailReport(sp, sb);
+                    }
+                }
+            }
+            else
+            {
+                ConsoleDisplayTable cdt = new ConsoleDisplayTable();
+                cdt.AddColumn("Name", ConsoleDisplayUtil.UserNameSize);
+                cdt.AddColumn("Wearables", 2);
+
+                lock (m_scenes)   
+                {
+                    foreach (Scene scene in m_scenes)
+                    {
+                        scene.ForEachRootScenePresence(
+                            sp => 
+                            {
+                                int count = 0;
+
+                                for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
+                                    count += sp.Appearance.Wearables[i].Count;
+
+                                cdt.AddRow(sp.Name, count);
+                            }
+                        );
+                    }
+                }
+
+                sb.Append(cdt.ToString());
+            }
+
+            MainConsole.Instance.Output(sb.ToString());
+        }
+
+        private void HandleCheckWearablesCommand(string module, string[] cmd)
+        {
+            if (cmd.Length != 4)
+            {
+                MainConsole.Instance.OutputFormat("Usage: wearables check <first-name> <last-name>");
+                return;
+            }
+
+            string firstname = cmd[2];
+            string lastname = cmd[3];
+
+            StringBuilder sb = new StringBuilder();
+            UuidGatherer uuidGatherer = new UuidGatherer(m_scenes[0].AssetService);
+
+            lock (m_scenes)
+            {
+                foreach (Scene scene in m_scenes)
+                {
+                    ScenePresence sp = scene.GetScenePresence(firstname, lastname);
+                    if (sp != null && !sp.IsChildAgent)
+                    {
+                        sb.AppendFormat("Wearables checks for {0}\n\n", sp.Name);
+
+                        for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
+                        {
+                            AvatarWearable aw = sp.Appearance.Wearables[i];
+
+                            if (aw.Count > 0)
+                            {
+                                sb.Append(Enum.GetName(typeof(WearableType), i));
+                                sb.Append("\n");
+
+                                for (int j = 0; j < aw.Count; j++)
+                                {
+                                    WearableItem wi = aw[j];
+
+                                    ConsoleDisplayList cdl = new ConsoleDisplayList();
+                                    cdl.Indent = 2;
+                                    cdl.AddRow("Item UUID", wi.ItemID);
+                                    cdl.AddRow("Assets", "");
+                                    sb.Append(cdl.ToString());
+
+                                    uuidGatherer.AddForInspection(wi.AssetID);
+                                    uuidGatherer.GatherAll();
+                                    string[] assetStrings 
+                                        = Array.ConvertAll<UUID, string>(uuidGatherer.GatheredUuids.Keys.ToArray(), u => u.ToString());
+
+                                    bool[] existChecks = scene.AssetService.AssetsExist(assetStrings);
+
+                                    ConsoleDisplayTable cdt = new ConsoleDisplayTable();
+                                    cdt.Indent = 4;
+                                    cdt.AddColumn("Type", 10);
+                                    cdt.AddColumn("UUID", ConsoleDisplayUtil.UuidSize);
+                                    cdt.AddColumn("Found", 5);
+                                            
+                                    for (int k = 0; k < existChecks.Length; k++)
+                                        cdt.AddRow(
+                                            (AssetType)uuidGatherer.GatheredUuids[new UUID(assetStrings[k])], 
+                                            assetStrings[k], existChecks[k] ? "yes" : "no");
+
+                                    sb.Append(cdt.ToString());
+                                    sb.Append("\n");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            MainConsole.Instance.Output(sb.ToString());
+        }
+
+        private void AppendWearablesDetailReport(ScenePresence sp, StringBuilder sb)
+        {
+            sb.AppendFormat("\nWearables for {0}\n", sp.Name);
+
+            ConsoleDisplayTable cdt = new ConsoleDisplayTable();
+            cdt.AddColumn("Type", 10);
+            cdt.AddColumn("Item UUID", ConsoleDisplayUtil.UuidSize);
+            cdt.AddColumn("Asset UUID", ConsoleDisplayUtil.UuidSize);
+
+            for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
+            {
+                AvatarWearable aw = sp.Appearance.Wearables[i];
+
+                for (int j = 0; j < aw.Count; j++)
+                {
+                    WearableItem wi = aw[j];
+                    cdt.AddRow(Enum.GetName(typeof(WearableType), i), wi.ItemID, wi.AssetID);
+                }
+            }
+
+            sb.Append(cdt.ToString());
         }
     }
 }
