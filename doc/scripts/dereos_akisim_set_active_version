@@ -19,8 +19,8 @@ OSINS="/home/opensim"
 
 cd $OSINS
 
-build_version=$(cat dereos_freaki_build.txt)
-old_version=$(cat dereos_freaki_old.txt)
+build_version=$(cat dereos_akisim_build.txt)
+old_version=$(cat dereos_akisim_old.txt)
 
 #Vergleiche die aktuelle Version mit der neuen Version
 #falls identisch, verlasse das script
@@ -29,9 +29,9 @@ if [ "$old_version" = "$build_version" ]; then
 fi
 
 # nicht identisch! Lösch mal die datei "old_version.txt"
-rm "dereos_freaki_old.txt"
+rm "dereos_akisim_old.txt"
 # kopier die Datei "build_version.txt" nach "old_version.txt"
-cp "dereos_freaki_build.txt" "dereos_freaki_old.txt"
+cp "dereos_akisim_build.txt" "dereos_akisim_old.txt"
 
 # Alles erledigt bis zum nächsten mal
 
