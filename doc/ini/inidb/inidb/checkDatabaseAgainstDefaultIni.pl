@@ -28,21 +28,31 @@ use Config::IniFiles;
 use constant { true => 1, false => 0 };
 use DBI;
 
+# Prototypes
 sub trim($);
+sub usage();
+sub checkValue($ $ $);
 
-
-if ($#ARGV != 0 ) {
-	print "\n";
-	print "Usage: checkDatabaseAgainstDefaultIni INIFILE\n\n";
-	print "Checks all Database Records against a INIFILE and reports differences to the console\n";
-	print "Valid files are: \n\n";
-	print "  - OpenSimDefaults.ini\n";
-	print "  - OpenSim.ini\n";
-	exit;
+if ($#ARGV != 2 ) {
+    usage();
+    exit;
 }
 
 my $filepath = $ARGV[0];
+my $inipath = $ARGV[1];
+my $grid = lc($ARGV[2]);
+
+
+if( !($grid eq "osgrid" || $grid eq "metropolis" || $grid eq "dereos" || $grid eq "repo" ) ) {
+    usage();
+    exit;
+}
+
+
+
 my $cfg = Config::IniFiles->new( -file => $filepath);
+my $inicfg = Config::IniFiles->new( -file => $inipath );
+
 my $dbh = DBI->connect('DBI:mysql:opensim_ini', 'opensim', 'opensim'
 	           ) || die "Could not connect to database: $DBI::errstr";
 # (insert query examples here...)
@@ -54,7 +64,7 @@ my @row;
 my @fields;
 
 # Print the Header Line
-print "ini_section;ini_parameter;opensim_value;ini_value;Comment\n";				
+print "ini_section;ini_parameter;database_value;ini_value;Comment\n";				
 
 while(@row = $sth->fetchrow_array()) {
   	my @record = @row;
@@ -64,25 +74,54 @@ while(@row = $sth->fetchrow_array()) {
 	my $opensim_value = $row[2];
 	my $opensim_enabled_default = $row[3];
 	my $opensim_enabled = $row[4];
-	my $aki_value = $row[5];
-	my $aki_enabled = $row[6];
-	my $osgrid_value = $row[7];
-	my $osgrid_enabled = $row[8];
-	my $metro_value = $row[9];
-	my $metro_enabled = $row[10];
+	my $aki_dereos_value = $row[5];
+    my $aki_metro_value = $row[6];
+    my $aki_osgrid_value = $row[7];
+	my $aki_enabled = $row[8];
+	my $osgrid_value = $row[9];
+	my $osgrid_enabled = $row[10];
+	my $metro_value = $row[11];
+	my $metro_enabled = $row[12];
+    my $dereos_value = $row[13];
+    my $dereos_enabled = $row[14];
 
-	## we only checke the enabled parameters
+	
+	
 	if ($opensim_enabled_default == true) {
 		my $ini_value = $cfg->val($ini_section, $ini_parameter);
-		if ($ini_value ne undef){
+		if (defined $ini_value){
 			if ($ini_value =~ m/(.*)\;/) {
 				$ini_value = trim($1);
 			} else {
 				$ini_value = trim($ini_value);
 			}
-			if ($ini_value ne $opensim_value) {
-  				print "$ini_section;$ini_parameter;$opensim_value;$ini_value;different_values\n";				
-			}
+            ## we only check the enabled parameters
+            if($grid eq "metropolis") {
+                if ($metro_enabled == true && $ini_value ne $metro_value) {
+                    if( !checkValue($ini_section,$ini_parameter,$metro_value) ) {
+                        print "$ini_section;$ini_parameter;$metro_value;$ini_value;metro_different_values\n";
+                    }
+                } elsif ($opensim_enabled_default == true && $ini_value ne $opensim_value) {
+                    print "$ini_section;$ini_parameter;$opensim_value;$ini_value;different_values - opensim-default-setting\n";                                   
+                }
+            } elsif ($grid eq "osgrid") {
+                if ($osgrid_enabled == true && $ini_value ne $osgrid_value) {
+                    print "$ini_section;$ini_parameter;$osgrid_value;$ini_value;different_values - osgrid-setting\n";                                 
+                } elsif ($opensim_enabled_default == true && $ini_value ne $opensim_value) {
+                    print "$ini_section;$ini_parameter;$opensim_value;$ini_value;different_values - opensim-default-setting\n";                                   
+                }
+            } elsif ($grid eq "dereos") {
+                if ($dereos_enabled == true && $ini_value ne $dereos_value) {
+                    print "$ini_section;$ini_parameter;$osgrid_value;$ini_value;different_values - dereos-setting\n";                                 
+                } elsif ($opensim_enabled_default == true && $ini_value ne $opensim_value) {
+                    print "$ini_section;$ini_parameter;$opensim_value;$ini_value;different_values - opensim-default-setting\n";                                   
+                }
+            } elsif ($grid eq "repo") {
+                if ($opensim_enabled_default == true && $ini_value ne $opensim_value) {
+                    print "$ini_section;$ini_parameter;$opensim_value;$ini_value;different_values - opensim-default-setting\n";                                   
+                }
+            }
+			
 		} else {
   			print "$ini_section;$ini_parameter;$opensim_value;--;Section/Parameter not found in ini-file\n";		  							
 		}
@@ -99,3 +138,39 @@ sub trim($) {
 	$string =~ s/\s+$//;
 	return $string;
 }
+
+sub checkValue($ $ $) {
+    my $section = shift;
+    my $parameter = shift;
+    my $value = shift;
+
+    my $ini_value = $inicfg->val($section, $parameter);
+    if (defined $ini_value){
+        if ($ini_value =~ m/(.*)\;/) {
+            $ini_value = trim($1);
+        } else {
+            $ini_value = trim($ini_value);
+        }
+        if ($ini_value eq $value) {
+            return(true);
+        }
+    } 
+    return(false);
+}
+
+
+
+# Prints usage
+sub usage() {
+    print "\n";
+    print "Usage: checkDatabaseAgainstDefaultIni INIFILE GRID\n\n";
+    print "Checks a given INIFILE of type OpenSimDefault.ini of a given GRID or Source-Repository against the ini database and reports differences to the console\n";
+    print "Valid INIFILES are: \n";
+    print "  - OpenSimDefaults.ini\n";
+    print "Valid GRIDs are: \n";
+    print "  - OSgrid\n";
+    print "  - Metropolis\n";
+    print "  - Dereos\n";
+    print "  - Repo\n";
+}   
+    

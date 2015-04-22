@@ -77,27 +77,21 @@ else
 	tar xvf $new_version.tar.gz
 fi
 
-# Falls etwas beim clonen nicht funktioniert hat hole dir die 
-# gesicherte version zurück und verlasse das Script
-
-# Falls etwas beim clonen nicht funktioniert hat hole dir die 
-# gesicherte version zurück und verlasse das Script
-
-
+#build the sim 
 if [ "$test_version" != "" ] ; then
 	cd $OSINS/$test_version
 	# Starte den prebuild process
 	./runprebuild.sh
 	sleep 5
 	# Starte den compiler
-	xbuild
+	xbuild /p:Configuration=Release
 else
 	cd $OSINS/$new_version
 	# Starte den prebuild process
 	./runprebuild.sh
 	sleep 5
 	# Starte den compiler
-	xbuild
+	xbuild /p:Configuration=Release
 fi
 
 # Setze nun die alte Versionsnummer auf die neue Versionsnummer
@@ -117,13 +111,21 @@ fi
 
 cd $OSINS
 
-# Housekeeping
+echo "Copying the (possibly new) scripts"
+
+# copy the (possibly new) scripts
 if [ "$test_version" != "" ] ; then
   cp $OSINS/$test_version/doc/scripts/* $OSINS/bin
+else
+  cp $OSINS/$new_version/doc/scripts/* $OSINS/bin
+fi
+
+
+# Housekeeping
+if [ "$test_version" != "" ] ; then
   rm -f $test_version.tar.gz
   rm metro_version.txt
 else
-  cp $OSINS/$new_version/doc/scripts/* $OSINS/bin
   rm -f $new_version.tar.gz
   rm metro_version.txt
 fi

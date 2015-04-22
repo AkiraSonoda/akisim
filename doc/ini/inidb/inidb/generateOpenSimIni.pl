@@ -25,10 +25,24 @@
 
 use strict;
 use Config::IniFiles;
-use constant { true => 1, false => 0 };
+use constant { true => 1, false => 0, global_disable => -1 };
 use DBI;
 
 sub trim($);
+
+# Prints usage
+sub usage() {
+    print "\n";
+    print "Usage: generateOpenSimIni INIFILE GRID\n\n";
+    print "generates an INIFILE for a given Path and a given GRID according to the database rules\n";
+    print "Valid INIFILES are: \n";
+    print "  - OpenSim.ini\n";
+    print "Valid GRID are: \n";
+    print "  - OSgrid\n";
+    print "  - Metropolis\n";
+    print "  - Dereos\n";
+}   
+
 
 if ($#ARGV != 1 ) {
 	usage();
@@ -38,7 +52,7 @@ if ($#ARGV != 1 ) {
 my $filepath = $ARGV[0];
 my $grid = lc($ARGV[1]);
 
-if( !($grid eq "osgrid" || $grid eq "metropolis" ) ) {
+if( !($grid eq "osgrid" || $grid eq "metropolis" || $grid eq "dereos") ) {
 	usage();
 	exit;
 }
@@ -65,31 +79,45 @@ while(@row = $sth->fetchrow_array()) {
 	my $opensim_value = $row[2];
 	my $opensim_enabled_default = $row[3];
 	my $opensim_enabled = $row[4];
-	my $aki_value = $row[5];
-	my $aki_enabled = $row[6];
-	my $osgrid_value = $row[7];
-	my $osgrid_enabled = $row[8];
-	my $metro_value = $row[9];
-	my $metro_enabled = $row[10];
+	my $aki_dereos_value = $row[5];
+    my $aki_metro_value = $row[6];
+    my $aki_osgrid_value = $row[7];
+	my $aki_enabled = $row[8];
+	my $osgrid_value = $row[9];
+	my $osgrid_enabled = $row[10];
+	my $metro_value = $row[11];
+	my $metro_enabled = $row[12];
+    my $dereos_value = $row[13];
+    my $dereos_enabled = $row[14];
 
 
-	if($grid eq "osgrid") {
-		if ($aki_enabled == true) {
-			$cfg->newval( $ini_section, $ini_parameter, $aki_value );
-		} elsif ($osgrid_enabled == true) {
-			$cfg->newval( $ini_section, $ini_parameter, $osgrid_value );
-		} elsif ($opensim_enabled_default == true) {
-			$cfg->newval( $ini_section, $ini_parameter, $opensim_value );
-		} 
-	} elsif($grid eq "metropolis") {
-		if ($aki_enabled == true) {
-			$cfg->newval( $ini_section, $ini_parameter, $aki_value );
-		} elsif ($metro_enabled == true) {
-			$cfg->newval( $ini_section, $ini_parameter, $metro_value );
-		} elsif ($opensim_enabled_default == true) {
-			$cfg->newval( $ini_section, $ini_parameter, $opensim_value );
-		} 		
-	}
+    if($aki_enabled != global_disable) {
+		if($grid eq "osgrid") {
+			if ($aki_enabled == true) {
+				$cfg->newval( $ini_section, $ini_parameter, $aki_osgrid_value );
+			} elsif ($osgrid_enabled == true) {
+				$cfg->newval( $ini_section, $ini_parameter, $osgrid_value );
+			} elsif ($opensim_enabled_default == true) {
+				$cfg->newval( $ini_section, $ini_parameter, $opensim_value );
+			} 
+		} elsif($grid eq "metropolis") {
+			if ($aki_enabled == true) {
+				$cfg->newval( $ini_section, $ini_parameter, $aki_metro_value );
+			} elsif ($metro_enabled == true) {
+				$cfg->newval( $ini_section, $ini_parameter, $metro_value );
+			} elsif ($opensim_enabled_default == true) {
+				$cfg->newval( $ini_section, $ini_parameter, $opensim_value );
+			} 		
+	    } elsif($grid eq "dereos") {
+	        if ($aki_enabled == true) {
+	            $cfg->newval( $ini_section, $ini_parameter, $aki_dereos_value );
+	        } elsif ($dereos_enabled == true) {
+	            $cfg->newval( $ini_section, $ini_parameter, $dereos_value );
+	        } elsif ($opensim_enabled_default == true) {
+	            $cfg->newval( $ini_section, $ini_parameter, $opensim_value );
+	        }       
+		}
+    }
 }
 
 $sth->finish();
@@ -99,14 +127,3 @@ $cfg->SetFileName( $filepath );
 $cfg->RewriteConfig();
 $cfg->WriteConfig( $filepath );
 
-# Prints usage
-sub usage() {
-	print "\n";
-	print "Usage: generateOpenSimIni INIFILE GRID\n\n";
-	print "generates an INIFILE for a given Path and a given GRID according to the database rules\n";
-	print "Valid INIFILES are: \n";
-	print "  - OpenSim.ini\n";
-	print "Valid GRID are: \n";
-	print "  - OSgrid\n";
-	print "  - Metropolis\n";
-}	

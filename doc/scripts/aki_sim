@@ -8,11 +8,6 @@ SIMTAG=$1
 SIMPATH=/home/opensim/$SIMTAG/bin
 MONO_THREADS_PER_CPU=150
 
-PATH="/home/opensim/bin/mono/bin:$PATH"
-PKG_CONFIG_PATH="/home/opensim/bin/mono/lib/pkgconfig:$PKG_CONFIG_PATH"
-MANPATH="/home/opensim/bin/mono/share/man:$MANPATH"
-LD_LIBRARY_PATH="/home/opensim/bin/mono/lib:$LD_LIBRARY_PATH"
-
 env > /tmp/$SIMTAG.settings.txt
 mono --version > /tmp/$SIMTAG.mono.txt
 

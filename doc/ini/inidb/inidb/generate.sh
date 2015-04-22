@@ -1,11 +1,14 @@
 #!/bin/bash 
 
-DevelHome="/Users/markusgasser/src"
+DevelHome="/Users/opensim/src"
 
 # generating Metro OpenSim.ini
-perl generateOpenSimIni.pl "$DevelHome/akisim/doc/metropolis/ini/OpenSim.ini" Metropolis
+perl generateOpenSimIni.pl "$DevelHome/freakisim-dev/doc/metropolis/ini/OpenSim.ini" Metropolis
 
 # generating OSgrid OpenSim.ini
-perl generateOpenSimIni.pl "$DevelHome/akisim/doc/osgrid/ini/OpenSim.ini" OSgrid
+perl generateOpenSimIni.pl "$DevelHome/freakisim-dev/doc/osgrid/ini/OpenSim.ini" OSgrid
 
-echo "OpenSim.ini generated for Metropolis and OSgrid"
+# generating Dereos OpenSim.ini
+perl generateOpenSimIni.pl "$DevelHome/freakisim-dev/doc/dereos/ini/OpenSim.ini" Dereos
+
+echo "OpenSim.ini generated for OSgrid, Dereos and Metropolis "
