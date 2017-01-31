@@ -26,6 +26,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using OpenSim.Framework;
 using OpenMetaverse;
 
@@ -59,7 +60,7 @@ namespace OpenSim.Services.Interfaces
         /// <param name="aCircuit"></param>
         /// <param name="flags"></param>
         /// <param name="reason">Reason message in the event of a failure.</param>        
-        bool CreateAgent(GridRegion source, GridRegion destination, AgentCircuitData aCircuit, uint flags, out string reason);
+        bool CreateAgent(GridRegion source, GridRegion destination, AgentCircuitData aCircuit, uint flags, EntityTransferContext ctx, out string reason);
 
         /// <summary>
         /// Full child agent update.
@@ -67,7 +68,7 @@ namespace OpenSim.Services.Interfaces
         /// <param name="regionHandle"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        bool UpdateAgent(GridRegion destination, AgentData data);
+        bool UpdateAgent(GridRegion destination, AgentData data, EntityTransferContext ctx);
 
         /// <summary>
         /// Short child agent update, mostly for position.
@@ -85,13 +86,14 @@ namespace OpenSim.Services.Interfaces
         /// <param name="agentHomeURI">The visitor's Home URI. Will be missing (null) in older OpenSims.</param>
         /// <param name="viaTeleport">True: via teleport; False: via cross (walking)</param>
         /// <param name="position">Position in the region</param>
+
         /// <param name="sversion">
         /// Version that the requesting simulator is runing.  If null then no version check is carried out.
         /// </param>
         /// <param name="version">Version that the target simulator is running</param>
         /// <param name="reason">[out] Optional error message</param>
         /// <returns>True: ok; False: not allowed</returns>
-        bool QueryAccess(GridRegion destination, UUID agentID, string agentHomeURI, bool viaTeleport, Vector3 position, string sversion, out string version, out string reason);
+        bool QueryAccess(GridRegion destination, UUID agentID, string agentHomeURI, bool viaTeleport, Vector3 position, List<UUID> features, EntityTransferContext ctx, out string reason);
 
         /// <summary>
         /// Message from receiving region to departing region, telling it got contacted by the client.

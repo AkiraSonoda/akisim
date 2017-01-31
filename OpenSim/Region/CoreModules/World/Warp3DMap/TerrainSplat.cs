@@ -79,6 +79,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         /// <remarks>Based on the algorithm described at http://opensimulator.org/wiki/Terrain_Splatting
         /// Note we create a 256x256 dimension texture even if the actual terrain is larger.
         /// </remarks>
+
         public static Bitmap Splat(ITerrainChannel terrain,
                 UUID[] textureIDs, float[] startHeights, float[] heightRanges,
                 Vector3d regionPosition, IAssetService assetService, bool textureTerrain)
@@ -129,8 +130,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             asset = assetService.Get(textureIDs[i].ToString());
                             if (asset != null)
                             {
-//                                    m_log.DebugFormat(
-//                                        "[TERRAIN SPLAT]: Got cached original JPEG2000 terrain texture {0} {1}", i, asset.ID);
+                                //                                    m_log.DebugFormat(
+                                //                                        "[TERRAIN SPLAT]: Got cached original JPEG2000 terrain texture {0} {1}", i, asset.ID);
 
                                 try { detailTexture[i] = (Bitmap)CSJ2K.J2kImage.FromBytes(asset.Data); }
                                 catch (Exception ex)
@@ -140,7 +141,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             }
 
                             if (detailTexture[i] != null)
-                            {    
+                            {
                                 // Make sure this texture is the correct size, otherwise resize
                                 if (detailTexture[i].Width != 256 || detailTexture[i].Height != 256)
                                 {
@@ -352,7 +353,6 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             b.Dispose();
             return result;
         }
-
         public static Bitmap SplatSimple(float[] heightmap)
         {
             const float BASE_HSV_H = 93f / 360f;

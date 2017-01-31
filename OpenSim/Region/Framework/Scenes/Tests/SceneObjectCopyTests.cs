@@ -32,7 +32,6 @@ using Nini.Config;
 using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
 using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.Framework.InventoryAccess;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
@@ -43,6 +42,7 @@ using OpenSim.Tests.Common;
 
 namespace OpenSim.Region.Framework.Scenes.Tests
 {
+    /*
     /// <summary>
     /// Test copying of scene objects.
     /// </summary>
@@ -344,4 +344,5 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             }
         }
     }
+     */
 }

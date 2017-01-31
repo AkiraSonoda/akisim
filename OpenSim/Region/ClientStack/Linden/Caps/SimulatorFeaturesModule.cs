@@ -170,6 +170,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 m_features["MeshRezEnabled"] = true;
                 m_features["MeshUploadEnabled"] = true;
                 m_features["MeshXferEnabled"] = true;
+
                 m_features["PhysicsMaterialsEnabled"] = true;
 
                 OSDMap typesMap = new OSDMap();
@@ -188,6 +189,10 @@ namespace OpenSim.Region.ClientStack.Linden
                 else
                     extrasMap = new OSDMap();
 
+                extrasMap["AvatarSkeleton"] = true;
+                extrasMap["AnimationSet"] = true;
+
+                // TODO: Take these out of here into their respective modules, like map-server-url
                 if (m_SearchURL != string.Empty)
                     extrasMap["search-server-url"] = m_SearchURL;
                 if (!string.IsNullOrEmpty(m_DestinationGuideURL))

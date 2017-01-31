@@ -34,9 +34,7 @@ using log4net;
 using Nini.Config;
 using Mono.Addins;
 using OpenMetaverse;
-using OpenMetaverse.StructuredData;
 using OpenSim.Framework;
-using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
@@ -45,6 +43,9 @@ using OpenSim.Framework.Capabilities;
 using OpenSim.Services.Interfaces;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using OpenSim.Capabilities.Handlers;
+using OpenSim.Framework.Monitoring;
+
+using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Region.ClientStack.Linden
 {
@@ -63,7 +64,7 @@ namespace OpenSim.Region.ClientStack.Linden
             public List<UUID> folders;
         }
 
-         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// Control whether requests will be processed asynchronously.
@@ -92,7 +93,7 @@ namespace OpenSim.Region.ClientStack.Linden
         private bool m_Enabled;
 
         private string m_fetchInventoryDescendents2Url;
-        private string m_webFetchInventoryDescendentsUrl;
+//        private string m_webFetchInventoryDescendentsUrl;
 
         private static FetchInvDescHandler m_webFetchHandler;
 
@@ -117,9 +118,10 @@ namespace OpenSim.Region.ClientStack.Linden
                 return;
 
             m_fetchInventoryDescendents2Url = config.GetString("Cap_FetchInventoryDescendents2", string.Empty);
-            m_webFetchInventoryDescendentsUrl = config.GetString("Cap_WebFetchInventoryDescendents", string.Empty);
+//            m_webFetchInventoryDescendentsUrl = config.GetString("Cap_WebFetchInventoryDescendents", string.Empty);
 
-            if (m_fetchInventoryDescendents2Url != string.Empty || m_webFetchInventoryDescendentsUrl != string.Empty)
+//            if (m_fetchInventoryDescendents2Url != string.Empty || m_webFetchInventoryDescendentsUrl != string.Empty)
+            if (m_fetchInventoryDescendents2Url != string.Empty)
             {
                 m_Enabled = true;
             }
@@ -197,15 +199,16 @@ namespace OpenSim.Region.ClientStack.Linden
             m_LibraryService = Scene.LibraryService;
 
             // We'll reuse the same handler for all requests.
-            m_webFetchHandler = new FetchInvDescHandler(m_InventoryService, m_LibraryService);
+            m_webFetchHandler = new FetchInvDescHandler(m_InventoryService, m_LibraryService, Scene);
 
             Scene.EventManager.OnRegisterCaps += RegisterCaps;
 
+            int nworkers = 2; // was 2
             if (ProcessQueuedRequestsAsync && m_workerThreads == null)
             {
-                m_workerThreads = new Thread[2];
+                m_workerThreads = new Thread[nworkers];
 
-                for (uint i = 0; i < 2; i++)
+                for (uint i = 0; i < nworkers; i++)
                 {
                     m_workerThreads[i] = WorkManager.StartThread(DoInventoryRequests,
                             String.Format("InventoryWorkerThread{0}", i),
@@ -266,11 +269,6 @@ namespace OpenSim.Region.ClientStack.Linden
                 Request = (x, y) =>
                 {
                     ScenePresence sp = m_module.Scene.GetScenePresence(Id);
-                    if (sp == null)
-                    {
-                        m_log.ErrorFormat("[INVENTORY]: Unable to find ScenePresence for {0}", Id);
-                        return;
-                    }
 
                     aPollRequest reqinfo = new aPollRequest();
                     reqinfo.thepoll = this;
@@ -316,7 +314,8 @@ namespace OpenSim.Region.ClientStack.Linden
                         {
                             if (!reqinfo.folders.Contains(folderID))
                             {
-                                //TODO: Port COF handling from Avination
+                                if (sp.COF != UUID.Zero && sp.COF == folderID)
+                                    highPriority = true;
                                 reqinfo.folders.Add(folderID);
                             }
                         }
@@ -364,7 +363,11 @@ namespace OpenSim.Region.ClientStack.Linden
                         requestinfo.request["body"].ToString(), String.Empty, String.Empty, null, null);
 
                 lock (responses)
+                {
+                    if (responses.ContainsKey(requestID))
+                        m_log.WarnFormat("[FETCH INVENTORY DESCENDENTS2 MODULE]: Caught in the act of loosing responses! Please report this on mantis #7054");
                     responses[requestID] = response;
+                }
 
                 WebFetchInvDescModule.ProcessedRequestsCount++;
             }

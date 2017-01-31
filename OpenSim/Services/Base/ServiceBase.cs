@@ -26,8 +26,8 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Collections.Generic;
 using System.Reflection;
 using log4net;
 using Nini.Config;
@@ -53,6 +53,7 @@ namespace OpenSim.Services.Base
             string pathRoot = Path.GetPathRoot(dllName);
             string noRoot = dllName.Substring(pathRoot.Length);
             string[] parts = noRoot.Split(new char[] {':'});
+
 
             dllName = pathRoot + parts[0];
 
@@ -86,7 +87,7 @@ namespace OpenSim.Services.Base
                             continue;
 
                         Type typeInterface =
-                                pluginType.GetInterface(interfaceName, true);
+                                pluginType.GetInterface(interfaceName);
                         if (typeInterface != null)
                         {
                             T plug = (T)Activator.CreateInstance(pluginType,

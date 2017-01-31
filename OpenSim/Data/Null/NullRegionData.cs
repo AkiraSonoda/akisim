@@ -134,21 +134,22 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.Get(posX, posY, scopeID);
 
-            List<RegionData> ret = new List<RegionData>();
+            RegionData ret = null;
 
             lock (m_regionData)
             {
                 foreach (RegionData r in m_regionData.Values)
                 {
-                    if (r.posX == posX && r.posY == posY)
-                        ret.Add(r);
+                    if (posX >= r.posX && posX < r.posX + r.sizeX
+                        && posY >= r.posY && posY < r.posY + r.sizeY)
+                    {
+                        ret = r;
+                        break;
+                    }
                 }
             }
 
-            if (ret.Count > 0)
-                return ret[0];
-
-            return null;
+            return ret;
         }
 
         public RegionData Get(UUID regionID, UUID scopeID)
@@ -176,8 +177,9 @@ namespace OpenSim.Data.Null
             {
                 foreach (RegionData r in m_regionData.Values)
                 {
-                    if (r.posX >= startX && r.posX <= endX && r.posY >= startY && r.posY <= endY)
-                        ret.Add(r);
+                    if (r.posX + r.sizeX > startX && r.posX <= endX
+                         && r.posY + r.sizeX > startY && r.posY <= endY)
+                         ret.Add(r);
                 }
             }
 

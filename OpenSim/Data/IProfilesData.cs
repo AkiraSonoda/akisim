@@ -48,7 +48,7 @@ namespace OpenSim.Data
         bool UpdateAvatarProperties(ref UserProfileProperties props, ref string result);
         bool UpdateAvatarInterests(UserProfileProperties up, ref string result);
         bool GetClassifiedInfo(ref UserClassifiedAdd ad, ref string result);
-        bool UpdateUserPreferences(ref UserPreferences pref,  ref string result);
+        bool UpdateUserPreferences(ref UserPreferences pref, ref string result);
         bool GetUserPreferences(ref UserPreferences pref, ref string result);
         bool GetUserAppData(ref UserAppData props, ref string result);
         bool SetUserAppData(UserAppData props, ref string result);

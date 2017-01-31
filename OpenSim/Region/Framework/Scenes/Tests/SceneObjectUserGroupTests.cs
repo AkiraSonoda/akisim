@@ -32,7 +32,6 @@ using Nini.Config;
 using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
 using OpenSim.Region.CoreModules.Avatar.InstantMessage;
 using OpenSim.Region.CoreModules.World.Permissions;
 using OpenSim.Region.Framework.Interfaces;
@@ -43,7 +42,7 @@ using OpenSim.Tests.Common;
 namespace OpenSim.Region.Framework.Scenes.Tests
 {
     [TestFixture]
-    public class SceneObjectUserGroupTests : OpenSimTestCase
+    public class SceneObjectUserGroupTests
     {
         /// <summary>
         /// Test share with group object functionality
@@ -53,6 +52,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
         public void TestShareWithGroup()
         {
             TestHelpers.InMethod();
+//            log4net.Config.XmlConfigurator.Configure();
                         
             UUID userId = UUID.Parse("10000000-0000-0000-0000-000000000001");
             
@@ -69,7 +69,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
                        
             SceneHelpers.SetupSceneModules(
                 scene, configSource, new object[] 
-                   { new PermissionsModule(), 
+                   { new DefaultPermissionsModule(), 
                      new GroupsModule(), 
                      new MockGroupsServicesConnector() });
             

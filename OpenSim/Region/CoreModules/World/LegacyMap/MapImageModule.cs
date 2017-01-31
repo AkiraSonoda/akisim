@@ -112,7 +112,6 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                     //}
                     //t = System.Environment.TickCount - t;
                     //m_log.InfoFormat("[MAPTILE] generation of 10 maptiles needed {0} ms", t);
-
                     if (drawPrimVolume)
                     {
                         DrawObjectVolume(m_scene, mapbmp);

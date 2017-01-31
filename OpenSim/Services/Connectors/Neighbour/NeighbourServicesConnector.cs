@@ -35,7 +35,7 @@ using System.Reflection;
 using System.Text;
 using Nini.Config;
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
+
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -153,9 +153,9 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.Warn(string.Format(
-                    "[NEIGHBOUR SERVICES CONNECTOR]: Unable to send HelloNeighbour from {0} to {1} (uri {2}).  Exception {3} ",
-                    thisRegion.RegionName, region.RegionName, uri, e.Message), e);
+//                m_log.WarnFormat(
+//                    "[NEIGHBOUR SERVICE CONNCTOR]: Unable to send HelloNeighbour from {0} to {1}.  Exception {2}{3}",
+//                    thisRegion.RegionName, region.RegionName, e.Message, e.StackTrace);
 
                 return false;
             }

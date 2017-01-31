@@ -48,6 +48,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void Register()
         {
+/*
             m_console.Commands.AddCommand(
                 "Comms", false, "show server throttles",
                 "show server throttles",
@@ -213,6 +214,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 "Set a debug parameter for a particular client.  If no name is given then the value is set on all clients.",
                 "process-unacked-sends - Do we take action if a sent reliable packet has not been acked.",
                 HandleClientSetCommand);
+*/
         }
 
         private void HandleShowServerThrottlesCommand(string module, string[] args)
@@ -224,7 +226,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             ConsoleDisplayList cdl = new ConsoleDisplayList();
             cdl.AddRow("Adaptive throttles", m_udpServer.ThrottleRates.AdaptiveThrottlesEnabled);
 
-            long maxSceneDripRate = m_udpServer.Throttle.MaxDripRate;
+            long maxSceneDripRate = (long)m_udpServer.Throttle.MaxDripRate;
             cdl.AddRow(
                 "Max scene throttle", 
                 maxSceneDripRate != 0 ? string.Format("{0} kbps", maxSceneDripRate * 8 / 1000) : "unset");
@@ -505,7 +507,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             m_console.OutputFormat("Debug settings for {0}", m_udpServer.Scene.Name);
             ConsoleDisplayList cdl = new ConsoleDisplayList();
 
-            long maxSceneDripRate = m_udpServer.Throttle.MaxDripRate;
+            long maxSceneDripRate = (long)m_udpServer.Throttle.MaxDripRate;
             cdl.AddRow(
                 "max-scene-throttle", 
                 maxSceneDripRate != 0 ? string.Format("{0} kbps", maxSceneDripRate * 8 / 1000) : "unset");
@@ -556,6 +558,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             m_console.OutputFormat("{0} set to {1} in {2}", param, rawValue, m_udpServer.Scene.Name);
         }
 
+/* not in use, nothing to set/get from lludp
         private void HandleClientGetCommand(string module, string[] args)
         {
             if (SceneManager.Instance.CurrentScene != null && SceneManager.Instance.CurrentScene != m_udpServer.Scene)
@@ -582,11 +585,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                         m_console.OutputFormat(
                             "Client debug parameters for {0} ({1}) in {2}",
                             sp.Name, sp.IsChildAgent ? "child" : "root", m_udpServer.Scene.Name);
-
-                        ConsoleDisplayList cdl = new ConsoleDisplayList();
-                        cdl.AddRow("process-unacked-sends", udpClient.ProcessUnackedSends);
-
-                        m_console.Output(cdl.ToString());
                     }
                 });
         }
@@ -609,28 +607,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             if (args.Length == 8)
                 name = string.Format("{0} {1}", args[6], args[7]);
-
-            if (param == "process-unacked-sends")
-            {
-                bool newValue;
-
-                if (!ConsoleUtil.TryParseConsoleBool(MainConsole.Instance, rawValue, out newValue))
-                    return;
-
-                m_udpServer.Scene.ForEachScenePresence(
-                    sp =>
-                    {
-                        if ((name == null || sp.Name == name) && sp.ControllingClient is LLClientView)
-                        {
-                            LLUDPClient udpClient = ((LLClientView)sp.ControllingClient).UDPClient;
-                            udpClient.ProcessUnackedSends = newValue;
-
-                            m_console.OutputFormat("{0} set to {1} for {2} in {3}", param, newValue, sp.Name, m_udpServer.Scene.Name);
-                        }
-                    });
-            }
+            // nothing here now
         }
-
+*/
         private void HandlePacketCommand(string module, string[] args)
         {
             if (SceneManager.Instance.CurrentScene != null && SceneManager.Instance.CurrentScene != m_udpServer.Scene)

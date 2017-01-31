@@ -68,6 +68,8 @@ namespace OpenSim.Region.CoreModules.World.Estate
         public event ChangeDelegate OnEstateInfoChange;
         public event MessageDelegate OnEstateMessage;
 
+        private int m_delayCount = 0;
+
         #region Region Module interface
         
         public string Name { get { return "EstateManagementModule"; } }
@@ -95,6 +97,10 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
             m_commands = new EstateManagementCommands(this);
             m_commands.Initialise();
+
+            m_regionChangeTimer.Interval = 10000;
+            m_regionChangeTimer.Elapsed += RaiseRegionInfoChange;
+            m_regionChangeTimer.AutoReset = false;
         }
         
         public void RemoveRegion(Scene scene) {}            
@@ -142,6 +148,10 @@ namespace OpenSim.Region.CoreModules.World.Estate
                 flags |= RegionFlags.AllowParcelChanges;
             if (Scene.RegionInfo.RegionSettings.BlockShowInSearch)
                 flags |= RegionFlags.BlockParcelSearch;
+            if (Scene.RegionInfo.RegionSettings.GodBlockSearch)
+                flags |= (RegionFlags)(1 << 11);
+            if (Scene.RegionInfo.RegionSettings.Casino)
+                flags |= (RegionFlags)(1 << 10);
 
             if (Scene.RegionInfo.RegionSettings.FixedSun)
                 flags |= RegionFlags.SunFixed;
@@ -189,6 +199,14 @@ namespace OpenSim.Region.CoreModules.World.Estate
         public void TriggerEstateInfoChange()
         {
             ChangeDelegate change = OnEstateInfoChange;
+
+            if (change != null)
+                change(Scene.RegionInfo.RegionID);
+        }
+
+        protected void RaiseRegionInfoChange(object sender, ElapsedEventArgs e)
+        {
+            ChangeDelegate change = OnRegionInfoChange;
 
             if (change != null)
                 change(Scene.RegionInfo.RegionID);
@@ -587,6 +605,16 @@ namespace OpenSim.Region.CoreModules.World.Estate
             IRestartModule restartModule = Scene.RequestModuleInterface<IRestartModule>();
             if (restartModule != null)
             {
+                if (timeInSeconds == -1)
+                {
+                    m_delayCount++;
+                    if (m_delayCount > 3)
+                        return;
+
+                    restartModule.DelayRestart(3600, "Restart delayed by region manager");
+                    return;
+                }
+
                 List<int> times = new List<int>();
                 while (timeInSeconds > 0)
                 {
@@ -1477,7 +1505,8 @@ namespace OpenSim.Region.CoreModules.World.Estate
             sendRegionHandshake(client);
         }
 
-        private uint GetEstateFlags()
+
+        public uint GetEstateFlags()
         {
             RegionFlags flags = RegionFlags.None;
 

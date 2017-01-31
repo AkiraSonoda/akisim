@@ -126,7 +126,6 @@ namespace OpenSim.Region.Framework.Scenes
 //            m_log.DebugFormat("[UUID GATHERER]: Adding asset {0} for inspection", uuid);
 
             m_assetUuidsToInspect.Enqueue(uuid);
-
             return true;
         }
         

@@ -61,8 +61,8 @@ namespace OpenSim.Framework
     {
         UUID AgentID { get; set; }
 
-        OSDMap Pack();
-        void Unpack(OSDMap map, IScene scene);
+        OSDMap Pack(EntityTransferContext ctx);
+        void Unpack(OSDMap map, IScene scene, EntityTransferContext ctx);
     }
 
     /// <summary>
@@ -94,8 +94,9 @@ namespace OpenSim.Framework
         // This probably shouldn't be here
         public byte[] Throttles;
 
+        public Dictionary<ulong, string> ChildrenCapSeeds = null;
 
-        public OSDMap Pack()
+        public OSDMap Pack(EntityTransferContext ctx)
         {
             OSDMap args = new OSDMap();
             args["message_type"] = OSD.FromString("AgentPosition");
@@ -119,10 +120,23 @@ namespace OpenSim.Framework
             if ((Throttles != null) && (Throttles.Length > 0))
                 args["throttles"] = OSD.FromBinary(Throttles);
 
+            if (ChildrenCapSeeds != null && ChildrenCapSeeds.Count > 0)
+            {
+                OSDArray childrenSeeds = new OSDArray(ChildrenCapSeeds.Count);
+                foreach (KeyValuePair<ulong, string> kvp in ChildrenCapSeeds)
+                {
+                    OSDMap pair = new OSDMap();
+                    pair["handle"] = OSD.FromString(kvp.Key.ToString());
+                    pair["seed"] = OSD.FromString(kvp.Value);
+                    childrenSeeds.Add(pair);
+                }
+                args["children_seeds"] = childrenSeeds;
+            }
+
             return args;
         }
 
-        public void Unpack(OSDMap args, IScene scene)
+        public void Unpack(OSDMap args, IScene scene, EntityTransferContext ctx)
         {
             if (args.ContainsKey("region_handle"))
                 UInt64.TryParse(args["region_handle"].AsString(), out RegionHandle);
@@ -165,6 +179,30 @@ namespace OpenSim.Framework
 
             if (args["throttles"] != null)
                 Throttles = args["throttles"].AsBinary();
+
+            if (args.ContainsKey("children_seeds") && (args["children_seeds"] != null) &&
+                            (args["children_seeds"].Type == OSDType.Array))
+            {
+                OSDArray childrenSeeds = (OSDArray)(args["children_seeds"]);
+                ChildrenCapSeeds = new Dictionary<ulong, string>();
+                foreach (OSD o in childrenSeeds)
+                {
+                    if (o.Type == OSDType.Map)
+                    {
+                        ulong handle = 0;
+                        string seed = "";
+                        OSDMap pair = (OSDMap)o;
+                        if (pair["handle"] != null)
+                            if (!UInt64.TryParse(pair["handle"].AsString(), out handle))
+                                continue;
+                        if (pair["seed"] != null)
+                            seed = pair["seed"].AsString();
+                        if (!ChildrenCapSeeds.ContainsKey(handle))
+                            ChildrenCapSeeds.Add(handle, seed);
+                    }
+                }
+            }
+
         }
 
         /// <summary>
@@ -317,9 +355,11 @@ namespace OpenSim.Framework
         public UUID ActiveGroupID;
 
         public AgentGroupData[] Groups;
+        public Dictionary<ulong, string> ChildrenCapSeeds = null;
         public Animation[] Anims;
         public Animation DefaultAnim = null;
         public Animation AnimState = null;
+        public Byte MotionState = 0;
 
         public UUID GranterID;
         public UUID ParentPart;
@@ -345,8 +385,12 @@ namespace OpenSim.Framework
         public List<ISceneObject> AttachmentObjects;
         public List<string> AttachmentObjectStates;
 
-        public virtual OSDMap Pack()
+        public Dictionary<string, UUID> MovementAnimationOverRides = new Dictionary<string, UUID>();
+
+        public virtual OSDMap Pack(EntityTransferContext ctx)
         {
+            int wearablesCount = -1;
+
 //            m_log.InfoFormat("[CHILDAGENTDATAUPDATE] Pack data");
 
             OSDMap args = new OSDMap();
@@ -395,6 +439,19 @@ namespace OpenSim.Framework
                 args["groups"] = groups;
             }
 
+            if (ChildrenCapSeeds != null && ChildrenCapSeeds.Count > 0)
+            {
+                OSDArray childrenSeeds = new OSDArray(ChildrenCapSeeds.Count);
+                foreach (KeyValuePair<ulong, string> kvp in ChildrenCapSeeds)
+                {
+                    OSDMap pair = new OSDMap();
+                    pair["handle"] = OSD.FromString(kvp.Key.ToString());
+                    pair["seed"] = OSD.FromString(kvp.Value);
+                    childrenSeeds.Add(pair);
+                }
+                args["children_seeds"] = childrenSeeds;
+            }
+
             if ((Anims != null) && (Anims.Length > 0))
             {
                 OSDArray anims = new OSDArray(Anims.Length);
@@ -413,8 +470,28 @@ namespace OpenSim.Framework
                 args["animation_state"] = AnimState.PackUpdateMessage();
             }
 
+            if (MovementAnimationOverRides.Count > 0)
+            {
+                OSDArray AOs = new OSDArray(MovementAnimationOverRides.Count);
+                {
+                    foreach (KeyValuePair<string, UUID> kvp in MovementAnimationOverRides)
+                    {
+                        OSDMap ao = new OSDMap(2);
+                        ao["state"] = OSD.FromString(kvp.Key);
+                        ao["uuid"] = OSD.FromUUID(kvp.Value);
+                        AOs.Add(ao);
+                    }
+                }
+                args["movementAO"] = AOs;
+            }
+
+            if (MotionState != 0)
+            {
+                args["motion_state"] = OSD.FromInteger(MotionState);
+            }
+
             if (Appearance != null)
-                args["packed_appearance"] = Appearance.Pack();
+                args["packed_appearance"] = Appearance.Pack(ctx);
 
             //if ((AgentTextures != null) && (AgentTextures.Length > 0))
             //{
@@ -427,6 +504,8 @@ namespace OpenSim.Framework
             // The code to pack textures, visuals, wearables and attachments
             // should be removed; packed appearance contains the full appearance
             // This is retained for backward compatibility only
+
+/*  then lets remove
             if (Appearance.Texture != null)
             {
                 byte[] rawtextures = Appearance.Texture.GetBytes();
@@ -455,7 +534,7 @@ namespace OpenSim.Framework
                 args["attachments"] = attachs;
             }
             // End of code to remove
-
+*/
             if ((Controllers != null) && (Controllers.Length > 0))
             {
                 OSDArray controls = new OSDArray(Controllers.Length);
@@ -503,7 +582,7 @@ namespace OpenSim.Framework
         /// Avoiding reflection makes it painful to write, but that's the price!
         /// </summary>
         /// <param name="hash"></param>
-        public virtual void Unpack (OSDMap args, IScene scene)
+        public virtual void Unpack(OSDMap args, IScene scene, EntityTransferContext ctx)
         {
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -595,8 +674,32 @@ namespace OpenSim.Framework
                 }
             }
 
-            if ((args ["animations"] != null) && (args ["animations"]).Type == OSDType.Array) {
-                OSDArray anims = (OSDArray)(args ["animations"]);
+            if (args.ContainsKey("children_seeds") && (args["children_seeds"] != null) &&
+                            (args["children_seeds"].Type == OSDType.Array))
+            {
+                OSDArray childrenSeeds = (OSDArray)(args["children_seeds"]);
+                ChildrenCapSeeds = new Dictionary<ulong, string>();
+                foreach (OSD o in childrenSeeds)
+                {
+                    if (o.Type == OSDType.Map)
+                    {
+                        ulong handle = 0;
+                        string seed = "";
+                        OSDMap pair = (OSDMap)o;
+                        if (pair["handle"] != null)
+                            if (!UInt64.TryParse(pair["handle"].AsString(), out handle))
+                                continue;
+                        if (pair["seed"] != null)
+                            seed = pair["seed"].AsString();
+                        if (!ChildrenCapSeeds.ContainsKey(handle))
+                            ChildrenCapSeeds.Add(handle, seed);
+                    }
+                }
+            }
+
+            if ((args["animations"] != null) && (args["animations"]).Type == OSDType.Array)
+            {
+                OSDArray anims = (OSDArray)(args["animations"]);
                 Anims = new Animation[anims.Count];
                 int i = 0;
                 foreach (OSD o in anims) {
@@ -622,6 +725,28 @@ namespace OpenSim.Framework
                 }
             }
 
+            MovementAnimationOverRides.Clear();
+
+            if (args["movementAO"] != null && args["movementAO"].Type == OSDType.Array)
+            {
+                OSDArray AOs = (OSDArray)(args["movementAO"]);
+                int count = AOs.Count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    OSDMap ao = (OSDMap)AOs[i];
+                    if (ao["state"] != null && ao["uuid"] != null)
+                    {
+                        string state = ao["state"].AsString();
+                        UUID id = ao["uuid"].AsUUID();
+                        MovementAnimationOverRides[state] = id;
+                    }
+                }
+            }
+
+            if (args.ContainsKey("motion_state"))
+                MotionState = (byte)args["motion_state"].AsInteger();
+
             //if ((args["agent_textures"] != null) && (args["agent_textures"]).Type == OSDType.Array)
             //{
             //    OSDArray textures = (OSDArray)(args["agent_textures"]);
@@ -631,49 +756,67 @@ namespace OpenSim.Framework
             //        AgentTextures[i++] = o.AsUUID();
             //}
 
-            Appearance = new AvatarAppearance ();
 
-            // The code to unpack textures, visuals, wearables and attachments
-            // should be removed; packed appearance contains the full appearance
-            // This is retained for backward compatibility only
-            if (args ["texture_entry"] != null) {
-                byte[] rawtextures = args ["texture_entry"].AsBinary ();
-                Primitive.TextureEntry textures = new Primitive.TextureEntry (rawtextures, 0, rawtextures.Length);
-                Appearance.SetTextureEntries (textures);
-            } 
-
-            if (args ["visual_params"] != null) {
-                Appearance.SetVisualParams (args ["visual_params"].AsBinary ());
+            // packed_appearence should contain all appearance information
+            if (args.ContainsKey("packed_appearance") && (args["packed_appearance"]).Type == OSDType.Map)
+            {
+                m_log.WarnFormat("[CHILDAGENTDATAUPDATE] got packed appearance");
+                Appearance = new AvatarAppearance((OSDMap)args["packed_appearance"]);
             }
+            else
+            {
+                // if missing try the old pack method
+                m_log.WarnFormat("[CHILDAGENTDATAUPDATE] No packed appearance, checking old method");
 
-            if ((args ["wearables"] != null) && (args ["wearables"]).Type == OSDType.Array) {
-                OSDArray wears = (OSDArray)(args ["wearables"]);
-                for (int i = 0; i < wears.Count / 2; i++) {
-                    AvatarWearable awear = new AvatarWearable ((OSDArray)wears [i]);
-                    Appearance.SetWearable (i, awear);
+                Appearance = new AvatarAppearance();
+
+                // The code to unpack textures, visuals, wearables and attachments
+                // should be removed; packed appearance contains the full appearance
+                // This is retained for backward compatibility only
+                if (args["texture_entry"] != null)
+                {
+                    byte[] rawtextures = args["texture_entry"].AsBinary();
+                    Primitive.TextureEntry textures = new Primitive.TextureEntry(rawtextures, 0, rawtextures.Length);
+                    Appearance.SetTextureEntries(textures);
                 }
-            }
 
-            if ((args ["attachments"] != null) && (args ["attachments"]).Type == OSDType.Array) {
-                OSDArray attachs = (OSDArray)(args ["attachments"]);
-                foreach (OSD o in attachs) {
-                    if (o.Type == OSDType.Map) {
-                        // We know all of these must end up as attachments so we
-                        // append rather than replace to ensure multiple attachments
-                        // per point continues to work
-//                        m_log.DebugFormat("[CHILDAGENTDATAUPDATE]: Appending attachments for {0}", AgentID);
-                        Appearance.AppendAttachment (new AvatarAttachment ((OSDMap)o));
+                if (args["visual_params"] != null)
+                    Appearance.SetVisualParams(args["visual_params"].AsBinary());
+
+                if ((args["wearables"] != null) && (args["wearables"]).Type == OSDType.Array)
+                {
+                    OSDArray wears = (OSDArray)(args["wearables"]);
+
+                    for (int i = 0; i < wears.Count / 2; i++)
+                    {
+                        AvatarWearable awear = new AvatarWearable((OSDArray)wears[i]);
+                        Appearance.SetWearable(i, awear);
                     }
                 }
-            }
-            // end of code to remove
 
-            if (args.ContainsKey ("packed_appearance") && (args ["packed_appearance"]).Type == OSDType.Map) {
-                Appearance = new AvatarAppearance ((OSDMap)args ["packed_appearance"]);
-            } else {
-                m_log.WarnFormat ("[CHILDAGENTDATAUPDATE] No packed appearance");
+                if ((args["attachments"] != null) && (args["attachments"]).Type == OSDType.Array)
+                {
+                    OSDArray attachs = (OSDArray)(args["attachments"]);
+                    foreach (OSD o in attachs)
+                    {
+                        if (o.Type == OSDType.Map)
+                        {
+                            // We know all of these must end up as attachments so we
+                            // append rather than replace to ensure multiple attachments
+                            // per point continues to work
+                            //                        m_log.DebugFormat("[CHILDAGENTDATAUPDATE]: Appending attachments for {0}", AgentID);
+                            Appearance.AppendAttachment(new AvatarAttachment((OSDMap)o));
+                        }
+                    }
+                }
+                // end of code to remove
             }
-
+/* moved above
+            if (args.ContainsKey("packed_appearance") && (args["packed_appearance"]).Type == OSDType.Map)
+                Appearance = new AvatarAppearance((OSDMap)args["packed_appearance"]);
+            else
+                m_log.WarnFormat("[CHILDAGENTDATAUPDATE] No packed appearance");
+*/
             if ((args["controllers"] != null) && (args["controllers"]).Type == OSDType.Array)
             {
                 OSDArray controls = (OSDArray)(args["controllers"]);
@@ -737,14 +880,14 @@ namespace OpenSim.Framework
 
     public class CompleteAgentData : AgentData
     {
-        public override OSDMap Pack() 
+        public override OSDMap Pack(EntityTransferContext ctx) 
         {
-            return base.Pack();
+            return base.Pack(ctx);
         }
 
-        public override void Unpack(OSDMap map, IScene scene)
+        public override void Unpack(OSDMap map, IScene scene, EntityTransferContext ctx)
         {
-            base.Unpack(map, scene);
+            base.Unpack(map, scene, ctx);
         }
     }
 }

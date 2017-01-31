@@ -75,6 +75,7 @@ namespace OpenSim
                 new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
             ServicePointManager.DefaultConnectionLimit = 12;
+            ServicePointManager.UseNagleAlgorithm = false;
 
             // Add the arguments supplied when running the application to the configuration
             ArgvConfigSource configSource = new ArgvConfigSource(args);
@@ -129,7 +130,7 @@ namespace OpenSim
             if (workerThreads < workerThreadsMin)
             {
                 workerThreads = workerThreadsMin;
-                m_log.InfoFormat("[OPENSIM MAIN]: Bumping up to max worker threads to {0}",workerThreads);
+                m_log.InfoFormat("[OPENSIM MAIN]: Bumping up max worker threads to {0}",workerThreads);
             }
             if (workerThreads > workerThreadsMax)
             {

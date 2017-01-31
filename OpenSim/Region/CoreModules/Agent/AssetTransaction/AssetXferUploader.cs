@@ -28,6 +28,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Collections.Generic;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -40,6 +41,13 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 {
     public class AssetXferUploader
     {
+        // Viewer's notion of the default texture
+        private List<UUID> defaultIDs = new List<UUID> {
+                new UUID("5748decc-f629-461c-9a36-a35a221fe21f"),
+                new UUID("7ca39b4c-bd19-4699-aff7-f93fd03d3e7b"),
+                new UUID("6522e74d-1660-4e7f-b601-6f48c1659a77"),
+                new UUID("c228d1cf-4b5d-4ba8-84f4-899a0796aa97")
+                };
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
@@ -87,6 +95,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 
         private sbyte type = 0;
         private byte wearableType = 0;
+        private byte[] m_oldData = null;
         public ulong XferID;
         private Scene m_Scene;
 
@@ -129,18 +138,27 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 
             if (XferID == xferID)
             {
-                if (m_asset.Data.Length > 1)
+                lock (this)
                 {
-                    byte[] destinationArray = new byte[m_asset.Data.Length + data.Length];
-                    Array.Copy(m_asset.Data, 0, destinationArray, 0, m_asset.Data.Length);
-                    Array.Copy(data, 0, destinationArray, m_asset.Data.Length, data.Length);
-                    m_asset.Data = destinationArray;
-                }
-                else
-                {
-                    byte[] buffer2 = new byte[data.Length - 4];
-                    Array.Copy(data, 4, buffer2, 0, data.Length - 4);
-                    m_asset.Data = buffer2;
+                    int assetLength = m_asset.Data.Length;
+                    int dataLength = data.Length;
+
+                    if (m_asset.Data.Length > 1)
+                    {
+                        byte[] destinationArray = new byte[assetLength + dataLength];
+                        Array.Copy(m_asset.Data, 0, destinationArray, 0, assetLength);
+                        Array.Copy(data, 0, destinationArray, assetLength, dataLength);
+                        m_asset.Data = destinationArray;
+                    }
+                    else
+                    {
+                        if (dataLength > 4)
+                        {
+                            byte[] buffer2 = new byte[dataLength - 4];
+                            Array.Copy(data, 4, buffer2, 0, dataLength - 4);
+                            m_asset.Data = buffer2;
+                        }
+                    }
                 }
 
                 ourClient.SendConfirmXfer(xferID, packetID);
@@ -244,10 +262,10 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 {
                     CompleteTaskItemUpdate(m_updateTaskItemData);
                 }
-//                else if (m_storeLocal)
-//                {
-//                    m_Scene.AssetService.Store(m_asset);
-//                }
+                else if (m_asset.Local)
+                {
+                    m_Scene.AssetService.Store(m_asset);
+                }
             }
 
             m_log.DebugFormat(
@@ -319,12 +337,16 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 m_asset.Description = item.Description;
                 m_asset.Type = (sbyte)item.AssetType;
 
-                // We must always store the item at this point even if the asset hasn't finished uploading, in order
-                // to avoid a race condition when the appearance module retrieves the item to set the asset id in
-                // the AvatarAppearance structure.
-                item.AssetID = m_asset.FullID;
-                if (item.AssetID != UUID.Zero)
-                    m_Scene.InventoryService.UpdateItem(item);
+                // remove redundante m_Scene.InventoryService.UpdateItem
+                // if uploadState == UploadState.Complete)
+//                if (m_asset.FullID != UUID.Zero)
+//                {
+                    // We must always store the item at this point even if the asset hasn't finished uploading, in order
+                    // to avoid a race condition when the appearance module retrieves the item to set the asset id in
+                    // the AvatarAppearance structure.
+//                    item.AssetID = m_asset.FullID;
+//                    m_Scene.InventoryService.UpdateItem(item);
+//                }
 
                 if (m_uploadState == UploadState.Complete)
                 {
@@ -332,10 +354,21 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 }
                 else
                 {
-//                    m_log.DebugFormat(
-//                        "[ASSET XFER UPLOADER]: Holding update inventory item request {0} for {1} pending completion of asset xfer for transaction {2}",
-//                        item.Name, remoteClient.Name, transactionID);
-    
+                    // do it here to avoid the eventual race condition
+                    if (m_asset.FullID != UUID.Zero)
+                    {
+                        // We must always store the item at this point even if the asset hasn't finished uploading, in order
+                        // to avoid a race condition when the appearance module retrieves the item to set the asset id in
+                        // the AvatarAppearance structure.
+                        item.AssetID = m_asset.FullID;
+                        m_Scene.InventoryService.UpdateItem(item);
+                    }
+
+
+                    //                    m_log.DebugFormat(
+                    //                        "[ASSET XFER UPLOADER]: Holding update inventory item request {0} for {1} pending completion of asset xfer for transaction {2}",
+                    //                        item.Name, remoteClient.Name, transactionID);
+
                     m_updateItem = true;
                     m_updateItemData = item;
                 }
@@ -374,7 +407,15 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 //                "[ASSET XFER UPLOADER]: Storing asset {0} for earlier item update for {1} for {2}",
 //                m_asset.FullID, item.Name, ourClient.Name);
 
+            ValidateAssets();
             m_Scene.AssetService.Store(m_asset);
+            if (m_asset.FullID != UUID.Zero)
+            {
+                item.AssetID = m_asset.FullID;
+                m_Scene.InventoryService.UpdateItem(item);
+            }
+
+            ourClient.SendInventoryItemCreateUpdate(item, m_transactionID, 0);
 
             m_transactions.RemoveXferUploader(m_transactionID);
 
@@ -391,6 +432,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 //                "[ASSET XFER UPLOADER]: Storing asset {0} for earlier task item update for {1} for {2}",
 //                m_asset.FullID, taskItem.Name, ourClient.Name);
 
+            ValidateAssets();
             m_Scene.AssetService.Store(m_asset);
 
             m_transactions.RemoveXferUploader(m_transactionID);
@@ -398,6 +440,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 
         private void CompleteCreateItem(uint callbackID)
         {
+            ValidateAssets();
             m_Scene.AssetService.Store(m_asset);
 
             InventoryItemBase item = new InventoryItemBase();
@@ -418,13 +461,159 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
             item.Flags = (uint) wearableType;
             item.CreationDate = Util.UnixTimeSinceEpoch();
 
+            m_log.DebugFormat("[XFER]: Created item {0} with asset {1}",
+                    item.ID, item.AssetID);
+
             if (m_Scene.AddInventoryItem(item))
-                ourClient.SendInventoryItemCreateUpdate(item, callbackID);
+                ourClient.SendInventoryItemCreateUpdate(item, m_transactionID, callbackID);
             else
                 ourClient.SendAlertMessage("Unable to create inventory item");
 
             m_transactions.RemoveXferUploader(m_transactionID);
         }
 
+
+        private void ValidateAssets()
+        {
+            if (m_asset.Type == (sbyte)CustomAssetType.AnimationSet)
+            {
+                AnimationSet animSet = new AnimationSet(m_asset.Data);
+
+                bool allOk = animSet.Validate(x => {
+                    int perms = m_Scene.InventoryService.GetAssetPermissions(ourClient.AgentId, x);
+                    int required = (int)(PermissionMask.Transfer | PermissionMask.Copy);
+                    if ((perms & required) != required)
+                        return false;
+                    return true;
+                    });
+
+                if (!allOk)
+                    m_asset.Data = animSet.ToBytes();
+            }
+
+            if (m_asset.Type == (sbyte)AssetType.Clothing ||
+                m_asset.Type == (sbyte)AssetType.Bodypart)
+            {
+                string content = System.Text.Encoding.ASCII.GetString(m_asset.Data);
+                string[] lines = content.Split(new char[] {'\n'});
+
+                List<string> validated = new List<string>();
+
+                Dictionary<int, UUID> allowed = ExtractTexturesFromOldData();
+
+                int textures = 0;
+
+                foreach (string line in lines)
+                {
+                    try
+                    {
+                        if (line.StartsWith("textures "))
+                        {
+                            textures = Convert.ToInt32(line.Substring(9));
+                            validated.Add(line);
+                        }
+                        else if (textures > 0)
+                        {
+                            string[] parts = line.Split(new char[] {' '});
+
+                            UUID tx = new UUID(parts[1]);
+                            int id = Convert.ToInt32(parts[0]);
+
+                            if (defaultIDs.Contains(tx) || tx == UUID.Zero ||
+                                (allowed.ContainsKey(id) && allowed[id] == tx))
+                            {
+                                validated.Add(parts[0] + " " + tx.ToString());
+                            }
+                            else
+                            {
+                                int perms = m_Scene.InventoryService.GetAssetPermissions(ourClient.AgentId, tx);
+                                int full = (int)(PermissionMask.Modify | PermissionMask.Transfer | PermissionMask.Copy);
+
+                                if ((perms & full) != full)
+                                {
+                                    m_log.ErrorFormat("[ASSET UPLOADER]: REJECTED update with texture {0} from {1} because they do not own the texture", tx, ourClient.AgentId);
+                                    validated.Add(parts[0] + " " + UUID.Zero.ToString());
+                                }
+                                else
+                                {
+                                    validated.Add(line);
+                                }
+                            }
+                            textures--;
+                        }
+                        else
+                        {
+                            validated.Add(line);
+                        }
+                    }
+                    catch
+                    {
+                        // If it's malformed, skip it
+                    }
+                }
+
+                string final = String.Join("\n", validated.ToArray());
+
+                m_asset.Data = System.Text.Encoding.ASCII.GetBytes(final);
+            }
+        }
+
+        /// <summary>
+        /// Get the asset data uploaded in this transfer.
+        /// </summary>
+        /// <returns>null if the asset has not finished uploading</returns>
+        public AssetBase GetAssetData()
+        {
+            if (m_uploadState == UploadState.Complete)
+            {
+                ValidateAssets();
+                return m_asset;
+            }
+
+            return null;
+        }
+
+        public void SetOldData(byte[] d)
+        {
+            m_oldData = d;
+        }
+
+        private Dictionary<int,UUID> ExtractTexturesFromOldData()
+        {
+            Dictionary<int,UUID> result = new Dictionary<int,UUID>();
+            if (m_oldData == null)
+                return result;
+
+            string content = System.Text.Encoding.ASCII.GetString(m_oldData);
+            string[] lines = content.Split(new char[] {'\n'});
+
+            int textures = 0;
+
+            foreach (string line in lines)
+            {
+                try
+                {
+                    if (line.StartsWith("textures "))
+                    {
+                        textures = Convert.ToInt32(line.Substring(9));
+                    }
+                    else if (textures > 0)
+                    {
+                        string[] parts = line.Split(new char[] {' '});
+
+                        UUID tx = new UUID(parts[1]);
+                        int id = Convert.ToInt32(parts[0]);
+                        result[id] = tx;
+                        textures--;
+                    }
+                }
+                catch
+                {
+                    // If it's malformed, skip it
+                }
+            }
+
+            return result;
+        }
     }
 }

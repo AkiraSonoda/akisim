@@ -144,7 +144,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         // Avatar Info Commands
         string osGetAgentIP(string agent);
         LSL_List osGetAgents();
-
+        
         // Teleport commands
         void osTeleportAgent(string agent, string regionName, LSL_Types.Vector3 position, LSL_Types.Vector3 lookat);
         void osTeleportAgent(string agent, int regionX, int regionY, LSL_Types.Vector3 position, LSL_Types.Vector3 lookat);
@@ -283,6 +283,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         string osGetGridGatekeeperURI();
         string osGetGridCustom(string key);
 
+        string osGetAvatarHomeURI(string uuid);
+
         LSL_String osFormatString(string str, LSL_List strings);
         LSL_List osMatchString(string src, string pattern, int start);
         LSL_String osReplaceString(string src, string pattern, string replace, int count, int start);
@@ -353,6 +355,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         LSL_Key     osOwnerSaveAppearance(string notecard);
         LSL_Key     osAgentSaveAppearance(key agentId, string notecard);
 
+        key osGetGender(LSL_Key rawAvatarId);
         key osGetMapTexture();
         key osGetRegionMapTexture(string regionName);
         LSL_List osGetRegionStats();

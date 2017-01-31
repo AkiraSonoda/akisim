@@ -59,12 +59,12 @@ namespace OpenSim.Framework.Tests
                 Assert.That(Util.GetMagnitude(v2),
                             new DoubleToleranceConstraint(expectedMagnitude, lowPrecisionTolerance),
                             "Magnitude of vector was incorrect.");
-
+/*
                 TestDelegate d = delegate() { Util.GetNormalizedVector(v1); };
                 bool causesArgumentException = TestHelpers.AssertThisDelegateCausesArgumentException(d);
                 Assert.That(causesArgumentException, Is.True,
                             "Getting magnitude of null vector did not cause argument exception.");
-
+*/
                 Vector3 expectedNormalizedVector = new Vector3(.577f, .577f, .577f);
                 double expectedNormalizedMagnitude = 1;
                 Vector3 normalizedVector = Util.GetNormalizedVector(v2);
@@ -92,7 +92,7 @@ namespace OpenSim.Framework.Tests
                 Assert.That(Util.GetMagnitude(v2),
                             new DoubleToleranceConstraint(expectedMagnitude, lowPrecisionTolerance),
                             "Magnitude of vector was incorrect.");
-
+/*
                 TestDelegate d = delegate() { Util.GetNormalizedVector(v1); };
                 bool causesArgumentException = TestHelpers.AssertThisDelegateCausesArgumentException(d);
                 Assert.That(causesArgumentException, Is.True,
@@ -102,6 +102,7 @@ namespace OpenSim.Framework.Tests
                 causesArgumentException = TestHelpers.AssertThisDelegateCausesArgumentException(d);
                 Assert.That(causesArgumentException, Is.True,
                             "Getting magnitude of null vector did not cause argument exception.");
+*/
             }
 
             //Lets test a simple case of <0,0,0> and <-5,-5,-5>
@@ -120,12 +121,12 @@ namespace OpenSim.Framework.Tests
                 Assert.That(Util.GetMagnitude(v2),
                             new DoubleToleranceConstraint(expectedMagnitude, lowPrecisionTolerance),
                             "Magnitude of vector was incorrect.");
-
+/*
                 TestDelegate d = delegate() { Util.GetNormalizedVector(v1); };
                 bool causesArgumentException = TestHelpers.AssertThisDelegateCausesArgumentException(d);
                 Assert.That(causesArgumentException, Is.True,
                             "Getting magnitude of null vector did not cause argument exception.");
-
+*/
                 Vector3 expectedNormalizedVector = new Vector3(-.577f, -.577f, -.577f);
                 double expectedNormalizedMagnitude = 1;
                 Vector3 normalizedVector = Util.GetNormalizedVector(v2);
@@ -173,8 +174,8 @@ namespace OpenSim.Framework.Tests
         [Test]
         public void SLUtilTypeConvertTests()
         {
-            int[] assettypes = new int[]{-1,0,1,2,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22
-                                            ,23,24,25,46,47,48};
+            int[] assettypes = new int[]{-1,0,1,2,3,5,6,7,8,10,11,12,13,17,18,19,20,21,22
+                                            ,24,25};
             string[] contenttypes = new string[]
                                         {
                                   "application/octet-stream",
@@ -186,26 +187,18 @@ namespace OpenSim.Framework.Tests
                                   "application/vnd.ll.primitive",
                                   "application/vnd.ll.notecard",
                                   "application/vnd.ll.folder",
-                                  "application/vnd.ll.rootfolder",
                                   "application/vnd.ll.lsltext",
                                   "application/vnd.ll.lslbyte",
                                   "image/tga",
                                   "application/vnd.ll.bodypart",
-                                  "application/vnd.ll.trashfolder",
-                                  "application/vnd.ll.snapshotfolder",
-                                  "application/vnd.ll.lostandfoundfolder",
                                   "audio/x-wav",
                                   "image/tga",
                                   "image/jpeg",
                                   "application/vnd.ll.animation",
                                   "application/vnd.ll.gesture",
                                   "application/x-metaverse-simstate",
-                                  "application/vnd.ll.favoritefolder",
                                   "application/vnd.ll.link",
                                   "application/vnd.ll.linkfolder",
-                                  "application/vnd.ll.currentoutfitfolder",
-                                  "application/vnd.ll.outfitfolder",
-                                  "application/vnd.ll.myoutfitsfolder"
                     };
             for (int i=0;i<assettypes.Length;i++)
             {
@@ -223,7 +216,7 @@ namespace OpenSim.Framework.Tests
                             String.Format("Incorrect AssetType mapped from Content-Type {0}", contenttypes[i]));
             }
 
-            int[] inventorytypes = new int[] {-1,0,1,2,3,6,7,8,9,10,15,17,18,20};
+            int[] inventorytypes = new int[] {-1,0,1,2,3,6,7,8,10,15,17,18,20};
             string[] invcontenttypes = new string[]
                                            {
                                                "application/octet-stream",
@@ -233,7 +226,6 @@ namespace OpenSim.Framework.Tests
                                                "application/vnd.ll.landmark",
                                                "application/vnd.ll.primitive",
                                                "application/vnd.ll.notecard",
-                                               "application/vnd.ll.folder",
                                                "application/vnd.ll.rootfolder",
                                                "application/vnd.ll.lsltext",
                                                "image/x-j2c",
@@ -272,8 +264,8 @@ namespace OpenSim.Framework.Tests
                                   };
             sbyte[] invtypes = new sbyte[]
                                    {
-                                       0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 18, 18, 18, 18, 6, 6, 7, 7, 8, 9, 10, 10, 10, 10
-                                       , 8, 8, 8, 19, 19, 20, 20, 15, -1
+                                       0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 18, 18, 18, 18, 6, 6, 7, 7, -1, 8, 10, 10, 10, 10
+                                       , 14, 15, 16, 19, 19, 20, 20, 15, -1
                                    };
 
             for (int i = 0; i < invtypes.Length; i++)

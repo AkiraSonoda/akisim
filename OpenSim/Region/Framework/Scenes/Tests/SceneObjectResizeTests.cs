@@ -30,7 +30,6 @@ using System.Reflection;
 using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Tests.Common;
 
@@ -61,6 +60,8 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             Assert.That(g1Post.RootPart.Scale.X, Is.EqualTo(2));
             Assert.That(g1Post.RootPart.Scale.Y, Is.EqualTo(3));
             Assert.That(g1Post.RootPart.Scale.Z, Is.EqualTo(4));
+
+//            Assert.That(g1Post.RootPart.UndoCount, Is.EqualTo(1));
         }
 
         /// <summary>
@@ -73,8 +74,8 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             //log4net.Config.XmlConfigurator.Configure();
 
             Scene scene = new SceneHelpers().SetupScene();
-
-            SceneObjectGroup g1 = SceneHelpers.CreateSceneObject(2, UUID.Zero);
+            UUID owner = UUID.Random();
+            SceneObjectGroup g1 = SceneHelpers.CreateSceneObject(2, owner);
             g1.RootPart.Scale = new Vector3(2, 3, 4);
             g1.Parts[1].Scale = new Vector3(5, 6, 7);
 

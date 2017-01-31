@@ -35,7 +35,6 @@ using Nini.Config;
 using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
 using OpenSim.Framework.Servers;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.CoreModules.Framework;
@@ -106,6 +105,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
 //            Assert.That(sp.Lookat, Is.EqualTo(teleportLookAt));
         }
 
+/*
         [Test]
         public void TestSameSimulatorIsolatedRegionsV1()
         {
@@ -137,7 +137,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             SceneHelpers.SetupSceneModules(new Scene[] { sceneA, sceneB }, config, lscm);
 
             // FIXME: Hack - this is here temporarily to revert back to older entity transfer behaviour
-            lscm.ServiceVersion = "SIMULATION/0.1";
+            lscm.ServiceVersion = 0.1f;
 
             Vector3 teleportPosition = new Vector3(10, 11, 12);
             Vector3 teleportLookAt = new Vector3(20, 21, 22);
@@ -179,6 +179,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             // position instead).
 //            Assert.That(sp.Lookat, Is.EqualTo(teleportLookAt));
         }
+*/
 
         [Test]
         public void TestSameSimulatorIsolatedRegionsV2()
@@ -281,7 +282,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             // We need to set up the permisions module on scene B so that our later use of agent limit to deny
             // QueryAccess won't succeed anyway because administrators are always allowed in and the default
             // IsAdministrator if no permissions module is present is true.
-            SceneHelpers.SetupSceneModules(sceneB, config, new object[] { new PermissionsModule(), etmB });
+            SceneHelpers.SetupSceneModules(sceneB, config, new object[] { new DefaultPermissionsModule(), etmB });
 
             // Shared scene modules
             SceneHelpers.SetupSceneModules(new Scene[] { sceneA, sceneB }, config, lscm);
@@ -446,7 +447,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             // We need to set up the permisions module on scene B so that our later use of agent limit to deny
             // QueryAccess won't succeed anyway because administrators are always allowed in and the default
             // IsAdministrator if no permissions module is present is true.
-            SceneHelpers.SetupSceneModules(sceneB, config, new object[] { new PermissionsModule(), etmB });
+            SceneHelpers.SetupSceneModules(sceneB, config, new object[] { new DefaultPermissionsModule(), etmB });
 
             // Shared scene modules
             SceneHelpers.SetupSceneModules(new Scene[] { sceneA, sceneB }, config, lscm);
@@ -489,6 +490,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
 //            TestHelpers.DisableLogging();
         }
 
+/*
         [Test]
         public void TestSameSimulatorNeighbouringRegionsV1()
         {
@@ -520,7 +522,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
             SceneHelpers.SetupSceneModules(sceneB, config, new CapabilitiesModule(), etmB);
 
             // FIXME: Hack - this is here temporarily to revert back to older entity transfer behaviour
-            lscm.ServiceVersion = "SIMULATION/0.1";
+            lscm.ServiceVersion = 0.1f;
 
             Vector3 teleportPosition = new Vector3(10, 11, 12);
             Vector3 teleportLookAt = new Vector3(20, 21, 22);
@@ -574,6 +576,7 @@ namespace OpenSim.Region.Framework.Scenes.Tests
 
 //            TestHelpers.DisableLogging();
         }
+*/
 
         [Test]
         public void TestSameSimulatorNeighbouringRegionsV2()

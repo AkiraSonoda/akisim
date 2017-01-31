@@ -181,7 +181,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             Primitive.TextureEntryFace eyesFace = bakedTextureEntry.CreateFace(eyesFaceIndex);
             eyesFace.TextureID = eyesTextureId;
 
-            afm.SetAppearance(sp, bakedTextureEntry, visualParams, null);
+            afm.SetAppearance(sp, bakedTextureEntry, visualParams, new WearableCacheItem[0]);
             afm.SaveBakedTextures(userId);
 //            Dictionary<BakeType, Primitive.TextureEntryFace> bakedTextures = afm.GetBakedTextureFaces(userId);
 

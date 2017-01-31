@@ -301,11 +301,11 @@ namespace OpenSim.Framework.Servers
                     + "  3 = full stack trace, including common threads\n",
                 HandleDebugThreadpoolLevel);
 
-            m_console.Commands.AddCommand(
-                "Debug", false, "show threadpool calls active",
-                "show threadpool calls active",
-                "Show details about threadpool calls that are still active (currently waiting or in progress)",
-                HandleShowThreadpoolCallsActive);
+//            m_console.Commands.AddCommand(
+//                "Debug", false, "show threadpool calls active",
+//                "show threadpool calls active",
+//                "Show details about threadpool calls that are still active (currently waiting or in progress)",
+//                HandleShowThreadpoolCallsActive);
 
             m_console.Commands.AddCommand(
                 "Debug", false, "show threadpool calls complete",
@@ -901,9 +901,10 @@ namespace OpenSim.Framework.Servers
             }
         }
 
-        protected string GetVersionText()
+        public string GetVersionText()
         {
-            return String.Format("Version: {0} (interface version {1})", m_version, VersionInfo.MajorInterfaceVersion);
+            return String.Format("Version: {0} (SIMULATION/{1} - SIMULATION/{2})", 
+                m_version, VersionInfo.SimulationServiceVersionSupportedMin, VersionInfo.SimulationServiceVersionSupportedMax);
         }
 
         /// <summary>

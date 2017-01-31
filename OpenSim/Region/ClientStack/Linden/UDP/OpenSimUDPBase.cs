@@ -112,7 +112,7 @@ namespace OpenMetaverse
         /// For debugging purposes only... random number generator for dropping
         /// outbound packets.
         /// </summary>
-        private Random m_dropRandomGenerator;
+        private Random m_dropRandomGenerator = new Random();
         
         /// <summary>
         /// For debugging purposes only... parameters for a simplified
@@ -206,15 +206,15 @@ namespace OpenMetaverse
                 const int SIO_UDP_CONNRESET = -1744830452;
 
                 IPEndPoint ipep = new IPEndPoint(m_localBindAddress, m_udpPort);
-                
-                m_log.DebugFormat(
-                    "[UDPBASE]: Binding UDP listener using internal IP address config {0}:{1}", 
-                    ipep.Address, ipep.Port);                
 
                 m_udpSocket = new Socket(
                     AddressFamily.InterNetwork,
                     SocketType.Dgram,
                     ProtocolType.Udp);
+
+                // OpenSim may need this but in AVN, this messes up automated
+                // sim restarts badly
+                //m_udpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, false);
 
                 try
                 {

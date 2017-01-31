@@ -67,6 +67,7 @@ namespace OpenSim.Framework.Servers
         /// This will control a periodic log printout of the current 'show stats' (if they are active) for this
         /// server.
         /// </summary>
+
         private int m_periodDiagnosticTimerMS = 60 * 60 * 1000;
         private Timer m_periodicDiagnosticsTimer = new Timer(60 * 60 * 1000);
         
@@ -89,7 +90,6 @@ namespace OpenSim.Framework.Servers
 
             // Random uuid for private data
             m_osSecret = UUID.Random().ToString();
-
         }
         
         /// <summary>
@@ -157,19 +157,24 @@ namespace OpenSim.Framework.Servers
         /// Performs initialisation of the scene, such as loading configuration from disk.
         /// </summary>
         public virtual void Startup()
-        {   
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-
+        {
+            m_log.Info("[STARTUP]: Beginning startup processing");
+            
+            m_log.Info("[STARTUP]: version: " + m_version + Environment.NewLine);
+            // clr version potentially is more confusing than helpful, since it doesn't tell us if we're running under Mono/MS .NET and
+            // the clr version number doesn't match the project version number under Mono.
+            //m_log.Info("[STARTUP]: Virtual machine runtime version: " + Environment.Version + Environment.NewLine);
+            m_log.InfoFormat(
+                "[STARTUP]: Operating system version: {0}, .NET platform {1}, {2}-bit\n",
+                Environment.OSVersion, Environment.OSVersion.Platform, Util.Is64BitProcess() ? "64" : "32");
+            
             StartupSpecific();
             
             TimeSpan timeTaken = DateTime.Now - m_startuptime;
             
-            MainConsole.Instance.OutputFormat(
-                "PLEASE WAIT FOR LOGINS TO BE ENABLED ON REGIONS ONCE SCRIPTS HAVE STARTED.  Non-script portion of startup took {0}m {1}s.",
-                timeTaken.Minutes, timeTaken.Seconds);
+//            MainConsole.Instance.OutputFormat(
+//                "PLEASE WAIT FOR LOGINS TO BE ENABLED ON REGIONS ONCE SCRIPTS HAVE STARTED.  Non-script portion of startup took {0}m {1}s.",
+//                timeTaken.Minutes, timeTaken.Seconds);
         }
 
         public string osSecret 

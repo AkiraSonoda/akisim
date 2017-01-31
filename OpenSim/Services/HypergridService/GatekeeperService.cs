@@ -131,8 +131,11 @@ namespace OpenSim.Services.HypergridService
                 else if (simulationService != string.Empty)
                         m_SimulationService = ServerUtils.LoadPlugin<ISimulationService>(simulationService, args);
 
-                m_AllowedClients = serverConfig.GetString("AllowedClients", string.Empty);
-                m_DeniedClients = serverConfig.GetString("DeniedClients", string.Empty);
+                string[] possibleAccessControlConfigSections = new string[] { "AccessControl", "GatekeeperService" };
+                m_AllowedClients = Util.GetConfigVarFromSections<string>(
+                        config, "AllowedClients", possibleAccessControlConfigSections, string.Empty);
+                m_DeniedClients = Util.GetConfigVarFromSections<string>(
+                        config, "DeniedClients", possibleAccessControlConfigSections, string.Empty); 
                 m_ForeignAgentsAllowed = serverConfig.GetBoolean("ForeignAgentsAllowed", true);
 
                 LoadDomainExceptionsFromConfig(serverConfig, "AllowExcept", m_ForeignsAllowedExceptions);
@@ -430,7 +433,7 @@ namespace OpenSim.Services.HypergridService
                 try
                 {
                     Uri uri = new Uri(aCircuit.ServiceURLs["HomeURI"].ToString());
-                    aCircuit.lastname = "@" + uri.Host; // + ":" + uri.Port;
+                    aCircuit.lastname = "@" + uri.Authority;
                 }
                 catch
                 {
@@ -449,14 +452,14 @@ namespace OpenSim.Services.HypergridService
 
             m_log.DebugFormat("[GATEKEEPER SERVICE]: Launching {0}, Teleport Flags: {1}", aCircuit.Name, loginFlag);
 
-            string version;
+            EntityTransferContext ctx = new EntityTransferContext();
 
             if (!m_SimulationService.QueryAccess(
                 destination, aCircuit.AgentID, aCircuit.ServiceURLs["HomeURI"].ToString(), 
-                true, aCircuit.startpos, "SIMULATION/0.3", out version, out reason))
+                true, aCircuit.startpos, new List<UUID>(), ctx, out reason))
                 return false;
 
-            return m_SimulationService.CreateAgent(source, destination, aCircuit, (uint)loginFlag, out reason);
+            return m_SimulationService.CreateAgent(source, destination, aCircuit, (uint)loginFlag, ctx, out reason);
         }
 
         protected bool Authenticate(AgentCircuitData aCircuit)

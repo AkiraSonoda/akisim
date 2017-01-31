@@ -35,7 +35,6 @@ using OpenMetaverse;
 using Mono.Addins;
 
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework.Client;
@@ -179,7 +178,7 @@ namespace OpenSim.Region.OptionalModules.Scripting.XmlRpcGridRouterModule
         {
             if(!m_Channels.ContainsKey(itemID))
             {
-                m_log.InfoFormat("[XMLRPC GRID ROUTER]: Attempted to unregister non-existing Item: {0}", itemID.ToString());
+                //m_log.InfoFormat("[XMLRPC GRID ROUTER]: Attempted to unregister non-existing Item: {0}", itemID.ToString());
                 return false;
             }
 

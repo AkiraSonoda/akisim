@@ -154,11 +154,29 @@ namespace OpenSim.Data.MySQL
         /// </summary>
         /// <param name="asset">Asset UUID to create</param>
         /// <remarks>On failure : Throw an exception and attempt to reconnect to database</remarks>
-        override public void StoreAsset(AssetBase asset)
+        override public bool StoreAsset(AssetBase asset)
         {
             using (MySqlConnection dbcon = new MySqlConnection(m_connectionString))
             {
                 dbcon.Open();
+
+                string assetName = asset.Name;
+                if (asset.Name.Length > AssetBase.MAX_ASSET_NAME)
+                {
+                    assetName = asset.Name.Substring(0, AssetBase.MAX_ASSET_NAME);
+                    m_log.WarnFormat(
+                        "[ASSET DB]: Name '{0}' for asset {1} truncated from {2} to {3} characters on add",
+                        asset.Name, asset.ID, asset.Name.Length, assetName.Length);
+                }
+
+                string assetDescription = asset.Description;
+                if (asset.Description.Length > AssetBase.MAX_ASSET_DESC)
+                {
+                    assetDescription = asset.Description.Substring(0, AssetBase.MAX_ASSET_DESC);
+                    m_log.WarnFormat(
+                        "[ASSET DB]: Description '{0}' for asset {1} truncated from {2} to {3} characters on add",
+                        asset.Description, asset.ID, asset.Description.Length, assetDescription.Length);
+                }
 
                 using (MySqlCommand cmd =
                     new MySqlCommand(
@@ -166,51 +184,29 @@ namespace OpenSim.Data.MySQL
                         "VALUES(?id, ?name, ?description, ?assetType, ?local, ?temporary, ?create_time, ?access_time, ?asset_flags, ?CreatorID, ?data)",
                         dbcon))
                 {
-                    string assetName = asset.Name;
-                    if (asset.Name.Length > AssetBase.MAX_ASSET_NAME)
-                    {
-                        assetName = asset.Name.Substring(0, AssetBase.MAX_ASSET_NAME);
-                        m_log.WarnFormat(
-                            "[ASSET DB]: Name '{0}' for asset {1} truncated from {2} to {3} characters on add", 
-                            asset.Name, asset.ID, asset.Name.Length, assetName.Length);
-                    }
-
-                    string assetDescription = asset.Description;
-                    if (asset.Description.Length > AssetBase.MAX_ASSET_DESC)
-                    {
-                        assetDescription = asset.Description.Substring(0, AssetBase.MAX_ASSET_DESC);
-                        m_log.WarnFormat(
-                            "[ASSET DB]: Description '{0}' for asset {1} truncated from {2} to {3} characters on add", 
-                            asset.Description, asset.ID, asset.Description.Length, assetDescription.Length);
-                    }
-
                     try
                     {
-                        using (cmd)
-                        {
-                            // create unix epoch time
-                            int now = (int)Utils.DateTimeToUnixTime(DateTime.UtcNow);
-                            cmd.Parameters.AddWithValue("?id", asset.ID);
-                            cmd.Parameters.AddWithValue("?name", assetName);
-                            cmd.Parameters.AddWithValue("?description", assetDescription);
-                            cmd.Parameters.AddWithValue("?assetType", asset.Type);
-                            cmd.Parameters.AddWithValue("?local", asset.Local);
-                            cmd.Parameters.AddWithValue("?temporary", asset.Temporary);
-                            cmd.Parameters.AddWithValue("?create_time", now);
-                            cmd.Parameters.AddWithValue("?access_time", now);
-                            cmd.Parameters.AddWithValue("?CreatorID", asset.Metadata.CreatorID);
-                            cmd.Parameters.AddWithValue("?asset_flags", (int)asset.Flags);
-                            cmd.Parameters.AddWithValue("?data", asset.Data);
-                            cmd.ExecuteNonQuery();
-                        }
+                        // create unix epoch time
+                        int now = (int)Utils.DateTimeToUnixTime(DateTime.UtcNow);
+                        cmd.Parameters.AddWithValue("?id", asset.ID);
+                        cmd.Parameters.AddWithValue("?name", assetName);
+                        cmd.Parameters.AddWithValue("?description", assetDescription);
+                        cmd.Parameters.AddWithValue("?assetType", asset.Type);
+                        cmd.Parameters.AddWithValue("?local", asset.Local);
+                        cmd.Parameters.AddWithValue("?temporary", asset.Temporary);
+                        cmd.Parameters.AddWithValue("?create_time", now);
+                        cmd.Parameters.AddWithValue("?access_time", now);
+                        cmd.Parameters.AddWithValue("?CreatorID", asset.Metadata.CreatorID);
+                        cmd.Parameters.AddWithValue("?asset_flags", (int)asset.Flags);
+                        cmd.Parameters.AddWithValue("?data", asset.Data);
+                        cmd.ExecuteNonQuery();
+                        return true;
                     }
                     catch (Exception e)
                     {
-                        m_log.Error(
-                            string.Format(
-                                "[ASSET DB]: MySQL failure creating asset {0} with name {1}.  Exception  ",
-                                asset.FullID, asset.Name)
-                            , e);
+                        m_log.ErrorFormat("[ASSET DB]: MySQL failure creating asset {0} with name \"{1}\". Error: {2}",
+                            asset.FullID, asset.Name, e.Message);
+                        return false;
                     }
                 }
             }
@@ -227,21 +223,18 @@ namespace OpenSim.Data.MySQL
                 {
                     try
                     {
-                        using (cmd)
-                        {
-                            // create unix epoch time
-                            int now = (int)Utils.DateTimeToUnixTime(DateTime.UtcNow);
-                            cmd.Parameters.AddWithValue("?id", asset.ID);
-                            cmd.Parameters.AddWithValue("?access_time", now);
-                            cmd.ExecuteNonQuery();
-                        }
+                        // create unix epoch time
+                        int now = (int)Utils.DateTimeToUnixTime(DateTime.UtcNow);
+                        cmd.Parameters.AddWithValue("?id", asset.ID);
+                        cmd.Parameters.AddWithValue("?access_time", now);
+                        cmd.ExecuteNonQuery();
                     }
                     catch (Exception e)
                     {
                         m_log.Error(
                             string.Format(
-                                "[ASSETS DB]: Failure updating access_time for asset {0} with name {1}.  Exception  ", 
-                                asset.FullID, asset.Name), 
+                                "[ASSETS DB]: Failure updating access_time for asset {0} with name {1}.  Exception  ",
+                                asset.FullID, asset.Name),
                             e);
                     }
                 }

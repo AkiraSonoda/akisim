@@ -386,7 +386,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             return root;
         }
 
-        public InventoryFolderBase GetFolderForType(UUID userID, AssetType type)
+        public InventoryFolderBase GetFolderForType(UUID userID, FolderType type)
         {
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -432,6 +432,25 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             IInventoryService connector = GetConnector(invURL);
 
             return connector.GetFolderContent(userID, folderID);
+        }
+
+        public InventoryCollection[] GetMultipleFoldersContent(UUID userID, UUID[] folderIDs)
+        {
+            string invURL = GetInventoryServiceURL(userID);
+
+            if (invURL == null) // not there, forward to local inventory connector to resolve
+                lock (m_Lock)
+                    return m_LocalGridInventoryService.GetMultipleFoldersContent(userID, folderIDs);
+
+            else
+            {
+                InventoryCollection[] coll = new InventoryCollection[folderIDs.Length];
+                int i = 0;
+                foreach (UUID fid in folderIDs)
+                    coll[i++] = GetFolderContent(userID, fid);
+
+                return coll;
+            }
         }
 
         public List<InventoryItemBase> GetFolderItems(UUID userID, UUID folderID)
@@ -718,6 +737,23 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             IInventoryService connector = GetConnector(invURL);
 
             return connector.GetItem(item);
+        }
+
+        public InventoryItemBase[] GetMultipleItems(UUID userID, UUID[] itemIDs)
+        {
+            if (itemIDs == null)
+                return new InventoryItemBase[0];
+            //m_log.Debug("[HG INVENTORY CONNECTOR]: GetItem " + item.ID);
+
+            string invURL = GetInventoryServiceURL(userID);
+
+            if (invURL == null) // not there, forward to local inventory connector to resolve
+                lock (m_Lock)
+                    return m_LocalGridInventoryService.GetMultipleItems(userID, itemIDs);
+
+            IInventoryService connector = GetConnector(invURL);
+
+            return connector.GetMultipleItems(userID, itemIDs);
         }
 
         public InventoryFolderBase GetFolder(InventoryFolderBase folder)

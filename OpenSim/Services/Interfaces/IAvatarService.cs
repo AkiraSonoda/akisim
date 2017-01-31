@@ -150,7 +150,8 @@ namespace OpenSim.Services.Interfaces
             // Wearables
             Data["AvatarHeight"] = appearance.AvatarHeight.ToString();
 
-            for (int i = 0 ; i < AvatarWearable.MAX_WEARABLES ; i++)
+            // TODO: With COF, is this even needed?
+            for (int i = 0 ; i < AvatarWearable.LEGACY_VERSION_MAX_WEARABLES ; i++)
             {
                 for (int j = 0 ; j < appearance.Wearables[i].Count ; j++)
                 {
@@ -162,10 +163,15 @@ namespace OpenSim.Services.Interfaces
             }
 
             // Visual Params
-            string[] vps = new string[AvatarAppearance.VISUALPARAM_COUNT];
-            byte[] binary = appearance.VisualParams;
+            //string[] vps = new string[AvatarAppearance.VISUALPARAM_COUNT];
+            //byte[] binary = appearance.VisualParams;
 
-            for (int i = 0 ; i < AvatarAppearance.VISUALPARAM_COUNT ; i++)
+            //            for (int i = 0 ; i < AvatarAppearance.VISUALPARAM_COUNT ; i++)
+
+            byte[] binary = appearance.VisualParams;
+            string[] vps = new string[binary.Length];
+
+            for (int i = 0; i < binary.Length; i++)
             {
                 vps[i] = binary[i].ToString();
             }
@@ -202,7 +208,13 @@ namespace OpenSim.Services.Interfaces
                     appearance.Serial = Int32.Parse(Data["Serial"]);
 
                 if (Data.ContainsKey("AvatarHeight"))
-                    appearance.AvatarHeight = float.Parse(Data["AvatarHeight"]);
+                {
+                    float h = float.Parse(Data["AvatarHeight"]);
+                    if( h == 0f)
+                        h = 1.9f;
+                    appearance.SetSize(new Vector3(0.45f, 0.6f, h ));
+//                    appearance.AvatarHeight = float.Parse(Data["AvatarHeight"]);
+                }
 
                 // Legacy Wearables
                 if (Data.ContainsKey("BodyItem"))
@@ -273,10 +285,13 @@ namespace OpenSim.Services.Interfaces
                 if (Data.ContainsKey("VisualParams"))
                 {
                     string[] vps = Data["VisualParams"].Split(new char[] {','});
-                    byte[] binary = new byte[AvatarAppearance.VISUALPARAM_COUNT];
+                    //byte[] binary = new byte[AvatarAppearance.VISUALPARAM_COUNT];
 
-                    for (int i = 0 ; i < vps.Length && i < binary.Length ; i++)
-                        binary[i] = (byte)Convert.ToInt32(vps[i]);
+                    //for (int i = 0 ; i < vps.Length && i < binary.Length ; i++)
+                    byte[] binary = new byte[vps.Length];
+
+                    for (int i = 0; i < vps.Length; i++)
+                    	binary[i] = (byte)Convert.ToInt32(vps[i]);
                     
                     appearance.VisualParams = binary;
                 }
@@ -342,6 +357,7 @@ namespace OpenSim.Services.Interfaces
                     appearance.Wearables[AvatarWearable.EYES].Wear(
                             AvatarWearable.DefaultWearables[
                             AvatarWearable.EYES][0]);
+
             }
             catch
             {

@@ -19,12 +19,24 @@ BEGIN TRANSACTION;
 CREATE UNIQUE INDEX SessionID ON Presence("SessionID");
 CREATE INDEX UserID ON Presence("UserID");
 
+ALTER TABLE Presence ADD "LastSeen" Timestamp;
+
 COMMIT;
 
-:VERSION 2
+:VERSION 3         # -------------------------- 
 
-BEGIN TRANSACTION;
+BEGIN; 
 
-ALTER TABLE Presence ADD "LastSeen" Timestamp;
+CREATE INDEX RegionID ON Presence("RegionID");
+
+COMMIT;
+
+:VERSION 4         # Making sure LastSeen is actually defined in the table as it most likely erred in the double version 2 migration above 
+
+BEGIN;
+
+ALTER TABLE Presence 
+DROP COLUMN IF EXISTS "LastSeen",
+ADD COLUMN "LastSeen" Timestamp;
 
 COMMIT;

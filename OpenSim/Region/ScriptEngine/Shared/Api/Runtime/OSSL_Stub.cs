@@ -439,7 +439,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         {
             return m_OSSL_Functions.osParseJSON(JSON);
         }
-        
+
         public Object osParseJSONNew(string JSON)
         {
             return m_OSSL_Functions.osParseJSONNew(JSON);
@@ -508,6 +508,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public string osGetGridCustom(string key)
         {
             return m_OSSL_Functions.osGetGridCustom(key);
+        }
+
+        public string osGetAvatarHomeURI(string uuid)
+        {
+            return m_OSSL_Functions.osGetAvatarHomeURI(uuid);
         }
 
         public LSL_String osFormatString(string str, LSL_List strings)
@@ -739,14 +744,14 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
                 if (Position.y > ((int)Constants.RegionSize - 1))
                     Position.y = ((int)Constants.RegionSize - 1);
                  */
-                if (Position.z > Constants.RegionHeight)
-                    Position.z = Constants.RegionHeight;
                 if (Position.x < 0)
                     Position.x = 0;
                 if (Position.y < 0)
                     Position.y = 0;
                 if (Position.z < 0)
                     Position.z = 0;
+                if (Position.z > Constants.RegionHeight)
+                    Position.z = Constants.RegionHeight;
                 prim.OSSL.llSetPos(Position);
             }
 
@@ -868,6 +873,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
                     Save();
                 }
             }
+        }
+
+        public string osGetGender(LSL_Key rawAvatarId)
+        {
+            return m_OSSL_Functions.osGetGender(rawAvatarId);
         }
 
         public key osGetMapTexture()

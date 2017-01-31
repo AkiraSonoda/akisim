@@ -51,7 +51,7 @@ namespace OpenSim.Data.SQLite
     public class SQLiteSimulationData : ISimulationDataStore
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly string LogHeader = "[REGION DB SQLLITE]";
+        private static readonly string LogHeader = "[REGION DB SQLITE]";
 
         private const string primSelect = "select * from prims";
         private const string shapeSelect = "select * from primshapes";
@@ -1246,6 +1246,7 @@ namespace OpenSim.Data.SQLite
             createCol(prims, "Restitution", typeof(Double));
 
             createCol(prims, "KeyframeMotion", typeof(Byte[]));
+
             // Add in contraints
             prims.PrimaryKey = new DataColumn[] { prims.Columns["UUID"] };
 
@@ -1760,7 +1761,18 @@ namespace OpenSim.Data.SQLite
             {
                 prim.KeyframeMotion = null;
             }
-            
+
+            prim.PassCollisions = Convert.ToBoolean(row["PassCollisions"]);
+            prim.PassTouches = Convert.ToBoolean(row["PassTouches"]);
+            prim.RotationAxisLocks = Convert.ToByte(row["RotationAxisLocks"]);
+
+            SOPVehicle vehicle = null;
+            if (!(row["Vehicle"] is DBNull) && row["Vehicle"].ToString() != String.Empty)
+            {
+                vehicle = SOPVehicle.FromXml2(row["Vehicle"].ToString());
+                if (vehicle != null)
+                    prim.VehicleParams = vehicle;
+            }
             return prim;
         }
 
@@ -1845,6 +1857,10 @@ namespace OpenSim.Data.SQLite
             newData.MediaLoop = Convert.ToBoolean(row["MediaLoop"]);
             newData.ObscureMedia = Convert.ToBoolean(row["ObscureMedia"]);
             newData.ObscureMusic = Convert.ToBoolean(row["ObscureMusic"]);
+            newData.SeeAVs = Convert.ToBoolean(row["SeeAVs"]);
+            newData.AnyAVSounds = Convert.ToBoolean(row["AnyAVSounds"]);
+            newData.GroupAVSounds = Convert.ToBoolean(row["GroupAVSounds"]);
+
             try
             {
                 newData.UserLocation =
@@ -1918,7 +1934,8 @@ namespace OpenSim.Data.SQLite
             newSettings.TerrainImageID = new UUID((String)row["map_tile_ID"]);
             newSettings.TelehubObject = new UUID((String)row["TelehubObject"]);
             newSettings.ParcelImageID = new UUID((String)row["parcel_tile_ID"]);
-
+            newSettings.GodBlockSearch = Convert.ToBoolean(row["block_search"]);
+            newSettings.Casino = Convert.ToBoolean(row["casino"]);
             return newSettings;
         }
 
@@ -2012,6 +2029,7 @@ namespace OpenSim.Data.SQLite
             entry.Expires = 0;
             return entry;
         }
+
 
         /// <summary>
         ///
@@ -2137,7 +2155,6 @@ namespace OpenSim.Data.SQLite
             // click action
             row["ClickAction"] = prim.ClickAction;
 
-            row["SalePrice"] = prim.SalePrice;
             row["Material"] = prim.Material;
 
             row["CollisionSound"] = prim.CollisionSound.ToString();
@@ -2168,8 +2185,16 @@ namespace OpenSim.Data.SQLite
                 row["KeyframeMotion"] = prim.KeyframeMotion.Serialize();
             else
                 row["KeyframeMotion"] = new Byte[0];
-            
-            
+
+            row["PassTouches"] = prim.PassTouches;
+            row["PassCollisions"] = prim.PassCollisions;
+            row["RotationAxisLocks"] = prim.RotationAxisLocks;
+
+            if (prim.VehicleParams != null)
+                row["Vehicle"] = prim.VehicleParams.ToXml2();
+            else
+                row["Vehicle"] = String.Empty;
+
         }
 
         /// <summary>
@@ -2253,6 +2278,10 @@ namespace OpenSim.Data.SQLite
             row["MediaLoop"] = land.MediaLoop;
             row["ObscureMusic"] = land.ObscureMusic;
             row["ObscureMedia"] = land.ObscureMedia;
+            row["SeeAVs"] = land.SeeAVs;
+            row["AnyAVSounds"] = land.AnyAVSounds;
+            row["GroupAVSounds"] = land.GroupAVSounds;
+
         }
 
         /// <summary>
@@ -2311,6 +2340,8 @@ namespace OpenSim.Data.SQLite
             row["map_tile_ID"] = settings.TerrainImageID.ToString();
             row["TelehubObject"] = settings.TelehubObject.ToString();
             row["parcel_tile_ID"] = settings.ParcelImageID.ToString();
+            row["block_search"] = settings.GodBlockSearch;
+            row["casino"] = settings.Casino;
         }
 
         /// <summary>
@@ -2942,6 +2973,11 @@ namespace OpenSim.Data.SQLite
                     Console.WriteLine();
                 }
             }
+        }
+
+        public UUID[] GetObjectIDs(UUID regionID)
+        {
+            return new UUID[0];
         }
 
         public void SaveExtra(UUID regionID, string name, string value)

@@ -176,6 +176,10 @@ namespace OpenSim.Services.UserAccountService
                 Int32.TryParse(d.Data["UserLevel"], out u.UserLevel);
             if (d.Data.ContainsKey("UserFlags") && d.Data["UserFlags"] != null)
                 Int32.TryParse(d.Data["UserFlags"], out u.UserFlags);
+            if (d.Data.ContainsKey("UserCountry") && d.Data["UserCountry"] != null)
+                u.UserCountry = d.Data["UserCountry"].ToString();
+            else
+                u.UserTitle = string.Empty;
 
             if (d.Data.ContainsKey("ServiceURLs") && d.Data["ServiceURLs"] != null)
             {
@@ -301,7 +305,22 @@ namespace OpenSim.Services.UserAccountService
 
         public List<UserAccount> GetUserAccounts(UUID scopeID, string query)
         {
-            UserAccountData[] d = m_Database.GetUsers(scopeID, query);
+            UserAccountData[] d = m_Database.GetUsers(scopeID, query.Trim());
+
+            if (d == null)
+                return new List<UserAccount>();
+
+            List<UserAccount> ret = new List<UserAccount>();
+
+            foreach (UserAccountData data in d)
+                ret.Add(MakeUserAccount(data));
+
+            return ret;
+        }
+
+        public List<UserAccount> GetUserAccountsWhere(UUID scopeID, string where)
+        {
+            UserAccountData[] d = m_Database.GetUsersWhere(scopeID, where);
 
             if (d == null)
                 return new List<UserAccount>();
@@ -595,7 +614,7 @@ namespace OpenSim.Services.UserAccountService
         {
             m_log.DebugFormat("[USER ACCOUNT SERVICE]: Creating default appearance items for {0}", principalID);
 
-            InventoryFolderBase bodyPartsFolder = m_InventoryService.GetFolderForType(principalID, AssetType.Bodypart);
+            InventoryFolderBase bodyPartsFolder = m_InventoryService.GetFolderForType(principalID, FolderType.BodyPart);
 
             InventoryItemBase eyes = new InventoryItemBase(UUID.Random(), principalID);
             eyes.AssetID = new UUID("4bb6fa4d-1cd2-498a-a84c-95c1a0e745a7");
@@ -657,7 +676,7 @@ namespace OpenSim.Services.UserAccountService
             hair.Flags = (uint)WearableType.Hair;
             m_InventoryService.AddItem(hair);
 
-            InventoryFolderBase clothingFolder = m_InventoryService.GetFolderForType(principalID, AssetType.Clothing);
+            InventoryFolderBase clothingFolder = m_InventoryService.GetFolderForType(principalID, FolderType.Clothing);
 
             InventoryItemBase shirt = new InventoryItemBase(UUID.Random(), principalID);
             shirt.AssetID = AvatarWearable.DEFAULT_SHIRT_ASSET;

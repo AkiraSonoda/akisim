@@ -85,6 +85,7 @@
     PresenceServiceConnector = "${Const|PrivatePort}/OpenSim.Server.Handlers.dll:PresenceServiceConnector"
     UserAccountServiceConnector = "${Const|PrivatePort}/OpenSim.Server.Handlers.dll:UserAccountServiceConnector"
     GridUserServiceConnector = "${Const|PrivatePort}/OpenSim.Server.Handlers.dll:GridUserServiceConnector"
+    AgentPreferencesServiceConnector = "${Const|PrivatePort}/OpenSim.Server.Handlers.dll:AgentPreferencesServiceConnector"
     FriendsServiceConnector = "${Const|PrivatePort}/OpenSim.Server.Handlers.dll:FriendsServiceConnector"
     MapAddServiceConnector = "${Const|PrivatePort}/OpenSim.Server.Handlers.dll:MapAddServiceConnector"
     MapGetServiceConnector = "${Const|PublicPort}/OpenSim.Server.Handlers.dll:MapGetServiceConnector"
@@ -183,6 +184,26 @@
     ;; This is a default that can be overwritten in some sections.
     ; GatekeeperURI = "${Const|BaseURL}:${Const|PublicPort}"
 
+[AccessControl]
+    ;# {AllowedClients} {} {Bar (|) separated list of allowed clients} {}
+    ;; Bar (|) separated list of viewers which may gain access to the regions.
+    ;; One can use a substring of the viewer name to enable only certain
+    ;; versions
+    ;; Example: Agent uses the viewer "Imprudence 1.3.2.0"
+    ;; - "Imprudence" has access
+    ;; - "Imprudence 1.3" has access
+    ;; - "Imprudence 1.3.1" has no access
+    ; AllowedClients = ""
+
+    ;# {DeniedClients} {} {Bar (|) separated list of denied clients} {}
+    ;; Bar (|) separated list of viewers which may not gain access to the regions.
+    ;; One can use a Substring of the viewer name to disable only certain
+    ;; versions
+    ;; Example: Agent uses the viewer "Imprudence 1.3.2.0"
+    ;; - "Imprudence" has no access
+    ;; - "Imprudence 1.3" has no access
+    ;; - "Imprudence 1.3.1" has access
+    ; DeniedClients = ""
 
 [DatabaseService]
     ; PGSQL
@@ -204,7 +225,31 @@
 ; * in turn, reads the asset loader and database connection information
 ; *
 [AssetService]
+
+    ;; Choose an asset service (Only one option should be enabled)
     LocalServiceModule = "OpenSim.Services.AssetService.dll:AssetService"
+    ;LocalServiceModule = "OpenSim.Services.FSAssetService.dll:FSAssetConnector"
+    
+    ;; FSAsset Directories. Base directory, where final asset files are stored and Spool directory for temp files
+    ;; These directories must be on the same physical filesystem
+    ;BaseDirectory = "./fsassets/data"
+    ;SpoolDirectory = "./fsassets/tmp"
+    
+    ;; Original service can be checked if FSAssets can not find an asset
+    ;FallbackService = "OpenSim.Services.AssetService.dll:AssetService";
+    
+    ;; How many days since last updating the access time before its updated again by FSAssets when accessing an asset
+    ;; Reduces DB calls if asset is requested often. Default value 0 will always update access time
+    ;DaysBetweenAccessTimeUpdates = 30
+    
+    ;; FSAssets Custom Database Config (Leave blank to use grids default database configuration)
+    ;StorageProvider = ""
+    ;ConnectionString = ""
+    ;Realm = "fsassets"
+    
+    ;; The following are common to both the default asset service and FSAsset service
+
+    ;; Common asset service options
     DefaultAssetLoader = "OpenSim.Framework.AssetLoader.Filesystem.dll"
     AssetLoaderArgs = "./assets/AssetSets.xml"
 
@@ -374,6 +419,11 @@
     LocalServiceModule = "OpenSim.Services.UserAccountService.dll:GridUserService"
 
 
+[AgentPreferencesService]
+    ; for the server connector
+    LocalServiceModule = "OpenSim.Services.UserAccountService.dll:AgentPreferencesService"
+
+
 [PresenceService]
     ; for the server connector
     LocalServiceModule = "OpenSim.Services.PresenceService.dll:PresenceService"
@@ -452,23 +502,6 @@
     SRV_IMServerURI = "${Const|BaseURL}:${Const|PublicPort}"
     SRV_GroupsServerURI = "${Const|BaseURL}:${Const|PublicPort}"
 
-    ;; Regular expressions for controlling which client versions are accepted/denied.
-    ;; An empty string means nothing is checked.
-    ;;
-    ;; Example 1: allow only these 3 types of clients (any version of them)
-    ;; AllowedClients = "Imprudence|Hippo|Second Life"
-    ;;
-    ;; Example 2: allow all clients except these
-    ;; DeniedClients = "Twisted|Crawler|Cryolife|FuckLife|StreetLife|GreenLife|AntiLife|KORE-Phaze|Synlyfe|Purple Second Life|SecondLi |Emerald"
-    ;;
-    ;; Note that these are regular expressions, so every character counts.
-    ;; Also note that this is very weak security and should not be trusted as a reliable means
-    ;; for keeping bad clients out; modified clients can fake their identifiers.
-    ;;
-    ;;
-    ;AllowedClients = ""
-    ;DeniedClients = ""
-
     ;# {DSTZone} {} {Override Daylight Saving Time rules} {* none local} "America/Los_Angeles;Pacific Standard Time"
     ;; Viewers do not receive timezone information from the server - almost all (?) default to Pacific Standard Time
     ;; However, they do rely on the server to tell them whether it's Daylight Saving Time or not.
@@ -518,12 +551,12 @@
     ;                       this as splash page
     ;welcome = ${Const|BaseURL}/welcome
 
-    ; helper uri: optional: if it exists if will be used to tell the client to use
+    ; helper uri: optional: if it exists it will be used to tell the client to use
     ;                       this for all economy related things
-    ;economy = ${Const|BaseURL}:${Const|PublicPort}/
+    ;economy = ${Const|BaseURL}/economy
 
     ; web page of grid: optional: page providing further information about your grid
-    ;about = ${Const|BaseURL}/about/
+    ;about = ${Const|BaseURL}/about
 
     ; account creation: optional: page providing further information about obtaining
     ;                             a user account on your grid
@@ -564,23 +597,6 @@
     
     ; If you run this gatekeeper server behind a proxy, set this to true
     ; HasProxy = false
-
-    ;; Regular expressions for controlling which client versions are accepted/denied.
-    ;; An empty string means nothing is checked.
-    ;;
-    ;; Example 1: allow only these 3 types of clients (any version of them)
-    ;; AllowedClients = "Imprudence|Hippo|Second Life"
-    ;;
-    ;; Example 2: allow all clients except these
-    ;; DeniedClients = "Twisted|Crawler|Cryolife|FuckLife|StreetLife|GreenLife|AntiLife|KORE-Phaze|Synlyfe|Purple Second Life|SecondLi |Emerald"
-    ;;
-    ;; Note that these are regular expressions, so every character counts.
-    ;; Also note that this is very weak security and should not be trusted as a reliable means
-    ;; for keeping bad clients out; modified clients can fake their identifiers.
-    ;;
-    ;;
-    ;AllowedClients = ""
-    ;DeniedClients = ""
 
     ;; Are foreign visitors allowed?
     ;ForeignAgentsAllowed = true
@@ -727,6 +743,9 @@
     ;; What is the HomeURI of users associated with this grid?
     ;; Can overwrite the default in [Hypergrid], but probably shouldn't
     ; HomeURI = "${Const|BaseURL}:${Const|PublicPort}"
+
+    ;; Sets the maximum number of groups an agent may join
+    ; MaxAgentGroups = 42
 
 
 [UserProfilesService]

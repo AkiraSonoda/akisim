@@ -25,13 +25,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Drawing;
+using OpenMetaverse;
 using OpenSim.Framework;
+using System.Drawing;
 
 namespace OpenSim.Region.Framework.Interfaces
 {
     public interface IMapImageUploadModule
     {
+        /// <summary>
+        /// Upload a new maptile
+        /// </summary>
+        void UploadMapTile(IScene scene);
         void UploadMapTile(IScene scene, Bitmap mapTile);
     }
 }

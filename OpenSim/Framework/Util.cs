@@ -61,6 +61,15 @@ namespace OpenSim.Framework
     public enum PermissionMask : uint
     { 
         None = 0,
+
+        // folded perms
+        foldedTransfer = 1,
+        foldedModify = 1 << 1,
+        foldedCopy = 1 << 2,
+
+        foldedMask = 0x07,
+
+        //
         Transfer = 1 << 13,
         Modify = 1 << 14,
         Copy = 1 << 15,
@@ -132,10 +141,14 @@ namespace OpenSim.Framework
 
         public static readonly int MAX_THREADPOOL_LEVEL = 3;
 
+        public static double TimeStampClockPeriodMS;
+
         static Util()
         {
             LogThreadPool = 0;
             LogOverloads = true;
+            TimeStampClockPeriodMS = 1000.0D / (double)Stopwatch.Frequency;
+            m_log.InfoFormat("[UTIL] TimeStamp clock with period of {0}ms", Math.Round(TimeStampClockPeriodMS,6,MidpointRounding.AwayFromZero));
         }
 
         private static uint nextXferID = 5000;
@@ -330,14 +343,12 @@ namespace OpenSim.Framework
         /// </summary>
         /// <param name="a">A 3d vector</param>
         /// <returns>A new vector which is normalized form of the vector</returns>
-        /// <remarks>The vector paramater cannot be <0,0,0></remarks>
+        
         public static Vector3 GetNormalizedVector(Vector3 a)
         {
-            if (IsZeroVector(a))
-                throw new ArgumentException("Vector paramater cannot be a zero vector.");
-
-            float Mag = (float) GetMagnitude(a);
-            return new Vector3(a.X / Mag, a.Y / Mag, a.Z / Mag);
+            Vector3 v = new Vector3(a.X, a.Y, a.Z);
+            v.Normalize();
+            return v;
         }
 
         /// <summary>
@@ -704,19 +715,25 @@ namespace OpenSim.Framework
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
+
         public static string Md5Hash(string data)
         {
-            byte[] dataMd5 = ComputeMD5Hash(data);
+            return Md5Hash(data, Encoding.Default);
+        }
+
+        public static string Md5Hash(string data, Encoding encoding)
+        {
+            byte[] dataMd5 = ComputeMD5Hash(data, encoding);
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < dataMd5.Length; i++)
                 sb.AppendFormat("{0:x2}", dataMd5[i]);
             return sb.ToString();
         }
 
-        private static byte[] ComputeMD5Hash(string data)
+        private static byte[] ComputeMD5Hash(string data, Encoding encoding)
         {
             MD5 md5 = MD5.Create();
-            return md5.ComputeHash(Encoding.Default.GetBytes(data));
+            return md5.ComputeHash(encoding.GetBytes(data));
         }
 
         /// <summary>
@@ -724,6 +741,12 @@ namespace OpenSim.Framework
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
+
+        public static string SHA1Hash(string data, Encoding enc)
+        {
+            return SHA1Hash(enc.GetBytes(data));
+        }
+
         public static string SHA1Hash(string data)
         {
             return SHA1Hash(Encoding.Default.GetBytes(data));
@@ -777,17 +800,26 @@ namespace OpenSim.Framework
         /// <param name="oldy">Old region y-coord</param>
         /// <param name="newy">New region y-coord</param>
         /// <returns></returns>        
-        public static bool IsOutsideView(float drawdist, uint oldx, uint newx, uint oldy, uint newy)
+        public static bool IsOutsideView(float drawdist, uint oldx, uint newx, uint oldy, uint newy, 
+            int oldsizex, int oldsizey, int newsizex, int newsizey)
         {
-            int dd = (int)((drawdist + Constants.RegionSize - 1) / Constants.RegionSize);
+            // we still need to make sure we see new region  1stNeighbors
 
-            int startX = (int)oldx - dd;
-            int startY = (int)oldy - dd;
+            oldx *= Constants.RegionSize;
+            newx *= Constants.RegionSize;
+            if (oldx + oldsizex + drawdist < newx)
+                return true;
+            if (newx + newsizex + drawdist < oldx)
+                return true;
 
-            int endX = (int)oldx + dd;
-            int endY = (int)oldy + dd;
+            oldy *= Constants.RegionSize;
+            newy *= Constants.RegionSize;
+            if (oldy + oldsizey + drawdist < newy)
+                return true;
+            if (newy + newsizey + drawdist< oldy)
+                return true;
 
-            return (newx < startX || endX < newx || newy < startY || endY < newy);
+            return false;
         }
 
         public static string FieldToString(byte[] bytes)
@@ -1138,6 +1170,25 @@ namespace OpenSim.Framework
             }
         }
 
+        public static string GetConfigVarWithDefaultSection(IConfigSource config, string varname, string section)
+        {
+            // First, check the Startup section, the default section
+            IConfig cnf = config.Configs["Startup"];
+            if (cnf == null)
+                return string.Empty;
+            string val = cnf.GetString(varname, string.Empty);
+
+            // Then check for an overwrite of the default in the given section
+            if (!string.IsNullOrEmpty(section))
+            {
+                cnf = config.Configs[section];
+                if (cnf != null)
+                    val = cnf.GetString(varname, val);
+            }
+
+            return val;
+        }
+
         /// <summary>
         /// Gets the value of a configuration variable by looking into
         /// multiple sections in order. The latter sections overwrite 
@@ -1461,6 +1512,46 @@ namespace OpenSim.Framework
             return ret;
         }
 
+        public static string Compress(string text)
+        {
+            byte[] buffer = Util.UTF8.GetBytes(text);
+            MemoryStream memory = new MemoryStream();
+            using (GZipStream compressor = new GZipStream(memory, CompressionMode.Compress, true))
+            {
+                compressor.Write(buffer, 0, buffer.Length);
+            }
+
+            memory.Position = 0;
+           
+            byte[] compressed = new byte[memory.Length];
+            memory.Read(compressed, 0, compressed.Length);
+
+            byte[] compressedBuffer = new byte[compressed.Length + 4];
+            Buffer.BlockCopy(compressed, 0, compressedBuffer, 4, compressed.Length);
+            Buffer.BlockCopy(BitConverter.GetBytes(buffer.Length), 0, compressedBuffer, 0, 4);
+            return Convert.ToBase64String(compressedBuffer);
+        }
+
+        public static string Decompress(string compressedText)
+        {
+            byte[] compressedBuffer = Convert.FromBase64String(compressedText);
+            using (MemoryStream memory = new MemoryStream())
+            {
+                int msgLength = BitConverter.ToInt32(compressedBuffer, 0);
+                memory.Write(compressedBuffer, 4, compressedBuffer.Length - 4);
+
+                byte[] buffer = new byte[msgLength];
+
+                memory.Position = 0;
+                using (GZipStream decompressor = new GZipStream(memory, CompressionMode.Decompress))
+                {
+                    decompressor.Read(buffer, 0, buffer.Length);
+                }
+
+                return Util.UTF8.GetString(buffer);
+            }
+        }
+
         /// <summary>
         /// Copy data from one stream to another, leaving the read position of both streams at the beginning.
         /// </summary>
@@ -1597,19 +1688,19 @@ namespace OpenSim.Framework
         {
             string os = String.Empty;
 
-            if (Environment.OSVersion.Platform != PlatformID.Unix)
-            {
-                os = Environment.OSVersion.ToString();
-            }
-            else
-            {
-                os = ReadEtcIssue();
-            }
-                      
-            if (os.Length > 45)
-            {
-                os = os.Substring(0, 45);
-            }
+//            if (Environment.OSVersion.Platform != PlatformID.Unix)
+//            {
+//                os = Environment.OSVersion.ToString();
+//            }
+//            else
+//            {
+//                os = ReadEtcIssue();
+//            }
+//                      
+//            if (os.Length > 45)
+//            {
+//                os = os.Substring(0, 45);
+//            }
             
             return os;
         }
@@ -1718,7 +1809,7 @@ namespace OpenSim.Framework
 
         public static Guid GetHashGuid(string data, string salt)
         {
-            byte[] hash = ComputeMD5Hash(data + salt);
+            byte[] hash = ComputeMD5Hash(data + salt, Encoding.Default);
 
             //string s = BitConverter.ToString(hash);
 
@@ -1917,17 +2008,26 @@ namespace OpenSim.Framework
         /// <returns></returns>
         public static byte[] StringToBytes256(string str)
         {
-            if (String.IsNullOrEmpty(str)) { return Utils.EmptyBytes; }
-            if (str.Length > 254) str = str.Remove(254);
-            if (!str.EndsWith("\0")) { str += "\0"; }
+            if (String.IsNullOrEmpty(str))
+                return Utils.EmptyBytes;
+
+            if (!str.EndsWith("\0"))
+                str += "\0";
             
             // Because this is UTF-8 encoding and not ASCII, it's possible we
             // might have gotten an oversized array even after the string trim
             byte[] data = UTF8.GetBytes(str);
+
             if (data.Length > 256)
             {
-                Array.Resize<byte>(ref data, 256);
-                data[255] = 0;
+                int cut = 255;
+                if((data[cut] & 0x80 ) != 0 )
+                    {
+                    while(cut > 0 && (data[cut] & 0xc0) != 0xc0)
+                        cut--;
+                    }
+                Array.Resize<byte>(ref data, cut + 1);
+                data[cut] = 0;
             }
 
             return data;
@@ -1959,22 +2059,81 @@ namespace OpenSim.Framework
         /// <returns></returns>
         public static byte[] StringToBytes1024(string str)
         {
-            if (String.IsNullOrEmpty(str)) { return Utils.EmptyBytes; }
-            if (str.Length > 1023) str = str.Remove(1023);
-            if (!str.EndsWith("\0")) { str += "\0"; }
+            if (String.IsNullOrEmpty(str))
+                return Utils.EmptyBytes;
+
+            if (!str.EndsWith("\0"))
+                 str += "\0";
 
             // Because this is UTF-8 encoding and not ASCII, it's possible we
             // might have gotten an oversized array even after the string trim
             byte[] data = UTF8.GetBytes(str);
+
             if (data.Length > 1024)
             {
-                Array.Resize<byte>(ref data, 1024);
-                data[1023] = 0;
+                int cut = 1023;
+                if((data[cut] & 0x80 ) != 0 )
+                    {
+                    while(cut > 0 && (data[cut] & 0xc0) != 0xc0)
+                        cut--;
+                    }
+                Array.Resize<byte>(ref data, cut + 1);
+                data[cut] = 0;
             }
 
             return data;
         }
 
+        /// <summary>
+        /// Convert a string to a byte format suitable for transport in an LLUDP packet.  The output is truncated to MaxLength bytes if necessary.
+        /// </summary>
+        /// <param name="str">
+        /// If null or empty, then an bytes[0] is returned.
+        /// Using "\0" will return a conversion of the null character to a byte.  This is not the same as bytes[0]
+        /// </param>
+        /// <param name="args">
+        /// Arguments to substitute into the string via the {} mechanism.
+        /// </param>
+        /// <returns></returns>
+        public static byte[] StringToBytes(string str, int MaxLength, params object[] args)
+        {
+            return StringToBytes1024(string.Format(str, args), MaxLength);
+        }
+
+        /// <summary>
+        /// Convert a string to a byte format suitable for transport in an LLUDP packet.  The output is truncated to MaxLength bytes if necessary.
+        /// </summary>
+        /// <param name="str">
+        /// If null or empty, then an bytes[0] is returned.
+        /// Using "\0" will return a conversion of the null character to a byte.  This is not the same as bytes[0]
+        /// </param>
+        /// <returns></returns>
+        public static byte[] StringToBytes(string str, int MaxLength)
+        {
+            if (String.IsNullOrEmpty(str))
+                return Utils.EmptyBytes;
+
+            if (!str.EndsWith("\0"))
+                 str += "\0";
+
+            // Because this is UTF-8 encoding and not ASCII, it's possible we
+            // might have gotten an oversized array even after the string trim
+            byte[] data = UTF8.GetBytes(str);
+
+            if (data.Length > MaxLength)
+            {
+                int cut = MaxLength -1 ;
+                if((data[cut] & 0x80 ) != 0 )
+                    {
+                    while(cut > 0 && (data[cut] & 0xc0) != 0xc0)
+                        cut--;
+                    }
+                Array.Resize<byte>(ref data, cut + 1);
+                data[cut] = 0;
+            }
+
+            return data;
+        }
         /// <summary>
         /// Pretty format the hashtable contents to a single line.
         /// </summary>
@@ -2089,7 +2248,7 @@ namespace OpenSim.Framework
 
             STPStartInfo startInfo = new STPStartInfo();
             startInfo.ThreadPoolName = "Util";
-            startInfo.IdleTimeout = 2000;
+            startInfo.IdleTimeout = 20000;
             startInfo.MaxWorkerThreads = maxThreads;
             startInfo.MinWorkerThreads = minThreads;
 
@@ -2666,6 +2825,13 @@ namespace OpenSim.Framework
             return tcA - tcB;
         }
 
+        // returns a timestamp in ms as double
+        // using the time resolution avaiable to StopWatch
+        public static double GetTimeStampMS()
+        {
+            return (double)Stopwatch.GetTimestamp() * TimeStampClockPeriodMS;
+        }
+
         /// <summary>
         /// Formats a duration (given in milliseconds).
         /// </summary>
@@ -2871,7 +3037,9 @@ namespace OpenSim.Framework
         #endregion
 
         #region Universal User Identifiers
-       /// <summary>
+
+        /// <summary>
+        /// Attempts to parse a UUI into its components: UUID, name and URL.
         /// </summary>
         /// <param name="value">uuid[;endpoint[;first last[;secret]]]</param>
         /// <param name="uuid">the uuid part</param>
@@ -2902,6 +3070,27 @@ namespace OpenSim.Framework
             }
             if (parts.Length >= 4)
                 secret = parts[3];
+
+            return true;
+        }
+
+        /// <summary>
+        /// For foreign avatars, extracts their original name and Server URL from their First Name and Last Name.
+        /// </summary>
+        public static bool ParseForeignAvatarName(string firstname, string lastname,
+            out string realFirstName, out string realLastName, out string serverURI)
+        {
+            realFirstName = realLastName = serverURI = string.Empty;
+
+            if (!lastname.Contains("@"))
+                return false;
+
+            if (!firstname.Contains("."))
+                return false;
+
+            realFirstName = firstname.Split('.')[0];
+            realLastName = firstname.Split('.')[1];
+            serverURI = new Uri("http://" + lastname.Replace("@", "")).ToString();
 
             return true;
         }
@@ -3014,6 +3203,16 @@ namespace OpenSim.Framework
 
             return name;
         }
+
+        public static void LogFailedXML(string message, string xml)
+        {
+            int length = xml.Length;
+            if (length > 2000)
+                xml = xml.Substring(0, 2000) + "...";
+
+            m_log.ErrorFormat("{0} Failed XML ({1} bytes) = {2}", message, length, xml);
+        }
+
     }
 
     public class DoubleQueue<T> where T:class
@@ -3125,6 +3324,57 @@ namespace OpenSim.Framework
                 m_lowQueue.Clear();
                 m_highQueue.Clear();
             }
+        }
+    }
+
+    public class BetterRandom
+    {
+        private const int BufferSize = 1024;  // must be a multiple of 4
+        private byte[] RandomBuffer;
+        private int BufferOffset;
+        private RNGCryptoServiceProvider rng;
+        public BetterRandom()
+        {
+            RandomBuffer = new byte[BufferSize];
+            rng = new RNGCryptoServiceProvider();
+            BufferOffset = RandomBuffer.Length;
+        }
+        private void FillBuffer()
+        {
+            rng.GetBytes(RandomBuffer);
+            BufferOffset = 0;
+        }
+        public int Next()
+        {
+            if (BufferOffset >= RandomBuffer.Length)
+            {
+                FillBuffer();
+            }
+            int val = BitConverter.ToInt32(RandomBuffer, BufferOffset) & 0x7fffffff;
+            BufferOffset += sizeof(int);
+            return val;
+        }
+        public int Next(int maxValue)
+        {
+            return Next() % maxValue;
+        }
+        public int Next(int minValue, int maxValue)
+        {
+            if (maxValue < minValue)
+            {
+                throw new ArgumentOutOfRangeException("maxValue must be greater than or equal to minValue");
+            }
+            int range = maxValue - minValue;
+            return minValue + Next(range);
+        }
+        public double NextDouble()
+        {
+            int val = Next();
+            return (double)val / int.MaxValue;
+        }
+        public void GetBytes(byte[] buff)
+        {
+            rng.GetBytes(buff);
         }
     }
 }

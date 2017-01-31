@@ -35,7 +35,6 @@ using OpenMetaverse.StructuredData;
 using log4net;
 using OpenSim.Framework;
 using OpenSim.Framework.Client;
-using OpenSim.Framework.Communications;
 using OpenSim.Framework.Capabilities;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
@@ -67,7 +66,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         private void InformNeighborsThatRegionisUpCompleted(IAsyncResult iar)
         {
-            InformNeighbourThatRegionUpDelegate icon = (InformNeighbourThatRegionUpDelegate) iar.AsyncState;
+            InformNeighbourThatRegionUpDelegate icon = (InformNeighbourThatRegionUpDelegate)iar.AsyncState;
             icon.EndInvoke(iar);
         }
 
@@ -85,11 +84,11 @@ namespace OpenSim.Region.Framework.Scenes
             if (neighbourService != null)
                 neighbour = neighbourService.HelloNeighbour(regionhandle, region);
             else
-                m_log.DebugFormat( "{0} neighbour service provided for region {0} to inform neigbhours of status", LogHeader, m_scene.Name);
+                m_log.DebugFormat("{0} neighbour service provided for region {0} to inform neigbhours of status", LogHeader, m_scene.Name);
 
             if (neighbour != null)
             {
-                m_log.DebugFormat( "{0} Region {1} successfully informed neighbour {2} at {3}-{4} that it is up",
+                m_log.DebugFormat("{0} Region {1} successfully informed neighbour {2} at {3}-{4} that it is up",
                     LogHeader, m_scene.Name, neighbour.RegionName, Util.WorldToRegionLoc(x), Util.WorldToRegionLoc(y));
 
                 m_scene.EventManager.TriggerOnRegionUp(neighbour);
@@ -115,9 +114,9 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 OpenSim.Framework.RegionFlags? regionFlags = n.RegionFlags;
 
-//                m_log.DebugFormat(
-//                    "{0}: Region flags for {1} as seen by {2} are {3}", 
-//                    LogHeader, n.RegionName, m_scene.Name, regionFlags != null ? regionFlags.ToString() : "not present");
+                //                m_log.DebugFormat(
+                //                    "{0}: Region flags for {1} as seen by {2} are {3}", 
+                //                    LogHeader, n.RegionName, m_scene.Name, regionFlags != null ? regionFlags.ToString() : "not present");
 
                 // Robust services before 2015-01-14 do not return the regionFlags information.  In this case, we could
                 // make a separate RegionFlags call but this would involve a network call for each neighbour.
@@ -133,7 +132,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
 
             m_log.DebugFormat(
-                "{0} Informing {1} neighbours that region {2} is up", 
+                "{0} Informing {1} neighbours that region {2} is up",
                 LogHeader, onlineNeighbours.Count, m_scene.Name);
 
             foreach (GridRegion n in onlineNeighbours)
@@ -169,15 +168,15 @@ namespace OpenSim.Region.Framework.Scenes
 
         private void SendChildAgentDataUpdateCompleted(IAsyncResult iar)
         {
-            SendChildAgentDataUpdateDelegate icon = (SendChildAgentDataUpdateDelegate) iar.AsyncState;
+            SendChildAgentDataUpdateDelegate icon = (SendChildAgentDataUpdateDelegate)iar.AsyncState;
             icon.EndInvoke(iar);
         }
 
         public void SendChildAgentDataUpdate(AgentPosition cAgentData, ScenePresence presence)
         {
-//            m_log.DebugFormat(
-//                "[SCENE COMMUNICATION SERVICE]: Sending child agent position updates for {0} in {1}", 
-//                presence.Name, m_scene.Name);
+            //            m_log.DebugFormat(
+            //                "[SCENE COMMUNICATION SERVICE]: Sending child agent position updates for {0} in {1}", 
+            //                presence.Name, m_scene.Name);
 
             // This assumes that we know what our neighbors are.
             try
@@ -219,8 +218,11 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        public delegate void SendCloseChildAgentDelegate(UUID agentID, ulong regionHandle);
+
         /// <summary>
-        /// Closes a child agent on a given region
+        /// This Closes child agents on neighboring regions
+        /// Calls an asynchronous method to do so..  so it doesn't lag the sim.
         /// </summary>
         protected void SendCloseChildAgent(UUID agentID, ulong regionHandle, string auth_token)
         {
@@ -231,6 +233,13 @@ namespace OpenSim.Region.Framework.Scenes
             Util.RegionHandleToWorldLoc(regionHandle, out x, out y);
 
             GridRegion destination = m_scene.GridService.GetRegionByPosition(m_regionInfo.ScopeID, (int)x, (int)y);
+
+            if (destination == null)
+            {
+                m_log.DebugFormat(
+                    "[SCENE COMMUNICATION SERVICE]: Sending close agent ID {0} FAIL, region with handle {1} not found", agentID, regionHandle);
+                return;
+            }
 
             m_log.DebugFormat(
                 "[SCENE COMMUNICATION SERVICE]: Sending close agent ID {0} to {1}", agentID, destination.RegionName);
@@ -246,18 +255,19 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="regionslst"></param>
         public void SendCloseChildAgentConnections(UUID agentID, string auth_code, List<ulong> regionslst)
         {
-            foreach (ulong handle in regionslst)
+            if (regionslst.Count == 0)
+                return;
+
+            // use a single thread job for all
+            Util.FireAndForget(o =>
             {
-                // We must take a copy here since handle is acts like a reference when used in an iterator.
-                // This leads to race conditions if directly passed to SendCloseChildAgent with more than one neighbour region.
-                ulong handleCopy = handle;
-                Util.FireAndForget(
-                    o => SendCloseChildAgent(agentID, handleCopy, auth_code), 
-                    null, 
-                    "SceneCommunicationService.SendCloseChildAgentConnections");
-            }
+                foreach (ulong handle in regionslst)
+                {
+                    SendCloseChildAgent(agentID, handle, auth_code);
+                }
+            }, null, "SceneCommunicationService.SendCloseChildAgentConnections");
         }
-       
+
         public List<GridRegion> RequestNamedRegions(string name, int maxNumber)
         {
             return m_scene.GridService.GetRegionsByName(UUID.Zero, name, maxNumber);

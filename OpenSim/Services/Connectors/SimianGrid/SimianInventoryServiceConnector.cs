@@ -74,6 +74,9 @@ namespace OpenSim.Services.Connectors.SimianGrid
 //        private object m_gestureSyncRoot = new object();
         private bool m_Enabled = false;
 
+        private const double CACHE_EXPIRATION_SECONDS = 20.0;
+        private static ExpiringCache<UUID, InventoryItemBase> m_ItemCache;
+
         #region ISharedRegionModule
 
         public Type ReplaceableInterface { get { return null; } }
@@ -98,6 +101,9 @@ namespace OpenSim.Services.Connectors.SimianGrid
             if (!url.EndsWith("/") && !url.EndsWith("="))
                 url = url + '/';
             m_serverUrl = url;
+
+            if (m_ItemCache == null)
+                m_ItemCache = new ExpiringCache<UUID, InventoryItemBase>();
 
         }
 
@@ -132,6 +138,8 @@ namespace OpenSim.Services.Connectors.SimianGrid
                         {
                             m_userServerUrl = serviceUrl;
                             m_Enabled = true;
+                            if (m_ItemCache == null)
+                                m_ItemCache = new ExpiringCache<UUID, InventoryItemBase>();
                         }
                     }
                 }
@@ -232,7 +240,7 @@ namespace OpenSim.Services.Connectors.SimianGrid
         /// <param name="userID"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        public InventoryFolderBase GetFolderForType(UUID userID, AssetType type)
+        public InventoryFolderBase GetFolderForType(UUID userID, FolderType type)
         {
             string contentType = SLUtil.SLAssetTypeToContentType((int)type);
 
@@ -271,6 +279,10 @@ namespace OpenSim.Services.Connectors.SimianGrid
         /// <returns></returns>
         public InventoryItemBase GetItem(InventoryItemBase item)
         {
+            InventoryItemBase retrieved = null;
+            if (m_ItemCache.TryGetValue(item.ID, out retrieved))
+                return retrieved;
+
             NameValueCollection requestArgs = new NameValueCollection
             {
                 { "RequestMethod", "GetInventoryNode" },
@@ -292,13 +304,32 @@ namespace OpenSim.Services.Connectors.SimianGrid
                     for (int i = 0; i < items.Count; i++)
                     {
                         if (items[i].ID == item.ID)
-                            return items[i];
+                        {
+                            retrieved = items[i];
+                            m_ItemCache.AddOrUpdate(item.ID, retrieved, CACHE_EXPIRATION_SECONDS);
+                            return retrieved;
+                        }
                     }
                 }
             }
 
             m_log.Warn("[SIMIAN INVENTORY CONNECTOR]: Item " + item.ID + " owned by " + item.Owner + " not found");
             return null;
+        }
+
+        public InventoryItemBase[] GetMultipleItems(UUID principalID, UUID[] itemIDs)
+        {
+            InventoryItemBase[] result = new InventoryItemBase[itemIDs.Length];
+            int i = 0;
+            InventoryItemBase item = new InventoryItemBase();
+            item.Owner = principalID;
+            foreach (UUID id in itemIDs)
+            {
+                item.ID = id;
+                result[i++] = GetItem(item);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -340,7 +371,7 @@ namespace OpenSim.Services.Connectors.SimianGrid
         public InventoryCollection GetFolderContent(UUID userID, UUID folderID)
         {
             InventoryCollection inventory = new InventoryCollection();
-            inventory.UserID = userID;
+            inventory.OwnerID = userID;
 
             NameValueCollection requestArgs = new NameValueCollection
             {
@@ -371,6 +402,18 @@ namespace OpenSim.Services.Connectors.SimianGrid
             return inventory;
         }
 
+        public virtual InventoryCollection[] GetMultipleFoldersContent(UUID principalID, UUID[] folderIDs)
+        {
+            InventoryCollection[] invColl = new InventoryCollection[folderIDs.Length];
+            int i = 0;
+            foreach (UUID fid in folderIDs)
+            {
+                invColl[i++] = GetFolderContent(principalID, fid);
+            }
+
+            return invColl;
+        }
+
         /// <summary>
         /// Gets the items inside a folder
         /// </summary>
@@ -380,7 +423,7 @@ namespace OpenSim.Services.Connectors.SimianGrid
         public List<InventoryItemBase> GetFolderItems(UUID userID, UUID folderID)
         {
             InventoryCollection inventory = new InventoryCollection();
-            inventory.UserID = userID;
+            inventory.OwnerID = userID;
 
             NameValueCollection requestArgs = new NameValueCollection
             {
@@ -537,7 +580,9 @@ namespace OpenSim.Services.Connectors.SimianGrid
             // A folder of UUID.Zero means we need to find the most appropriate home for this item
             if (item.Folder == UUID.Zero)
             {
-                InventoryFolderBase folder = GetFolderForType(item.Owner, (AssetType)item.AssetType);
+                InventoryFolderBase folder = null;
+                if (Enum.IsDefined(typeof(FolderType), (sbyte)item.AssetType))
+                    folder = GetFolderForType(item.Owner, (FolderType)item.AssetType);
                 if (folder != null && folder.ID != UUID.Zero)
                     item.Folder = folder.ID;
                 else

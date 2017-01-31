@@ -55,6 +55,7 @@ namespace OpenSim.Services.LLLoginService
         public static LLFailedLoginResponse InventoryProblem;
         public static LLFailedLoginResponse DeadRegionProblem;
         public static LLFailedLoginResponse LoginBlockedProblem;
+        public static LLFailedLoginResponse UnverifiedAccountProblem;
         public static LLFailedLoginResponse AlreadyLoggedInProblem;
         public static LLFailedLoginResponse InternalError;
 
@@ -74,6 +75,10 @@ namespace OpenSim.Services.LLLoginService
                 "false");
             LoginBlockedProblem = new LLFailedLoginResponse("presence",
                 "Logins are currently restricted. Please try again later.",
+                "false");
+            UnverifiedAccountProblem = new LLFailedLoginResponse("presence",
+                "Your account has not yet been verified. Please check " +
+                "your email and click the provided link.",
                 "false");
             AlreadyLoggedInProblem = new LLFailedLoginResponse("presence",
                 "You appear to be already logged in. " +
@@ -145,6 +150,7 @@ namespace OpenSim.Services.LLLoginService
         private UUID agentID;
         private UUID sessionID;
         private UUID secureSessionID;
+        private UUID realID;
 
         // Login Flags
         private string dst;
@@ -191,6 +197,7 @@ namespace OpenSim.Services.LLLoginService
 
         private string currency;
         private string classifiedFee;
+        private int    maxAgentGroups;
 
         static LLLoginResponse()
         {
@@ -227,8 +234,9 @@ namespace OpenSim.Services.LLLoginService
         public LLLoginResponse(UserAccount account, AgentCircuitData aCircuit, GridUserInfo pinfo,
             GridRegion destination, List<InventoryFolderBase> invSkel, FriendInfo[] friendsList, ILibraryService libService,
             string where, string startlocation, Vector3 position, Vector3 lookAt, List<InventoryItemBase> gestures, string message,
-            GridRegion home, IPEndPoint clientIP, string mapTileURL, string searchURL, string currency,
-            string DSTZone, string destinationsURL, string avatarsURL, string classifiedFee)
+
+            GridRegion home, IPEndPoint clientIP, string mapTileURL, string profileURL, string openIDURL, string searchURL, string currency,
+            string DSTZone, string destinationsURL, string avatarsURL, UUID realID, string classifiedFee,int maxAgentGroups)
             : this()
         {
             FillOutInventoryData(invSkel, libService);
@@ -241,6 +249,7 @@ namespace OpenSim.Services.LLLoginService
             AgentID = account.PrincipalID;
             SessionID = aCircuit.SessionID;
             SecureSessionID = aCircuit.SecureSessionID;
+            RealID = realID;
             Message = message;
             BuddList = ConvertFriendListItem(friendsList);
             StartLocation = where;
@@ -253,6 +262,7 @@ namespace OpenSim.Services.LLLoginService
             SearchURL = searchURL;
             Currency = currency;
             ClassifiedFee = classifiedFee;
+            MaxAgentGroups = maxAgentGroups;
 
             FillOutHomeData(pinfo, home);
             LookAt = String.Format("[r{0},r{1},r{2}]", lookAt.X, lookAt.Y, lookAt.Z);
@@ -381,6 +391,7 @@ namespace OpenSim.Services.LLLoginService
         private void FillOutRegionData(GridRegion destination)
         {
             IPEndPoint endPoint = destination.ExternalEndPoint;
+            if (endPoint == null) return;
             SimAddress = endPoint.Address.ToString();
             SimPort = (uint)endPoint.Port;
             RegionX = (uint)destination.RegionLocX;
@@ -471,6 +482,7 @@ namespace OpenSim.Services.LLLoginService
             SessionID = UUID.Random();
             SecureSessionID = UUID.Random();
             AgentID = UUID.Random();
+            RealID = UUID.Zero;
 
             Hashtable InitialOutfitHash = new Hashtable();
             InitialOutfitHash["folder_name"] = "Nightclub Female";
@@ -483,6 +495,7 @@ namespace OpenSim.Services.LLLoginService
 
             currency = String.Empty;
             ClassifiedFee = "0";
+            MaxAgentGroups = 42;
         }
 
 
@@ -515,6 +528,7 @@ namespace OpenSim.Services.LLLoginService
                 responseData["http_port"] = (Int32)SimHttpPort;
 
                 responseData["agent_id"] = AgentID.ToString();
+                responseData["real_id"] = RealID.ToString();
                 responseData["session_id"] = SessionID.ToString();
                 responseData["secure_session_id"] = SecureSessionID.ToString();
                 responseData["circuit_code"] = CircuitCode;
@@ -542,6 +556,7 @@ namespace OpenSim.Services.LLLoginService
                 responseData["seed_capability"] = seedCapability;
                 responseData["home"] = home;
                 responseData["look_at"] = lookAt;
+                responseData["max-agent-groups"] = MaxAgentGroups;
                 responseData["message"] = welcomeMessage;
                 responseData["region_x"] = (Int32)(RegionX);
                 responseData["region_y"] = (Int32)(RegionY);
@@ -609,6 +624,7 @@ namespace OpenSim.Services.LLLoginService
                 map["sim_ip"] = OSD.FromString(SimAddress);
 
                 map["agent_id"] = OSD.FromUUID(AgentID);
+                map["real_id"] = OSD.FromUUID(RealID);
                 map["session_id"] = OSD.FromUUID(SessionID);
                 map["secure_session_id"] = OSD.FromUUID(SecureSessionID);
                 map["circuit_code"] = OSD.FromInteger(CircuitCode);
@@ -669,6 +685,7 @@ namespace OpenSim.Services.LLLoginService
                 map["seed_capability"] = OSD.FromString(seedCapability);
                 map["home"] = OSD.FromString(home);
                 map["look_at"] = OSD.FromString(lookAt);
+                map["max-agent-groups"] = OSD.FromInteger(MaxAgentGroups);
                 map["message"] = OSD.FromString(welcomeMessage);
                 map["region_x"] = OSD.FromInteger(RegionX);
                 map["region_y"] = OSD.FromInteger(RegionY);
@@ -783,7 +800,7 @@ namespace OpenSim.Services.LLLoginService
             Hashtable TempHash;
             foreach (InventoryFolderBase InvFolder in folders)
             {
-                if (InvFolder.ParentID == UUID.Zero && InvFolder.Name == "My Inventory")
+                if (InvFolder.ParentID == UUID.Zero && InvFolder.Name == InventoryFolderBase.ROOT_FOLDER_NAME)
                 {
                     rootID = InvFolder.ID;
                 }
@@ -917,6 +934,12 @@ namespace OpenSim.Services.LLLoginService
         {
             get { return secureSessionID; }
             set { secureSessionID = value; }
+        }
+
+        public UUID RealID
+        {
+            get { return realID; }
+            set { realID = value; }
         }
 
         public Int32 CircuitCode
@@ -1100,6 +1123,12 @@ namespace OpenSim.Services.LLLoginService
         {
             get { return classifiedFee; }
             set { classifiedFee = value; }
+        }
+
+        public int MaxAgentGroups
+        {
+            get { return maxAgentGroups; }
+            set { maxAgentGroups = value; }
         }
 
         public string DestinationsURL

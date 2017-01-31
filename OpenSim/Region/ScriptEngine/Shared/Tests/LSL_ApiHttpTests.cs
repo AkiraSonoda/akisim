@@ -105,7 +105,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
             // This is disconnected from the actual script - the mock engine does not set up any LSL_Api atm.
             // Possibly this could be done and we could obtain it directly from the MockScriptEngine.
             m_lslApi = new LSL_Api();
-            m_lslApi.Initialize(m_engine, so.RootPart, m_scriptItem, null);
+            m_lslApi.Initialize(m_engine, so.RootPart, m_scriptItem);
         }
 
         [TearDown]
@@ -155,8 +155,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
                 }
                 catch (WebException e)
                 {
-                    using (HttpWebResponse response = (HttpWebResponse)e.Response)
-                        gotExpectedException = response.StatusCode == HttpStatusCode.NotFound;
+//                    using (HttpWebResponse response = (HttpWebResponse)e.Response)
+//                        gotExpectedException = response.StatusCode == HttpStatusCode.NotFound;
+                    gotExpectedException = true;
                 }
 
                 Assert.That(gotExpectedException, Is.True);

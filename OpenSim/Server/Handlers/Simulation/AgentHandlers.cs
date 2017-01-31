@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.IO.Compression;
@@ -119,7 +120,7 @@ namespace OpenSim.Server.Handlers.Simulation
 
         protected virtual void DoQueryAccess(Hashtable request, Hashtable responsedata, UUID agentID, UUID regionID)
         {
-            m_log.InfoFormat("QUERYACCESS with agentID {0}", agentID);
+            EntityTransferContext ctx = new EntityTransferContext();
 
             if (m_SimulationService == null)
             {
@@ -146,24 +147,131 @@ namespace OpenSim.Server.Handlers.Simulation
             if (args.ContainsKey("agent_home_uri"))
                 agentHomeURI = args["agent_home_uri"].AsString();
 
-            string theirVersion = string.Empty;
+            // Decode the legacy (string) version and extract the number
+            float theirVersion = 0f;
             if (args.ContainsKey("my_version"))
-                theirVersion = args["my_version"].AsString();
+            {
+                string theirVersionStr = args["my_version"].AsString();
+                string[] parts = theirVersionStr.Split(new char[] {'/'});
+                if (parts.Length > 1)
+                    theirVersion = float.Parse(parts[1]);
+            }
+
+            if (args.ContainsKey("context"))
+                ctx.Unpack((OSDMap)args["context"]);
+
+            // Decode the new versioning data
+            float minVersionRequired = 0f;
+            float maxVersionRequired = 0f;
+            float minVersionProvided = 0f;
+            float maxVersionProvided = 0f;
+
+            if (args.ContainsKey("simulation_service_supported_min"))
+                minVersionProvided = (float)args["simulation_service_supported_min"].AsReal();
+            if (args.ContainsKey("simulation_service_supported_max"))
+                maxVersionProvided = (float)args["simulation_service_supported_max"].AsReal();
+
+            if (args.ContainsKey("simulation_service_accepted_min"))
+                minVersionRequired = (float)args["simulation_service_accepted_min"].AsReal();
+            if (args.ContainsKey("simulation_service_accepted_max"))
+                maxVersionRequired = (float)args["simulation_service_accepted_max"].AsReal();
+
+            responsedata["int_response_code"] = HttpStatusCode.OK;
+            OSDMap resp = new OSDMap(3);
+
+            float version = 0f;
+
+            float outboundVersion = 0f;
+            float inboundVersion = 0f;
+
+            if (minVersionProvided == 0f) // string version or older
+            {
+                // If there is no version in the packet at all we're looking at 0.6 or
+                // even more ancient. Refuse it.
+                if(theirVersion == 0f) 
+                {
+                    resp["success"] = OSD.FromBoolean(false);
+                    resp["reason"] = OSD.FromString("Your region is running a old version of opensim no longer supported. Consider updating it");
+                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    return;
+                }
+
+                version = theirVersion;
+                  
+                if (version < VersionInfo.SimulationServiceVersionAcceptedMin || 
+                    version > VersionInfo.SimulationServiceVersionAcceptedMax )
+                {
+                    resp["success"] = OSD.FromBoolean(false);
+                    resp["reason"] = OSD.FromString(String.Format("Your region protocol version is {0} and we accept only {1} - {2}. No version overlap.", theirVersion, VersionInfo.SimulationServiceVersionAcceptedMin, VersionInfo.SimulationServiceVersionAcceptedMax));
+                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    return;
+                }
+            }
+            else
+            {
+                // Test for no overlap
+                if (minVersionProvided > VersionInfo.SimulationServiceVersionAcceptedMax ||
+                    maxVersionProvided < VersionInfo.SimulationServiceVersionAcceptedMin)
+                {
+                    resp["success"] = OSD.FromBoolean(false);
+                    resp["reason"] = OSD.FromString(String.Format("Your region provide protocol versions {0} - {1} and we accept only {2} - {3}. No version overlap.", minVersionProvided, maxVersionProvided, VersionInfo.SimulationServiceVersionAcceptedMin, VersionInfo.SimulationServiceVersionAcceptedMax));
+                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    return;
+                }
+                if (minVersionRequired > VersionInfo.SimulationServiceVersionSupportedMax ||
+                    maxVersionRequired < VersionInfo.SimulationServiceVersionSupportedMin)
+                {
+                    resp["success"] = OSD.FromBoolean(false);
+                    resp["reason"] = OSD.FromString(String.Format("You require region protocol versions {0} - {1} and we provide only {2} - {3}. No version overlap.", minVersionRequired, maxVersionRequired, VersionInfo.SimulationServiceVersionSupportedMin, VersionInfo.SimulationServiceVersionSupportedMax));
+                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    return;
+                }
+
+                // Determine versions to use
+                // This is intentionally inverted. Inbound and Outbound refer to the direction of the transfer.
+                // Therefore outbound means from the sender to the receier and inbound means from the receiver to the sender.
+                // So outbound is what we will accept and inbound is what we will send. Confused yet?
+                outboundVersion = Math.Min(maxVersionProvided, VersionInfo.SimulationServiceVersionAcceptedMax);
+                inboundVersion = Math.Min(maxVersionRequired, VersionInfo.SimulationServiceVersionSupportedMax);
+            }
+
+            List<UUID> features = new List<UUID>();
+
+            if (args.ContainsKey("features"))
+            {
+                OSDArray array = (OSDArray)args["features"];
+
+                foreach (OSD o in array)
+                    features.Add(new UUID(o.AsString()));
+            }
 
             GridRegion destination = new GridRegion();
             destination.RegionID = regionID;
 
             string reason;
-            string version;
-            bool result = m_SimulationService.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, theirVersion, out version, out reason);
+            // We're sending the version numbers down to the local connector to do the varregion check.
+            ctx.InboundVersion = inboundVersion;
+            ctx.OutboundVersion = outboundVersion;
+            if (minVersionProvided == 0f)
+            {
+                ctx.InboundVersion = version;
+                ctx.OutboundVersion = version;
+            }
 
-            responsedata["int_response_code"] = HttpStatusCode.OK;
-
-            OSDMap resp = new OSDMap(3);
+            bool result = m_SimulationService.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, features, ctx, out reason);
 
             resp["success"] = OSD.FromBoolean(result);
             resp["reason"] = OSD.FromString(reason);
-            resp["version"] = OSD.FromString(version);
+            string legacyVersion = String.Format("SIMULATION/{0}", version);
+            resp["version"] = OSD.FromString(legacyVersion);
+            resp["negotiated_inbound_version"] = OSD.FromReal(inboundVersion);
+            resp["negotiated_outbound_version"] = OSD.FromReal(outboundVersion);
+
+            OSDArray featuresWanted = new OSDArray();
+            foreach (UUID feature in features)
+                featuresWanted.Add(OSD.FromString(feature.ToString()));
+            
+            resp["features"] = featuresWanted;
 
             // We must preserve defaults here, otherwise a false "success" will not be put into the JSON map!
             responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
@@ -304,7 +412,7 @@ namespace OpenSim.Server.Handlers.Simulation
 
         protected void DoAgentPost(Hashtable request, Hashtable responsedata, UUID id)
         {
-			m_log.InfoFormat ("[AGENTPOST]; DoAgentPost for {0} ", id);
+            EntityTransferContext ctx = new EntityTransferContext();
 
             OSDMap args = Utils.GetOSDMap((string)request["body"]);
             if (args == null)
@@ -313,6 +421,9 @@ namespace OpenSim.Server.Handlers.Simulation
                 responsedata["str_response_string"] = "Bad request";
                 return;
             }
+
+            if (args.ContainsKey("context"))
+                ctx.Unpack((OSDMap)args["context"]);
 
             AgentDestinationData data = CreateAgentDestinationData();
             UnpackData(args, data, request);
@@ -360,7 +471,8 @@ namespace OpenSim.Server.Handlers.Simulation
             // This is the meaning of POST agent
             //m_regionClient.AdjustUserInformation(aCircuit);
             //bool result = m_SimulationService.CreateAgent(destination, aCircuit, teleportFlags, out reason);
-            bool result = CreateAgent(source, gatekeeper, destination, aCircuit, data.flags, data.fromLogin, out reason);
+
+            bool result = CreateAgent(source, gatekeeper, destination, aCircuit, data.flags, data.fromLogin, ctx, out reason);
 
             resp["reason"] = OSD.FromString(reason);
             resp["success"] = OSD.FromBoolean(result);
@@ -435,13 +547,29 @@ namespace OpenSim.Server.Handlers.Simulation
 
         // subclasses can override this
         protected virtual bool CreateAgent(GridRegion source, GridRegion gatekeeper, GridRegion destination,
-            AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, out string reason)
+            AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, EntityTransferContext ctx, out string reason)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
+            reason = String.Empty;
+            // The data and protocols are already defined so this is just a dummy to satisfy the interface
+            // TODO: make this end-to-end
+            if ((teleportFlags & (uint)TeleportFlags.ViaLogin) == 0)
+            {
+                Util.FireAndForget(x =>
+                {
+                    string r;
+                    m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out r);
+                    m_log.DebugFormat("[AGENT HANDLER]: ASYNC CreateAgent {0}", r);
+                });
 
-            return m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, out reason);
+                return true;
+            }
+            else
+            {
+
+                bool ret = m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
+                m_log.DebugFormat("[AGENT HANDLER]: SYNC CreateAgent {0} {1}", ret.ToString(), reason);
+                return ret;
+            }
         }
     }
 
@@ -544,9 +672,8 @@ namespace OpenSim.Server.Handlers.Simulation
 
         protected void DoAgentPut(Hashtable request, Hashtable responsedata)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            // TODO: Encode the ENtityTransferContext
+            EntityTransferContext ctx = new EntityTransferContext();
 
             OSDMap args = Utils.GetOSDMap((string)request["body"]);
             if (args == null)
@@ -568,6 +695,8 @@ namespace OpenSim.Server.Handlers.Simulation
                 UUID.TryParse(args["destination_uuid"].AsString(), out uuid);
             if (args.ContainsKey("destination_name") && args["destination_name"] != null)
                 regionname = args["destination_name"].ToString();
+            if (args.ContainsKey("context"))
+                ctx.Unpack((OSDMap)args["context"]);
 
             GridRegion destination = new GridRegion();
             destination.RegionID = uuid;
@@ -590,7 +719,7 @@ namespace OpenSim.Server.Handlers.Simulation
                 AgentData agent = new AgentData();
                 try
                 {
-                    agent.Unpack(args, m_SimulationService.GetScene(destination.RegionID));
+                    agent.Unpack(args, m_SimulationService.GetScene(destination.RegionID), ctx);
                 }
                 catch (Exception ex)
                 {
@@ -609,7 +738,7 @@ namespace OpenSim.Server.Handlers.Simulation
                 AgentPosition agent = new AgentPosition();
                 try
                 {
-                    agent.Unpack(args, m_SimulationService.GetScene(destination.RegionID));
+                    agent.Unpack(args, m_SimulationService.GetScene(destination.RegionID), ctx);
                 }
                 catch (Exception ex)
                 {
@@ -630,7 +759,10 @@ namespace OpenSim.Server.Handlers.Simulation
         // subclasses can override this
         protected virtual bool UpdateAgent(GridRegion destination, AgentData agent)
         {
-            return m_SimulationService.UpdateAgent(destination, agent);
+            // The data and protocols are already defined so this is just a dummy to satisfy the interface
+            // TODO: make this end-to-end
+            EntityTransferContext ctx = new EntityTransferContext();
+            return m_SimulationService.UpdateAgent(destination, agent, ctx);
         }
     }
 

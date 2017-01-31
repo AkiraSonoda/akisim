@@ -77,15 +77,17 @@ namespace OpenSim.Services.LLLoginService
         protected string m_GatekeeperURL;
         protected bool m_AllowRemoteSetLoginLevel;
         protected string m_MapTileURL;
+        protected string m_ProfileURL;
+        protected string m_OpenIDURL;
         protected string m_SearchURL;
         protected string m_Currency;
         protected string m_ClassifiedFee;
+        protected int m_MaxAgentGroups;
         protected string m_DestinationGuide;
         protected string m_AvatarPicker;
-
         protected string m_AllowedClients;
         protected string m_DeniedClients;
-
+        protected string m_MessageUrl;
         protected string m_DSTZone;
 
         IConfig m_LoginServerConfig;
@@ -117,16 +119,27 @@ namespace OpenSim.Services.LLLoginService
             m_GatekeeperURL = Util.GetConfigVarFromSections<string>(config, "GatekeeperURI",
                 new string[] { "Startup", "Hypergrid", "LoginService" }, String.Empty);
             m_MapTileURL = m_LoginServerConfig.GetString("MapTileURL", string.Empty);
+            m_ProfileURL = m_LoginServerConfig.GetString("ProfileServerURL", string.Empty);
+            m_OpenIDURL = m_LoginServerConfig.GetString("OpenIDServerURL", String.Empty);
             m_SearchURL = m_LoginServerConfig.GetString("SearchURL", string.Empty);
             m_Currency = m_LoginServerConfig.GetString("Currency", string.Empty);
             m_ClassifiedFee = m_LoginServerConfig.GetString("ClassifiedFee", string.Empty);
             m_DestinationGuide = m_LoginServerConfig.GetString ("DestinationGuide", string.Empty);
             m_AvatarPicker = m_LoginServerConfig.GetString ("AvatarPicker", string.Empty);
 
-            m_AllowedClients = m_LoginServerConfig.GetString("AllowedClients", string.Empty);
-            m_DeniedClients = m_LoginServerConfig.GetString("DeniedClients", string.Empty);
+            string[] possibleAccessControlConfigSections = new string[] { "AccessControl", "LoginService" };
+            m_AllowedClients = Util.GetConfigVarFromSections<string>(
+                    config, "AllowedClients", possibleAccessControlConfigSections, string.Empty);
+            m_DeniedClients = Util.GetConfigVarFromSections<string>(
+                    config, "DeniedClients", possibleAccessControlConfigSections, string.Empty); 
 
+            m_MessageUrl = m_LoginServerConfig.GetString("MessageUrl", string.Empty);
             m_DSTZone = m_LoginServerConfig.GetString("DSTZone", "America/Los_Angeles;Pacific Standard Time");
+
+            IConfig groupConfig = config.Configs["Groups"];
+            if (groupConfig != null)
+                m_MaxAgentGroups = groupConfig.GetInt("MaxAgentGroups", 42);
+
 
             // Clean up some of these vars
             if (m_MapTileURL != String.Empty)
@@ -146,7 +159,8 @@ namespace OpenSim.Services.LLLoginService
             Object[] args = new Object[] { config };
             m_UserAccountService = ServerUtils.LoadPlugin<IUserAccountService>(accountService, args);
             m_GridUserService = ServerUtils.LoadPlugin<IGridUserService>(gridUserService, args);
-            m_AuthenticationService = ServerUtils.LoadPlugin<IAuthenticationService>(authService, args);
+            Object[] authArgs = new Object[] { config, m_UserAccountService };
+            m_AuthenticationService = ServerUtils.LoadPlugin<IAuthenticationService>(authService, authArgs);
             m_InventoryService = ServerUtils.LoadPlugin<IInventoryService>(invService, args);
 
             if (gridService != string.Empty)
@@ -252,13 +266,18 @@ namespace OpenSim.Services.LLLoginService
         }
 
         public LoginResponse Login(string firstName, string lastName, string passwd, string startLocation, UUID scopeID, 
-            string clientVersion, string channel, string mac, string id0, IPEndPoint clientIP)
+            string clientVersion, string channel, string mac, string id0, IPEndPoint clientIP, bool LibOMVclient)
         {
             bool success = false;
             UUID session = UUID.Random();
 
-            m_log.InfoFormat("[LLOGIN SERVICE]: Login request for {0} {1} at {2} using viewer {3}, channel {4}, IP {5}, Mac {6}, Id0 {7}",
-                firstName, lastName, startLocation, clientVersion, channel, clientIP.Address.ToString(), mac, id0);
+            string processedMessage;
+
+            if (clientVersion.Contains("Radegast"))
+                LibOMVclient = false;
+
+            m_log.InfoFormat("[LLOGIN SERVICE]: Login request for {0} {1} at {2} using viewer {3}, channel {4}, IP {5}, Mac {6}, Id0 {7}, Possible LibOMVGridProxy: {8} ",
+                firstName, lastName, startLocation, clientVersion, channel, clientIP.Address.ToString(), mac, id0, LibOMVclient.ToString());
             
             try
             {
@@ -335,7 +354,8 @@ namespace OpenSim.Services.LLLoginService
                 if (!passwd.StartsWith("$1$"))
                     passwd = "$1$" + Util.Md5Hash(passwd);
                 passwd = passwd.Remove(0, 3); //remove $1$
-                string token = m_AuthenticationService.Authenticate(account.PrincipalID, passwd, 30);
+                UUID realID;
+                string token = m_AuthenticationService.Authenticate(account.PrincipalID, passwd, 30, out realID);
                 UUID secureSession = UUID.Zero;
                 if ((token == string.Empty) || (token != string.Empty && !UUID.TryParse(token, out secureSession)))
                 {
@@ -490,17 +510,28 @@ namespace OpenSim.Services.LLLoginService
                 //
                 // Finally, fill out the response and return it
                 //
+                if (m_MessageUrl != String.Empty)
+                {
+                    WebClient client = new WebClient();
+                    processedMessage = client.DownloadString(m_MessageUrl);
+                }
+                else
+                {
+                    processedMessage = m_WelcomeMessage;
+                }
+                processedMessage = processedMessage.Replace("\\n", "\n").Replace("<USERNAME>", firstName + " " + lastName);
+
                 LLLoginResponse response
                     = new LLLoginResponse(
                         account, aCircuit, guinfo, destination, inventorySkel, friendsList, m_LibraryService,
-                        where, startLocation, position, lookAt, gestures, m_WelcomeMessage, home, clientIP,
-                        m_MapTileURL, m_SearchURL, m_Currency, m_DSTZone,
-                        m_DestinationGuide, m_AvatarPicker, m_ClassifiedFee);
+                        where, startLocation, position, lookAt, gestures, processedMessage, home, clientIP,
+                        m_MapTileURL, m_ProfileURL, m_OpenIDURL, m_SearchURL, m_Currency, m_DSTZone,
+                        m_DestinationGuide, m_AvatarPicker, realID, m_ClassifiedFee,m_MaxAgentGroups);
 
-                m_log.DebugFormat("[LLOGIN SERVICE]: All clear. Sending login response to {0} {1}", firstName, lastName);
+                    m_log.DebugFormat("[LLOGIN SERVICE]: All clear. Sending login response to {0} {1}", firstName, lastName);
 
-                return response;
-            }
+                    return response;
+               }
             catch (Exception e)
             {
                 m_log.WarnFormat("[LLOGIN SERVICE]: Exception processing login for {0} {1}: {2} {3}", firstName, lastName, e.ToString(), e.StackTrace);
@@ -962,14 +993,13 @@ namespace OpenSim.Services.LLLoginService
 
         private bool LaunchAgentDirectly(ISimulationService simConnector, GridRegion region, AgentCircuitData aCircuit, TeleportFlags flags, out string reason)
         {
-            string version;
+            EntityTransferContext ctx = new EntityTransferContext();
 
-            if (
-                !simConnector.QueryAccess(
-                    region, aCircuit.AgentID, null, true, aCircuit.startpos, "SIMULATION/0.3", out version, out reason))
+            if (!simConnector.QueryAccess(
+                    region, aCircuit.AgentID, null, true, aCircuit.startpos, new List<UUID>(), ctx, out reason))
                 return false;
 
-            return simConnector.CreateAgent(null, region, aCircuit, (uint)flags, out reason);
+            return simConnector.CreateAgent(null, region, aCircuit, (uint)flags, ctx, out reason);
         }
 
         private bool LaunchAgentIndirectly(GridRegion gatekeeper, GridRegion destination, AgentCircuitData aCircuit, IPEndPoint clientIP, out string reason)

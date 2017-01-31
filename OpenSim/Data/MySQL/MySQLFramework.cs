@@ -45,27 +45,45 @@ namespace OpenSim.Data.MySQL
                 System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         protected string m_connectionString;
+        protected object m_dbLock = new object();
 
         protected MySqlFramework(string connectionString)
         {
             m_connectionString = connectionString;
         }
 
+        //////////////////////////////////////////////////////////////
+        //
+        // All non queries are funneled through one connection
+        // to increase performance a little
+        //
         protected int ExecuteNonQuery(MySqlCommand cmd)
         {
-            using (MySqlConnection dbcon = new MySqlConnection(m_connectionString))
+            lock (m_dbLock)
             {
-                dbcon.Open();
-                cmd.Connection = dbcon;
+                using (MySqlConnection dbcon = new MySqlConnection(m_connectionString))
+                {
+                    try
+                    {
+                        dbcon.Open();
+                        cmd.Connection = dbcon;
 
-                try
-                {
-                    return cmd.ExecuteNonQuery();
-                }
-                catch (Exception e)
-                {
-                    m_log.Error(e.Message, e);
-                    return 0;
+                        try
+                        {
+                            return cmd.ExecuteNonQuery();
+                        }
+                        catch (Exception e)
+                        {
+                            m_log.Error(e.Message, e);
+                            m_log.Error(Environment.StackTrace.ToString());
+                            return 0;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.Error(e.Message, e);
+                        return 0;
+                    }
                 }
             }
         }

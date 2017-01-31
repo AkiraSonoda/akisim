@@ -82,6 +82,13 @@ namespace OpenSim.Region.Framework.Scenes
         /// </value>
         protected Dictionary<Type, List<object>> ModuleInterfaces = new Dictionary<Type, List<object>>();
 
+        /// <summary>
+        /// These two objects hold the information about any formats used
+        /// by modules that hold agent specific data.
+        /// </summary>
+        protected List<UUID> FormatsOffered = new List<UUID>();
+        protected Dictionary<object, List<UUID>> FormatsWanted = new Dictionary<object, List<UUID>>();
+
         protected Dictionary<string, object> ModuleAPIMethods = new Dictionary<string, object>();
 
         /// <value>
@@ -193,7 +200,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// If -1 then updates until shutdown.
         /// </param>
         /// <returns>true if update completed within minimum frame time, false otherwise.</returns>
-        public abstract bool Update(int frames);
+        public abstract void Update(int frames);
 
         #endregion
 
@@ -367,6 +374,38 @@ namespace OpenSim.Region.Framework.Scenes
             return m_moduleCommanders;
         }
 
+        public List<UUID> GetFormatsOffered()
+        {
+            List<UUID> ret = new List<UUID>(FormatsOffered);
+
+            return ret;
+        }
+
+        protected void CheckAndAddAgentDataFormats(object mod)
+        {
+            if (!(mod is IAgentStatefulModule))
+                return;
+
+            IAgentStatefulModule m = (IAgentStatefulModule)mod;
+
+            List<UUID> renderFormats = m.GetRenderStateFormats();
+            List<UUID> acceptFormats = m.GetAcceptStateFormats();
+
+            foreach (UUID render in renderFormats)
+            {
+                if (!(FormatsOffered.Contains(render)))
+                    FormatsOffered.Add(render);
+            }
+
+            if (acceptFormats.Count == 0)
+                return;
+
+            if (FormatsWanted.ContainsKey(mod))
+                return;
+
+            FormatsWanted[mod] = acceptFormats;
+        }
+
         /// <summary>
         /// Register an interface to a region module.  This allows module methods to be called directly as
         /// well as via events.  If there is already a module registered for this interface, it is not replaced
@@ -389,6 +428,8 @@ namespace OpenSim.Region.Framework.Scenes
 
             l.Add(mod);
 
+            CheckAndAddAgentDataFormats(mod);
+
             if (mod is IEntityCreator)
             {
                 IEntityCreator entityCreator = (IEntityCreator)mod;
@@ -401,6 +442,14 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void UnregisterModuleInterface<M>(M mod)
         {
+            // We can't unregister agent stateful modules because
+            // that would require much more data to be held about formats
+            // and would make that code slower and less efficient.
+            // No known modules are unregistered anyway, ever, unless
+            // the simulator shuts down anyway.
+            if (mod is IAgentStatefulModule)
+                return;
+
             List<Object> l;
             if (ModuleInterfaces.TryGetValue(typeof(M), out l))
             {
@@ -430,6 +479,8 @@ namespace OpenSim.Region.Framework.Scenes
                 return;
 
             l.Add(mod);
+
+            CheckAndAddAgentDataFormats(mod);
 
             if (mod is IEntityCreator)
             {

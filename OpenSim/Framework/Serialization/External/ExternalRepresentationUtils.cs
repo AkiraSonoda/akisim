@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Xml;
@@ -47,7 +48,7 @@ namespace OpenSim.Framework.Serialization.External
         /// Populate a node with data read from xml using a dictinoary of processors
         /// </summary>
         /// <param name="nodeToFill"></param>
-        /// <param name="processors">/param>
+        /// <param name="processors"></param>
         /// <param name="xtr"></param>
         /// <returns>true on successful, false if there were any processing failures</returns>
         public static bool ExecuteReadProcessors<NodeType>(
@@ -57,10 +58,10 @@ namespace OpenSim.Framework.Serialization.External
                 nodeToFill,
                 processors,
                 xtr,
-                (o, name, e)
-                    => m_log.DebugFormat(
-                        "[ExternalRepresentationUtils]: Exception while parsing element {0}, continuing.  Exception {1}{2}",
-                        name, e.Message, e.StackTrace));
+                (o, nodeName, e) => {
+                    m_log.Debug(string.Format("[ExternalRepresentationUtils]: Error while parsing element {0} ",
+                        nodeName), e);
+                });
         }
 
         /// <summary>
@@ -80,18 +81,22 @@ namespace OpenSim.Framework.Serialization.External
             Action<NodeType, string, Exception> parseExceptionAction)
         {
             bool errors = false;
+            int numErrors = 0;
+
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
 
             string nodeName = string.Empty;
             while (xtr.NodeType != XmlNodeType.EndElement)
             {
                 nodeName = xtr.Name;
 
-//                        m_log.DebugFormat("[ExternalRepresentationUtils]: Processing: {0}", nodeName);
+                // m_log.DebugFormat("[ExternalRepresentationUtils]: Processing node: {0}", nodeName);
 
                 Action<NodeType, XmlReader> p = null;
                 if (processors.TryGetValue(xtr.Name, out p))
                 {
-//                            m_log.DebugFormat("[ExternalRepresentationUtils]: Found {0} processor, nodeName);
+                    // m_log.DebugFormat("[ExternalRepresentationUtils]: Found processor for {0}", nodeName);
 
                     try
                     {
@@ -101,6 +106,18 @@ namespace OpenSim.Framework.Serialization.External
                     {
                         errors = true;
                         parseExceptionAction(nodeToFill, nodeName, e);
+                        
+                        if (xtr.EOF)
+                        {
+                            m_log.Debug("[ExternalRepresentationUtils]: Aborting ExecuteReadProcessors due to unexpected end of XML");
+                            break;
+                        }
+                        
+                        if (++numErrors == 10)
+                        {
+                            m_log.Debug("[ExternalRepresentationUtils]: Aborting ExecuteReadProcessors due to too many parsing errors");
+                            break;
+                        }
 
                         if (xtr.NodeType == XmlNodeType.EndElement)
                             xtr.Read();
@@ -108,8 +125,15 @@ namespace OpenSim.Framework.Serialization.External
                 }
                 else
                 {
-                    // m_log.DebugFormat("[LandDataSerializer]: caught unknown element {0}", nodeName);
+                    // m_log.DebugFormat("[ExternalRepresentationUtils]: found unknown element \"{0}\"", nodeName);
                     xtr.ReadOuterXml(); // ignore
+                }
+
+                if (timer.Elapsed.TotalSeconds >= 60)
+                {
+                    m_log.Debug("[ExternalRepresentationUtils]: Aborting ExecuteReadProcessors due to timeout");
+                    errors = true;
+                    break;
                 }
             }
 
@@ -125,7 +149,8 @@ namespace OpenSim.Framework.Serialization.External
         /// <param name="userService">The service for retrieving user account information</param>
         /// <param name="scopeID">The scope of the user account information (Grid ID)</param>
         /// <returns>The SceneObjectPart represented in XML2</returns>
-        public static string RewriteSOP(string xml, string homeURL, IUserAccountService userService, UUID scopeID)
+        [Obsolete("This method is deprecated. Use RewriteSOP instead.")]
+        public static string RewriteSOP_Old(string xml, string homeURL, IUserAccountService userService, UUID scopeID)
         {
             if (xml == string.Empty || homeURL == string.Empty || userService == null)
                 return xml;
@@ -173,6 +198,190 @@ namespace OpenSim.Framework.Serialization.External
             }
         }
 
+        /// <summary>
+        /// Takes a XML representation of a SceneObjectPart and returns another XML representation
+        /// with creator data added to it.
+        /// </summary>
+        /// <param name="xml">The SceneObjectPart represented in XML2</param>
+        /// <param name="sceneName">An identifier for the component that's calling this function</param>
+        /// <param name="homeURL">The URL of the user agents service (home) for the creator</param>
+        /// <param name="userService">The service for retrieving user account information</param>
+        /// <param name="scopeID">The scope of the user account information (Grid ID)</param>
+        /// <returns>The SceneObjectPart represented in XML2</returns>
+        public static string RewriteSOP(string xmlData, string sceneName, string homeURL, IUserAccountService userService, UUID scopeID)
+        {
+            //            Console.WriteLine("Input XML [{0}]", xmlData);
+            if (xmlData == string.Empty || homeURL == string.Empty || userService == null)
+                return xmlData;
+
+            // Deal with bug
+            xmlData = ExternalRepresentationUtils.SanitizeXml(xmlData);
+
+            using (StringWriter sw = new StringWriter())
+            using (XmlTextWriter writer = new XmlTextWriter(sw))
+            using (XmlTextReader wrappedReader = new XmlTextReader(xmlData, XmlNodeType.Element, null))
+            using (XmlReader reader = XmlReader.Create(wrappedReader, new XmlReaderSettings() { IgnoreWhitespace = true, ConformanceLevel = ConformanceLevel.Fragment }))
+            {
+                TransformXml(reader, writer, sceneName, homeURL, userService, scopeID);
+
+                //                Console.WriteLine("Output: [{0}]", sw.ToString());
+
+                return sw.ToString();
+            }
+        }
+
+        protected static void TransformXml(XmlReader reader, XmlWriter writer, string sceneName, string homeURI, IUserAccountService userAccountService, UUID scopeID)
+        {
+            //            m_log.DebugFormat("[HG ASSET MAPPER]: Transforming XML");
+
+            int sopDepth = -1;
+            UserAccount creator = null;
+            bool hasCreatorData = false;
+
+            while (reader.Read())
+            {
+                //                Console.WriteLine("Depth: {0}, name {1}", reader.Depth, reader.Name);
+
+                switch (reader.NodeType)
+                {
+                    case XmlNodeType.Attribute:
+                        //                    Console.WriteLine("FOUND ATTRIBUTE {0}", reader.Name);
+                        writer.WriteAttributeString(reader.Name, reader.Value);
+                        break;
+
+                    case XmlNodeType.CDATA:
+                        writer.WriteCData(reader.Value);
+                        break;
+
+                    case XmlNodeType.Comment:
+                        writer.WriteComment(reader.Value);
+                        break;
+
+                    case XmlNodeType.DocumentType:
+                        writer.WriteDocType(reader.Name, reader.Value, null, null);
+                        break;
+
+                    case XmlNodeType.Element:
+                        //                    m_log.DebugFormat("Depth {0} at element {1}", reader.Depth, reader.Name);
+
+                        writer.WriteStartElement(reader.Prefix, reader.LocalName, reader.NamespaceURI);
+
+                        if (reader.HasAttributes)
+                        {
+                            while (reader.MoveToNextAttribute())
+                                writer.WriteAttributeString(reader.Name, reader.Value);
+
+                            reader.MoveToElement();
+                        }
+
+                        if (reader.LocalName == "SceneObjectPart")
+                        {
+                            if (sopDepth < 0)
+                            {
+                                sopDepth = reader.Depth;
+                                //                            m_log.DebugFormat("[HG ASSET MAPPER]: Set sopDepth to {0}", sopDepth);
+                            }
+                        }
+                        else
+                        {
+                            if (sopDepth >= 0 && reader.Depth == sopDepth + 1)
+                            {
+                                if (reader.Name == "CreatorID")
+                                {
+                                    reader.Read();
+                                    if (reader.NodeType == XmlNodeType.Element && reader.Name == "Guid" || reader.Name == "UUID")
+                                    {
+                                        reader.Read();
+
+                                        if (reader.NodeType == XmlNodeType.Text)
+                                        {
+                                            UUID uuid = UUID.Zero;
+                                            UUID.TryParse(reader.Value, out uuid);
+                                            creator = userAccountService.GetUserAccount(scopeID, uuid);
+                                            writer.WriteElementString("UUID", reader.Value);
+                                            reader.Read();
+                                        }
+                                        else
+                                        {
+                                            // If we unexpected run across mixed content in this node, still carry on
+                                            // transforming the subtree (this replicates earlier behaviour).
+                                            TransformXml(reader, writer, sceneName, homeURI, userAccountService, scopeID);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // If we unexpected run across mixed content in this node, still carry on
+                                        // transforming the subtree (this replicates earlier behaviour).
+                                        TransformXml(reader, writer, sceneName, homeURI, userAccountService, scopeID);
+                                    }
+                                }
+                                else if (reader.Name == "CreatorData")
+                                {
+                                    reader.Read();
+                                    if (reader.NodeType == XmlNodeType.Text)
+                                    {
+                                        hasCreatorData = true;
+                                        writer.WriteString(reader.Value);
+                                    }
+                                    else
+                                    {
+                                        // If we unexpected run across mixed content in this node, still carry on
+                                        // transforming the subtree (this replicates earlier behaviour).
+                                        TransformXml(reader, writer, sceneName, homeURI, userAccountService, scopeID);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (reader.IsEmptyElement)
+                        {
+                            //                        m_log.DebugFormat("[HG ASSET MAPPER]: Writing end for empty element {0}", reader.Name);
+                            writer.WriteEndElement();
+                        }
+
+                        break;
+
+                    case XmlNodeType.EndElement:
+                        //                    m_log.DebugFormat("Depth {0} at EndElement", reader.Depth);
+                        if (sopDepth == reader.Depth)
+                        {
+                            if (!hasCreatorData && creator != null)
+                                writer.WriteElementString(reader.Prefix, "CreatorData", reader.NamespaceURI, string.Format("{0};{1} {2}", homeURI, creator.FirstName, creator.LastName));
+
+                            //                        m_log.DebugFormat("[HG ASSET MAPPER]: Reset sopDepth");
+                            sopDepth = -1;
+                            creator = null;
+                            hasCreatorData = false;
+                        }
+                        writer.WriteEndElement();
+                        break;
+
+                    case XmlNodeType.EntityReference:
+                        writer.WriteEntityRef(reader.Name);
+                        break;
+
+                    case XmlNodeType.ProcessingInstruction:
+                        writer.WriteProcessingInstruction(reader.Name, reader.Value);
+                        break;
+
+                    case XmlNodeType.Text:
+                        writer.WriteString(reader.Value);
+                        break;
+
+                    case XmlNodeType.XmlDeclaration:
+                        // For various reasons, not all serializations have xml declarations (or consistent ones) 
+                        // and as it's embedded inside a byte stream we don't need it anyway, so ignore.
+                        break;
+
+                    default:
+                        m_log.WarnFormat(
+                            "[HG ASSET MAPPER]: Unrecognized node {0} in asset XML transform in {1}",
+                            reader.NodeType, sceneName);
+                        break;
+                }
+            }
+        }
+
         public static string CalcCreatorData(string homeURL, string name)
         {
             return homeURL + ";" + name;
@@ -182,5 +391,21 @@ namespace OpenSim.Framework.Serialization.External
         {
             return homeURL + "/" + uuid + ";" + name;
         }
+
+        /// <summary>
+        /// Sanitation for bug introduced in Oct. 20 (1eb3e6cc43e2a7b4053bc1185c7c88e22356c5e8)
+        /// </summary>
+        /// <param name="xmlData"></param>
+        /// <returns></returns>
+        public static string SanitizeXml(string xmlData)
+        {
+            string fixedData = xmlData;
+            if (fixedData != null)
+                // Loop, because it may contain multiple
+                while (fixedData.Contains("xmlns:xmlns:"))
+                    fixedData = fixedData.Replace("xmlns:xmlns:", "xmlns:");
+            return fixedData;
+        }
+
     }
 }

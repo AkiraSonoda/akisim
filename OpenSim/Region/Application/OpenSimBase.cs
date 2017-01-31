@@ -36,17 +36,15 @@ using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Communications;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework.Monitoring;
-using OpenSim.Region.ClientStack;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Region.Physics.Manager;
+using OpenSim.Region.PhysicsModules.SharedBase;
 using OpenSim.Server.Base;
 using OpenSim.Services.Base;
 using OpenSim.Services.Interfaces;
@@ -112,15 +110,14 @@ namespace OpenSim
 
         public List<IApplicationPlugin> m_plugins = new List<IApplicationPlugin>();
 
+        private List<string> m_permsModules;
+
+        private bool m_securePermissionsLoading = true;
+
         /// <value>
         /// The config information passed into the OpenSimulator region server.
         /// </value>
         public OpenSimConfigSource ConfigSource { get; private set; }
-
-        public List<IClientNetworkServer> ClientServers
-        {
-            get { return m_clientServers; }
-        }
 
         protected EnvConfigSource m_EnvConfigSource = new EnvConfigSource();
 
@@ -128,8 +125,6 @@ namespace OpenSim
         {
             get { return m_EnvConfigSource; }
         }
-
-        protected List<IClientNetworkServer> m_clientServers = new List<IClientNetworkServer>();
        
         public uint HttpServerPort
         {
@@ -244,6 +239,14 @@ namespace OpenSim
                     CreatePIDFile(pidFile);
                 
                 userStatsURI = startupConfig.GetString("Stats_URI", String.Empty);
+
+                m_securePermissionsLoading = startupConfig.GetBoolean("SecurePermissionsLoading", true);
+
+                string permissionModules = Util.GetConfigVarFromSections<string>(Config, "permissionmodules",
+                    new string[] { "Startup", "Permissions" }, "DefaultPermissionsModule");
+
+                m_permsModules = new List<string>(permissionModules.Split(','));
+
                 managedStatsURI = startupConfig.GetString("ManagedStatsRemoteFetchURI", String.Empty);
             }
 
@@ -387,13 +390,13 @@ namespace OpenSim
         /// <param name="regionInfo"></param>
         /// <param name="portadd_flag"></param>
         /// <returns></returns>
-        public List<IClientNetworkServer> CreateRegion(RegionInfo regionInfo, bool portadd_flag, out IScene scene)
+        public void CreateRegion(RegionInfo regionInfo, bool portadd_flag, out IScene scene)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
-            return CreateRegion(regionInfo, portadd_flag, false, out scene);
+            CreateRegion(regionInfo, portadd_flag, false, out scene);
         }
 
         /// <summary>
@@ -401,13 +404,13 @@ namespace OpenSim
         /// </summary>
         /// <param name="regionInfo"></param>
         /// <returns></returns>
-        public List<IClientNetworkServer> CreateRegion(RegionInfo regionInfo, out IScene scene)
+        public void CreateRegion(RegionInfo regionInfo, out IScene scene)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
-            return CreateRegion(regionInfo, false, true, out scene);
+            CreateRegion(regionInfo, false, true, out scene);
         }
 
         /// <summary>
@@ -417,7 +420,7 @@ namespace OpenSim
         /// <param name="portadd_flag"></param>
         /// <param name="do_post_init"></param>
         /// <returns></returns>
-        public List<IClientNetworkServer> CreateRegion(RegionInfo regionInfo, bool portadd_flag, bool do_post_init, out IScene mscene)
+        public void CreateRegion(RegionInfo regionInfo, bool portadd_flag, bool do_post_init, out IScene mscene)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -446,8 +449,7 @@ namespace OpenSim
                 Util.XmlRpcCommand(proxyUrl, "AddPort", port, port + proxyOffset, regionInfo.ExternalHostName);
             }
 
-            List<IClientNetworkServer> clientServers;
-            Scene scene = SetupScene(regionInfo, proxyOffset, Config, out clientServers);
+            Scene scene = SetupScene(regionInfo, proxyOffset, Config);
 
             m_log.Info("[MODULES]: Loading Region's modules (old style)");
 
@@ -460,7 +462,32 @@ namespace OpenSim
             }
             else m_log.Error("[REGIONMODULES]: The new RegionModulesController is missing...");
 
+            if (m_securePermissionsLoading)
+            {
+                foreach (string s in m_permsModules)
+                {
+                    if (!scene.RegionModules.ContainsKey(s))
+                    {
+                        m_log.Fatal("[MODULES]: Required module " + s + " not found.");
+                        Environment.Exit(0);
+                    }
+                }
+
+                m_log.InfoFormat("[SCENE]: Secure permissions loading enabled, modules loaded: {0}", String.Join(" ", m_permsModules.ToArray()));
+            }
+
             scene.SetModuleInterfaces();
+// First Step of bootreport sequence
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.ColdStart(1,scene);
+                scene.SnmpService.LinkDown(scene);
+            }
+
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.BootInfo("Loading prins", scene);
+            }
 
             while (regionInfo.EstateSettings.EstateOwner == UUID.Zero && MainConsole.Instance != null)
                 SetUpEstateOwner(scene);
@@ -474,6 +501,11 @@ namespace OpenSim
             scene.loadAllLandObjectsFromStorage(regionInfo.originRegionID);
             scene.EventManager.TriggerParcelPrimCountUpdate();
 
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.BootInfo("Grid Registration in progress", scene);
+            } 
+
             try
             {
                 scene.RegisterRegionWithGrid();
@@ -484,31 +516,55 @@ namespace OpenSim
                     "[STARTUP]: Registration of region with grid failed, aborting startup due to {0} {1}", 
                     e.Message, e.StackTrace);
 
+                if (scene.SnmpService != null)
+                {
+                    scene.SnmpService.Critical("Grid registration failed. Startup aborted.", scene);
+                }
                 // Carrying on now causes a lot of confusion down the
                 // line - we need to get the user's attention
                 Environment.Exit(1);
+            }
+
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.BootInfo("Grid Registration done", scene);
             }
 
             // We need to do this after we've initialized the
             // scripting engines.
             scene.CreateScriptInstances();
 
-            SceneManager.Add(scene);
-
-            if (m_autoCreateClientStack)
+            if (scene.SnmpService != null)
             {
-                foreach (IClientNetworkServer clientserver in clientServers)
-                {
-                    m_clientServers.Add(clientserver);
-                    clientserver.Start();
-                }
+                scene.SnmpService.BootInfo("ScriptEngine started", scene);
             }
 
+            SceneManager.Add(scene);
+
+            //if (m_autoCreateClientStack)
+            //{
+            //    foreach (IClientNetworkServer clientserver in clientServers)
+            //    {
+            //        m_clientServers.Add(clientserver);
+            //        clientserver.Start();
+            //    }
+            //}
+
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.BootInfo("Initializing region modules", scene);
+            }
             scene.EventManager.OnShutdown += delegate() { ShutdownRegion(scene); };
 
             mscene = scene;
 
-            return clientServers;
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.BootInfo("The region is operational", scene);
+                scene.SnmpService.LinkUp(scene);
+            }
+
+            //return clientServers;
         }
 
         /// <summary>
@@ -627,6 +683,11 @@ namespace OpenSim
         private void ShutdownRegion(Scene scene)
         {
             m_log.DebugFormat("[SHUTDOWN]: Shutting down region {0}", scene.RegionInfo.RegionName);
+            if (scene.SnmpService != null)
+            {
+                scene.SnmpService.BootInfo("The region is shutting down", scene);
+                scene.SnmpService.LinkDown(scene);
+            }
             IRegionModulesController controller;
             if (ApplicationRegistry.TryGet<IRegionModulesController>(out controller))
             {
@@ -651,7 +712,7 @@ namespace OpenSim
 
             scene.DeleteAllSceneObjects();
             SceneManager.CloseScene(scene);
-            ShutdownClientServer(scene.RegionInfo);
+            //ShutdownClientServer(scene.RegionInfo);
             
             if (!cleanup)
                 return;
@@ -720,7 +781,7 @@ namespace OpenSim
             }
 
             SceneManager.CloseScene(scene);
-            ShutdownClientServer(scene.RegionInfo);
+            //ShutdownClientServer(scene.RegionInfo);
         }
         
         /// <summary>
@@ -745,13 +806,13 @@ namespace OpenSim
         /// <param name="regionInfo"></param>
         /// <param name="clientServer"> </param>
         /// <returns></returns>
-        protected Scene SetupScene(RegionInfo regionInfo, out List<IClientNetworkServer> clientServer)
+        protected Scene SetupScene(RegionInfo regionInfo)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
-            return SetupScene(regionInfo, 0, null, out clientServer);
+            return SetupScene(regionInfo, 0, null);
         }
 
         /// <summary>
@@ -762,107 +823,29 @@ namespace OpenSim
         /// <param name="configSource"></param>
         /// <param name="clientServer"> </param>
         /// <returns></returns>
-        protected Scene SetupScene(
-            RegionInfo regionInfo, int proxyOffset, IConfigSource configSource, out List<IClientNetworkServer> clientServer)
+        protected Scene SetupScene(RegionInfo regionInfo, int proxyOffset, IConfigSource configSource)
         {
 			if (m_log.IsDebugEnabled) {
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
-            List<IClientNetworkServer> clientNetworkServers = null;
+            //List<IClientNetworkServer> clientNetworkServers = null;
 
             AgentCircuitManager circuitManager = new AgentCircuitManager();
-            IPAddress listenIP = regionInfo.InternalEndPoint.Address;
-            //if (!IPAddress.TryParse(regionInfo.InternalEndPoint, out listenIP))
-            //    listenIP = IPAddress.Parse("0.0.0.0");
-
-            uint port = (uint) regionInfo.InternalEndPoint.Port;
-
-            if (m_autoCreateClientStack)
-            {
-                clientNetworkServers = m_clientStackManager.CreateServers(
-                        listenIP, ref port, proxyOffset, regionInfo.m_allow_alternate_ports, configSource,
-                        circuitManager);
-            }
-            else
-            {
-                clientServer = null;
-            }
-
-            regionInfo.InternalEndPoint.Port = (int) port;
-
             Scene scene = CreateScene(regionInfo, m_simulationDataService, m_estateDataService, circuitManager);
 
-            if (m_autoCreateClientStack)
-            {
-                foreach (IClientNetworkServer clientnetserver in clientNetworkServers)
-                {
-                    clientnetserver.AddScene(scene);
-                }
-            }
-            clientServer = clientNetworkServers;
             scene.LoadWorldMap();
 
-            scene.PhysicsScene.RequestAssetMethod = scene.PhysicsRequestAsset;
-            scene.PhysicsScene.SetTerrain(scene.Heightmap.GetFloatsSerialised());
-            scene.PhysicsScene.SetWaterLevel((float) regionInfo.RegionSettings.WaterHeight);
-
             return scene;
-        }
-
-        protected override ClientStackManager CreateClientStackManager()
-        {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            return new ClientStackManager(m_configSettings.ClientstackDll);
         }
 
         protected override Scene CreateScene(RegionInfo regionInfo, ISimulationDataService simDataService,
             IEstateDataService estateDataService, AgentCircuitManager circuitManager)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            Vector3 regionExtent = new Vector3(regionInfo.RegionSizeX, regionInfo.RegionSizeY, regionInfo.RegionSizeZ);
-            PhysicsScene physicsScene = GetPhysicsScene(regionInfo.RegionName, regionExtent);
-
-            SceneCommunicationService sceneGridService = new SceneCommunicationService();
-
             return new Scene(
-                regionInfo, circuitManager, physicsScene, sceneGridService,
+                regionInfo, circuitManager,  
                 simDataService, estateDataService,
                 Config, m_version);
-        }
-        
-        protected void ShutdownClientServer(RegionInfo whichRegion)
-        {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            // Close and remove the clientserver for a region
-            bool foundClientServer = false;
-            int clientServerElement = 0;
-            Location location = new Location(whichRegion.RegionHandle);
-
-            for (int i = 0; i < m_clientServers.Count; i++)
-            {
-                if (m_clientServers[i].HandlesRegion(location))
-                {
-                    clientServerElement = i;
-                    foundClientServer = true;
-                    break;
-                }
-            }
-
-            if (foundClientServer)
-            {
-                m_clientServers[clientServerElement].Stop();
-                m_clientServers.RemoveAt(clientServerElement);
-            }
         }
         
         protected virtual void HandleRestartRegion(RegionInfo whichRegion)
@@ -871,23 +854,13 @@ namespace OpenSim
                 "[OPENSIM]: Got restart signal from SceneManager for region {0} ({1},{2})", 
                 whichRegion.RegionName, whichRegion.RegionLocX, whichRegion.RegionLocY);
 
-            ShutdownClientServer(whichRegion);
+            //ShutdownClientServer(whichRegion);
             IScene scene;
             CreateRegion(whichRegion, true, out scene);
             scene.Start();
         }
 
         # region Setup methods
-
-        protected override PhysicsScene GetPhysicsScene(string osSceneIdentifier, Vector3 regionExtent)
-        {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            return GetPhysicsScene(
-                m_configSettings.PhysicsEngine, m_configSettings.MeshEngineName, Config, osSceneIdentifier, regionExtent);
-        }
 
         /// <summary>
         /// Handler to supply the current status of this sim

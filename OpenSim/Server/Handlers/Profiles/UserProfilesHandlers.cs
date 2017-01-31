@@ -433,6 +433,7 @@ namespace OpenSim.Server.Handlers
         }
         #endregion User Preferences
 
+
         #region Utility
         public bool AvatarImageAssetsRequest(OSDMap json, ref JsonRpcResponse response)
         {

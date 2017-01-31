@@ -283,7 +283,7 @@ namespace OpenSim.Framework.Monitoring
                         if (!(String.IsNullOrEmpty(pStatName) || pStatName == AllSubCommand || pStatName == statName))
                             continue;
 
-                        statMap.Add(statName, theStats[statName].ToOSDMap());
+                        statMap.Add(statName, theStats[statName].ToBriefOSDMap());
                     }
 
                     contMap.Add(contName, statMap);

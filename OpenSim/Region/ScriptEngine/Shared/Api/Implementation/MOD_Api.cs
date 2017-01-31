@@ -66,7 +66,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         internal IScriptModuleComms m_comms = null;
 
         public void Initialize(
-            IScriptEngine scriptEngine, SceneObjectPart host, TaskInventoryItem item, WaitHandle coopSleepHandle)
+            IScriptEngine scriptEngine, SceneObjectPart host, TaskInventoryItem item)
         {
             m_ScriptEngine = scriptEngine;
             m_host = host;
@@ -136,7 +136,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 //                ((MethodInfo)MethodBase.GetCurrentMethod()).ReturnType);
 
             Type returntype = m_comms.LookupReturnType(fname);
-            if (returntype != typeof(string))
+            if (returntype != typeof(void))
                 MODError(String.Format("return type mismatch for {0}",fname));
 
             modInvoke(fname,parms);
@@ -329,6 +329,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 if (result != null)
                     return result;
 
+                Type returntype = m_comms.LookupReturnType(fname);
+                if (returntype == typeof(void))
+                    return null;
+
                 MODError(String.Format("Invocation of {0} failed; null return value",fname));
             }
             catch (Exception e)
@@ -416,7 +420,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             {
                 if (type == typeof(object[]))
                 {
-                    object[] plist = (lslparm as LSL_List).Data;
+                    object[] plist = ((LSL_List)lslparm).Data;
                     object[] result = new object[plist.Length];
                     for (int i = 0; i < plist.Length; i++)
                     {

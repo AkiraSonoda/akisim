@@ -27,12 +27,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using log4net;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework.Monitoring.Interfaces;
+
 
 namespace OpenSim.Framework.Monitoring
 {
@@ -74,7 +76,17 @@ namespace OpenSim.Framework.Monitoring
         private volatile float pendingDownloads;
         private volatile float pendingUploads;
         private volatile float activeScripts;
+        private volatile float spareTime;
+        private volatile float sleepTime;
+        private volatile float physicsStep;
+
+
         private volatile float scriptLinesPerSecond;
+        private volatile float m_frameDilation;
+        private volatile float m_usersLoggingIn;
+        private volatile float m_totalGeoPrims;
+        private volatile float m_totalMeshes;
+        private volatile float m_inUseThreads;
 
 //        /// <summary>
 //        /// These statistics are being collected by push rather than pull.  Pull would be simpler, but I had the
@@ -251,8 +263,12 @@ namespace OpenSim.Framework.Monitoring
         /// <param name="pack"></param>
         public void ReceiveClassicSimStatsPacket(SimStats stats)
         {
-            // FIXME: SimStats shouldn't allow an arbitrary stat packing order (which is inherited from the original
+             // FIXME: SimStats shouldn't allow an arbitrary stat packing order (which is inherited from the original
             // SimStatsPacket that was being used).
+
+            // For an unknown reason the original designers decided not to
+            // include the spare MS statistic inside of this class, this is
+            // located inside the StatsBlock at location 21, thus it is skipped
             timeDilation            = stats.StatsBlock[0].StatValue;
             simFps                  = stats.StatsBlock[1].StatValue;
             physicsFps              = stats.StatsBlock[2].StatValue;
@@ -264,8 +280,8 @@ namespace OpenSim.Framework.Monitoring
             totalFrameTime          = stats.StatsBlock[8].StatValue;
             netFrameTime            = stats.StatsBlock[9].StatValue;
             physicsFrameTime        = stats.StatsBlock[10].StatValue;
-            otherFrameTime          = stats.StatsBlock[11].StatValue;
-            imageFrameTime          = stats.StatsBlock[12].StatValue;
+            imageFrameTime          = stats.StatsBlock[11].StatValue;
+            otherFrameTime          = stats.StatsBlock[12].StatValue;
             inPacketsPerSecond      = stats.StatsBlock[13].StatValue;
             outPacketsPerSecond     = stats.StatsBlock[14].StatValue;
             unackedBytes            = stats.StatsBlock[15].StatValue;
@@ -273,7 +289,16 @@ namespace OpenSim.Framework.Monitoring
             pendingDownloads        = stats.StatsBlock[17].StatValue;
             pendingUploads          = stats.StatsBlock[18].StatValue;
             activeScripts           = stats.StatsBlock[19].StatValue;
-            scriptLinesPerSecond    = stats.StatsBlock[20].StatValue;
+            sleepTime               = stats.StatsBlock[20].StatValue;
+            spareTime               = stats.StatsBlock[21].StatValue;
+            physicsStep             = stats.StatsBlock[22].StatValue;
+
+            scriptLinesPerSecond    = stats.ExtraStatsBlock[0].StatValue;
+            m_frameDilation         = stats.ExtraStatsBlock[1].StatValue;
+            m_usersLoggingIn        = stats.ExtraStatsBlock[2].StatValue;
+            m_totalGeoPrims         = stats.ExtraStatsBlock[3].StatValue;
+            m_totalMeshes           = stats.ExtraStatsBlock[4].StatValue;
+            m_inUseThreads          = stats.ExtraStatsBlock[5].StatValue;
         }
 
         /// <summary>
@@ -437,6 +462,27 @@ Asset service request failures: {3}" + Environment.NewLine,
         /// <returns></returns>
         public override OSDMap OReport(string uptime, string version)
         {
+            // Get the amount of physical memory, allocated with the instance of this program, in kilobytes;
+            // the working set is the set of memory pages currently visible to this program in physical RAM
+            // memory and includes both shared (e.g. system libraries) and private data
+            double memUsage = Process.GetCurrentProcess().WorkingSet64 / 1024.0;
+
+            // Get the number of threads from the system that are currently
+            // running
+            int numberThreadsRunning = 0;
+            foreach (ProcessThread currentThread in
+                Process.GetCurrentProcess().Threads)
+            {
+                // A known issue with the current process .Threads property is 
+                // that it can return null threads, thus don't count those as 
+                // running threads and prevent the program function from failing
+                if (currentThread != null && 
+                    currentThread.ThreadState == ThreadState.Running)
+                {
+                    numberThreadsRunning++;
+                }
+            }
+
             OSDMap args = new OSDMap(30);
 //            args["AssetsInCache"] = OSD.FromString (String.Format ("{0:0.##}", AssetsInCache));
 //            args["TimeAfterCacheMiss"] = OSD.FromString (String.Format ("{0:0.##}",
@@ -473,6 +519,22 @@ Asset service request failures: {3}" + Environment.NewLine,
             args["Memory"] = OSD.FromString (base.XReport (uptime, version));
             args["Uptime"] = OSD.FromString (uptime);
             args["Version"] = OSD.FromString (version);
+
+            args["FrameDilatn"] = OSD.FromString(String.Format("{0:0.##}", m_frameDilation));
+            args["Logging in Users"] = OSD.FromString(String.Format("{0:0.##}",
+                m_usersLoggingIn));
+            args["GeoPrims"] = OSD.FromString(String.Format("{0:0.##}",
+                m_totalGeoPrims));
+            args["Mesh Objects"] = OSD.FromString(String.Format("{0:0.##}",
+                m_totalMeshes));
+            args["XEngine Thread Count"] = OSD.FromString(String.Format("{0:0.##}",
+                m_inUseThreads));
+            args["Util Thread Count"] = OSD.FromString(String.Format("{0:0.##}",
+                Util.GetSmartThreadPoolInfo().InUseThreads));
+            args["System Thread Count"] = OSD.FromString(String.Format(
+                "{0:0.##}", numberThreadsRunning));
+            args["ProcMem"] = OSD.FromString(String.Format("{0:#,###,###.##}",
+                memUsage));
             
             return args;
         }

@@ -239,13 +239,13 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             return region;
         }
 
-        protected override bool NeedsClosing(float drawdist, uint oldRegionX, uint newRegionX, uint oldRegionY, uint newRegionY, GridRegion reg)
+        protected override bool NeedsClosing(GridRegion reg, bool OutViewRange)
         {
-            if (base.NeedsClosing(drawdist, oldRegionX, newRegionX, oldRegionY, newRegionY, reg))
+            if (OutViewRange)
                 return true;
 
             int flags = Scene.GridService.GetRegionFlags(Scene.RegionInfo.ScopeID, reg.RegionID);
-            if (flags == -1 /* no region in DB */ || (flags & (int)OpenSim.Framework.RegionFlags.Hyperlink) != 0)
+            if (flags == -1 || (flags & (int)OpenSim.Framework.RegionFlags.Hyperlink) != 0)
                 return true;
 
             return false;
@@ -263,7 +263,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             }
         }
 
-        protected override bool CreateAgent(ScenePresence sp, GridRegion reg, GridRegion finalDestination, AgentCircuitData agentCircuit, uint teleportFlags, out string reason, out bool logout)
+        protected override bool CreateAgent(ScenePresence sp, GridRegion reg, GridRegion finalDestination, AgentCircuitData agentCircuit, uint teleportFlags, EntityTransferContext ctx, out string reason, out bool logout)
         {
             m_log.DebugFormat("[HG ENTITY TRANSFER MODULE]: CreateAgent {0} {1}", reg.ServerURI, finalDestination.ServerURI);
             reason = string.Empty;
@@ -308,7 +308,12 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 }
             }
 
-            return base.CreateAgent(sp, reg, finalDestination, agentCircuit, teleportFlags, out reason, out logout);
+            return base.CreateAgent(sp, reg, finalDestination, agentCircuit, teleportFlags, ctx, out reason, out logout);
+        }
+
+        public override void TriggerTeleportHome(UUID id, IClientAPI client)
+        {
+            TeleportHome(id, client);
         }
 
         protected override bool ValidateGenericConditions(ScenePresence sp, GridRegion reg, GridRegion finalDestination, uint teleportFlags, out string reason)
@@ -328,7 +333,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                     m_log.DebugFormat("[HG ENTITY TRANSFER MODULE]: RestrictAppearanceAbroad is ON. Checking generic appearance");
 
                     // Check wearables
-                    for (int i = 0; i < AvatarWearable.MAX_WEARABLES; i++)
+                    for (int i = 0; i < sp.Appearance.Wearables.Length ; i++)
                     {
                         for (int j = 0; j < sp.Appearance.Wearables[i].Count; j++)
                         {
@@ -337,7 +342,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
                             bool found = false;
                             foreach (AvatarAppearance a in ExportedAppearance)
-                                if (a.Wearables[i] != null)
+                                if (i < a.Wearables.Length && a.Wearables[i] != null)
                                 {
                                     found = true;
                                     break;
@@ -351,7 +356,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
                             found = false;
                             foreach (AvatarAppearance a in ExportedAppearance)
-                                if (sp.Appearance.Wearables[i][j].AssetID == a.Wearables[i][j].AssetID)
+                                if (i < a.Wearables.Length && sp.Appearance.Wearables[i][j].AssetID == a.Wearables[i][j].AssetID)
                                 {
                                     found = true;
                                     break;
@@ -429,10 +434,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         //    return base.UpdateAgent(reg, finalDestination, agentData, sp);
         //}
 
-        public override void TriggerTeleportHome(UUID id, IClientAPI client)     
-        {                                                                       
-            TeleportHome(id, client);                                           
-        }                                                                       
                           
         public override bool TeleportHome(UUID id, IClientAPI client)
         {
@@ -491,9 +492,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             m_log.DebugFormat("[HG ENTITY TRANSFER MODULE]: teleporting user {0} {1} home to {2} via {3}:{4}",
                 aCircuit.firstname, aCircuit.lastname, finalDestination.RegionName, homeGatekeeper.ServerURI, homeGatekeeper.RegionName);
 
-            DoTeleport(
-                sp, homeGatekeeper, finalDestination,
-                position, lookAt, (uint)(Constants.TeleportFlags.SetLastToTarget | Constants.TeleportFlags.ViaHome));
+            DoTeleport(sp, homeGatekeeper, finalDestination, position, lookAt, (uint)(Constants.TeleportFlags.SetLastToTarget | Constants.TeleportFlags.ViaHome));
             return true;
         }
 

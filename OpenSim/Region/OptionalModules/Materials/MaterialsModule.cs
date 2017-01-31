@@ -65,6 +65,7 @@ namespace OpenSim.Region.OptionalModules.Materials
 
         private Scene m_scene = null;
         private bool m_enabled = false;
+        private int m_maxMaterialsPerTransaction = 50;
 
         public Dictionary<UUID, OSDMap> m_regionMaterials = new Dictionary<UUID, OSDMap>();
 
@@ -74,7 +75,10 @@ namespace OpenSim.Region.OptionalModules.Materials
 
             IConfig config = source.Configs["Materials"];
             if (config != null)
+            {
                 m_enabled = config.GetBoolean("enable_materials", m_enabled);
+                m_maxMaterialsPerTransaction = config.GetInt("MaxMaterialsPerTransaction", m_maxMaterialsPerTransaction);
+            }
 
             if (m_enabled)
                 m_log.DebugFormat("[Materials]: Initialized");
@@ -145,6 +149,16 @@ namespace OpenSim.Region.OptionalModules.Materials
         
         public void RegionLoaded(Scene scene)
         {
+            if (!m_enabled) return;
+
+            ISimulatorFeaturesModule featuresModule = scene.RequestModuleInterface<ISimulatorFeaturesModule>();
+            if (featuresModule != null)
+                featuresModule.OnSimulatorFeaturesRequest += OnSimulatorFeaturesRequest;
+        }
+
+        private void OnSimulatorFeaturesRequest(UUID agentID, ref OSDMap features)
+        {
+            features["MaxMaterialsPerTransaction"] = m_maxMaterialsPerTransaction;
         }
 
         /// <summary>
@@ -219,7 +233,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                 GetStoredMaterialInFace(part, te.DefaultTexture);
             else
                 m_log.WarnFormat(
-                    "[Materials]: Default texture for part {0} (part of object {1)) in {2} unexpectedly null.  Ignoring.", 
+                    "[Materials]: Default texture for part {0} (part of object {1}) in {2} unexpectedly null.  Ignoring.", 
                     part.Name, part.ParentGroup.Name, m_scene.Name);
 
             foreach (Primitive.TextureEntryFace face in te.FaceTextures)
