@@ -1175,6 +1175,40 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             }
         }
 
+        private UUID GetDefaultItem(WearableType wearable)
+        {
+            // These are ruth
+            UUID ret = UUID.Zero;
+            switch (wearable)
+            {
+                case WearableType.Eyes:
+                    ret = new UUID("4bb6fa4d-1cd2-498a-a84c-95c1a0e745a7");
+                    break;
+                case WearableType.Hair:
+                    ret = new UUID("d342e6c0-b9d2-11dc-95ff-0800200c9a66");
+                    break;
+                case WearableType.Pants:
+                    ret = new UUID("00000000-38f9-1111-024e-222222111120");
+                    break;
+                case WearableType.Shape:
+                    ret = new UUID("66c41e39-38f9-f75a-024e-585989bfab73");
+                    break;
+                case WearableType.Shirt:
+                    ret = new UUID("00000000-38f9-1111-024e-222222111110");
+                    break;
+                case WearableType.Skin:
+                    ret = new UUID("77c41e39-38f9-f75a-024e-585989bbabbb");
+                    break;
+                case WearableType.Undershirt:
+                    ret = new UUID("16499ebb-3208-ec27-2def-481881728f47");
+                    break;
+                case WearableType.Underpants:
+                    ret = new UUID("4ac2e9c7-3671-d229-316a-67717730841d");
+                    break;
+            }
+
+            return ret;
+        }
         #endregion
 
         #region Client Event Handlers

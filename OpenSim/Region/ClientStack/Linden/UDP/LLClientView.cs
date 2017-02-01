@@ -13277,6 +13277,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
         }
 
+        /// </summary>
+        /// <returns></returns>
+        public void CompactReport() {
+            // return m_udpClient.GetStats();
+            s_log.Debug("LLClientView.CompactReport(): not yet implemented");
+
+        }
+
+
         public string Report()
         {
             return m_udpClient.GetStats();

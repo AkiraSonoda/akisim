@@ -3453,7 +3453,6 @@ namespace OpenSim.Region.Framework.Scenes
                     Vector3 sitOffset;
                     Quaternion r = sitTargetOrient;
 
-                    Vector3 newPos;
 
                     if (LegacySitOffsets)
                     {
@@ -3520,8 +3519,6 @@ namespace OpenSim.Region.Framework.Scenes
                         newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                     }
 
-                    Vector3 up = new Vector3((float)x, (float)y, (float)z);
-                    Vector3 sitOffset = up * (float)offset;
 
                
                     // SitTarget Compatibility Workaround 
@@ -3534,7 +3531,7 @@ namespace OpenSim.Region.Framework.Scenes
                     } else {
                         newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
                     }
-                    Vector3 newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
+                    newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                     Quaternion newRot;
 
                     if (part.IsRoot) {

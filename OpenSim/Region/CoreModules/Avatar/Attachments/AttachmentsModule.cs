@@ -723,7 +723,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
                 return;
             }
 
-            if (DebugLevel > 0)
+            if (m_log.IsDebugEnabled)
                 m_log.DebugFormat(
                     "[ATTACHMENTS MODULE]: Detaching object {0} {1} (FromItemID {2}) for {3} in {4}",
                     so.Name, so.LocalId, so.FromItemID, sp.Name, m_scene.Name);

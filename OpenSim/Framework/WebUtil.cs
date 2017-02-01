@@ -323,6 +323,7 @@ namespace OpenSim.Framework
             {
                 int tickdiff = Util.EnvironmentTickCountSubtract(tickstart);
                 if (tickdiff > LongCallTime)
+                {
                     m_log.InfoFormat(
                         "[WEB UTIL]: Slow ServiceOSD request {0} {1} {2} took {3}ms, {4}ms writing({5} at Json; {6} at comp), {7} bytes ({8} uncomp): {9}",
                         reqnum,
@@ -340,9 +341,10 @@ namespace OpenSim.Framework
                             : "");
                 }
                 else if (m_log.IsDebugEnabled)
-                    m_log.DebugFormat(
-                        "[LOGHTTP]: HTTP OUT {0} took {1}ms, {2}ms writing",
+                {
+                    m_log.DebugFormat("[LOGHTTP]: HTTP OUT {0} took {1}ms, {2}ms writing",
                         reqnum, tickdiff, tickdata);
+                }
             }
 
             m_log.DebugFormat(
@@ -1096,6 +1098,7 @@ namespace OpenSim.Framework
 
             int tickdiff = Util.EnvironmentTickCountSubtract(tickstart);
             if (tickdiff > WebUtil.LongCallTime)
+            {
                 m_log.InfoFormat(
                     "[FORMS]: Slow request {0} {1} {2} took {3}ms, {4}ms writing, {5}",
                     reqnum,
@@ -1105,10 +1108,12 @@ namespace OpenSim.Framework
                     tickset,
                     tickdata,
                     obj.Length > WebUtil.MaxRequestDiagLength ? obj.Remove(WebUtil.MaxRequestDiagLength) : obj);
+            }
             else if (m_log.IsDebugEnabled)
-                m_log.DebugFormat(
-                    "[LOGHTTP]: HTTP OUT {0} took {1}ms, {2}ms writing",
+            {
+                m_log.DebugFormat("[LOGHTTP]: HTTP OUT {0} took {1}ms, {2}ms writing",
                     reqnum, tickdiff, tickdata);
+            }
 
             if (m_log.IsDebugEnabled)
                 WebUtil.LogResponseDetail(reqnum, respstring);
@@ -1254,7 +1259,7 @@ namespace OpenSim.Framework
 
                     if (m_log.IsDebugEnabled)
                         WebUtil.LogOutgoingDetail("SEND", reqnum, System.Text.Encoding.UTF8.GetString(data));
-                        
+
                     try
                     {
                         using (Stream requestStream = request.GetRequestStream())

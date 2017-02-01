@@ -39,6 +39,7 @@ using OpenSim.Framework.Console;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using System.Xml.Serialization;
 
 // AKIDO change the function entry debug logging statements to the guarded ones
 

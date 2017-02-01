@@ -216,16 +216,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         void OnClientClosed(UUID clientID, Scene scene)
         {
-<<<<<<< HEAD
-            if (m_log.IsDebugEnabled) {
+			if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
             }
-
-            if (m_InventoryURLs.ContainsKey(clientID)) // if it's in cache
-=======
-            ScenePresence sp = null;
+            
+			ScenePresence sp = null;
             foreach (Scene s in m_Scenes)
->>>>>>> OpenSim_from_org/master
             {
                 s.TryGetScenePresence(clientID, out sp);
                 if ((sp != null) && !sp.IsChildAgent && (s != scene))
@@ -722,20 +718,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public InventoryItemBase GetItem(UUID principalID, UUID itemID)
         {
-<<<<<<< HEAD
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
-            if (item == null)
-                return null;
-
-            if (m_log.IsDebugEnabled) {
-                m_log.Debug("GetItem " + item.ID);
-            }
-=======
             //m_log.Debug("[HG INVENTORY CONNECTOR]: GetItem " + item.ID);
->>>>>>> OpenSim_from_org/master
 
             string invURL = GetInventoryServiceURL(principalID);
 
@@ -767,21 +750,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public InventoryFolderBase GetFolder(UUID principalID, UUID folderID)
         {
-<<<<<<< HEAD
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
-
-            if (folder == null)
-                return null;
-
-            if (m_log.IsDebugEnabled) {
-                m_log.Debug("GetFolder " + folder.ID);
-            }
-=======
             //m_log.Debug("[HG INVENTORY CONNECTOR]: GetFolder " + folder.ID);
->>>>>>> OpenSim_from_org/master
 
             string invURL = GetInventoryServiceURL(principalID);
 
