@@ -72,7 +72,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         private bool m_Enabled = false;
 
-        public Type ReplaceableInterface 
+        public Type ReplaceableInterface
         {
             get { return null; }
         }
@@ -134,7 +134,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
         {
             if (!m_Enabled)
                 return;
-            
+
             scene.RegisterModuleInterface<IInventoryService>(this);
 
             if (Scene == null)
@@ -261,9 +261,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
         public bool AddItem(InventoryItemBase item)
         {
 //            m_log.DebugFormat(
-//                "[LOCAL INVENTORY SERVICES CONNECTOR]: Adding inventory item {0} to user {1} folder {2}", 
+//                "[LOCAL INVENTORY SERVICES CONNECTOR]: Adding inventory item {0} to user {1} folder {2}",
 //                item.Name, item.Owner, item.Folder);
-            
+
             return m_InventoryService.AddItem(item);
         }
 
@@ -292,13 +292,13 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             return m_InventoryService.DeleteItems(ownerID, itemIDs);
         }
 
-        public InventoryItemBase GetItem(InventoryItemBase item)
+        public InventoryItemBase GetItem(UUID principalID, UUID itemID)
         {
 //            m_log.DebugFormat("[LOCAL INVENTORY SERVICES CONNECTOR]: Requesting inventory item {0}", item.ID);
 
 //            UUID requestedItemId = item.ID;
-            
-            item = m_InventoryService.GetItem(item);
+
+            InventoryItemBase item = m_InventoryService.GetItem(principalID, itemID);
 
 //            if (null == item)
 //                m_log.ErrorFormat(
@@ -312,9 +312,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             return m_InventoryService.GetMultipleItems(userID, itemIDs);
         }
 
-        public InventoryFolderBase GetFolder(InventoryFolderBase folder)
+        public InventoryFolderBase GetFolder(UUID principalID, UUID folderID)
         {
-            return m_InventoryService.GetFolder(folder);
+            return m_InventoryService.GetFolder(principalID, folderID);
         }
 
         /// <summary>

@@ -108,7 +108,7 @@ namespace OpenSim.Groups
             if (!m_Enabled)
                 return;
 
-            m_log.DebugFormat("[Groups]: Registering {0} with {1}", this.Name, scene.RegionInfo.RegionName); 
+            m_log.DebugFormat("[Groups]: Registering {0} with {1}", this.Name, scene.RegionInfo.RegionName);
             scene.RegisterModuleInterface<IGroupsServicesConnector>(this);
             m_Scenes.Add(scene);
 
@@ -148,7 +148,7 @@ namespace OpenSim.Groups
                 {
                     m_LocalGroupsConnector = new GroupsServiceLocalConnectorModule(m_Config, m_UserManagement);
                     // Also, if local, create the endpoint for the HGGroupsService
-                    new HGGroupsServiceRobustConnector(m_Config, MainServer.Instance, string.Empty, 
+                    new HGGroupsServiceRobustConnector(m_Config, MainServer.Instance, string.Empty,
                         scene.RequestModuleInterface<IOfflineIMService>(), scene.RequestModuleInterface<IUserAccountService>());
 
                 }
@@ -188,7 +188,7 @@ namespace OpenSim.Groups
                 if (sp is ScenePresence && ((ScenePresence)sp).PresenceType != PresenceType.Npc)
                 {
                     AgentCircuitData aCircuit = ((ScenePresence)sp).Scene.AuthenticateHandler.GetAgentCircuitData(client.AgentId);
-                    if (aCircuit != null && (aCircuit.teleportFlags & (uint)Constants.TeleportFlags.ViaHGLogin) != 0 && 
+                    if (aCircuit != null && (aCircuit.teleportFlags & (uint)Constants.TeleportFlags.ViaHGLogin) != 0 &&
                         m_OfflineIM != null && m_Messaging != null)
                     {
                         List<GridInstantMessage> ims = m_OfflineIM.GetMessages(aCircuit.AgentID);
@@ -202,7 +202,7 @@ namespace OpenSim.Groups
 
         #region IGroupsServicesConnector
 
-        public UUID CreateGroup(UUID RequestingAgentID, string name, string charter, bool showInList, UUID insigniaID, int membershipFee, bool openEnrollment, 
+        public UUID CreateGroup(UUID RequestingAgentID, string name, string charter, bool showInList, UUID insigniaID, int membershipFee, bool openEnrollment,
             bool allowPublish, bool maturePublish, UUID founderID, out string reason)
         {
 
@@ -213,7 +213,7 @@ namespace OpenSim.Groups
 
             reason = string.Empty;
             if (m_UserManagement.IsLocalGridUser(RequestingAgentID))
-                return m_LocalGroupsConnector.CreateGroup(RequestingAgentID, name, charter, showInList, insigniaID, 
+                return m_LocalGroupsConnector.CreateGroup(RequestingAgentID, name, charter, showInList, insigniaID,
                     membershipFee, openEnrollment, allowPublish, maturePublish, founderID, out reason);
             else
             {
@@ -222,7 +222,7 @@ namespace OpenSim.Groups
             }
         }
 
-        public bool UpdateGroup(string RequestingAgentID, UUID groupID, string charter, bool showInList, UUID insigniaID, int membershipFee, 
+        public bool UpdateGroup(string RequestingAgentID, UUID groupID, string charter, bool showInList, UUID insigniaID, int membershipFee,
             bool openEnrollment, bool allowPublish, bool maturePublish, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
@@ -233,7 +233,7 @@ namespace OpenSim.Groups
             string url = string.Empty;
             string name = string.Empty;
             if (IsLocal(groupID, out url, out name))
-                return m_LocalGroupsConnector.UpdateGroup(AgentUUI(RequestingAgentID), groupID, charter, showInList, insigniaID, membershipFee, 
+                return m_LocalGroupsConnector.UpdateGroup(AgentUUI(RequestingAgentID), groupID, charter, showInList, insigniaID, membershipFee,
                     openEnrollment, allowPublish, maturePublish, out reason);
             else
             {
@@ -435,7 +435,7 @@ namespace OpenSim.Groups
 
                 }
             }
-            
+
             return new List<GroupRoleMembersData>();
         }
 
@@ -763,7 +763,7 @@ namespace OpenSim.Groups
             }
             if (agent != null)
                 return Util.ProduceUserUniversalIdentifier(agent);
-            
+
             // we don't know anything about this foreign user
             // try asking the user management module, which may know more
             return m_UserManagement.GetUserUUI(AgentID);
@@ -811,7 +811,7 @@ namespace OpenSim.Groups
             string url = string.Empty, first = string.Empty, last = string.Empty, tmp = string.Empty;
             if (Util.ParseUniversalUserIdentifier(uID, out userID, out url, out first, out last, out tmp))
                 m_UserManagement.AddUser(userID, first, last, url);
-            
+
             return userID;
         }
 

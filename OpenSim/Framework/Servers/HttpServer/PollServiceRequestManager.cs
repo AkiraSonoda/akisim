@@ -77,14 +77,14 @@ namespace OpenSim.Framework.Servers.HttpServer
 
             STPStartInfo startInfo = new STPStartInfo();
             startInfo.IdleTimeout = 30000;
-            startInfo.MaxWorkerThreads = 15;
+            startInfo.MaxWorkerThreads = 20;
             startInfo.MinWorkerThreads = 1;
             startInfo.ThreadPriority = ThreadPriority.Normal;
             startInfo.StartSuspended = true;
             startInfo.ThreadPoolName = "PoolService";
 
             m_threadPool = new SmartThreadPool(startInfo);
-		
+
         }
 
         public void Start()
@@ -113,7 +113,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                 true,
                 null,
                 1000 * 60 * 10);
-				
+
 
         }
 
@@ -163,7 +163,6 @@ namespace OpenSim.Framework.Servers.HttpServer
                 }
             }
         }
-
 
         public void EnqueueInt(PollServiceHttpRequest req)
         {
@@ -276,7 +275,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                         {
                             Hashtable responsedata = req.PollServiceArgs.GetEvents(req.RequestID, req.PollServiceArgs.Id);
 
-                            if (req.PollServiceArgs.Type == PollServiceEventArgs.EventType.LongPoll) // This is the event queue
+                            m_threadPool.QueueWorkItem(x =>
                             {
                                 try
                                 {
@@ -287,32 +286,27 @@ namespace OpenSim.Framework.Servers.HttpServer
                                 {
                                     // Ignore it, no need to reply
                                 }
-                            }
-                            else
-                            {
-                                m_threadPool.QueueWorkItem(x =>
-                                {
-                                    try
-                                    {
-                                        req.DoHTTPGruntWork(m_server, responsedata);
-                                        byContextDequeue(req);
-                                    }
-                                    catch (ObjectDisposedException) // Browser aborted before we could read body, server closed the stream
-                                    {
-                                        // Ignore it, no need to reply
-                                    }
-
-                                    return null;
-                                }, null);
-                            }
+                                return null;
+                            }, null);
                         }
                         else
                         {
                             if ((Environment.TickCount - req.RequestTime) > req.PollServiceArgs.TimeOutms)
                             {
-                                req.DoHTTPGruntWork(m_server,
-                                    req.PollServiceArgs.NoEvents(req.RequestID, req.PollServiceArgs.Id));
-                                byContextDequeue(req);
+                                m_threadPool.QueueWorkItem(x =>
+                                {
+                                    try
+                                    {
+                                        req.DoHTTPGruntWork(m_server,
+                                            req.PollServiceArgs.NoEvents(req.RequestID, req.PollServiceArgs.Id));
+                                        byContextDequeue(req);
+                                    }
+                                    catch (ObjectDisposedException)
+                                    {
+                                    // Ignore it, no need to reply
+                                    }
+                                    return null;
+                                }, null);
                             }
                             else
                             {

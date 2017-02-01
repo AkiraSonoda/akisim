@@ -70,6 +70,36 @@ namespace OpenSim.Tools.Configger
 
             List<string> sources = new List<string>();
 
+            string masterFileName = startupConfig.GetString("inimaster", "OpenSimDefaults.ini");
+
+            if (masterFileName == "none")
+                masterFileName = String.Empty;
+
+            if (IsUri(masterFileName))
+            {
+                if (!sources.Contains(masterFileName))
+                    sources.Add(masterFileName);
+            }
+            else
+            {
+                string masterFilePath = Path.GetFullPath(
+                        Path.Combine(Util.configDir(), masterFileName));
+
+                if (masterFileName != String.Empty)
+                {
+                    if (File.Exists(masterFilePath))
+                    {
+                        if (!sources.Contains(masterFilePath))
+                            sources.Add(masterFilePath);
+                    }
+                    else
+                    {
+                        m_log.ErrorFormat("Master ini file {0} not found", Path.GetFullPath(masterFilePath));
+                        Environment.Exit(1);
+                    }
+                }
+            }
+
             string iniFileName = startupConfig.GetString("inifile", Path.Combine(".", "OpenSim.ini"));
 
             if (IsUri(iniFileName))
@@ -234,18 +264,14 @@ namespace OpenSim.Tools.Configger
                 config.Set("region_info_source", "filesystem");
                 config.Set("allow_regionless", false);
 
-                config.Set("gridmode", false);
                 config.Set("physics", "OpenDynamicsEngine");
                 config.Set("meshing", "Meshmerizer");
                 config.Set("physical_prim", true);
                 config.Set("serverside_object_permissions", true);
-                config.Set("storage_prim_inventories", true);
                 config.Set("startup_console_commands_file", String.Empty);
                 config.Set("shutdown_console_commands_file", String.Empty);
                 config.Set("DefaultScriptEngine", "XEngine");
                 config.Set("clientstack_plugin", "OpenSim.Region.ClientStack.LindenUDP.dll");
-                // life doesn't really work without this
-                config.Set("EventQueue", true);
             }
 
             return defaultConfig;

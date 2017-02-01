@@ -25,19 +25,46 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections.Generic;
-using OpenMetaverse;
 using OpenSim.Framework;
 
-namespace OpenSim.Region.RegionCombinerModule
+namespace OpenSim.Framework
 {
-
-    struct RegionCoarseLocationStruct
+    public interface IAssetCache
     {
-        public List<Vector3> Locations;
-        public List<UUID> Uuids;
-        public IClientAPI UserAPI;
-        public Vector2 Offset;
+        /// <summary>
+        /// Cache the specified asset.
+        /// </summary>
+        /// <param name='asset'></param>
+        void Cache(AssetBase asset);
+
+        /// <summary>
+        /// Cache that the specified asset wasn't found.
+        /// </summary>
+        /// <param name='id'></param>
+        /// <summary>
+        void CacheNegative(string id);
+
+        /// Get an asset by its id.
+        /// </summary>
+        /// <param name='id'></param>
+        /// <returns>null if the asset does not exist.</returns>
+        AssetBase Get(string id);
+
+        /// <summary>
+        /// Check whether an asset with the specified id exists in the cache.
+        /// </summary>
+        /// <param name='id'></param>
+        bool Check(string id);
+
+        /// <summary>
+        /// Expire an asset from the cache.
+        /// </summary>
+        /// <param name='id'></param>
+        void Expire(string id);
+
+        /// <summary>
+        /// Clear the cache.
+        /// </summary>
+        void Clear();
     }
 }

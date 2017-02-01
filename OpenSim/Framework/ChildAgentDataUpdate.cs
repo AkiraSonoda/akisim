@@ -89,6 +89,8 @@ namespace OpenSim.Framework
         public Vector3 AtAxis;
         public Vector3 LeftAxis;
         public Vector3 UpAxis;
+        //public int GodLevel;
+        public OSD GodData = null;
         public bool ChangedGrid;
 
         // This probably shouldn't be here
@@ -116,6 +118,16 @@ namespace OpenSim.Framework
 
             args["far"] = OSD.FromReal(Far);
             args["changed_grid"] = OSD.FromBoolean(ChangedGrid);
+            //args["god_level"] = OSD.FromString(GodLevel.ToString());
+            if(GodData != null)
+            {
+                args["god_data"] = GodData;
+                OSDMap g = (OSDMap)GodData;
+                // Set legacy value
+                // TODO: remove after 0.9 is superseded
+                if (g.ContainsKey("ViewerUiIsGod"))
+                    args["god_level"] = g["ViewerUiIsGod"].AsBoolean() ? 200 : 0;
+            }
 
             if ((Throttles != null) && (Throttles.Length > 0))
                 args["throttles"] = OSD.FromBinary(Throttles);
@@ -173,6 +185,11 @@ namespace OpenSim.Framework
 
             if (args["changed_grid"] != null)
                 ChangedGrid = args["changed_grid"].AsBoolean();
+
+            //if (args["god_level"] != null)
+            //    Int32.TryParse(args["god_level"].AsString(), out GodLevel);
+            if (args.ContainsKey("god_data") && args["god_data"] != null)
+                GodData = args["god_data"];
 
             if (args["far"] != null)
                 Far = (float)(args["far"].AsReal());
@@ -332,7 +349,7 @@ namespace OpenSim.Framework
         public Vector3 UpAxis;
 
         /// <summary>
-        /// Signal on a V2 teleport that Scene.IncomingChildAgentDataUpdate(AgentData ad) should wait for the 
+        /// Signal on a V2 teleport that Scene.IncomingChildAgentDataUpdate(AgentData ad) should wait for the
         /// scene presence to become root (triggered when the viewer sends a CompleteAgentMovement UDP packet after
         /// establishing the connection triggered by it's receipt of a TeleportFinish EQ message).
         /// </summary>
@@ -348,20 +365,23 @@ namespace OpenSim.Framework
         public Quaternion BodyRotation;
         public uint ControlFlags;
         public float EnergyLevel;
-        public Byte GodLevel;
+        public OSD GodData = null;
+        //public Byte GodLevel;
         public bool AlwaysRun;
         public UUID PreyAgent;
         public Byte AgentAccess;
         public UUID ActiveGroupID;
+        public string ActiveGroupName;
+        public string ActiveGroupTitle = null;
+        public UUID agentCOF;
+        public byte CrossingFlags;
 
-        public AgentGroupData[] Groups;
         public Dictionary<ulong, string> ChildrenCapSeeds = null;
         public Animation[] Anims;
         public Animation DefaultAnim = null;
         public Animation AnimState = null;
         public Byte MotionState = 0;
 
-        public UUID GranterID;
         public UUID ParentPart;
         public Vector3 SitOffset;
 
@@ -370,12 +390,6 @@ namespace OpenSim.Framework
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-/*
-        public byte[] AgentTextures;
-        public byte[] VisualParams;
-        public UUID[] Wearables;
-        public AvatarAttachment[] Attachments;
-*/
         // Scripted
         public ControllerData[] Controllers;
 
@@ -389,8 +403,6 @@ namespace OpenSim.Framework
 
         public virtual OSDMap Pack(EntityTransferContext ctx)
         {
-            int wearablesCount = -1;
-
 //            m_log.InfoFormat("[CHILDAGENTDATAUPDATE] Pack data");
 
             OSDMap args = new OSDMap();
@@ -424,20 +436,25 @@ namespace OpenSim.Framework
             args["control_flags"] = OSD.FromString(ControlFlags.ToString());
 
             args["energy_level"] = OSD.FromReal(EnergyLevel);
-            args["god_level"] = OSD.FromString(GodLevel.ToString());
+            //args["god_level"] = OSD.FromString(GodLevel.ToString());
+            if(GodData != null)
+            {
+                args["god_data"] = GodData;
+                OSDMap g = (OSDMap)GodData;
+                if (g.ContainsKey("ViewerUiIsGod"))
+                    args["god_level"] = g["ViewerUiIsGod"].AsBoolean() ? 200 : 0;;
+            }
             args["always_run"] = OSD.FromBoolean(AlwaysRun);
             args["prey_agent"] = OSD.FromUUID(PreyAgent);
             args["agent_access"] = OSD.FromString(AgentAccess.ToString());
 
+            args["agent_cof"] = OSD.FromUUID(agentCOF);
+            args["crossingflags"] = OSD.FromInteger(CrossingFlags);
+
             args["active_group_id"] = OSD.FromUUID(ActiveGroupID);
-          
-            if ((Groups != null) && (Groups.Length > 0))
-            {
-                OSDArray groups = new OSDArray(Groups.Length);
-                foreach (AgentGroupData agd in Groups)
-                    groups.Add(agd.PackUpdateMessage());
-                args["groups"] = groups;
-            }
+            args["active_group_name"] = OSD.FromString(ActiveGroupName);
+            if(ActiveGroupTitle != null)
+                args["active_group_title"] = OSD.FromString(ActiveGroupTitle);
 
             if (ChildrenCapSeeds != null && ChildrenCapSeeds.Count > 0)
             {
@@ -493,48 +510,6 @@ namespace OpenSim.Framework
             if (Appearance != null)
                 args["packed_appearance"] = Appearance.Pack(ctx);
 
-            //if ((AgentTextures != null) && (AgentTextures.Length > 0))
-            //{
-            //    OSDArray textures = new OSDArray(AgentTextures.Length);
-            //    foreach (UUID uuid in AgentTextures)
-            //        textures.Add(OSD.FromUUID(uuid));
-            //    args["agent_textures"] = textures;
-            //}
-
-            // The code to pack textures, visuals, wearables and attachments
-            // should be removed; packed appearance contains the full appearance
-            // This is retained for backward compatibility only
-
-/*  then lets remove
-            if (Appearance.Texture != null)
-            {
-                byte[] rawtextures = Appearance.Texture.GetBytes();
-                args["texture_entry"] = OSD.FromBinary(rawtextures);
-            }
-
-            if ((Appearance.VisualParams != null) && (Appearance.VisualParams.Length > 0))
-                args["visual_params"] = OSD.FromBinary(Appearance.VisualParams);
-
-            // We might not pass this in all cases...
-            if ((Appearance.Wearables != null) && (Appearance.Wearables.Length > 0))
-            {
-                OSDArray wears = new OSDArray(Appearance.Wearables.Length);
-                foreach (AvatarWearable awear in Appearance.Wearables)
-                    wears.Add(awear.Pack());
-
-                args["wearables"] = wears;
-            }
-
-            List<AvatarAttachment> attachments = Appearance.GetAttachments();
-            if ((attachments != null) && (attachments.Count > 0))
-            {
-                OSDArray attachs = new OSDArray(attachments.Count);
-                foreach (AvatarAttachment att in attachments)
-                    attachs.Add(att.Pack());
-                args["attachments"] = attachs;
-            }
-            // End of code to remove
-*/
             if ((Controllers != null) && (Controllers.Length > 0))
             {
                 OSDArray controls = new OSDArray(Controllers.Length);
@@ -648,11 +623,14 @@ namespace OpenSim.Framework
             if (args ["energy_level"] != null)
                 EnergyLevel = (float)(args ["energy_level"].AsReal ());
 
-            if (args ["god_level"] != null)
-                Byte.TryParse (args ["god_level"].AsString (), out GodLevel);
+            //if (args["god_level"] != null)
+            //    Byte.TryParse(args["god_level"].AsString(), out GodLevel);
 
-            if (args ["always_run"] != null)
-                AlwaysRun = args ["always_run"].AsBoolean ();
+            if (args.ContainsKey("god_data") && args["god_data"] != null)
+                GodData = args["god_data"];
+
+            if (args["always_run"] != null)
+                AlwaysRun = args["always_run"].AsBoolean();
 
             if (args ["prey_agent"] != null)
                 PreyAgent = args ["prey_agent"].AsUUID ();
@@ -660,19 +638,20 @@ namespace OpenSim.Framework
             if (args ["agent_access"] != null)
                 Byte.TryParse (args ["agent_access"].AsString (), out AgentAccess);
 
-            if (args ["active_group_id"] != null)
-                ActiveGroupID = args ["active_group_id"].AsUUID ();
+            if (args.ContainsKey("agent_cof") && args["agent_cof"] != null)
+                agentCOF = args["agent_cof"].AsUUID();
 
-            if ((args ["groups"] != null) && (args ["groups"]).Type == OSDType.Array) {
-                OSDArray groups = (OSDArray)(args ["groups"]);
-                Groups = new AgentGroupData[groups.Count];
-                int i = 0;
-                foreach (OSD o in groups) {
-                    if (o.Type == OSDType.Map) {
-                        Groups [i++] = new AgentGroupData ((OSDMap)o);
-                    }
-                }
-            }
+            if (args.ContainsKey("crossingflags") && args["crossingflags"] != null)
+                CrossingFlags = (byte)args["crossingflags"].AsInteger();
+
+            if (args.ContainsKey("active_group_id") && args["active_group_id"] != null)
+                ActiveGroupID = args["active_group_id"].AsUUID();
+
+            if (args.ContainsKey("active_group_name") && args["active_group_name"] != null)
+                ActiveGroupName = args["active_group_name"].AsString();
+
+            if(args.ContainsKey("active_group_title") && args["active_group_title"] != null)
+                ActiveGroupTitle = args["active_group_title"].AsString();
 
             if (args.ContainsKey("children_seeds") && (args["children_seeds"] != null) &&
                             (args["children_seeds"].Type == OSDType.Array))
@@ -880,7 +859,7 @@ namespace OpenSim.Framework
 
     public class CompleteAgentData : AgentData
     {
-        public override OSDMap Pack(EntityTransferContext ctx) 
+        public override OSDMap Pack(EntityTransferContext ctx)
         {
             return base.Pack(ctx);
         }

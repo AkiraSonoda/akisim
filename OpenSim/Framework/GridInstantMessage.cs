@@ -66,6 +66,7 @@ namespace OpenSim.Framework
             Position = im.Position;
             binaryBucket = im.binaryBucket;
             RegionID = im.RegionID;
+            ParentEstateID = im.ParentEstateID;
 
             if (addTimestamp)
                 timestamp = (uint)Util.UnixTimeSinceEpoch();
@@ -84,6 +85,7 @@ namespace OpenSim.Framework
             fromGroup = _fromGroup;
             message = _message;
             imSessionID = _imSessionID.Guid;
+
             if (_offline)
                 offline = 1;
             else

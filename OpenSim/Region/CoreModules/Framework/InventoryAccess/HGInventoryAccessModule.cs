@@ -91,9 +91,9 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                 if (name == Name)
                 {
                     m_Enabled = true;
-                    
+
                     InitialiseCommon(source);
-                        
+
                     m_log.InfoFormat("[HG INVENTORY ACCESS MODULE]: {0} enabled.", Name);
 
                     IConfig thisModuleConfig = source.Configs["HGInventoryAccessModule"];
@@ -117,7 +117,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                         m_log.Warn("[HG INVENTORY ACCESS MODULE]: HGInventoryAccessModule configs not found. ProfileServerURI not set!");
 
                     m_bypassPermissions = !Util.GetConfigVarFromSections<bool>(source, "serverside_object_permissions",
-                                            new string[] { "Startup", "Permissions" }, true); 
+                                            new string[] { "Startup", "Permissions" }, true);
 
                 }
             }
@@ -209,7 +209,14 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
             }
         }
 
-        public void PostInventoryAsset(UUID avatarID, AssetType type, UUID assetID, string name, int userlevel)
+        private void PostInventoryAsset(InventoryItemBase item, int userlevel)
+        {
+            InventoryFolderBase f = m_Scene.InventoryService.GetFolderForType(item.Owner, FolderType.Trash);
+            if (f == null || (f != null && item.Folder != f.ID))
+                PostInventoryAsset(item.Owner, (AssetType)item.AssetType, item.AssetID, item.Name, userlevel);
+        }
+
+        private void PostInventoryAsset(UUID avatarID, AssetType type, UUID assetID, string name, int userlevel)
         {
             if (type == AssetType.Link)
                 return;
@@ -241,26 +248,34 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
         }
 
 
-        /// 
+        ///
         /// CapsUpdateInventoryItemAsset
         ///
         public override UUID CapsUpdateInventoryItemAsset(IClientAPI remoteClient, UUID itemID, byte[] data)
         {
             UUID newAssetID = base.CapsUpdateInventoryItemAsset(remoteClient, itemID, data);
 
-            PostInventoryAsset(remoteClient.AgentId, AssetType.Unknown, newAssetID, "", 0);
+            // We need to construct this here to satisfy the calling convention.
+            // Better this in two places than five formal params in all others.
+            InventoryItemBase item = new InventoryItemBase();
+            item.Owner = remoteClient.AgentId;
+            item.AssetType = (int)AssetType.Unknown;
+            item.AssetID = newAssetID;
+            item.Name = String.Empty;
+
+            PostInventoryAsset(item, 0);
 
             return newAssetID;
         }
 
-        /// 
+        ///
         /// UpdateInventoryItemAsset
         ///
         public override bool UpdateInventoryItemAsset(UUID ownerID, InventoryItemBase item, AssetBase asset)
         {
             if (base.UpdateInventoryItemAsset(ownerID, item, asset))
             {
-                PostInventoryAsset(ownerID, (AssetType)asset.Type, asset.FullID, asset.Name, 0);
+                PostInventoryAsset(item, 0);
                 return true;
             }
 
@@ -273,25 +288,45 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
         protected override void ExportAsset(UUID agentID, UUID assetID)
         {
             if (!assetID.Equals(UUID.Zero))
-                PostInventoryAsset(agentID, AssetType.Unknown, assetID, "", 0);
+            {
+                InventoryItemBase item = new InventoryItemBase();
+                item.Owner = agentID;
+                item.AssetType = (int)AssetType.Unknown;
+                item.AssetID = assetID;
+                item.Name = String.Empty;
+
+                PostInventoryAsset(item, 0);
+            }
             else
+            {
                 m_log.Debug("[HGScene]: Scene.Inventory did not create asset");
+            }
         }
 
         ///
         /// RezObject
         ///
-        public override SceneObjectGroup RezObject(IClientAPI remoteClient, UUID itemID, Vector3 RayEnd, Vector3 RayStart,
-                                                   UUID RayTargetID, byte BypassRayCast, bool RayEndIsIntersection,
-                                                   bool RezSelected, bool RemoveItem, UUID fromTaskID, bool attachment)
+        // compatibility do not use
+        public override SceneObjectGroup RezObject(
+            IClientAPI remoteClient, UUID itemID, Vector3 RayEnd, Vector3 RayStart,
+            UUID RayTargetID, byte BypassRayCast, bool RayEndIsIntersection,
+            bool RezSelected, bool RemoveItem, UUID fromTaskID, bool attachment)
         {
-            m_log.DebugFormat("[HGScene]: RezObject itemID={0} fromTaskID={1}", itemID, fromTaskID);
+            return RezObject(remoteClient, itemID, UUID.Zero, RayEnd, RayStart,
+                    RayTargetID, BypassRayCast, RayEndIsIntersection,
+                    RezSelected, RemoveItem, fromTaskID, attachment);
+        }
+
+        public override SceneObjectGroup RezObject(IClientAPI remoteClient, UUID itemID,
+                            UUID groupID, Vector3 RayEnd, Vector3 RayStart,
+                            UUID RayTargetID, byte BypassRayCast, bool RayEndIsIntersection,
+                            bool RezSelected, bool RemoveItem, UUID fromTaskID, bool attachment)
+        {
+            //m_log.DebugFormat("[HGScene]: RezObject itemID={0} fromTaskID={1}", itemID, fromTaskID);
 
             //if (fromTaskID.Equals(UUID.Zero))
             //{
-            InventoryItemBase item = new InventoryItemBase(itemID);
-            item.Owner = remoteClient.AgentId;
-            item = m_Scene.InventoryService.GetItem(item);
+            InventoryItemBase item = m_Scene.InventoryService.GetItem(remoteClient.AgentId, itemID);
             //if (item == null)
             //{ // Fetch the item
             //    item = new InventoryItemBase();
@@ -308,7 +343,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
             //}
 
             // OK, we're done fetching. Pass it up to the default RezObject
-            SceneObjectGroup sog = base.RezObject(remoteClient, itemID, RayEnd, RayStart, RayTargetID, BypassRayCast, RayEndIsIntersection,
+            SceneObjectGroup sog = base.RezObject(remoteClient, itemID, groupID, RayEnd, RayStart, RayTargetID, BypassRayCast, RayEndIsIntersection,
                                    RezSelected, RemoveItem, fromTaskID, attachment);
 
             return sog;
@@ -351,7 +386,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                 if (!m_CheckSeparateAssets)
                 {
                     if (!UserManagementModule.IsLocalGridUser(userID))
-                    { // foreign 
+                    { // foreign
                         ScenePresence sp = null;
                         if (m_Scene.TryGetScenePresence(userID, out sp))
                         {
@@ -489,7 +524,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                         foreach (InventoryItemBase it in content.Items)
                             it.Name = it.Name + " (Unavailable)"; ;
 
-                        // Send the new names 
+                        // Send the new names
                         inv.SendBulkUpdateInventory(keep.ToArray(), content.Items.ToArray());
 
                     }
@@ -506,16 +541,17 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
 
         #region Permissions
 
-        private bool CanTakeObject(UUID objectID, UUID stealer, Scene scene)
+        private bool CanTakeObject(SceneObjectGroup sog, ScenePresence sp)
         {
             if (m_bypassPermissions) return true;
 
-            if (!m_OutboundPermission && !UserManagementModule.IsLocalGridUser(stealer))
-            {
-                SceneObjectGroup sog = null;
-                if (m_Scene.TryGetSceneObjectGroup(objectID, out sog) && sog.OwnerID == stealer)
-                    return true;
+            if(sp == null || sog == null)
+                return false;
 
+            if (!m_OutboundPermission && !UserManagementModule.IsLocalGridUser(sp.UUID))
+            {
+                if (sog.OwnerID == sp.UUID)
+                    return true;
                 return false;
             }
 

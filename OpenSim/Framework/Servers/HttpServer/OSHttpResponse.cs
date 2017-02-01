@@ -115,7 +115,7 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public bool KeepAlive
         {
-            get 
+            get
             {
                 return _httpResponse.Connection == ConnectionType.KeepAlive;
             }
@@ -321,10 +321,6 @@ namespace OpenSim.Framework.Servers.HttpServer
         public void Send()
         {
             _httpResponse.Body.Flush();
-
-            // disable this till they are safe to use
-            _httpResponse.Connection = ConnectionType.Close;
-            _httpResponse.Chunked = false;
 
             _httpResponse.Send();
         }

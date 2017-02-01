@@ -53,17 +53,17 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
         private bool m_debugEnabled = false;
 
-        public const GroupPowers DefaultEveryonePowers 
-            = GroupPowers.AllowSetHome 
-                | GroupPowers.Accountable 
-                | GroupPowers.JoinChat 
-                | GroupPowers.AllowVoiceChat 
-                | GroupPowers.ReceiveNotices 
-                | GroupPowers.StartProposal 
+        public const GroupPowers DefaultEveryonePowers
+            = GroupPowers.AllowSetHome
+                | GroupPowers.Accountable
+                | GroupPowers.JoinChat
+                | GroupPowers.AllowVoiceChat
+                | GroupPowers.ReceiveNotices
+                | GroupPowers.StartProposal
                 | GroupPowers.VoteOnProposal;
 
         // Would this be cleaner as (GroupPowers)ulong.MaxValue?
-        public const GroupPowers DefaultOwnerPowers 
+        public const GroupPowers DefaultOwnerPowers
             = GroupPowers.Accountable
                 | GroupPowers.AllowEditLand
                 | GroupPowers.AllowFly
@@ -114,7 +114,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
         private string m_groupsServerURI = string.Empty;
 
-        private bool m_disableKeepAlive = false;
+        private bool m_disableKeepAlive = true;
 
         private string m_groupReadKey  = string.Empty;
         private string m_groupWriteKey = string.Empty;
@@ -174,13 +174,13 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
                     return;
                 }
 
-                m_disableKeepAlive = groupsConfig.GetBoolean("XmlRpcDisableKeepAlive", false);
+                m_disableKeepAlive = groupsConfig.GetBoolean("XmlRpcDisableKeepAlive", true);
 
                 m_groupReadKey = groupsConfig.GetString("XmlRpcServiceReadKey", string.Empty);
                 m_groupWriteKey = groupsConfig.GetString("XmlRpcServiceWriteKey", string.Empty);
 
-
                 m_cacheTimeout = groupsConfig.GetInt("GroupsCacheTimeout", 30);
+
                 if (m_cacheTimeout == 0)
                 {
                     m_log.WarnFormat("[XMLRPC-GROUPS-CONNECTOR]: Groups Cache Disabled.");
@@ -200,7 +200,6 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
         public void Close()
         {
-            m_log.DebugFormat("[XMLRPC-GROUPS-CONNECTOR]: Closing {0}", this.Name);
         }
 
         public void AddRegion(OpenSim.Region.Framework.Scenes.Scene scene)
@@ -383,10 +382,11 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
             GroupMembershipData MemberInfo = GetAgentGroupMembership(requestingAgentID, AgentID, GroupID);
             GroupProfileData MemberGroupProfile = GroupProfileHashtableToGroupProfileData(respData);
-
-            MemberGroupProfile.MemberTitle = MemberInfo.GroupTitle;
-            MemberGroupProfile.PowersMask = MemberInfo.GroupPowers;
-
+            if(MemberInfo != null)
+            {
+                MemberGroupProfile.MemberTitle = MemberInfo.GroupTitle;
+                MemberGroupProfile.PowersMask = MemberInfo.GroupPowers;
+            }
             return MemberGroupProfile;
         }
 
@@ -803,11 +803,12 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
         {
             if (m_groupsAgentsDroppedFromChatSession.ContainsKey(groupID))
             {
+            if (m_groupsAgentsInvitedToChatSession[groupID].Contains(agentID))
+                m_groupsAgentsInvitedToChatSession[groupID].Remove(agentID);
+
                 // If not in dropped list, add
                 if (!m_groupsAgentsDroppedFromChatSession[groupID].Contains(agentID))
-                {
                     m_groupsAgentsDroppedFromChatSession[groupID].Add(agentID);
-                }
             }
         }
 
@@ -818,9 +819,10 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
             // If nessesary, remove from dropped list
             if (m_groupsAgentsDroppedFromChatSession[groupID].Contains(agentID))
-            {
                 m_groupsAgentsDroppedFromChatSession[groupID].Remove(agentID);
-            }
+
+            if (!m_groupsAgentsInvitedToChatSession[groupID].Contains(agentID))
+                m_groupsAgentsInvitedToChatSession[groupID].Add(agentID);
         }
 
         private void CreateGroupChatSessionTracking(UUID groupID)
@@ -975,34 +977,41 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
                 try
                 {
-                    resp = req.Send(m_groupsServerURI, 10000);
-
-                    if ((m_cacheTimeout > 0) && (CacheKey != null))
-                    {
-                        m_memoryCache.AddOrUpdate(CacheKey, resp, TimeSpan.FromSeconds(m_cacheTimeout));
-                    }
+                    resp = req.Send(m_groupsServerURI);
                 }
                 catch (Exception e)
                 {
                     m_log.ErrorFormat(
-                        "[XMLRPC-GROUPS-CONNECTOR]: An error has occured while attempting to access the XmlRpcGroups server method {0} at {1}",
-                        function, m_groupsServerURI);
+                        "[XMLRPC-GROUPS-CONNECTOR]: An error has occured while attempting to access the XmlRpcGroups server method {0} at {1}: {2}",
+                        function, m_groupsServerURI, e.Message);
 
-                    m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0}{1}", e.Message, e.StackTrace);
-
-                    foreach (string ResponseLine in req.RequestResponse.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
+                    if(m_debugEnabled)
                     {
-                        m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} ", ResponseLine);
+                        m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0}", e.StackTrace);
+
+                        foreach (string ResponseLine in req.RequestResponse.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
+                        {
+                            m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} ", ResponseLine);
+                        }
+
+                        foreach (string key in param.Keys)
+                        {
+                            m_log.WarnFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} :: {1}", key, param[key].ToString());
+                        }
                     }
 
-                    foreach (string key in param.Keys)
+                    if ((m_cacheTimeout > 0) && (CacheKey != null))
                     {
-                        m_log.WarnFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} :: {1}", key, param[key].ToString());
+                        m_memoryCache.AddOrUpdate(CacheKey, resp, 10.0);
                     }
-
                     Hashtable respData = new Hashtable();
                     respData.Add("error", e.ToString());
                     return respData;
+                }
+
+                if ((m_cacheTimeout > 0) && (CacheKey != null))
+                {
+                    m_memoryCache.AddOrUpdate(CacheKey, resp, 10.0);
                 }
             }
 
@@ -1042,7 +1051,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
         private void LogRespDataToConsoleError(UUID requestingAgentID, string function, Hashtable param, Hashtable respData)
         {
             m_log.ErrorFormat(
-                "[XMLRPC-GROUPS-CONNECTOR]: Error when calling {0} for {1} with params {2}.  Response params are {3}", 
+                "[XMLRPC-GROUPS-CONNECTOR]: Error when calling {0} for {1} with params {2}.  Response params are {3}",
                 function, requestingAgentID, Util.PrettyFormatToSingleLine(param), Util.PrettyFormatToSingleLine(respData));
         }
 
@@ -1134,6 +1143,7 @@ namespace Nwc.XmlRpc
             request.ContentType = "text/xml";
             request.AllowWriteStreamBuffering = true;
             request.KeepAlive = !_disableKeepAlive;
+            request.Timeout = 30000;
 
             using (Stream stream = request.GetRequestStream())
             {
@@ -1141,7 +1151,7 @@ namespace Nwc.XmlRpc
                 {
                     _serializer.Serialize(xml, this);
                     xml.Flush();
-                }            
+                }
             }
 
             XmlRpcResponse resp;

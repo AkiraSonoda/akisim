@@ -32,6 +32,8 @@ using OpenMetaverse.Packets;
 using OpenMetaverse.StructuredData;
 using OpenMetaverse.Messages.Linden;
 
+using OpenSim.Framework;
+
 namespace OpenSim.Region.ClientStack.Linden
 {
     public class EventQueueHelper
@@ -103,7 +105,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
             return BuildEvent("DisableSimulator", llsdBody);
         }
-        
+
         public static OSD CrossRegion(ulong handle, Vector3 pos, Vector3 lookAt,
                                       IPEndPoint newRegionExternalEndPoint,
                                       string capsURL, UUID agentID, UUID sessionID,
@@ -192,13 +194,13 @@ namespace OpenSim.Region.ClientStack.Linden
             script.Add("ItemID", OSD.FromUUID(itemID));
             script.Add("Running", OSD.FromBoolean(running));
             script.Add("Mono", OSD.FromBoolean(mono));
-            
+
             OSDArray scriptArr = new OSDArray();
             scriptArr.Add(script);
-            
+
             OSDMap body = new OSDMap();
             body.Add("Script", scriptArr);
-            
+
             return BuildEvent("ScriptRunningReply", body);
         }
 
@@ -241,7 +243,7 @@ namespace OpenSim.Region.ClientStack.Linden
         {
             OSDMap messageParams = new OSDMap(15);
             messageParams.Add("type", new OSDInteger((int)dialog));
-            
+
             OSDArray positionArray = new OSDArray(3);
             positionArray.Add(OSD.FromReal(position.X));
             positionArray.Add(OSD.FromReal(position.Y));
@@ -306,20 +308,29 @@ namespace OpenSim.Region.ClientStack.Linden
         }
 
         public static OSD ChatterBoxSessionAgentListUpdates(UUID sessionID,
-            UUID agentID, bool canVoiceChat, bool isModerator, bool textMute)
+            UUID agentID, bool canVoiceChat, bool isModerator, bool textMute, bool isEnterorLeave)
         {
             OSDMap body = new OSDMap();
             OSDMap agentUpdates = new OSDMap();
             OSDMap infoDetail = new OSDMap();
             OSDMap mutes = new OSDMap();
 
+            // this should be a list of agents and parameters
+            // foreach agent
             mutes.Add("text", OSD.FromBoolean(textMute));
             infoDetail.Add("can_voice_chat", OSD.FromBoolean(canVoiceChat));
             infoDetail.Add("is_moderator", OSD.FromBoolean(isModerator));
             infoDetail.Add("mutes", mutes);
             OSDMap info = new OSDMap();
             info.Add("info", infoDetail);
+            if(isEnterorLeave)
+                info.Add("transition",OSD.FromString("ENTER"));
+            else
+                info.Add("transition",OSD.FromString("LEAVE"));
             agentUpdates.Add(agentID.ToString(), info);
+
+            // foreach end
+
             body.Add("agent_updates", agentUpdates);
             body.Add("session_id", OSD.FromUUID(sessionID));
             body.Add("updates", new OSD());
@@ -331,40 +342,54 @@ namespace OpenSim.Region.ClientStack.Linden
             return chatterBoxSessionAgentListUpdates;
         }
 
-        public static OSD GroupMembership(AgentGroupDataUpdatePacket groupUpdatePacket)
+        public static OSD ChatterBoxForceClose(UUID sessionID, string reason)
         {
-            OSDMap groupUpdate = new OSDMap();
-            groupUpdate.Add("message", OSD.FromString("AgentGroupDataUpdate"));
+            OSDMap body = new OSDMap(2);
+            body.Add("session_id", new OSDUUID(sessionID));
+            body.Add("reason", new OSDString(reason));
 
-            OSDMap body = new OSDMap();
-            OSDArray agentData = new OSDArray();
-            OSDMap agentDataMap = new OSDMap();
-            agentDataMap.Add("AgentID", OSD.FromUUID(groupUpdatePacket.AgentData.AgentID));
-            agentData.Add(agentDataMap);
-            body.Add("AgentData", agentData);
-
-            OSDArray groupData = new OSDArray();
-
-            foreach (AgentGroupDataUpdatePacket.GroupDataBlock groupDataBlock in groupUpdatePacket.GroupData)
-            {
-                OSDMap groupDataMap = new OSDMap();
-                groupDataMap.Add("ListInProfile", OSD.FromBoolean(false));
-                groupDataMap.Add("GroupID", OSD.FromUUID(groupDataBlock.GroupID));
-                groupDataMap.Add("GroupInsigniaID", OSD.FromUUID(groupDataBlock.GroupInsigniaID));
-                groupDataMap.Add("Contribution", OSD.FromInteger(groupDataBlock.Contribution));
-                groupDataMap.Add("GroupPowers", OSD.FromBinary(ulongToByteArray(groupDataBlock.GroupPowers)));
-                groupDataMap.Add("GroupName", OSD.FromString(Utils.BytesToString(groupDataBlock.GroupName)));
-                groupDataMap.Add("AcceptNotices", OSD.FromBoolean(groupDataBlock.AcceptNotices));
-
-                groupData.Add(groupDataMap);
-
-            }
-            body.Add("GroupData", groupData);
-            groupUpdate.Add("body", body);
-
-            return groupUpdate;
+            OSDMap chatterBoxForceClose = new OSDMap(2);
+            chatterBoxForceClose.Add("message", new OSDString("ForceCloseChatterBoxSession"));
+            chatterBoxForceClose.Add("body", body);
+            return chatterBoxForceClose;
         }
-        
+
+        public static OSD GroupMembershipData(UUID receiverAgent, GroupMembershipData[] data)
+        {
+            OSDArray AgentData = new OSDArray(1);
+            OSDMap AgentDataMap = new OSDMap(1);
+            AgentDataMap.Add("AgentID", OSD.FromUUID(receiverAgent));
+            AgentData.Add(AgentDataMap);
+
+            OSDArray GroupData = new OSDArray(data.Length);
+            OSDArray NewGroupData = new OSDArray(data.Length);
+
+            foreach (GroupMembershipData membership in data)
+            {
+                OSDMap GroupDataMap = new OSDMap(6);
+                OSDMap NewGroupDataMap = new OSDMap(1);
+
+                GroupDataMap.Add("GroupID", OSD.FromUUID(membership.GroupID));
+                GroupDataMap.Add("GroupPowers", OSD.FromULong(membership.GroupPowers));
+                GroupDataMap.Add("AcceptNotices", OSD.FromBoolean(membership.AcceptNotices));
+                GroupDataMap.Add("GroupInsigniaID", OSD.FromUUID(membership.GroupPicture));
+                GroupDataMap.Add("Contribution", OSD.FromInteger(membership.Contribution));
+                GroupDataMap.Add("GroupName", OSD.FromString(membership.GroupName));
+                NewGroupDataMap.Add("ListInProfile", OSD.FromBoolean(membership.ListInProfile));
+
+                GroupData.Add(GroupDataMap);
+                NewGroupData.Add(NewGroupDataMap);
+            }
+
+            OSDMap llDataStruct = new OSDMap(3);
+            llDataStruct.Add("AgentData", AgentData);
+            llDataStruct.Add("GroupData", GroupData);
+            llDataStruct.Add("NewGroupData", NewGroupData);
+
+            return BuildEvent("AgentGroupDataUpdate", llDataStruct);
+
+        }
+
         public static OSD PlacesQuery(PlacesReplyPacket PlacesReply)
         {
             OSDMap placesReply = new OSDMap();
@@ -398,7 +423,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 QueryDataMap.Add("SnapShotID", OSD.FromUUID(groupDataBlock.SnapshotID));
                 QueryDataMap.Add("ProductSku", OSD.FromInteger(0));
                 QueryDataMap.Add("Price", OSD.FromInteger(groupDataBlock.Price));
-                
+
                 QueryData.Add(QueryDataMap);
             }
             body.Add("QueryData", QueryData);
@@ -419,7 +444,7 @@ namespace OpenSim.Region.ClientStack.Linden
         public static OSD partPhysicsProperties(uint localID, byte physhapetype,
                         float density, float friction, float bounce, float gravmod)
         {
-            
+
             OSDMap physinfo = new OSDMap(6);
             physinfo["LocalID"] = localID;
             physinfo["Density"] = density;

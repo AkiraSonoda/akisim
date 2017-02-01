@@ -125,8 +125,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         // Just some recomputed constants:
 #pragma warning disable 414
-        static readonly float TwoPI = ((float)Math.PI) * 2f; 
-        static readonly float FourPI = ((float)Math.PI) * 4f; 
+        static readonly float TwoPI = ((float)Math.PI) * 2f;
+        static readonly float FourPI = ((float)Math.PI) * 4f;
         static readonly float PIOverFour = ((float)Math.PI) / 4f;
         static readonly float PIOverTwo = ((float)Math.PI) / 2f;
 #pragma warning restore 414
@@ -768,7 +768,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 }
 
                 if ((m_knownChanged & m_knownChangedForce) != 0)
-                    ControllingPrim.AddForce((Vector3)m_knownForce, false /*pushForce*/, true /*inTaintTime*/);
+                    ControllingPrim.AddForce(false /* inTaintTime */, (Vector3)m_knownForce);
 
                 if ((m_knownChanged & m_knownChangedForceImpulse) != 0)
                     ControllingPrim.AddForceImpulse((Vector3)m_knownForceImpulse, false /*pushforce*/, true /*inTaintTime*/);
@@ -784,7 +784,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
                 if ((m_knownChanged & m_knownChangedRotationalForce) != 0)
                 {
-                    ControllingPrim.AddAngularForce((Vector3)m_knownRotationalForce, false /*pushForce*/, true /*inTaintTime*/);
+                    ControllingPrim.AddAngularForce(true /* inTaintTime */, (Vector3)m_knownRotationalForce);
                 }
 
                 // If we set one of the values (ie, the physics engine didn't do it) we must force
@@ -1595,7 +1595,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         //     in that direction.
         // TODO: implement reference frame.
         public void ComputeAngularDeflection()
-        {   
+        {
 
             if (BSParam.VehicleEnableAngularDeflection && m_angularDeflectionEfficiency != 0 && VehicleForwardSpeed > 0.2)
             {

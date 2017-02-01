@@ -1,4 +1,4 @@
-:VERSION 1         # -------------------------------
+:VERSION 5         # -------------------------------
 
 begin;
 
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `usernotes` (
   `targetuuid` varchar(36) NOT NULL,
   `notes` text NOT NULL,
   UNIQUE KEY `useruuid` (`useruuid`,`targetuuid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 CREATE TABLE IF NOT EXISTS `userpicks` (
@@ -44,8 +44,9 @@ CREATE TABLE IF NOT EXISTS `userpicks` (
   `posglobal` varchar(255) NOT NULL,
   `sortorder` int(2) NOT NULL,
   `enabled` enum('true','false') NOT NULL,
+  `gatekeeper` varchar(255),
   PRIMARY KEY (`pickuuid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 CREATE TABLE IF NOT EXISTS `userprofile` (
@@ -64,35 +65,22 @@ CREATE TABLE IF NOT EXISTS `userprofile` (
   `profileFirstImage` varchar(36) NOT NULL,
   `profileFirstText` text NOT NULL,
   PRIMARY KEY (`useruuid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-commit;
-
-:VERSION 2         # -------------------------------
- 
-begin;
 CREATE TABLE IF NOT EXISTS `userdata` (
     `UserId` char(36) NOT NULL,
     `TagId` varchar(64) NOT NULL,
     `DataKey` varchar(255),
     `DataVal` varchar(255),
     PRIMARY KEY (`UserId`,`TagId`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-commit;
-
-:VERSION 3         # -------------------------------
-begin;
 CREATE TABLE IF NOT EXISTS `usersettings` (
   `useruuid` varchar(36) NOT NULL,
   `imviaemail` enum('true','false') NOT NULL,
   `visible` enum('true','false') NOT NULL,
   `email` varchar(254) NOT NULL,
   PRIMARY KEY (`useruuid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-commit;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-:VERSION 4         # -------------------------------
-begin;
-ALTER TABLE userpicks ADD COLUMN gatekeeper varchar(255);
 commit;

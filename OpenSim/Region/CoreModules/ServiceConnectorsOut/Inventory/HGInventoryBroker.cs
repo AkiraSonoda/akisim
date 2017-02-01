@@ -86,7 +86,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             }
         }
 
-        public Type ReplaceableInterface 
+        public Type ReplaceableInterface
         {
             get { return null; }
         }
@@ -216,25 +216,30 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         void OnClientClosed(UUID clientID, Scene scene)
         {
+<<<<<<< HEAD
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
             }
 
             if (m_InventoryURLs.ContainsKey(clientID)) // if it's in cache
+=======
+            ScenePresence sp = null;
+            foreach (Scene s in m_Scenes)
+>>>>>>> OpenSim_from_org/master
             {
-                ScenePresence sp = null;
-                foreach (Scene s in m_Scenes)
+                s.TryGetScenePresence(clientID, out sp);
+                if ((sp != null) && !sp.IsChildAgent && (s != scene))
                 {
-                    s.TryGetScenePresence(clientID, out sp);
-                    if ((sp != null) && !sp.IsChildAgent && (s != scene))
-                    {
-                        m_log.DebugFormat("[INVENTORY CACHE]: OnClientClosed in {0}, but user {1} still in sim. Keeping inventoryURL in cache",
+                    m_log.DebugFormat("[INVENTORY CACHE]: OnClientClosed in {0}, but user {1} still in sim. Keeping inventoryURL in cache",
                             scene.RegionInfo.RegionName, clientID);
                         return;
-                    }
                 }
-                DropInventoryServiceURL(clientID);
             }
+
+            if (m_InventoryURLs.ContainsKey(clientID)) // if it's in cache
+                    DropInventoryServiceURL(clientID);
+
+            m_Cache.RemoveAll(clientID);
         }
 
         /// <summary>
@@ -327,7 +332,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
                 return m_InventoryURLs[userID];
 
             return null; //it means that the methods should forward to local grid's inventory
- 
+
         }
         #endregion
 
@@ -715,8 +720,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             return connector.DeleteItems(ownerID, itemIDs);
         }
 
-        public InventoryItemBase GetItem(InventoryItemBase item)
+        public InventoryItemBase GetItem(UUID principalID, UUID itemID)
         {
+<<<<<<< HEAD
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
             }
@@ -727,16 +733,19 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             if (m_log.IsDebugEnabled) {
                 m_log.Debug("GetItem " + item.ID);
             }
+=======
+            //m_log.Debug("[HG INVENTORY CONNECTOR]: GetItem " + item.ID);
+>>>>>>> OpenSim_from_org/master
 
-            string invURL = GetInventoryServiceURL(item.Owner);
+            string invURL = GetInventoryServiceURL(principalID);
 
             if (invURL == null) // not there, forward to local inventory connector to resolve
                 lock (m_Lock)
-                    return m_LocalGridInventoryService.GetItem(item);
+                    return m_LocalGridInventoryService.GetItem(principalID, itemID);
 
             IInventoryService connector = GetConnector(invURL);
 
-            return connector.GetItem(item);
+            return connector.GetItem(principalID, itemID);
         }
 
         public InventoryItemBase[] GetMultipleItems(UUID userID, UUID[] itemIDs)
@@ -756,8 +765,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             return connector.GetMultipleItems(userID, itemIDs);
         }
 
-        public InventoryFolderBase GetFolder(InventoryFolderBase folder)
+        public InventoryFolderBase GetFolder(UUID principalID, UUID folderID)
         {
+<<<<<<< HEAD
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
             }
@@ -769,16 +779,19 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
             if (m_log.IsDebugEnabled) {
                 m_log.Debug("GetFolder " + folder.ID);
             }
+=======
+            //m_log.Debug("[HG INVENTORY CONNECTOR]: GetFolder " + folder.ID);
+>>>>>>> OpenSim_from_org/master
 
-            string invURL = GetInventoryServiceURL(folder.Owner);
+            string invURL = GetInventoryServiceURL(principalID);
 
             if (invURL == null) // not there, forward to local inventory connector to resolve
                 lock (m_Lock)
-                    return m_LocalGridInventoryService.GetFolder(folder);
+                    return m_LocalGridInventoryService.GetFolder(principalID, folderID);
 
             IInventoryService connector = GetConnector(invURL);
 
-            return connector.GetFolder(folder);
+            return connector.GetFolder(principalID, folderID);
         }
 
         public bool HasInventoryForUser(UUID userID)

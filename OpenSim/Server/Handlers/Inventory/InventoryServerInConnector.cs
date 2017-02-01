@@ -61,7 +61,7 @@ namespace OpenSim.Server.Handlers.Inventory
         {
             if (configName != string.Empty)
                 m_ConfigName = configName;
-    
+
             IConfig serverConfig = config.Configs[m_ConfigName];
             if (serverConfig == null)
                 throw new Exception(String.Format("No section '{0}' in config file", m_ConfigName));
@@ -92,7 +92,7 @@ namespace OpenSim.Server.Handlers.Inventory
             m_httpServer.AddStreamHandler(
                 new RestDeserialiseSecureHandler<Guid, InventoryCollection>(
                 "POST", "/GetFolderContent/", GetFolderContent, CheckAuthSession));
-            
+
             m_httpServer.AddStreamHandler(
                 new RestDeserialiseSecureHandler<InventoryFolderBase, bool>(
                     "POST", "/UpdateFolder/", m_InventoryService.UpdateFolder, CheckAuthSession));
@@ -114,12 +114,12 @@ namespace OpenSim.Server.Handlers.Inventory
                     "POST", "/DeleteItem/", DeleteItems, CheckAuthSession));
 
             m_httpServer.AddStreamHandler(
-                new RestDeserialiseSecureHandler<InventoryItemBase, InventoryItemBase>(
-                    "POST", "/QueryItem/", m_InventoryService.GetItem, CheckAuthSession));
+                new RestDeserialiseSecureHandler<Guid, InventoryItemBase>(
+                    "POST", "/QueryItem/", GetItem, CheckAuthSession));
 
             m_httpServer.AddStreamHandler(
-                new RestDeserialiseSecureHandler<InventoryFolderBase, InventoryFolderBase>(
-                    "POST", "/QueryFolder/", m_InventoryService.GetFolder, CheckAuthSession));
+                new RestDeserialiseSecureHandler<Guid, InventoryFolderBase>(
+                    "POST", "/QueryFolder/", GetFolder, CheckAuthSession));
 
             m_httpServer.AddStreamHandler(
                 new RestDeserialiseTrustedHandler<Guid, bool>(
@@ -151,7 +151,7 @@ namespace OpenSim.Server.Handlers.Inventory
 
             m_httpServer.AddStreamHandler(new InventoryServerMoveItemsHandler(m_InventoryService));
 
-            
+
             // for persistent active gestures
             m_httpServer.AddStreamHandler(
                 new RestDeserialiseTrustedHandler<Guid, List<InventoryItemBase>>
@@ -203,6 +203,16 @@ namespace OpenSim.Server.Handlers.Inventory
             }
             m_log.WarnFormat("[INVENTORY SERVICE]: System folders for {0} not found", userID);
             return new Dictionary<AssetType, InventoryFolderBase>();
+        }
+
+        public InventoryItemBase GetItem(Guid guid)
+        {
+            return m_InventoryService.GetItem(UUID.Zero, new UUID(guid));
+        }
+
+        public InventoryFolderBase GetFolder(Guid guid)
+        {
+            return m_InventoryService.GetFolder(UUID.Zero, new UUID(guid));
         }
 
         public InventoryCollection GetFolderContent(Guid guid)

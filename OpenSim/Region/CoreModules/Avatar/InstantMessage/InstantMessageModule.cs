@@ -45,22 +45,18 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         private static readonly ILog m_log = LogManager.GetLogger(
                 MethodBase.GetCurrentMethod().DeclaringType);
 
-        private Timer m_logTimer = new Timer(10000);
-        private List<GridInstantMessage> m_logData = new List<GridInstantMessage>();
-        private string m_restUrl;
-
         /// <value>
         /// Is this module enabled?
         /// </value>
-        private bool m_enabled = false;
-        
-        private readonly List<Scene> m_scenes = new List<Scene>();
+        protected bool m_enabled = false;
+
+        protected readonly List<Scene> m_scenes = new List<Scene>();
 
         #region Region Module interface
 
-        private IMessageTransferModule m_TransferModule = null;
+        protected IMessageTransferModule m_TransferModule = null;
 
-        public void Initialise(IConfigSource config)
+        public virtual void Initialise(IConfigSource config)
         {
             if (config.Configs["Messaging"] != null)
             {
@@ -68,15 +64,12 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                         "InstantMessageModule", "InstantMessageModule") !=
                         "InstantMessageModule")
                     return;
-                m_restUrl = config.Configs["Messaging"].GetString("LogURL", String.Empty);
             }
-            
+
             m_enabled = true;
-            m_logTimer.AutoReset = false;
-            m_logTimer.Elapsed += LogTimerElapsed;
         }
 
-        public void AddRegion(Scene scene)
+        public virtual void AddRegion(Scene scene)
         {
             if (!m_enabled)
                 return;
@@ -92,7 +85,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             }
         }
 
-        public void RegionLoaded(Scene scene)
+        public virtual void RegionLoaded(Scene scene)
         {
             if (!m_enabled)
                 return;
@@ -114,7 +107,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             }
         }
 
-        public void RemoveRegion(Scene scene)
+        public virtual void RemoveRegion(Scene scene)
         {
             if (!m_enabled)
                 return;
@@ -125,7 +118,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             }
         }
 
-        void OnClientConnect(IClientCore client)
+        protected virtual void OnClientConnect(IClientCore client)
         {
             IClientIM clientIM;
             if (client.TryGet(out clientIM))
@@ -134,32 +127,35 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             }
         }
 
-        public void PostInitialise()
+        public virtual void PostInitialise()
         {
         }
 
-        public void Close()
+        public virtual void Close()
         {
         }
 
-        public string Name
+        public virtual string Name
         {
             get { return "InstantMessageModule"; }
         }
 
-        public Type ReplaceableInterface
+        public virtual Type ReplaceableInterface
         {
             get { return null; }
         }
 
         #endregion
-
-        public void OnInstantMessage(IClientAPI client, GridInstantMessage im)
+/*
+        public virtual void OnViewerInstantMessage(IClientAPI client, GridInstantMessage im)
+        {
+            im.fromAgentName = client.FirstName + " " + client.LastName;
+            OnInstantMessage(client, im);
+        }
+*/
+        public virtual void OnInstantMessage(IClientAPI client, GridInstantMessage im)
         {
             byte dialog = im.dialog;
-
-            if (client != null && dialog == (byte)InstantMessageDialog.MessageFromAgent)
-                LogInstantMesssage(im);
 
             if (dialog != (byte)InstantMessageDialog.MessageFromAgent
                 && dialog != (byte)InstantMessageDialog.StartTyping
@@ -198,8 +194,6 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 
             if (m_TransferModule != null)
             {
-                if (client != null)
-                    im.fromAgentName = client.FirstName + " " + client.LastName;
                 m_TransferModule.SendInstantMessage(im,
                     delegate(bool success)
                     {
@@ -230,7 +224,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         ///
         /// </summary>
         /// <param name="msg"></param>
-        private void OnGridInstantMessage(GridInstantMessage msg)
+        protected virtual void OnGridInstantMessage(GridInstantMessage msg)
         {
             // Just call the Text IM handler above
             // This event won't be raised unless we have that agent,
@@ -238,36 +232,6 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             // via grid again
             //
             OnInstantMessage(null, msg);
-        }
-
-        private void LogInstantMesssage(GridInstantMessage im)
-        {
-            if (m_logData.Count < 20)
-            {
-                // Restart the log write timer
-                m_logTimer.Stop();
-            }
-            if (!m_logTimer.Enabled)
-                m_logTimer.Start();
-
-            lock (m_logData)
-            {
-                m_logData.Add(im);
-            }
-        }
-
-        private void LogTimerElapsed(object source, ElapsedEventArgs e)
-        {
-            lock (m_logData)
-            {
-                if (m_restUrl != String.Empty && m_logData.Count > 0)
-                {
-                    bool success = SynchronousRestObjectRequester.MakeRequest<List<GridInstantMessage>, bool>("POST", m_restUrl + "/LogMessages/", m_logData);
-                    if (!success)
-                        m_log.ErrorFormat("[INSTANT MESSAGE]: Failed to save log data");
-                }
-                m_logData.Clear();
-            }
         }
     }
 }

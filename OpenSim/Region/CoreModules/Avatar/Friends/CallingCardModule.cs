@@ -118,7 +118,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 // If we're in god mode, we reverse the meaning. Offer
                 // calling card becomes "Take a calling card" for that
                 // person, no matter if they agree or not.
-                if (sp.GodLevel >= 200)
+                if (sp.IsViewerUIGod)
                 {
                     CreateCallingCard(client.AgentId, destID, UUID.Zero, true);
                     return;
@@ -239,8 +239,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
             InventoryFolderBase trashFolder =
                     invService.GetFolderForType(client.AgentId, FolderType.Trash);
 
-            InventoryItemBase item = new InventoryItemBase(transactionID, client.AgentId);
-            item = invService.GetItem(item);
+            InventoryItemBase item = invService.GetItem(client.AgentId, transactionID);
 
             if (item != null && trashFolder != null)
             {

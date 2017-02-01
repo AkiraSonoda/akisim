@@ -82,6 +82,9 @@ namespace OpenSim.Framework
         public static readonly UUID DEFAULT_SKIN_ITEM = new UUID("77c41e39-38f9-f75a-024e-585989bfabc9");
         public static readonly UUID DEFAULT_SKIN_ASSET = new UUID("77c41e39-38f9-f75a-024e-585989bbabbb");
 
+        public static readonly UUID DEFAULT_EYES_ITEM = new UUID("cdc31054-eed8-4021-994f-4e0c6e861b50");
+        public static readonly UUID DEFAULT_EYES_ASSET = new UUID("4bb6fa4d-1cd2-498a-a84c-95c1a0e745a7");
+
         public static readonly UUID DEFAULT_SHIRT_ITEM = new UUID("77c41e39-38f9-f75a-0000-585989bf0000");
         public static readonly UUID DEFAULT_SHIRT_ASSET = new UUID("00000000-38f9-1111-024e-222222111110");
 
@@ -93,7 +96,7 @@ namespace OpenSim.Framework
 
 //        public static readonly UUID DEFAULT_TATTOO_ITEM = new UUID("c47e22bd-3021-4ba4-82aa-2b5cb34d35e1");
 //        public static readonly UUID DEFAULT_TATTOO_ASSET = new UUID("00000000-0000-2222-3333-100000001007");
- 
+
         protected Dictionary<UUID, UUID> m_items = new Dictionary<UUID, UUID>();
         protected List<UUID> m_ids = new List<UUID>();
 
@@ -231,22 +234,25 @@ namespace OpenSim.Framework
                 {
                     defaultWearables[i] = new AvatarWearable();
                 }
-                
+
                 // Body
                 defaultWearables[BODY].Add(DEFAULT_BODY_ITEM, DEFAULT_BODY_ASSET);
-                
+
                 // Hair
                 defaultWearables[HAIR].Add(DEFAULT_HAIR_ITEM, DEFAULT_HAIR_ASSET);
 
                 // Skin
                 defaultWearables[SKIN].Add(DEFAULT_SKIN_ITEM, DEFAULT_SKIN_ASSET);
 
+                // Eyes
+                defaultWearables[EYES].Add(DEFAULT_EYES_ITEM, DEFAULT_EYES_ASSET);
+
                 // Shirt
                 defaultWearables[SHIRT].Add(DEFAULT_SHIRT_ITEM, DEFAULT_SHIRT_ASSET);
 
                 // Pants
                 defaultWearables[PANTS].Add(DEFAULT_PANTS_ITEM, DEFAULT_PANTS_ASSET);
-                
+
 //                // Alpha
 //                defaultWearables[ALPHA].Add(DEFAULT_ALPHA_ITEM, DEFAULT_ALPHA_ASSET);
 

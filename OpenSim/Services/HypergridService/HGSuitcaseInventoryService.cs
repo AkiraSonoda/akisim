@@ -97,7 +97,7 @@ namespace OpenSim.Services.HypergridService
                     throw new Exception(String.Format("Unable to create m_AvatarService from {0}", avatarDll));
 
 //                m_HomeURL = Util.GetConfigVarFromSections<string>(config, "HomeURI",
-//                    new string[] { "Startup", "Hypergrid", m_ConfigName }, String.Empty); 
+//                    new string[] { "Startup", "Hypergrid", m_ConfigName }, String.Empty);
 
 //                m_Cache = UserAccountCache.CreateUserAccountCache(m_UserAccountService);
             }
@@ -318,7 +318,7 @@ namespace OpenSim.Services.HypergridService
                 m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: MoveFolder: folder {0} (user {1}) is not within Suitcase tree", folder.ID, folder.Owner);
                 return false;
             }
-            
+
             if (!IsWithinSuitcaseTree(folder.Owner, folder.ParentID))
             {
                 m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: MoveFolder: folder {0} (user {1}) is not within Suitcase tree", folder.ParentID, folder.Owner);
@@ -383,7 +383,7 @@ namespace OpenSim.Services.HypergridService
             // Check the items' current folders
             foreach (InventoryItemBase item in items)
             {
-                InventoryItemBase originalItem = base.GetItem(item);
+                InventoryItemBase originalItem = base.GetItem(item.Owner, item.ID);
                 if (!IsWithinSuitcaseTree(originalItem.Owner, originalItem.Folder))
                 {
                     m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: MoveItems: folder {0} (user {1}) is not within Suitcase tree", item.Folder, item.Owner);
@@ -401,7 +401,7 @@ namespace OpenSim.Services.HypergridService
 
         public new InventoryItemBase GetItem(InventoryItemBase item)
         {
-            InventoryItemBase it = base.GetItem(item);
+            InventoryItemBase it = base.GetItem(item.Owner, item.ID);
             if (it == null)
             {
                 m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: Unable to retrieve item {0} ({1}) in folder {2}",
@@ -426,9 +426,9 @@ namespace OpenSim.Services.HypergridService
             return it;
         }
 
-        public new InventoryFolderBase GetFolder(InventoryFolderBase folder)
+        public new InventoryFolderBase GetFolder(UUID principalID, UUID folderID)
         {
-            InventoryFolderBase f = base.GetFolder(folder);
+            InventoryFolderBase f = base.GetFolder(principalID, folderID);
 
             if (f != null)
             {
@@ -505,11 +505,11 @@ namespace OpenSim.Services.HypergridService
             // Warp! Root folder for travelers
             XInventoryFolder[] folders = m_Database.GetFolders(
                     new string[] { "agentID", "type" },
-                    new string[] { principalID.ToString(), ((int)FolderType.Suitcase).ToString() }); 
+                    new string[] { principalID.ToString(), ((int)FolderType.Suitcase).ToString() });
 
             if (folders != null && folders.Length > 0)
                 return folders[0];
-            
+
             // check to see if we have the old Suitcase folder
             folders = m_Database.GetFolders(
                     new string[] { "agentID", "folderName", "parentFolderID" },
@@ -629,7 +629,7 @@ namespace OpenSim.Services.HypergridService
                 {
                     if (a.Wearables[i][j].ItemID == itemID)
                     {
-                        //m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: item {0} is a wearable", itemID); 
+                        //m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: item {0} is a wearable", itemID);
                         return true;
                     }
                 }
@@ -638,7 +638,7 @@ namespace OpenSim.Services.HypergridService
             // Check attachments
             if (a.GetAttachmentForItem(itemID) != null)
             {
-                //m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: item {0} is an attachment", itemID); 
+                //m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: item {0} is an attachment", itemID);
                 return true;
             }
 

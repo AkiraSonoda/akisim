@@ -251,7 +251,7 @@ namespace OpenSim.Data.PGSQL
             }
             if (PGFieldType == "double precision")
             {
-                return (Double)value;
+                return Convert.ToDouble(value);
             }
             return CreateParameterValue(value);
         }
@@ -326,7 +326,7 @@ namespace OpenSim.Data.PGSQL
         /// <param name="migrationStore">migrationStore.</param>
         public void CheckMigration(string migrationStore)
         {
-            using (NpgsqlConnection connection = new NpgsqlConnection(connectionString)) 
+            using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
             {
                 connection.Open();
                 Assembly assem = GetType().Assembly;

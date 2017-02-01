@@ -91,7 +91,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         private static SceneManager m_instance = null;
         public static SceneManager Instance
-        { 
+        {
             get {
 				if (m_log.IsDebugEnabled) {
 					m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
@@ -100,7 +100,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (m_instance == null)
                     m_instance = new SceneManager();
                 return m_instance;
-            } 
+            }
         }
 
         private readonly DoubleDictionary<UUID, string, Scene> m_localScenes = new DoubleDictionary<UUID, string, Scene>();
@@ -349,7 +349,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TrySetCurrentScene(string regionName)
         {
-            if ((String.Compare(regionName, "root") == 0) 
+            if ((String.Compare(regionName, "root") == 0)
                 || (String.Compare(regionName, "..") == 0)
                 || (String.Compare(regionName, "/") == 0))
             {
@@ -407,7 +407,7 @@ namespace OpenSim.Region.Framework.Scenes
                     return true;
                 }
             }
-            
+
             scene = null;
             return false;
         }
@@ -424,7 +424,7 @@ namespace OpenSim.Region.Framework.Scenes
                     return true;
                 }
             }
-            
+
             scene = null;
             return false;
         }

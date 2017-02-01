@@ -29,7 +29,9 @@ namespace OpenSim
 {
     public class VersionInfo
     {
-        public const string VersionNumber = "0.8.3.0";
+        public const string VersionNumber = "0.9.1.0";
+        public const string AssemblyVersionNumber = "0.9.1.*";
+
         private const Flavour VERSION_FLAVOUR = Flavour.Dev;
 
         public enum Flavour
@@ -56,10 +58,10 @@ namespace OpenSim
         }
 
         public const int VERSIONINFO_VERSION_LENGTH = 27;
-        
+
         /// <value>
         /// This is the external interface version.  It is separate from the OpenSimulator project version.
-        /// 
+        ///
         /// </value>
         /// Commented because it's not used anymore, see below for new
         /// versioning method.
@@ -68,23 +70,23 @@ namespace OpenSim
         /// <summary>
         /// This rules versioning regarding teleports, and compatibility between simulators in that regard.
         /// </summary>
-        /// 
+        ///
         /// <remarks>
         /// The protocol version that we will use for outgoing transfers
-        /// Valid values are 
-        /// "SIMULATION/0.3" 
+        /// Valid values are
+        /// "SIMULATION/0.3"
         ///   - This is the latest, and it supports teleports to variable-sized regions
         ///   - Older versions can teleport to this one, but only if the destination region
         ///     is 256x256
         /// "SIMULATION/0.2"
         ///   - A source simulator which only implements "SIMULATION/0.1" can still teleport here
         ///   - this protocol is more efficient than "SIMULATION/0.1"
-        /// "SIMULATION/0.1" 
+        /// "SIMULATION/0.1"
         ///   - this is an older teleport protocol used in OpenSimulator 0.7.5 and before.
         /// </remarks>
         public readonly static float SimulationServiceVersionAcceptedMin = 0.3f;
-        public readonly static float SimulationServiceVersionAcceptedMax = 0.4f;
+        public readonly static float SimulationServiceVersionAcceptedMax = 0.6f;
         public readonly static float SimulationServiceVersionSupportedMin = 0.3f;
-        public readonly static float SimulationServiceVersionSupportedMax = 0.4f;
+        public readonly static float SimulationServiceVersionSupportedMax = 0.6f;
     }
 }

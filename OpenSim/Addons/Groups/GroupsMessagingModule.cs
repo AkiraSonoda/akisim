@@ -167,8 +167,8 @@ namespace OpenSim.Groups
             // No groups module, no groups messaging
             if (m_groupData == null)
             {
-                m_log.Error("[GroupsMessagingModule]: Could not get IGroupsServicesConnector, GroupsMessagingModule is now disabled.");
-                RemoveRegion(scene); 
+                m_log.Error("[Groups.Messaging]: Could not get IGroupsServicesConnector, GroupsMessagingModule is now disabled.");
+                RemoveRegion(scene);
                 return;
             }
 
@@ -227,7 +227,7 @@ namespace OpenSim.Groups
             m_msgTransferModule = null;
         }
 
-        public Type ReplaceableInterface 
+        public Type ReplaceableInterface
         {
             get { return null; }
         }
@@ -288,7 +288,7 @@ namespace OpenSim.Groups
         {
             SendMessageToGroup(im, groupID, UUID.Zero, null);
         }
-        
+
         public void SendMessageToGroup(
             GridInstantMessage im, UUID groupID, UUID sendingAgentForGroupCalls, Func<GroupMembersData, bool> sendCondition)
         {
@@ -367,7 +367,7 @@ namespace OpenSim.Groups
                     {
                         if (m_log.IsDebugEnabled) 
                             m_log.DebugFormat(
-                                "[Groups.Messaging]: Not sending to {0} as they do not fulfill send condition", 
+                                "[Groups.Messaging]: Not sending to {0} as they do not fulfill send condition",
                                  member.AgentID);
 
                         continue;
@@ -426,7 +426,7 @@ namespace OpenSim.Groups
                     "[GroupsMessagingModule]: SendMessageToGroup for group {0} with {1} visible members, {2} online took {3}ms",
                     groupID, groupMembersCount, groupMembers.Count(), Environment.TickCount - requestStartTick);
         }
-        
+
         #region SimGridEventHandlers
 
         void OnClientLogin(IClientAPI client)
@@ -468,12 +468,12 @@ namespace OpenSim.Groups
             // The instant message module will only deliver messages of dialog types:
             // MessageFromAgent, StartTyping, StopTyping, MessageFromObject
             //
-            // Any other message type will not be delivered to a client by the 
+            // Any other message type will not be delivered to a client by the
             // Instant Message Module
 
             UUID regionID = new UUID(msg.RegionID);
             if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat("[GroupsMessagingModule]: {0} called, IM from region {1}", 
+                m_log.DebugFormat("[Groups.Messaging]: {0} called, IM from region {1}",
                     System.Reflection.MethodBase.GetCurrentMethod().Name, regionID);
 
                 DebugGridInstantMessage(msg);
@@ -529,7 +529,7 @@ namespace OpenSim.Groups
 										}	
                                         return;
                                     }
-                                    else                                
+                                    else
                                     {
                                         if (m_log.IsDebugEnabled) {
                                             m_log.DebugFormat("[GroupsMessagingModule]: not skipping agent {0}", sp.UUID);
@@ -555,7 +555,7 @@ namespace OpenSim.Groups
                                 }
                             }
                         });
-                        
+
                 }
             }
         }
@@ -581,7 +581,7 @@ namespace OpenSim.Groups
                     break;
 
                 case (byte)InstantMessageDialog.SessionSend:
-                    // User hasn't dropped, so they're in the session, 
+                    // User hasn't dropped, so they're in the session,
                     // maybe we should deliver it.
                     IClientAPI client = GetActiveClient(new UUID(msg.toAgentID));
                     if (client != null)
@@ -660,6 +660,7 @@ namespace OpenSim.Groups
                         , false //canVoiceChat
                         , false //isModerator
                         , false //text mute
+                        , true // Enter
                         );
                 }
             }
@@ -688,7 +689,7 @@ namespace OpenSim.Groups
                 UUID AgentID = new UUID(im.fromAgentID);
 
                 GroupRecord groupInfo = m_groupData.GetGroupRecord(UUID.Zero.ToString(), GroupID, null);
-    
+
                 if (groupInfo != null)
                 {
                     AgentInvitedToGroupChatSession(AgentID.ToString(), GroupID);
@@ -703,6 +704,7 @@ namespace OpenSim.Groups
                         , false //canVoiceChat
                         , false //isModerator
                         , false //text mute
+                        , true
                         );
                 }
             }

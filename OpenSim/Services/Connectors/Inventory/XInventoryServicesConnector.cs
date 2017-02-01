@@ -54,6 +54,8 @@ namespace OpenSim.Services.Connectors
 
         private string m_ServerURI = String.Empty;
 
+        private int m_maxRetries = 0;
+
         /// <summary>
         /// Timeout for remote requests.
         /// </summary>
@@ -61,6 +63,7 @@ namespace OpenSim.Services.Connectors
         /// In this case, -1 is default timeout (100 seconds), not infinite.
         /// </remarks>
         private int m_requestTimeoutSecs = -1;
+        private string m_configName = "InventoryService";
 
         private const double CACHE_EXPIRATION_SECONDS = 20.0;
         private static ExpiringCache<UUID, InventoryItemBase> m_ItemCache = new ExpiringCache<UUID,InventoryItemBase>();
@@ -74,6 +77,13 @@ namespace OpenSim.Services.Connectors
             m_ServerURI = serverURI.TrimEnd('/');
         }
 
+        public XInventoryServicesConnector(IConfigSource source, string configName)
+            : base(source, configName)
+        {
+            m_configName = configName;
+            Initialise(source);
+        }
+
         public XInventoryServicesConnector(IConfigSource source)
             : base(source, "InventoryService")
         {
@@ -82,10 +92,10 @@ namespace OpenSim.Services.Connectors
 
         public virtual void Initialise(IConfigSource source)
         {
-            IConfig config = source.Configs["InventoryService"];
+            IConfig config = source.Configs[m_configName];
             if (config == null)
             {
-                m_log.Error("[INVENTORY CONNECTOR]: InventoryService missing from OpenSim.ini");
+                m_log.ErrorFormat("[INVENTORY CONNECTOR]: {0} missing from OpenSim.ini", m_configName);
                 throw new Exception("Inventory connector init error");
             }
 
@@ -100,16 +110,17 @@ namespace OpenSim.Services.Connectors
             m_ServerURI = serviceURI;
 
             m_requestTimeoutSecs = config.GetInt("RemoteRequestTimeout", m_requestTimeoutSecs);
+            m_maxRetries = config.GetInt("MaxRetries", m_maxRetries);
 
             StatsManager.RegisterStat(
                 new Stat(
-                "RequestsMade", 
-                "Requests made", 
-                "Number of requests made to the remove inventory service", 
-                "requests", 
-                "inventory", 
-                serviceURI, 
-                StatType.Pull, 
+                "RequestsMade",
+                "Requests made",
+                "Number of requests made to the remove inventory service",
+                "requests",
+                "inventory",
+                serviceURI,
+                StatType.Pull,
                 MeasuresOfInterest.AverageChangeOverTime,
                 s => s.Value = RequestsMade,
                 StatVerbosity.Debug));
@@ -240,7 +251,7 @@ namespace OpenSim.Services.Connectors
 
             return inventory;
         }
-        
+
         public virtual InventoryCollection[] GetMultipleFoldersContent(UUID principalID, UUID[] folderIDs)
         {
             InventoryCollection[] inventoryArr = new InventoryCollection[folderIDs.Length];
@@ -520,10 +531,10 @@ namespace OpenSim.Services.Connectors
             return CheckReturn(ret);
         }
 
-        public InventoryItemBase GetItem(InventoryItemBase item)
+        public InventoryItemBase GetItem(UUID principalID, UUID itemID)
         {
             InventoryItemBase retrieved = null;
-            if (m_ItemCache.TryGetValue(item.ID, out retrieved))
+            if (m_ItemCache.TryGetValue(itemID, out retrieved))
             {
                 return retrieved;
             }
@@ -532,7 +543,8 @@ namespace OpenSim.Services.Connectors
             {
                 Dictionary<string, object> ret = MakeRequest("GETITEM",
                         new Dictionary<string, object> {
-                        { "ID", item.ID.ToString() }
+                        { "ID", itemID.ToString() },
+                        { "PRINCIPAL", principalID.ToString() }
                     });
 
                 if (!CheckReturn(ret))
@@ -545,7 +557,7 @@ namespace OpenSim.Services.Connectors
                 m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception in GetItem: ", e);
             }
 
-            m_ItemCache.AddOrUpdate(item.ID, retrieved, CACHE_EXPIRATION_SECONDS);
+            m_ItemCache.AddOrUpdate(itemID, retrieved, CACHE_EXPIRATION_SECONDS);
 
             return retrieved;
         }
@@ -613,13 +625,14 @@ namespace OpenSim.Services.Connectors
             return itemArr;
         }
 
-        public InventoryFolderBase GetFolder(InventoryFolderBase folder)
+        public InventoryFolderBase GetFolder(UUID principalID, UUID folderID)
         {
             try
             {
                 Dictionary<string, object> ret = MakeRequest("GETFOLDER",
                         new Dictionary<string, object> {
-                        { "ID", folder.ID.ToString() }
+                        { "ID", folderID.ToString() },
+                        { "PRINCIPAL", principalID.ToString() }
                     });
 
                 if (!CheckReturn(ret))
@@ -661,7 +674,7 @@ namespace OpenSim.Services.Connectors
                         { "ASSET", assetID.ToString() }
                     });
 
-            // We cannot use CheckReturn() here because valid values for RESULT are "false" (in the case of request failure) or an int           
+            // We cannot use CheckReturn() here because valid values for RESULT are "false" (in the case of request failure) or an int
             if (ret == null)
                 return 0;
 
@@ -698,10 +711,20 @@ namespace OpenSim.Services.Connectors
 
             RequestsMade++;
 
-            string reply 
-                = SynchronousRestFormsRequester.MakeRequest(
+            string reply = String.Empty;
+            int retries = 0;
+
+            do
+            {
+                reply = SynchronousRestFormsRequester.MakeRequest(
                     "POST", m_ServerURI + "/xinventory",
                      ServerUtils.BuildQueryString(sendData), m_requestTimeoutSecs, m_Auth);
+
+                if (reply != String.Empty)
+                    break;
+
+                retries++;
+            } while (retries <= m_maxRetries);
 
             Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(
                     reply);

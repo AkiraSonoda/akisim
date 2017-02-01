@@ -51,7 +51,7 @@ namespace OpenSim.Capabilities.Handlers
 {
     public class UploadBakedTextureHandler
     {
-      
+
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Caps m_HostCapsObj;
@@ -82,7 +82,7 @@ namespace OpenSim.Capabilities.Handlers
             	m_log.DebugFormat("[UploadBakedTextureHandler]: UploadBakedTexture(request: {0}, path: {1}, param: {2} ...)", request, path, param);
                 string capsBase = "/CAPS/" + m_HostCapsObj.CapsObjectPath;
                 string uploaderPath = Util.RandomClass.Next(5000, 8000).ToString("0000");
-                
+
                 BakedTextureUploader uploader =
                     new BakedTextureUploader(capsBase + uploaderPath, m_HostCapsObj.HttpListener, m_HostCapsObj.AgentID);
                 uploader.OnUpLoad += BakedTextureUploaded;
@@ -128,7 +128,7 @@ namespace OpenSim.Capabilities.Handlers
             asset.Temporary = true;
             asset.Local = !m_persistBakedTextures; // Local assets aren't persisted, non-local are
             m_assetService.Store(asset);
-            
+
         }
     }
 
@@ -152,7 +152,7 @@ namespace OpenSim.Capabilities.Handlers
             //                m_log.InfoFormat("[CAPS] baked texture upload starting for {0}",newAssetID);
         }
 
-       
+
 
         /// <summary>
         /// Handle raw uploaded baked texture data.

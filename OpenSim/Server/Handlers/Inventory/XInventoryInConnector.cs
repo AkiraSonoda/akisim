@@ -293,7 +293,7 @@ namespace OpenSim.Server.Handlers.Inventory
                 result["FID"] = icoll.FolderID.ToString();
                 result["VERSION"] = icoll.Version.ToString();
                 Dictionary<string, object> folders = new Dictionary<string, object>();
-                int i = 0; 
+                int i = 0;
                 if (icoll.Folders != null)
                 {
                     foreach (InventoryFolderBase f in icoll.Folders)
@@ -407,7 +407,7 @@ namespace OpenSim.Server.Handlers.Inventory
                 }
             }
             result["ITEMS"] = sitems;
-            
+
             string xmlString = ServerUtils.BuildXmlResponse(result);
 
             //m_log.DebugFormat("[XXX]: resp string: {0}", xmlString);
@@ -566,9 +566,11 @@ namespace OpenSim.Server.Handlers.Inventory
             Dictionary<string,object> result = new Dictionary<string,object>();
             UUID id = UUID.Zero;
             UUID.TryParse(request["ID"].ToString(), out id);
+            UUID user = UUID.Zero;
+            if (request.ContainsKey("PRINCIPAL"))
+                UUID.TryParse(request["PRINCIPAL"].ToString(), out user);
 
-            InventoryItemBase item = new InventoryItemBase(id);
-            item = m_InventoryService.GetItem(item);
+            InventoryItemBase item = m_InventoryService.GetItem(user, id);
             if (item != null)
                 result["item"] = EncodeItem(item);
 
@@ -617,9 +619,11 @@ namespace OpenSim.Server.Handlers.Inventory
             Dictionary<string, object> result = new Dictionary<string, object>();
             UUID id = UUID.Zero;
             UUID.TryParse(request["ID"].ToString(), out id);
+            UUID user = UUID.Zero;
+            if (request.ContainsKey("PRINCIPAL"))
+                UUID.TryParse(request["PRINCIPAL"].ToString(), out user);
 
-            InventoryFolderBase folder = new InventoryFolderBase(id);
-            folder = m_InventoryService.GetFolder(folder);
+            InventoryFolderBase folder = m_InventoryService.GetFolder(user, id);
             if (folder != null)
                 result["folder"] = EncodeFolder(folder);
 

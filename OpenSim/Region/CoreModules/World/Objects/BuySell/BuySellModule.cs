@@ -45,38 +45,38 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "BuySellModule")]
     public class BuySellModule : IBuySellModule, INonSharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         protected Scene m_scene = null;
         protected IDialogModule m_dialogModule;
-        
+
         public string Name { get { return "Object BuySell Module"; } }
         public Type ReplaceableInterface { get { return null; } }
 
         public void Initialise(IConfigSource source) {}
-        
+
         public void AddRegion(Scene scene)
         {
             m_scene = scene;
             m_scene.RegisterModuleInterface<IBuySellModule>(this);
             m_scene.EventManager.OnNewClient += SubscribeToClientEvents;
         }
-        
-        public void RemoveRegion(Scene scene) 
+
+        public void RemoveRegion(Scene scene)
         {
             m_scene.EventManager.OnNewClient -= SubscribeToClientEvents;
         }
-        
-        public void RegionLoaded(Scene scene) 
+
+        public void RegionLoaded(Scene scene)
         {
             m_dialogModule = scene.RequestModuleInterface<IDialogModule>();
         }
-        
-        public void Close() 
+
+        public void Close()
         {
             RemoveRegion(m_scene);
         }
-        
+
         public void SubscribeToClientEvents(IClientAPI client)
         {
             client.OnObjectSaleInfo += ObjectSaleInfo;
@@ -92,8 +92,18 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
             if (part.ParentGroup.IsDeleted)
                 return;
 
-            if (part.OwnerID != client.AgentId && (!m_scene.Permissions.IsGod(client.AgentId)))
+            if (part.OwnerID != part.GroupID && part.OwnerID != client.AgentId && (!m_scene.Permissions.IsGod(client.AgentId)))
                 return;
+
+            if (part.OwnerID == part.GroupID) // Group owned
+            {
+                // Does the user have the power to put the object on sale?
+                if (!m_scene.Permissions.CanSellGroupObject(client.AgentId, part.GroupID))
+                {
+                    client.SendAgentAlertMessage("You don't have permission to set group-owned objects on sale", false);
+                    return;
+                }
+            }
 
             part = part.ParentGroup.RootPart;
 
@@ -117,7 +127,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
             switch (saleType)
             {
             case 1: // Sell as original (in-place sale)
-                uint effectivePerms = group.GetEffectivePermissions();
+                uint effectivePerms = group.EffectiveOwnerPerms;
 
                 if ((effectivePerms & (uint)PermissionMask.Transfer) == 0)
                 {
@@ -126,8 +136,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
                     return false;
                 }
 
-                group.SetOwnerId(remoteClient.AgentId);
-                group.SetRootPartOwner(part, remoteClient.AgentId, remoteClient.ActiveGroupId);
+                group.SetOwner(remoteClient.AgentId, remoteClient.ActiveGroupId);
 
                 if (m_scene.Permissions.PropagatePermissions())
                 {
@@ -137,6 +146,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
                         child.TriggerScriptChangedEvent(Changed.OWNER);
                         child.ApplyNextOwnerPermissions();
                     }
+                    group.AggregatePerms();
                 }
 
                 part.ObjectSaleType = 0;
@@ -164,7 +174,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
                 string sceneObjectXml = SceneObjectSerializer.ToOriginalXmlFormat(group);
                 group.AbsolutePosition = originalPosition;
 
-                uint perms = group.GetEffectivePermissions();
+                uint perms = group.EffectiveOwnerPerms;
 
                 if ((perms & (uint)PermissionMask.Transfer) == 0)
                 {
@@ -201,7 +211,13 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
                 item.InvType = (int)InventoryType.Object;
                 item.Folder = categoryID;
 
-                PermissionsUtil.ApplyFoldedPermissions(perms, ref perms);
+                uint nextPerms=(perms & 7) << 13;
+                if ((nextPerms & (uint)PermissionMask.Copy) == 0)
+                    perms &= ~(uint)PermissionMask.Copy;
+                if ((nextPerms & (uint)PermissionMask.Transfer) == 0)
+                    perms &= ~(uint)PermissionMask.Transfer;
+                if ((nextPerms & (uint)PermissionMask.Modify) == 0)
+                    perms &= ~(uint)PermissionMask.Modify;
 
                 item.BasePermissions = perms & part.NextOwnerMask;
                 item.CurrentPermissions = perms & part.NextOwnerMask;

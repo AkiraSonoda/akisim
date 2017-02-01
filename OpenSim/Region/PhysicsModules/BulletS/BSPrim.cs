@@ -59,7 +59,6 @@ public class BSPrim : BSPhysObject
     private bool _setAlwaysRun;
     private bool _throttleUpdates;
     private bool _floatOnWater;
-    private OMV.Vector3 _rotationalVelocity;
     private bool _kinematic;
     private float _buoyancy;
 
@@ -90,7 +89,7 @@ public class BSPrim : BSPhysObject
         RawOrientation = rotation;
         _buoyancy = 0f;
         RawVelocity = OMV.Vector3.Zero;
-        _rotationalVelocity = OMV.Vector3.Zero;
+        RawRotationalVelocity = OMV.Vector3.Zero;
         BaseShape = pbs;
         _isPhysical = pisPhysical;
         _isVolumeDetect = false;
@@ -256,7 +255,7 @@ public class BSPrim : BSPhysObject
     {
         RawVelocity = OMV.Vector3.Zero;
         _acceleration = OMV.Vector3.Zero;
-        _rotationalVelocity = OMV.Vector3.Zero;
+        RawRotationalVelocity = OMV.Vector3.Zero;
 
         // Zero some other properties in the physics engine
         PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.ZeroMotion", delegate()
@@ -267,15 +266,15 @@ public class BSPrim : BSPhysObject
     }
     public override void ZeroAngularMotion(bool inTaintTime)
     {
-        _rotationalVelocity = OMV.Vector3.Zero;
+        RawRotationalVelocity = OMV.Vector3.Zero;
         // Zero some other properties in the physics engine
         PhysScene.TaintedObject(inTaintTime, LocalID, "BSPrim.ZeroMotion", delegate()
         {
             // DetailLog("{0},BSPrim.ZeroAngularMotion,call,rotVel={1}", LocalID, _rotationalVelocity);
             if (PhysBody.HasPhysicalBody)
             {
-                PhysScene.PE.SetInterpolationAngularVelocity(PhysBody, _rotationalVelocity);
-                PhysScene.PE.SetAngularVelocity(PhysBody, _rotationalVelocity);
+                PhysScene.PE.SetInterpolationAngularVelocity(PhysBody, RawRotationalVelocity);
+                PhysScene.PE.SetAngularVelocity(PhysBody, RawRotationalVelocity);
             }
         });
     }
@@ -394,7 +393,7 @@ public class BSPrim : BSPhysObject
                 // Apply upforce and overcome gravity.
                 OMV.Vector3 correctionForce = upForce - PhysScene.DefaultGravity;
                 DetailLog("{0},BSPrim.PositionSanityCheck,applyForce,pos={1},upForce={2},correctionForce={3}", LocalID, RawPosition, upForce, correctionForce);
-                AddForce(correctionForce, false, inTaintTime);
+                AddForce(inTaintTime, correctionForce);
                 ret = true;
             }
         }
@@ -426,9 +425,9 @@ public class BSPrim : BSPhysObject
             RawVelocity = Util.ClampV(RawVelocity, BSParam.MaxLinearVelocity);
             ret = true;
         }
-        if (_rotationalVelocity.LengthSquared() > BSParam.MaxAngularVelocitySquared)
+        if (RawRotationalVelocity.LengthSquared() > BSParam.MaxAngularVelocitySquared)
         {
-            _rotationalVelocity = Util.ClampV(_rotationalVelocity, BSParam.MaxAngularVelocity);
+            RawRotationalVelocity = Util.ClampV(RawRotationalVelocity, BSParam.MaxAngularVelocity);
             ret = true;
         }
 
@@ -788,17 +787,6 @@ public class BSPrim : BSPhysObject
             }
         }
     }
-    public override OMV.Vector3 Velocity {
-        get { return RawVelocity; }
-        set {
-            RawVelocity = value;
-            PhysScene.TaintedObject(LocalID, "BSPrim.setVelocity", delegate()
-            {
-                // DetailLog("{0},BSPrim.SetVelocity,taint,vel={1}", LocalID, RawVelocity);
-                ForceVelocity = RawVelocity;
-            });
-        }
-    }
     public override OMV.Vector3 ForceVelocity {
         get { return RawVelocity; }
         set {
@@ -1008,7 +996,7 @@ public class BSPrim : BSPhysObject
             // For good measure, make sure the transform is set through to the motion state
             ForcePosition = RawPosition;
             ForceVelocity = RawVelocity;
-            ForceRotationalVelocity = _rotationalVelocity;
+            ForceRotationalVelocity = RawRotationalVelocity;
 
             // A dynamic object has mass
             UpdatePhysicalMassProperties(RawMass, false);
@@ -1128,35 +1116,6 @@ public class BSPrim : BSPhysObject
             });
         }
     }
-    public override OMV.Vector3 RotationalVelocity {
-        get {
-            return _rotationalVelocity;
-        }
-        set {
-            _rotationalVelocity = value;
-            Util.ClampV(_rotationalVelocity, BSParam.MaxAngularVelocity);
-            // m_log.DebugFormat("{0}: RotationalVelocity={1}", LogHeader, _rotationalVelocity);
-            PhysScene.TaintedObject(LocalID, "BSPrim.setRotationalVelocity", delegate()
-            {
-                ForceRotationalVelocity = _rotationalVelocity;
-            });
-        }
-    }
-    public override OMV.Vector3 ForceRotationalVelocity {
-        get {
-            return _rotationalVelocity;
-        }
-        set {
-            _rotationalVelocity = Util.ClampV(value, BSParam.MaxAngularVelocity);
-            if (PhysBody.HasPhysicalBody)
-            {
-                DetailLog("{0},BSPrim.ForceRotationalVel,taint,rotvel={1}", LocalID, _rotationalVelocity);
-                PhysScene.PE.SetAngularVelocity(PhysBody, _rotationalVelocity);
-                // PhysicsScene.PE.SetInterpolationAngularVelocity(PhysBody, _rotationalVelocity);
-                ActivateIfPhysical(false);
-            }
-        }
-    }
     public override bool Kinematic {
         get { return _kinematic; }
         set { _kinematic = value;
@@ -1185,14 +1144,14 @@ public class BSPrim : BSPhysObject
         }
     }
 
-    public override bool PIDActive 
+    public override bool PIDActive
     {
         get
         {
             return MoveToTargetActive;
         }
 
-        set 
+        set
         {
             MoveToTargetActive = value;
 
@@ -1220,13 +1179,13 @@ public class BSPrim : BSPhysObject
                 // if the actor exists, tell it to refresh its values.
                 actor.Refresh();
             }
-            
+
         }
     }
     // Used for llSetHoverHeight and maybe vehicle height
     // Hover Height will override MoveTo target's Z
     public override bool PIDHoverActive {
-        get 
+        get
         {
         return base.HoverActive;
         }
@@ -1249,14 +1208,18 @@ public class BSPrim : BSPhysObject
         // Per documentation, max force is limited.
         OMV.Vector3 addForce = Util.ClampV(force, BSParam.MaxAddForceMagnitude);
 
-        // Since this force is being applied in only one step, make this a force per second.
-        addForce /= PhysScene.LastTimeStep;
-        AddForce(addForce, pushforce, false /* inTaintTime */);
+        // Push forces seem to be scaled differently (follow pattern in ubODE)
+        if (!pushforce) {
+            // Since this force is being applied in only one step, make this a force per second.
+            addForce /= PhysScene.LastTimeStep;
+        }
+
+        AddForce(false /* inTaintTime */, addForce);
     }
 
     // Applying a force just adds this to the total force on the object.
     // This added force will only last the next simulation tick.
-    public override void AddForce(OMV.Vector3 force, bool pushforce, bool inTaintTime) {
+    public override void AddForce(bool inTaintTime, OMV.Vector3 force) {
         // for an object, doesn't matter if force is a pushforce or not
         if (IsPhysicallyActive)
         {
@@ -1315,7 +1278,7 @@ public class BSPrim : BSPhysObject
     }
 
     // BSPhysObject.AddAngularForce()
-    public override void AddAngularForce(OMV.Vector3 force, bool pushforce, bool inTaintTime)
+    public override void AddAngularForce(bool inTaintTime, OMV.Vector3 force)
     {
         if (force.IsFinite())
         {
@@ -1354,9 +1317,6 @@ public class BSPrim : BSPhysObject
         });
     }
 
-    public override void SetMomentum(OMV.Vector3 momentum) {
-        // DetailLog("{0},BSPrim.SetMomentum,call,mom={1}", LocalID, momentum);
-    }
     #region Mass Calculation
 
     private float CalculateMass()
@@ -1926,7 +1886,7 @@ public class BSPrim : BSPhysObject
         if (entprop.Velocity == OMV.Vector3.Zero || !entprop.Velocity.ApproxEquals(RawVelocity, BSParam.UpdateVelocityChangeThreshold))
             RawVelocity = entprop.Velocity;
         _acceleration = entprop.Acceleration;
-        _rotationalVelocity = entprop.RotationalVelocity;
+        RawRotationalVelocity = entprop.RotationalVelocity;
 
         // DetailLog("{0},BSPrim.UpdateProperties,afterAssign,entprop={1}", LocalID, entprop);   // DEBUG DEBUG
 
@@ -1935,7 +1895,7 @@ public class BSPrim : BSPhysObject
         {
             entprop.Position = RawPosition;
             entprop.Velocity = RawVelocity;
-            entprop.RotationalVelocity = _rotationalVelocity;
+            entprop.RotationalVelocity = RawRotationalVelocity;
             entprop.Acceleration = _acceleration;
         }
 

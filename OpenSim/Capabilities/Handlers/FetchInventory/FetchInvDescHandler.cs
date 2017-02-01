@@ -43,7 +43,7 @@ using Caps = OpenSim.Framework.Capabilities.Caps;
 
 namespace OpenSim.Capabilities.Handlers
 {
-    public class FetchInvDescHandler 
+    public class FetchInvDescHandler
     {
         private static readonly ILog m_log =
             LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -53,14 +53,14 @@ namespace OpenSim.Capabilities.Handlers
         private IScene m_Scene;
 //        private object m_fetchLock = new Object();
 
-        public FetchInvDescHandler(IInventoryService invService, ILibraryService libService, IScene s) 
+        public FetchInvDescHandler(IInventoryService invService, ILibraryService libService, IScene s)
         {
             m_InventoryService = invService;
             m_LibraryService = libService;
             m_Scene = s;
         }
 
-        
+
         public string FetchInventoryDescendentsRequest(string request, string path, string param, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
             //m_log.DebugFormat("[XXX]: FetchInventoryDescendentsRequest in {0}, {1}", (m_Scene == null) ? "none" : m_Scene.Name, request);
@@ -72,14 +72,14 @@ namespace OpenSim.Capabilities.Handlers
             // correctly mark it as a uuid
             //
             request = request.Replace("<string>00000000-0000-0000-0000-000000000000</string>", "<uuid>00000000-0000-0000-0000-000000000000</uuid>");
-    
+
             // another hack <integer>1</integer> results in a
             // System.ArgumentException: Object type System.Int32 cannot
             // be converted to target type: System.Boolean
             //
             request = request.Replace("<key>fetch_folders</key><integer>0</integer>", "<key>fetch_folders</key><boolean>0</boolean>");
             request = request.Replace("<key>fetch_folders</key><integer>1</integer>", "<key>fetch_folders</key><boolean>1</boolean>");
-    
+
             Hashtable hash = new Hashtable();
             try
             {
@@ -90,9 +90,9 @@ namespace OpenSim.Capabilities.Handlers
                 m_log.ErrorFormat("[WEB FETCH INV DESC HANDLER]: Fetch error: {0}{1}" + e.Message, e.StackTrace);
                 m_log.Error("Request: " + request);
             }
-    
+
             ArrayList foldersrequested = (ArrayList)hash["folders"];
-    
+
             string response = "";
             string bad_folders_response = "";
 
@@ -403,10 +403,7 @@ namespace OpenSim.Capabilities.Handlers
                     return contents;
                 }
                 contents = fetchedContents;
-                InventoryFolderBase containingFolder = new InventoryFolderBase();
-                containingFolder.ID = folderID;
-                containingFolder.Owner = agentID;
-                containingFolder = m_InventoryService.GetFolder(containingFolder);
+                InventoryFolderBase containingFolder = m_InventoryService.GetFolder(agentID, folderID);
 
                 if (containingFolder != null)
                 {
@@ -429,7 +426,7 @@ namespace OpenSim.Capabilities.Handlers
                         {
                             if (item.AssetType == (int)AssetType.Link)
                             {
-                                InventoryItemBase linkedItem = m_InventoryService.GetItem(new InventoryItemBase(item.AssetID));
+                                InventoryItemBase linkedItem = m_InventoryService.GetItem(agentID, item.AssetID);
 
                                 // Take care of genuinely broken links where the target doesn't exist
                                 // HACK: Also, don't follow up links that just point to other links.  In theory this is legitimate,
@@ -519,7 +516,7 @@ from docs seems this was never a spec
 //                                }
 //                            }
 //                        }
-//    
+//
 //                        foreach (UUID linkedItemFolderId in linkedItemFolderIdsToSend)
 //                        {
 //                            m_log.DebugFormat(
@@ -659,10 +656,7 @@ from docs seems this was never a spec
             // Must fetch it individually
             else if (contents.FolderID == UUID.Zero)
             {
-                InventoryFolderBase containingFolder = new InventoryFolderBase();
-                containingFolder.ID = freq.folder_id;
-                containingFolder.Owner = freq.owner_id;
-                containingFolder = m_InventoryService.GetFolder(containingFolder);
+                InventoryFolderBase containingFolder = m_InventoryService.GetFolder(freq.owner_id, freq.folder_id);
 
                 if (containingFolder != null)
                 {
@@ -759,12 +753,9 @@ from docs seems this was never a spec
                         m_log.WarnFormat("[WEB FETCH INV DESC HANDLER]: GetMultipleItems failed. Falling back to fetching inventory items one by one.");
                         linked = new InventoryItemBase[itemIDs.Count];
                         int i = 0;
-                        InventoryItemBase item = new InventoryItemBase();
-                        item.Owner = freq.owner_id;
                         foreach (UUID id in itemIDs)
                         {
-                            item.ID = id;
-                            linked[i++] = m_InventoryService.GetItem(item);
+                            linked[i++] = m_InventoryService.GetItem(freq.owner_id, id);
                         }
                     }
 

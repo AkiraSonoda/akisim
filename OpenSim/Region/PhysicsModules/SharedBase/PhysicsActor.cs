@@ -55,6 +55,14 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         Absolute
     }
 
+    public struct CameraData
+    {
+        public Quaternion CameraRotation;
+        public Vector3 CameraAtAxis;
+        public bool MouseLook;
+        public bool Valid;
+    }
+
     public struct ContactPoint
     {
         public Vector3 Position;
@@ -126,9 +134,20 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
                 m_objCollisionList.Add(localID, contact);
             }
             else
-            {              
+            {
+                float lastVel = m_objCollisionList[localID].RelativeSpeed;
                 if (m_objCollisionList[localID].PenetrationDepth < contact.PenetrationDepth)
+                {
+                    if(Math.Abs(lastVel) > Math.Abs(contact.RelativeSpeed))
+                        contact.RelativeSpeed = lastVel;
                     m_objCollisionList[localID] = contact;
+                }
+                else if(Math.Abs(lastVel) < Math.Abs(contact.RelativeSpeed))
+                {
+                    ContactPoint tmp = m_objCollisionList[localID];
+                    tmp.RelativeSpeed = contact.RelativeSpeed;
+                    m_objCollisionList[localID] = tmp;
+                }
             }
         }
 
@@ -148,13 +167,15 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public delegate void RequestTerseUpdate();
         public delegate void CollisionUpdate(EventArgs e);
         public delegate void OutOfBounds(Vector3 pos);
+        public delegate CameraData GetCameraData();
 
-// disable warning: public events
+        // disable warning: public events
 #pragma warning disable 67
         public event PositionUpdate OnPositionUpdate;
         public event VelocityUpdate OnVelocityUpdate;
         public event OrientationUpdate OnOrientationUpdate;
         public event RequestTerseUpdate OnRequestTerseUpdate;
+        public event GetCameraData OnPhysicsRequestingCameraData;
 
         /// <summary>
         /// Subscribers to this event must synchronously handle the dictionary of collisions received, since the event
@@ -165,11 +186,22 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public event OutOfBounds OnOutOfBounds;
 #pragma warning restore 67
 
+        public CameraData TryGetCameraData()
+        {
+            GetCameraData handler = OnPhysicsRequestingCameraData;
+            if (handler != null)
+            {
+                return handler();
+            }
+
+            return new CameraData { Valid = false };
+        }
+
         public static PhysicsActor Null
         {
             get { return new NullPhysicsActor(); }
         }
-   
+
         public virtual bool Building { get; set; }
 
         public virtual void getContactData(ref ContactData cdata)
@@ -231,7 +263,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public abstract void delink();
 
         public abstract void LockAngularMotion(byte axislocks);
- 
+
         public virtual void RequestPhysicsterseUpdate()
         {
             // Make a temporary copy of the event to avoid possibility of
@@ -294,7 +326,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public abstract void VehicleFlags(int param, bool remove);
 
         // This is an overridable version of SetVehicle() that works for all physics engines.
-        // This is VERY inefficient. It behoves any physics engine to override this and 
+        // This is VERY inefficient. It behoves any physics engine to override this and
         //     implement a more efficient setting of all the vehicle parameters.
         public virtual void SetVehicle(object pvdata)
         {
@@ -351,35 +383,6 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public abstract Vector3 GeometricCenter { get; }
         public abstract Vector3 CenterOfMass { get; }
 
-        public virtual Vector3 OOBsize
-        {
-            get
-                {
-                Vector3 s=Size;
-                s.X *=0.5f;
-                s.Y *=0.5f;
-                s.Z *=0.5f;
-                return s;
-                } 
-        }
-
-        public virtual Vector3 OOBoffset
-        {
-            get
-            {
-                return Vector3.Zero;
-            }
-        }
-
-        public virtual float OOBRadiusSQ
-        {
-            get
-            {
-                return Size.LengthSquared() * 0.25f; // ((0.5^2)
-            }
-        }
-
-
         public virtual float PhysicsCost
         {
             get
@@ -414,6 +417,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         }
 
         public abstract Vector3 Velocity { get; set; }
+        public virtual Vector3 rootVelocity { get { return Vector3.Zero; } }
 
         public abstract Vector3 Torque { get; set; }
         public abstract float CollisionScore { get; set;}
@@ -449,7 +453,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public abstract bool APIDActive { set;}
         public abstract float APIDStrength { set;}
         public abstract float APIDDamping { set;}
-        
+
         public abstract void AddForce(Vector3 force, bool pushforce);
         public abstract void AddAngularForce(Vector3 force, bool pushforce);
         public abstract void SetMomentum(Vector3 momentum);
@@ -461,7 +465,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
 
         // Warning in a parent part it returns itself, not null
         public virtual PhysicsActor ParentActor { get { return this; } }
-        
+
 
         // Extendable interface for new, physics engine specific operations
         public virtual object Extension(string pFunct, params object[] pParams)
@@ -625,7 +629,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public override int PhysicsActorType
         {
             get { return (int)m_actorType; }
-            set {               
+            set {
                 ActorTypes type = (ActorTypes)value;
                 switch (type)
                 {
@@ -660,10 +664,10 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
 
         public override Vector3 PIDTarget { set { return; } }
 
-        public override bool PIDActive 
+        public override bool PIDActive
         {
             get { return false; }
-            set { return; } 
+            set { return; }
         }
 
         public override float PIDTau { set { return; } }
@@ -672,12 +676,12 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public override bool PIDHoverActive {get {return false;} set { return; } }
         public override PIDHoverType PIDHoverType { set { return; } }
         public override float PIDHoverTau { set { return; } }
-        
+
         public override Quaternion APIDTarget { set { return; } }
         public override bool APIDActive { set { return; } }
         public override float APIDStrength { set { return; } }
         public override float APIDDamping { set { return; } }
-        
+
         public override void SetMomentum(Vector3 momentum) { }
 
         public override void SubscribeEvents(int ms) { }

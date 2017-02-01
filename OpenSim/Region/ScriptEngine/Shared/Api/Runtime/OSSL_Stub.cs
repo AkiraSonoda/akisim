@@ -209,6 +209,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
             return m_OSSL_Functions.osRegionRestart(seconds);
         }
 
+        public int osRegionRestart(double seconds, string msg)
+        {
+            return m_OSSL_Functions.osRegionRestart(seconds, msg);
+        }
+
         public void osRegionNotice(string msg)
         {
             m_OSSL_Functions.osRegionNotice(msg);
@@ -430,6 +435,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
             return m_OSSL_Functions.osGetPhysicsEngineType();
         }
 
+        public string osGetPhysicsEngineName()
+        {
+            return m_OSSL_Functions.osGetPhysicsEngineName();
+        }
+
         public string osGetSimulatorVersion()
         {
            return m_OSSL_Functions.osGetSimulatorVersion();
@@ -529,7 +539,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         {
             return m_OSSL_Functions.osReplaceString(src,pattern,replace,count,start);
         }
-        
+
 
         // Information about data loaded into the region
         public string osLoadedCreationDate()
@@ -565,6 +575,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public void osForceBreakAllLinks()
         {
             m_OSSL_Functions.osForceBreakAllLinks();
+        }
+
+        public void osDie(LSL_Key objectUUID)
+        {
+            m_OSSL_Functions.osDie(objectUUID);
         }
 
         public LSL_Integer osIsNpc(LSL_Key npc)
@@ -625,6 +640,16 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public void osNpcStopMoveToTarget(LSL_Key npc)
         {
             m_OSSL_Functions.osNpcStopMoveToTarget(npc);
+        }
+
+        public void osNpcSetProfileAbout(LSL_Key npc, string about)
+        {
+            m_OSSL_Functions.osNpcSetProfileAbout(npc, about);
+        }
+
+        public void osNpcSetProfileImage(LSL_Key npc, string image)
+        {
+            m_OSSL_Functions.osNpcSetProfileImage(npc, image);
         }
 
         public void osNpcSay(key npc, string message)
@@ -889,7 +914,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         {
             return m_OSSL_Functions.osGetRegionMapTexture(regionName);
         }
-        
+
         public LSL_List osGetRegionStats()
         {
             return m_OSSL_Functions.osGetRegionStats();
@@ -909,12 +934,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         {
             return m_OSSL_Functions.osGetSimulatorMemory();
         }
-        
+
         public void osKickAvatar(string FirstName,string SurName,string alert)
         {
             m_OSSL_Functions.osKickAvatar(FirstName, SurName, alert);
         }
-        
+
         public void osSetSpeed(string UUID, LSL_Float SpeedModifier)
         {
             m_OSSL_Functions.osSetSpeed(UUID, SpeedModifier);
@@ -929,10 +954,25 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         {
             m_OSSL_Functions.osCauseDamage(avatar, damage);
         }
-        
+
         public void osCauseHealing(string avatar, double healing)
         {
             m_OSSL_Functions.osCauseHealing(avatar, healing);
+        }
+
+        public void osSetHealth(string avatar, double health)
+        {
+            m_OSSL_Functions.osSetHealth(avatar, health);
+        }
+
+        public void osSetHealRate(string avatar, double health)
+        {
+            m_OSSL_Functions.osSetHealRate(avatar, health);
+        }
+
+        public LSL_Float osGetHealRate(string avatar)
+        {
+            return m_OSSL_Functions.osGetHealRate(avatar);
         }
 
         public void osForceOtherSit(string avatar)
@@ -944,12 +984,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         {
             m_OSSL_Functions.osForceOtherSit(avatar, target);
         }
-        
+
         public LSL_List osGetPrimitiveParams(LSL_Key prim, LSL_List rules)
         {
             return m_OSSL_Functions.osGetPrimitiveParams(prim, rules);
         }
-        
+
         public void osSetPrimitiveParams(LSL_Key prim, LSL_List rules)
         {
             m_OSSL_Functions.osSetPrimitiveParams(prim, rules);
@@ -1053,6 +1093,26 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_Integer osRegexIsMatch(string input, string pattern)
         {
             return m_OSSL_Functions.osRegexIsMatch(input, pattern);
+        }
+
+        public LSL_String osRequestURL(LSL_List options)
+        {
+            return m_OSSL_Functions.osRequestURL(options);
+        }
+
+        public LSL_String osRequestSecureURL(LSL_List options)
+        {
+            return m_OSSL_Functions.osRequestSecureURL(options);
+        }
+
+        public void osCollisionSound(string impact_sound, double impact_volume)
+        {
+            m_OSSL_Functions.osCollisionSound(impact_sound, impact_volume);
+        }
+
+        public void osVolumeDetect(int detect)
+        {
+            m_OSSL_Functions.osVolumeDetect(detect);
         }
     }
 }

@@ -113,7 +113,7 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
             }
             catch (Exception e)
             {
-                m_log.Error("[EMAIL] DefaultEmailModule not configured: " + e.Message);
+                m_log.Error("[EMAIL]: DefaultEmailModule not configured: " + e.Message);
                 m_Enabled = false;
                 return;
             }
@@ -142,7 +142,7 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                 }
             }
 
-            m_log.Info("[EMAIL] Activated DefaultEmailModule");
+            m_log.Info("[EMAIL]: Activated DefaultEmailModule");
         }
 
         public void RemoveRegion(Scene scene)
@@ -224,8 +224,9 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
             return null;
         }
 
-        private void resolveNamePositionRegionName(UUID objectID, out string ObjectName, out string ObjectAbsolutePosition, out string ObjectRegionName)
+        private bool resolveNamePositionRegionName(UUID objectID, out string ObjectName, out string ObjectAbsolutePosition, out string ObjectRegionName)
         {
+            ObjectName = ObjectAbsolutePosition = ObjectRegionName = String.Empty;
             string m_ObjectRegionName;
             int objectLocX;
             int objectLocY;
@@ -239,15 +240,9 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                 ObjectAbsolutePosition = "(" + objectLocX + ", " + objectLocY + ", " + objectLocZ + ")";
                 ObjectName = part.Name;
                 ObjectRegionName = m_ObjectRegionName;
-                return;
+                return true;
             }
-            objectLocX = (int)part.AbsolutePosition.X;
-            objectLocY = (int)part.AbsolutePosition.Y;
-            objectLocZ = (int)part.AbsolutePosition.Z;
-            ObjectAbsolutePosition = "(" + objectLocX + ", " + objectLocY + ", " + objectLocZ + ")";
-            ObjectName = part.Name;
-            ObjectRegionName = m_ObjectRegionName;
-            return;
+            return false;
         }
 
         /// <summary>
@@ -273,12 +268,12 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
             bool isEMailStrictMatch = EMailreStrict.IsMatch(address);
             if (!isEMailStrictMatch)
             {
-                m_log.Error("[EMAIL] REGEX Problem in EMail Address: "+address);
+                m_log.Error("[EMAIL]: REGEX Problem in EMail Address: "+address);
                 return;
             }
             if ((subject.Length + body.Length) > m_MaxEmailSize)
             {
-                m_log.Error("[EMAIL] subject + body larger than limit of " + m_MaxEmailSize + " bytes");
+                m_log.Error("[EMAIL]: subject + body larger than limit of " + m_MaxEmailSize + " bytes");
                 return;
             }
 
@@ -286,7 +281,8 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
             string LastObjectPosition = string.Empty;
             string LastObjectRegionName = string.Empty;
 
-            resolveNamePositionRegionName(objectID, out LastObjectName, out LastObjectPosition, out LastObjectRegionName);
+            if (!resolveNamePositionRegionName(objectID, out LastObjectName, out LastObjectPosition, out LastObjectRegionName))
+                return;
 
             if (!address.EndsWith(m_InterObjectHostname))
             {
@@ -302,7 +298,8 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                     //Subject
                     emailMessage.Subject = subject;
                     //TEXT Body
-                    resolveNamePositionRegionName(objectID, out LastObjectName, out LastObjectPosition, out LastObjectRegionName);
+                    if (!resolveNamePositionRegionName(objectID, out LastObjectName, out LastObjectPosition, out LastObjectRegionName))
+                        return;
                     emailMessage.BodyText = "Object-Name: " + LastObjectName +
                               "\nRegion: " + LastObjectRegionName + "\nLocal-Position: " +
                               LastObjectPosition + "\n\n" + body;
@@ -321,11 +318,11 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                     emailMessage.Send(smtpServer);
 
                     //Log
-                    m_log.Info("[EMAIL] EMail sent to: " + address + " from object: " + objectID.ToString() + "@" + m_HostName);
+                    m_log.Info("[EMAIL]: EMail sent to: " + address + " from object: " + objectID.ToString() + "@" + m_HostName);
                 }
                 catch (Exception e)
                 {
-                    m_log.Error("[EMAIL] DefaultEmailModule Exception: " + e.Message);
+                    m_log.Error("[EMAIL]: DefaultEmailModule Exception: " + e.Message);
                 }
             }
             else

@@ -157,17 +157,18 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         }
 
         public UUID CreateNPC(string firstname, string lastname,
-                Vector3 position, UUID owner, bool senseAsAgent, Scene scene,
+                Vector3 position, UUID owner,  bool senseAsAgent, Scene scene,
                 AvatarAppearance appearance)
         {
-            return CreateNPC(firstname, lastname, position, UUID.Zero, owner, senseAsAgent, scene, appearance);
+            return CreateNPC(firstname, lastname, position, UUID.Zero, owner, "", UUID.Zero, senseAsAgent, scene, appearance);
         }
 
         public UUID CreateNPC(string firstname, string lastname,
-                Vector3 position, UUID agentID, UUID owner, bool senseAsAgent, Scene scene,
+                Vector3 position, UUID agentID, UUID owner, string groupTitle, UUID groupID, bool senseAsAgent, Scene scene,
                 AvatarAppearance appearance)
         {
             NPCAvatar npcAvatar = null;
+            string born = DateTime.UtcNow.ToString();
 
             try
             {
@@ -222,8 +223,10 @@ namespace OpenSim.Region.OptionalModules.World.NPC
                     ScenePresence sp;
                     if (scene.TryGetScenePresence(npcAvatar.AgentId, out sp))
                     {
-                        
+                        npcAvatar.Born = born;
+                        npcAvatar.ActiveGroupId = groupID;
                         sp.CompleteMovement(npcAvatar, false);
+                        sp.Grouptitle = groupTitle;
                         m_avatars.Add(npcAvatar.AgentId, npcAvatar);
 //                        m_log.DebugFormat("[NPC MODULE]: Created NPC {0} {1}", npcAvatar.AgentId, sp.Name);
                     }

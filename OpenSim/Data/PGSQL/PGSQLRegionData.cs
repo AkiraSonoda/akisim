@@ -26,16 +26,14 @@
  */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Drawing;
-using System.IO;
 using System.Reflection;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Region.Framework.Interfaces;
-using OpenSim.Region.Framework.Scenes;
+using OpenSim.Data;
 using RegionFlags = OpenSim.Framework.RegionFlags;
 using Npgsql;
 
@@ -59,7 +57,7 @@ namespace OpenSim.Data.PGSQL
             get { return GetType().Assembly; }
         }
 
-        public PGSQLRegionData(string connectionString, string realm) 
+        public PGSQLRegionData(string connectionString, string realm)
         {
             m_Realm = realm;
             m_ConnectionString = connectionString;
@@ -79,7 +77,7 @@ namespace OpenSim.Data.PGSQL
             m_FieldTypes = new Dictionary<string, string>();
 
             string query = string.Format(@"select column_name,data_type
-                        from INFORMATION_SCHEMA.COLUMNS 
+                        from INFORMATION_SCHEMA.COLUMNS
                        where table_name = lower('{0}');
 
                 ", m_Realm);
@@ -109,7 +107,7 @@ namespace OpenSim.Data.PGSQL
             using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
             {
                 cmd.Parameters.Add(m_database.CreateParameter("regionName", regionName));
-                if (scopeID != UUID.Zero) 
+                if (scopeID != UUID.Zero)
                     cmd.Parameters.Add(m_database.CreateParameter("scopeID", scopeID));
                 conn.Open();
                 return RunCommand(cmd);
@@ -118,24 +116,46 @@ namespace OpenSim.Data.PGSQL
 
         public RegionData Get(int posX, int posY, UUID scopeID)
         {
-            string sql = "select * from "+m_Realm+" where \"locX\" = :posX and \"locY\" = :posY";
+            // extend database search for maximum region size area
+            string sql = "select * from "+m_Realm+" where \"locX\" between :startX and :endX and \"locY\" between :startY and :endY";
             if (scopeID != UUID.Zero)
                 sql += " and \"ScopeID\" = :scopeID";
 
+            int startX = posX - (int)Constants.MaximumRegionSize;
+            int startY = posY - (int)Constants.MaximumRegionSize;
+            int endX = posX;
+            int endY = posY;
+
+            List<RegionData> ret;
             using (NpgsqlConnection conn = new NpgsqlConnection(m_ConnectionString))
             using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
             {
-                cmd.Parameters.Add(m_database.CreateParameter("posX", posX));
-                cmd.Parameters.Add(m_database.CreateParameter("posY", posY));
-                if (scopeID != UUID.Zero) 
+                cmd.Parameters.Add(m_database.CreateParameter("startX", startX));
+                cmd.Parameters.Add(m_database.CreateParameter("startY", startY));
+                cmd.Parameters.Add(m_database.CreateParameter("endX", endX));
+                cmd.Parameters.Add(m_database.CreateParameter("endY", endY));
+                if (scopeID != UUID.Zero)
                     cmd.Parameters.Add(m_database.CreateParameter("scopeID", scopeID));
                 conn.Open();
-                List<RegionData> ret = RunCommand(cmd);
-                if (ret.Count == 0)
-                    return null;
-
-                return ret[0];
+                ret = RunCommand(cmd);
             }
+
+            if (ret.Count == 0)
+                return null;
+
+            // Find the first that contains pos
+            RegionData rg = null;
+            foreach (RegionData r in ret)
+            {
+                if (posX >= r.posX && posX < r.posX + r.sizeX
+                    && posY >= r.posY && posY < r.posY + r.sizeY)
+                {
+                    rg = r;
+                    break;
+                }
+            }
+
+            return rg;
         }
 
         public RegionData Get(UUID regionID, UUID scopeID)
@@ -147,7 +167,7 @@ namespace OpenSim.Data.PGSQL
             using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
             {
                 cmd.Parameters.Add(m_database.CreateParameter("regionID", regionID));
-                if (scopeID != UUID.Zero) 
+                if (scopeID != UUID.Zero)
                     cmd.Parameters.Add(m_database.CreateParameter("scopeID", scopeID));
                 conn.Open();
                 List<RegionData> ret = RunCommand(cmd);
@@ -160,21 +180,41 @@ namespace OpenSim.Data.PGSQL
 
         public List<RegionData> Get(int startX, int startY, int endX, int endY, UUID scopeID)
         {
+            // extend database search for maximum region size area
             string sql = "select * from "+m_Realm+" where \"locX\" between :startX and :endX and \"locY\" between :startY and :endY";
             if (scopeID != UUID.Zero)
                 sql += " and \"ScopeID\" = :scopeID";
 
+            int qstartX = startX - (int)Constants.MaximumRegionSize;
+            int qstartY = startY - (int)Constants.MaximumRegionSize;
+
+            List<RegionData> dbret;
             using (NpgsqlConnection conn = new NpgsqlConnection(m_ConnectionString))
             using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
             {
-                cmd.Parameters.Add(m_database.CreateParameter("startX", startX));
-                cmd.Parameters.Add(m_database.CreateParameter("startY", startY));
+                cmd.Parameters.Add(m_database.CreateParameter("startX", qstartX));
+                cmd.Parameters.Add(m_database.CreateParameter("startY", qstartY));
                 cmd.Parameters.Add(m_database.CreateParameter("endX", endX));
                 cmd.Parameters.Add(m_database.CreateParameter("endY", endY));
-                cmd.Parameters.Add(m_database.CreateParameter("scopeID", scopeID));
+                if (scopeID != UUID.Zero)
+                    cmd.Parameters.Add(m_database.CreateParameter("scopeID", scopeID));
                 conn.Open();
-                return RunCommand(cmd);
+
+                dbret = RunCommand(cmd);
             }
+
+            List<RegionData> ret = new List<RegionData>();
+
+            if(dbret.Count == 0)
+                return ret;
+
+            foreach (RegionData r in dbret)
+            {
+                if (r.posX + r.sizeX > startX && r.posX <= endX
+                    && r.posY + r.sizeY > startY && r.posY <= endY)
+                    ret.Add(r);
+            }
+            return ret;
         }
 
         public List<RegionData> RunCommand(NpgsqlCommand cmd)
@@ -258,7 +298,7 @@ namespace OpenSim.Data.PGSQL
             {
 
                 string update = "update " + m_Realm + " set \"locX\"=:posX, \"locY\"=:posY, \"sizeX\"=:sizeX, \"sizeY\"=:sizeY ";
-                
+
                 foreach (string field in fields)
                 {
 

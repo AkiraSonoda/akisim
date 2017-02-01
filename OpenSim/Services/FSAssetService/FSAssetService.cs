@@ -76,6 +76,8 @@ namespace OpenSim.Services.FSAssetService
         protected int m_missingAssets = 0;
         protected int m_missingAssetsFS = 0;
         protected string m_FSBase;
+        protected bool m_useOsgridFormat = false;
+        protected bool m_showStats = true;
 
         private static bool m_Initialized;
         private bool m_MainInstance;
@@ -113,34 +115,34 @@ namespace OpenSim.Services.FSAssetService
             }
 
             IConfig assetConfig = config.Configs[configName];
-            
+
             if (assetConfig == null)
                 throw new Exception("No AssetService configuration");
 
             // Get Database Connector from Asset Config (If present)
             string dllName = assetConfig.GetString("StorageProvider", string.Empty);
-            string m_ConnectionString = assetConfig.GetString("ConnectionString", string.Empty);
-            string m_Realm = assetConfig.GetString("Realm", "fsassets");
+            string connectionString = assetConfig.GetString("ConnectionString", string.Empty);
+            string realm = assetConfig.GetString("Realm", "fsassets");
 
             int SkipAccessTimeDays = assetConfig.GetInt("DaysBetweenAccessTimeUpdates", 0);
 
             // If not found above, fallback to Database defaults
             IConfig dbConfig = config.Configs["DatabaseService"];
-            
+
             if (dbConfig != null)
             {
                 if (dllName == String.Empty)
                     dllName = dbConfig.GetString("StorageProvider", String.Empty);
-                
-                if (m_ConnectionString == String.Empty)
-                    m_ConnectionString = dbConfig.GetString("ConnectionString", String.Empty);
+
+                if (connectionString == String.Empty)
+                    connectionString = dbConfig.GetString("ConnectionString", String.Empty);
             }
 
             // No databse connection found in either config
             if (dllName.Equals(String.Empty))
                 throw new Exception("No StorageProvider configured");
 
-            if (m_ConnectionString.Equals(String.Empty))
+            if (connectionString.Equals(String.Empty))
                 throw new Exception("Missing database connection string");
 
             // Create Storage Provider
@@ -150,11 +152,11 @@ namespace OpenSim.Services.FSAssetService
                 throw new Exception(string.Format("Could not find a storage interface in the module {0}", dllName));
 
             // Initialize DB And perform any migrations required
-            m_DataConnector.Initialise(m_ConnectionString, m_Realm, SkipAccessTimeDays);
+            m_DataConnector.Initialise(connectionString, realm, SkipAccessTimeDays);
 
             // Setup Fallback Service
             string str = assetConfig.GetString("FallbackService", string.Empty);
-            
+
             if (str != string.Empty)
             {
                 object[] args = new object[] { config };
@@ -183,6 +185,11 @@ namespace OpenSim.Services.FSAssetService
                 throw new Exception("Configuration error");
             }
 
+            m_useOsgridFormat = assetConfig.GetBoolean("UseOsgridFormat", m_useOsgridFormat);
+
+            // Default is to show stats to retain original behaviour
+            m_showStats = assetConfig.GetBoolean("ShowConsoleStats", m_showStats);
+
             if (m_MainInstance)
             {
                 string loader = assetConfig.GetString("DefaultAssetLoader", string.Empty);
@@ -197,13 +204,17 @@ namespace OpenSim.Services.FSAssetService
                                 Store(a, false);
                             });
                 }
-            
+
                 m_WriterThread = new Thread(Writer);
                 m_WriterThread.Start();
-                m_StatsThread = new Thread(Stats);
-                m_StatsThread.Start();
+
+                if (m_showStats)
+                {
+                    m_StatsThread = new Thread(Stats);
+                    m_StatsThread.Start();
+                }
             }
-            
+
             m_log.Info("[FSASSETS]: FS asset service enabled");
         }
 
@@ -212,7 +223,7 @@ namespace OpenSim.Services.FSAssetService
             while (true)
             {
                 Thread.Sleep(60000);
-                 
+
                 lock (m_statsLock)
                 {
                     if (m_readCount > 0)
@@ -232,7 +243,7 @@ namespace OpenSim.Services.FSAssetService
 
         private void Writer()
         {
-            m_log.Info("[FSASSETS]: Writer started");
+            m_log.Info("[ASSET]: Writer started");
 
             while (true)
             {
@@ -246,33 +257,98 @@ namespace OpenSim.Services.FSAssetService
                         string hash = Path.GetFileNameWithoutExtension(files[i]);
                         string s = HashToFile(hash);
                         string diskFile = Path.Combine(m_FSBase, s);
+                        bool pathOk = false;
 
-                        Directory.CreateDirectory(Path.GetDirectoryName(diskFile));
-                        try
+                        // The cure for chicken bones!
+                        while(true)
                         {
-                            byte[] data = File.ReadAllBytes(files[i]);
-
-                            using (GZipStream gz = new GZipStream(new FileStream(diskFile + ".gz", FileMode.Create), CompressionMode.Compress))
+                            try
                             {
-                                gz.Write(data, 0, data.Length);
-                                gz.Close();
+                                // Try to make the directory we need for this file
+                                Directory.CreateDirectory(Path.GetDirectoryName(diskFile));
+                                pathOk = true;
+                                break;
                             }
-                            File.Delete(files[i]);
+                            catch (System.IO.IOException)
+                            {
+                                // Creating the directory failed. This can't happen unless
+                                // a part of the path already exists as a file. Sadly the
+                                // SRAS data contains such files.
+                                string d = Path.GetDirectoryName(diskFile);
 
-                            //File.Move(files[i], diskFile);
+                                // Test each path component in turn. If we can successfully
+                                // make a directory, the level below must be the chicken bone.
+                                while (d.Length > 0)
+                                {
+                                    Console.WriteLine(d);
+                                    try
+                                    {
+                                        Directory.CreateDirectory(Path.GetDirectoryName(d));
+                                    }
+                                    catch (System.IO.IOException)
+                                    {
+                                        d = Path.GetDirectoryName(d);
+
+                                        // We failed making the directory and need to
+                                        // go up a bit more
+                                        continue;
+                                    }
+
+                                    // We succeeded in making the directory and (d) is
+                                    // the chicken bone
+                                    break;
+                                }
+
+                                // Is the chicken alive?
+                                if (d.Length > 0)
+                                {
+                                    Console.WriteLine(d);
+
+                                    FileAttributes attr = File.GetAttributes(d);
+
+                                    if ((attr & FileAttributes.Directory) == 0)
+                                    {
+                                        // The chicken bone should be resolved.
+                                        // Return to writing the file.
+                                        File.Delete(d);
+                                        continue;
+                                    }
+                                }
+                            }
+                            // Could not resolve, skipping
+                            m_log.ErrorFormat("[ASSET]: Could not resolve path creation error for {0}", diskFile);
+                            break;
                         }
-                        catch(System.IO.IOException e)
+
+                        if (pathOk)
                         {
-                            if (e.Message.StartsWith("Win32 IO returned ERROR_ALREADY_EXISTS"))
+                            try
+                            {
+                                byte[] data = File.ReadAllBytes(files[i]);
+
+                                using (GZipStream gz = new GZipStream(new FileStream(diskFile + ".gz", FileMode.Create), CompressionMode.Compress))
+                                {
+                                    gz.Write(data, 0, data.Length);
+                                    gz.Close();
+                                }
                                 File.Delete(files[i]);
-                            else
-                                throw;
+
+                                //File.Move(files[i], diskFile);
+                            }
+                            catch(System.IO.IOException e)
+                            {
+                                if (e.Message.StartsWith("Win32 IO returned ERROR_ALREADY_EXISTS"))
+                                    File.Delete(files[i]);
+                                else
+                                    throw;
+                            }
                         }
                     }
+
                     int totalTicks = System.Environment.TickCount - tickCount;
                     if (totalTicks > 0) // Wrap?
                     {
-                        m_log.InfoFormat("[FSASSETS]: Write cycle complete, {0} files, {1} ticks, avg {2:F2}", files.Length, totalTicks, (double)totalTicks / (double)files.Length);
+                        m_log.InfoFormat("[ASSET]: Write cycle complete, {0} files, {1} ticks, avg {2:F2}", files.Length, totalTicks, (double)totalTicks / (double)files.Length);
                     }
                 }
 
@@ -292,20 +368,27 @@ namespace OpenSim.Services.FSAssetService
             if (hash == null || hash.Length < 10)
                 return "junkyard";
 
-            return Path.Combine(hash.Substring(0, 3),
-                   Path.Combine(hash.Substring(3, 3)));
-            /*
-             * The below is what core would normally use.
-             * This is modified to work in OSGrid, as seen
-             * above, because the SRAS data is structured
-             * that way.
-             */
-            /*
-            return Path.Combine(hash.Substring(0, 2),
-                   Path.Combine(hash.Substring(2, 2),
-                   Path.Combine(hash.Substring(4, 2),
-                   hash.Substring(6, 4))));
-            */
+            if (m_useOsgridFormat)
+            {
+                /*
+                 * The code below is the OSGrid code.
+                 */
+                return Path.Combine(hash.Substring(0, 3),
+                       Path.Combine(hash.Substring(3, 3)));
+            }
+            else
+            {
+                /*
+                 * The below is what core would normally use.
+                 * This is modified to work in OSGrid, as seen
+                 * above, because the SRAS data is structured
+                 * that way.
+                 */
+                return Path.Combine(hash.Substring(0, 2),
+                       Path.Combine(hash.Substring(2, 2),
+                       Path.Combine(hash.Substring(4, 2),
+                       hash.Substring(6, 4))));
+            }
         }
 
         private bool AssetExists(string hash)
@@ -366,7 +449,7 @@ namespace OpenSim.Services.FSAssetService
                         Store(asset);
                     }
                 }
-                if (asset == null)
+                if (asset == null && m_showStats)
                 {
                     // m_log.InfoFormat("[FSASSETS]: Asset {0} not found", id);
                     m_missingAssets++;
@@ -394,8 +477,11 @@ namespace OpenSim.Services.FSAssetService
                         }
                     }
                     if (asset == null)
-                        m_missingAssetsFS++;
-                    // m_log.InfoFormat("[FSASSETS]: Asset {0}, hash {1} not found in FS", id, hash);
+                    {
+                        if (m_showStats)
+                            m_missingAssetsFS++;
+                        // m_log.InfoFormat("[FSASSETS]: Asset {0}, hash {1} not found in FS", id, hash);
+                    }
                     else
                     {
                         // Deal with bug introduced in Oct. 20 (1eb3e6cc43e2a7b4053bc1185c7c88e22356c5e8)
@@ -409,10 +495,13 @@ namespace OpenSim.Services.FSAssetService
                     }
                 }
 
-                lock (m_statsLock)
+                if (m_showStats)
                 {
-                    m_readTicks += Environment.TickCount - startTime;
-                    m_readCount++;
+                    lock (m_statsLock)
+                    {
+                        m_readTicks += Environment.TickCount - startTime;
+                        m_readCount++;
+                    }
                 }
 
                 // Deal with bug introduced in Oct. 20 (1eb3e6cc43e2a7b4053bc1185c7c88e22356c5e8)
@@ -579,6 +668,9 @@ namespace OpenSim.Services.FSAssetService
 
             if (!m_DataConnector.Store(asset.Metadata, hash))
             {
+                if (asset.Metadata.Type == -2)
+                    return asset.ID;
+
                 return UUID.Zero.ToString();
             }
             else
@@ -631,7 +723,7 @@ namespace OpenSim.Services.FSAssetService
             AssetBase asset = Get(args[2], out hash);
 
             if (asset == null || asset.Data.Length == 0)
-            {   
+            {
                 MainConsole.Instance.Output("Asset not found");
                 return;
             }
@@ -673,7 +765,7 @@ namespace OpenSim.Services.FSAssetService
             AssetBase asset = Get(args[2]);
 
             if (asset == null || asset.Data.Length == 0)
-            {   
+            {
                 MainConsole.Instance.Output("Asset not found");
                 return;
             }

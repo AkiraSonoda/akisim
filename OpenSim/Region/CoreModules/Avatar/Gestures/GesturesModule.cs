@@ -42,11 +42,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Gestures
 {
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "GesturesModule")]
     public class GesturesModule : INonSharedRegionModule
-    { 
+    {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        
+
         protected Scene m_scene;
-        
+
         public void Initialise(IConfigSource source)
         {
         }
@@ -67,7 +67,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Gestures
             m_scene.EventManager.OnNewClient -= OnNewClient;
             m_scene = null;
         }
-        
+
         public void Close() {}
         public string Name { get { return "Gestures Module"; } }
 
@@ -81,19 +81,18 @@ namespace OpenSim.Region.CoreModules.Avatar.Gestures
             client.OnActivateGesture += ActivateGesture;
             client.OnDeactivateGesture += DeactivateGesture;
         }
-        
+
         public virtual void ActivateGesture(IClientAPI client, UUID assetId, UUID gestureId)
         {
             IInventoryService invService = m_scene.InventoryService;
 
-            InventoryItemBase item = new InventoryItemBase(gestureId, client.AgentId);
-            item = invService.GetItem(item);
+            InventoryItemBase item = invService.GetItem(client.AgentId, gestureId);
             if (item != null)
             {
                 item.Flags |= 1;
                 invService.UpdateItem(item);
             }
-            else 
+            else
                 m_log.WarnFormat(
                     "[GESTURES]: Unable to find gesture {0} to activate for {1}", gestureId, client.Name);
         }
@@ -102,14 +101,13 @@ namespace OpenSim.Region.CoreModules.Avatar.Gestures
         {
             IInventoryService invService = m_scene.InventoryService;
 
-            InventoryItemBase item = new InventoryItemBase(gestureId, client.AgentId);
-            item = invService.GetItem(item);
+            InventoryItemBase item = invService.GetItem(client.AgentId, gestureId);
             if (item != null)
             {
                 item.Flags &= ~(uint)1;
                 invService.UpdateItem(item);
             }
-            else 
+            else
                 m_log.ErrorFormat(
                     "[GESTURES]: Unable to find gesture to deactivate {0} for {1}", gestureId, client.Name);
         }

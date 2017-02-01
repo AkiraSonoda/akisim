@@ -112,6 +112,8 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         /// </summary>
         public string EngineType { get; protected set; }
 
+        public string EngineName { get; protected set; }
+
         // The only thing that should register for this event is the SceneGraph
         // Anything else could cause problems.
         public event physicsCrash OnPhysicsCrash;
@@ -177,7 +179,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
         public virtual PhysicsActor AddAvatar(
             uint localID, string avName, Vector3 position, Vector3 size, bool isFlying)
         {
-            PhysicsActor ret = AddAvatar(localID, avName, position, Vector3.Zero, size, isFlying);             
+            PhysicsActor ret = AddAvatar(localID, avName, position, Vector3.Zero, size, isFlying);
             return ret;
         }
 
@@ -215,7 +217,7 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
             return AddPrimShape(primName, pbs, position, size, rotation, isPhysical, localid);
         }
 
-                           
+
         public virtual PhysicsActor AddPrimShape(string primName, PrimitiveBaseShape pbs, Vector3 position,
                                                   Vector3 size, Quaternion rotation, bool isPhysical, bool isPhantom, byte shapetype, uint localid)
         {
@@ -330,28 +332,19 @@ namespace OpenSim.Region.PhysicsModules.SharedBase
             return false;
         }
 
-        public virtual bool SupportsCombining()
-        {
-            return false;
-        }
-
-        public virtual void Combine(PhysicsScene pScene, Vector3 offset, Vector3 extents) {}
-        public virtual void CombineTerrain(float[] heightMap, Vector3 pOffset) {}
-        public virtual void UnCombine(PhysicsScene pScene) {}
-
         /// <summary>
         /// Queue a raycast against the physics scene.
         /// The provided callback method will be called when the raycast is complete
-        /// 
-        /// Many physics engines don't support collision testing at the same time as 
-        /// manipulating the physics scene, so we queue the request up and callback 
+        ///
+        /// Many physics engines don't support collision testing at the same time as
+        /// manipulating the physics scene, so we queue the request up and callback
         /// a custom method when the raycast is complete.
         /// This allows physics engines that give an immediate result to callback immediately
         /// and ones that don't, to callback when it gets a result back.
-        /// 
+        ///
         /// ODE for example will not allow you to change the scene while collision testing or
         /// it asserts, 'opteration not valid for locked space'.  This includes adding a ray to the scene.
-        /// 
+        ///
         /// This is named RayCastWorld to not conflict with modrex's Raycast method.
         /// </summary>
         /// <param name="position">Origin of the ray</param>

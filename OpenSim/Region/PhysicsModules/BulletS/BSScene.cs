@@ -212,6 +212,11 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             get { return "BulletSim"; }
         }
 
+        public string Version
+        {
+            get { return "1.0"; }
+        }
+
         public Type ReplaceableInterface
         {
             get { return null; }
@@ -245,6 +250,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             EngineType = Name;
             RegionName = scene.RegionInfo.RegionName;
             PhysicsSceneName = EngineType + "/" + RegionName;
+            EngineName = Name + " " + Version;
 
             scene.RegisterModuleInterface<PhysicsScene>(this);
             Vector3 extent = new Vector3(scene.RegionInfo.RegionSizeX, scene.RegionInfo.RegionSizeY, scene.RegionInfo.RegionSizeZ);
@@ -345,12 +351,12 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             if (BSParam.UseSeparatePhysicsThread)
             {
                 // The physics simulation should happen independently of the heartbeat loop
-                m_physicsThread 
+                m_physicsThread
                     = WorkManager.StartThread(
-                        BulletSPluginPhysicsThread, 
-                        string.Format("{0} ({1})", BulletEngineName, RegionName), 
-                        ThreadPriority.Normal, 
-                        true, 
+                        BulletSPluginPhysicsThread,
+                        string.Format("{0} ({1})", BulletEngineName, RegionName),
+                        ThreadPriority.Normal,
+                        true,
                         true);
             }
         }
@@ -523,13 +529,13 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             return null;
         }
 
-        public override PhysicsActor AddAvatar(uint localID, string avName, Vector3 position, Vector3 velocity, Vector3 size, bool isFlying)
+        public override PhysicsActor AddAvatar(uint localID, string avName, Vector3 position, Vector3 size, float footOffset, bool isFlying)
         {
             // m_log.DebugFormat("{0}: AddAvatar: {1}", LogHeader, avName);
 
             if (!m_initialized) return null;
 
-            BSCharacter actor = new BSCharacter(localID, avName, this, position, velocity, size, isFlying);
+            BSCharacter actor = new BSCharacter(localID, avName, this, position, Vector3.Zero, size, footOffset, isFlying);
             lock (PhysObjects)
                 PhysObjects.Add(localID, actor);
 
@@ -679,7 +685,6 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             try
             {
                 numSubSteps = PE.PhysicsStep(World, timeStep, m_maxSubSteps, m_fixedTimeStep, out updatedEntityCount, out collidersCount);
-
             }
             catch (Exception e)
             {
@@ -880,7 +885,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             if (collider.IsInitialized)
             {
-                if (collider.Collide(collidingWith, collidee, collidePoint, collideNormal, penetration))
+                if (collider.Collide(collidee, collidePoint, collideNormal, penetration))
                 {
                     // If a collision was 'good', remember to send it to the simulator
                     lock (CollisionLock)
@@ -947,25 +952,6 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public override void DeleteTerrain()
         {
             // m_log.DebugFormat("{0}: DeleteTerrain()", LogHeader);
-        }
-
-        // Although no one seems to check this, I do support combining.
-        public override bool SupportsCombining()
-        {
-            return TerrainManager.SupportsCombining();
-        }
-        // This call says I am a child to region zero in a mega-region. 'pScene' is that
-        //    of region zero, 'offset' is my offset from regions zero's origin, and
-        //    'extents' is the largest XY that is handled in my region.
-        public override void Combine(PhysicsScene pScene, Vector3 offset, Vector3 extents)
-        {
-            TerrainManager.Combine(pScene, offset, extents);
-        }
-
-        // Unhook all the combining that I know about.
-        public override void UnCombine(PhysicsScene pScene)
-        {
-            TerrainManager.UnCombine(pScene);
         }
 
         #endregion // Terrain

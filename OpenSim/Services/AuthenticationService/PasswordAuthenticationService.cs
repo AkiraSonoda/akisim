@@ -41,7 +41,7 @@ namespace OpenSim.Services.AuthenticationService
     // Generic Authentication service used for identifying
     // and authenticating principals.
     // Principals may be clients acting on users' behalf,
-    // or any other components that need 
+    // or any other components that need
     // verifiable identification.
     //
     public class PasswordAuthenticationService :
@@ -50,7 +50,7 @@ namespace OpenSim.Services.AuthenticationService
         private static readonly ILog m_log =
                 LogManager.GetLogger(
                 MethodBase.GetCurrentMethod().DeclaringType);
- 
+
         public PasswordAuthenticationService(IConfigSource config, IUserAccountService userService) :
                 base(config, userService)
         {
@@ -93,7 +93,7 @@ namespace OpenSim.Services.AuthenticationService
             string hashed = Util.Md5Hash(password + ":" +
                     data.Data["passwordSalt"].ToString());
 
-            m_log.DebugFormat("[PASS AUTH]: got {0}; hashed = {1}; stored = {2}", password, hashed, data.Data["passwordHash"].ToString());
+//            m_log.DebugFormat("[PASS AUTH]: got {0}; hashed = {1}; stored = {2}", password, hashed, data.Data["passwordHash"].ToString());
 
             if (data.Data["passwordHash"].ToString() == hashed)
             {

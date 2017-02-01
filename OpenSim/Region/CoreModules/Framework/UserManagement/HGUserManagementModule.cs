@@ -52,7 +52,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         #region ISharedRegionModule
 
-        public new void Initialise(IConfigSource config)
+        public override void Initialise(IConfigSource config)
         {
             if (m_log.IsDebugEnabled) {
                 m_log.DebugFormat ("{0} ", System.Reflection.MethodBase.GetCurrentMethod ().Name);
@@ -114,7 +114,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 }
 
                 // This is it! Let's ask the other world
-                if (words[0].Contains(".")) 
+                if (words[0].Contains("."))
                 {
                     string[] names = words[0].Split(new char[] { '.' });
                     if (names.Length >= 2)
@@ -133,7 +133,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
 
                         UserAgentServiceConnector uasConn = new UserAgentServiceConnector(uriStr);
-                        
+
                         UUID userID = UUID.Zero;
                         try
                         {
@@ -143,7 +143,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         {
                             m_log.Debug("[USER MANAGEMENT MODULE]: GetUUID call failed ", e);
                         }
-                        
+
                         if (!userID.Equals(UUID.Zero))
                         {
                             UserData ud = new UserData();
@@ -166,8 +166,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             //{
             //    foreach (UserData d in m_UserCache.Values)
             //    {
-            //        if (d.LastName.StartsWith("@") && 
-            //            (d.FirstName.ToLower().StartsWith(query.ToLower()) || 
+            //        if (d.LastName.StartsWith("@") &&
+            //            (d.FirstName.ToLower().StartsWith(query.ToLower()) ||
             //             d.LastName.ToLower().StartsWith(query.ToLower())))
             //            users.Add(d);
             //    }

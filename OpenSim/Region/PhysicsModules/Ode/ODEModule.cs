@@ -9,20 +9,25 @@ using OpenSim.Region.Framework.Interfaces;
 
 namespace OpenSim.Region.PhysicsModule.ODE
 {
-	[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ODEPhysicsScene")]
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ODEPhysicsScene")]
     public class OdeModule : INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private bool m_Enabled = false;
-		private IConfigSource m_config;
-		private OdeScene  m_scene;
+        private IConfigSource m_config;
+        private OdeScene  m_scene;
 
        #region INonSharedRegionModule
 
         public string Name
         {
             get { return "OpenDynamicsEngine"; }
+        }
+
+        public string Version
+        {
+            get { return "1.0"; }
         }
 
         public Type ReplaceableInterface
@@ -60,7 +65,7 @@ namespace OpenSim.Region.PhysicsModule.ODE
             // http://opensimulator.org/mantis/view.php?id=2750).
             d.InitODE();
 
-            m_scene = new OdeScene(scene, m_config, Name);
+            m_scene = new OdeScene(scene, m_config, Name, Version);
         }
 
         public void RemoveRegion(Scene scene)
@@ -79,6 +84,6 @@ namespace OpenSim.Region.PhysicsModule.ODE
 
             m_scene.RegionLoaded();
         }
-        #endregion			
+        #endregion
     }
 }
