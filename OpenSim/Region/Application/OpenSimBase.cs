@@ -88,6 +88,7 @@ namespace OpenSim
 
         public string userStatsURI = String.Empty;
         public string managedStatsURI = String.Empty;
+        public string managedStatsPassword = String.Empty;
 
         protected bool m_autoCreateClientStack = true;
 
@@ -255,6 +256,7 @@ namespace OpenSim
                 m_permsModules = new List<string>(permissionModules.Split(','));
 
                 managedStatsURI = startupConfig.GetString("ManagedStatsRemoteFetchURI", String.Empty);
+                managedStatsPassword = startupConfig.GetString("ManagedStatsRemoteFetchPassword", String.Empty);
             }
 
             // Load the simulation data service
