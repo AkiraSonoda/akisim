@@ -183,7 +183,7 @@ namespace OpenSim.Groups
 
         public ExtendedGroupRecord GetGroupRecord(string RequestingAgentID, UUID GroupID, string GroupName)
         {
-            if (GroupID == UUID.Zero && (GroupName == null || GroupName != null && GroupName == string.Empty))
+            if (GroupID.IsZero() && string.IsNullOrEmpty(GroupName))
                 return null;
 
             return m_CacheWrapper.GetGroupRecord(RequestingAgentID,GroupID,GroupName, delegate
@@ -192,10 +192,10 @@ namespace OpenSim.Groups
             });
         }
 
-        public List<DirGroupsReplyData> FindGroups(string RequestingAgentID, string search)
+        public List<DirGroupsReplyData> FindGroups(string RequestingAgentIDstr, string search)
         {
             // TODO!
-            return m_GroupsService.FindGroups(RequestingAgentID, search);
+            return m_GroupsService.FindGroups(RequestingAgentIDstr, search);
         }
 
         public bool AddAgentToGroup(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID, string token, out string reason)

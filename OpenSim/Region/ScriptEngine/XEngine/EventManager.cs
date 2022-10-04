@@ -215,12 +215,25 @@ namespace OpenSim.Region.ScriptEngine.XEngine
                     det));
         }
 
-        public void changed(uint localID, uint change)
+        public void changed(uint localID, uint change, object parameter)
         {
             // Add to queue for all scripts in localID, Object pass change.
-            myScriptEngine.PostObjectEvent(localID, new EventParams(
-                    "changed",new object[] { new LSL_Types.LSLInteger(change) },
+            if(parameter == null)
+            {
+                myScriptEngine.PostObjectEvent(localID, new EventParams(
+                    "changed", new object[] { new LSL_Types.LSLInteger(change) },
                     new DetectParams[0]));
+                return;
+            }
+            if (parameter is UUID)
+            {
+                DetectParams det = new DetectParams();
+                det.Key = (UUID)parameter;
+                myScriptEngine.PostObjectEvent(localID, new EventParams(
+                    "changed", new object[] { new LSL_Types.LSLInteger(change) },
+                    new DetectParams[] { det }));
+                return;
+            }
         }
 
         // state_entry: not processed here
@@ -245,7 +258,6 @@ namespace OpenSim.Region.ScriptEngine.XEngine
                 DetectParams d = new DetectParams();
                 d.Key =detobj.keyUUID;
                 d.Populate(myScriptEngine.World, detobj);
-                d.LinkNum = detobj.linkNumber; // do it here since currently linknum is collided part
                 det.Add(d);
             }
 
@@ -368,10 +380,10 @@ namespace OpenSim.Region.ScriptEngine.XEngine
                     new DetectParams[0]));
         }
 
-        public void at_target(uint localID, uint handle, Vector3 targetpos,
+        public void at_target(UUID itemID, uint handle, Vector3 targetpos,
                 Vector3 atpos)
         {
-            myScriptEngine.PostObjectEvent(localID, new EventParams(
+            myScriptEngine.PostScriptEvent(itemID, new EventParams(
                     "at_target", new object[] {
                     new LSL_Types.LSLInteger(handle),
                     new LSL_Types.Vector3(targetpos),
@@ -379,17 +391,17 @@ namespace OpenSim.Region.ScriptEngine.XEngine
                     new DetectParams[0]));
         }
 
-        public void not_at_target(uint localID)
+        public void not_at_target(UUID itemID)
         {
-            myScriptEngine.PostObjectEvent(localID, new EventParams(
+            myScriptEngine.PostScriptEvent(itemID, new EventParams(
                     "not_at_target",new object[0],
                     new DetectParams[0]));
         }
 
-        public void at_rot_target(uint localID, uint handle, Quaternion targetrot,
+        public void at_rot_target(UUID itemID, uint handle, Quaternion targetrot,
                 Quaternion atrot)
         {
-            myScriptEngine.PostObjectEvent(localID, new EventParams(
+            myScriptEngine.PostScriptEvent(itemID, new EventParams(
                     "at_rot_target", new object[] {
                     new LSL_Types.LSLInteger(handle),
                     new LSL_Types.Quaternion(targetrot),
@@ -397,9 +409,9 @@ namespace OpenSim.Region.ScriptEngine.XEngine
                     new DetectParams[0]));
         }
 
-        public void not_at_rot_target(uint localID)
+        public void not_at_rot_target(UUID itemID)
         {
-            myScriptEngine.PostObjectEvent(localID, new EventParams(
+            myScriptEngine.PostScriptEvent(itemID, new EventParams(
                     "not_at_rot_target",new object[0],
                     new DetectParams[0]));
         }

@@ -41,6 +41,7 @@ namespace OpenSim.Region.ScriptEngine.Interfaces
 {
     public enum StateSource
     {
+        None = -1,
         RegionStart = 0,
         NewRez = 1,
         PrimCrossing = 2,
@@ -189,7 +190,7 @@ namespace OpenSim.Region.ScriptEngine.Interfaces
         /// Process the next event queued for this script instance.
         /// </summary>
         /// <returns></returns>
-        object EventProcessor();
+        void EventProcessor();
 
         int EventTime();
 

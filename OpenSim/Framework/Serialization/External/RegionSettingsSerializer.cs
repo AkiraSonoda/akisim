@@ -44,25 +44,32 @@ namespace OpenSim.Framework.Serialization.External
         /// Deserialize settings
         /// </summary>
         /// <param name="serializedSettings"></param>
+        /// <param name="regionEnv"></param>
+        /// <param name="estateSettings">The Estate Settings stored in the archive will be merged into this object</param>
         /// <returns></returns>
         /// <exception cref="System.Xml.XmlException"></exception>
-        public static RegionSettings Deserialize(byte[] serializedSettings)
+        public static RegionSettings Deserialize(byte[] serializedSettings, out ViewerEnvironment regionEnv, EstateSettings estateSettings)
         {
-            return Deserialize(Encoding.ASCII.GetString(serializedSettings, 0, serializedSettings.Length));
+            // encoding is wrong. old oars seem to be on utf-16
+            return Deserialize(Encoding.ASCII.GetString(serializedSettings, 0, serializedSettings.Length), out regionEnv, estateSettings);
         }
 
         /// <summary>
         /// Deserialize settings
         /// </summary>
         /// <param name="serializedSettings"></param>
+        /// <param name="regionEnv"></param>
+        /// <param name="estateSettings">The Estate Settings stored in the archive will be merged into this object</param>
         /// <returns></returns>
         /// <exception cref="System.Xml.XmlException"></exception>
-        public static RegionSettings Deserialize(string serializedSettings)
+        public static RegionSettings Deserialize(string serializedSettings, out ViewerEnvironment regionEnv, EstateSettings estateSettings)
         {
             RegionSettings settings = new RegionSettings();
+            regionEnv = null;
 
             StringReader sr = new StringReader(serializedSettings);
             XmlTextReader xtr = new XmlTextReader(sr);
+            xtr.DtdProcessing = DtdProcessing.Ignore;
 
             xtr.ReadStartElement("RegionSettings");
 
@@ -192,21 +199,69 @@ namespace OpenSim.Framework.Serialization.External
 
             if (xtr.IsStartElement("Telehub"))
             {
-                xtr.ReadStartElement("Telehub");
-
-                while (xtr.Read() && xtr.NodeType != XmlNodeType.EndElement)
+                if (xtr.IsEmptyElement)
+                    xtr.Read();
+                else
                 {
-                    switch (xtr.Name)
+                    xtr.ReadStartElement("Telehub");
+                    while (xtr.Read() && xtr.NodeType != XmlNodeType.EndElement)
                     {
-                        case "TelehubObject":
-                            settings.TelehubObject = UUID.Parse(xtr.ReadElementContentAsString());
-                            break;
-                        case "SpawnPoint":
-                            string str = xtr.ReadElementContentAsString();
-                            SpawnPoint sp = SpawnPoint.Parse(str);
-                            settings.AddSpawnPoint(sp);
-                            break;
+                        switch (xtr.Name)
+                        {
+                            case "TelehubObject":
+                                settings.TelehubObject = UUID.Parse(xtr.ReadElementContentAsString());
+                                break;
+                            case "SpawnPoint":
+                                string str = xtr.ReadElementContentAsString();
+                                SpawnPoint sp = SpawnPoint.Parse(str);
+                                settings.AddSpawnPoint(sp);
+                                break;
+                        }
                     }
+                    xtr.ReadEndElement();
+                }
+            }
+
+            if (xtr.IsStartElement("Environment"))
+            {
+                if (xtr.IsEmptyElement)
+                    xtr.Read();
+                else
+                {
+                    xtr.ReadStartElement("Environment");
+                    while (xtr.Read() && xtr.NodeType != XmlNodeType.EndElement)
+                    {
+                        switch (xtr.Name)
+                        {
+                            case "data":
+                                regionEnv = ViewerEnvironment.FromOSDString(xtr.ReadElementContentAsString());
+                                break;
+                        }
+                    }
+                    xtr.ReadEndElement();
+                }
+            }
+
+            if (xtr.IsStartElement("Estate"))
+            {
+                if (xtr.IsEmptyElement)
+                    xtr.Read();
+                else
+                {
+                    xtr.ReadStartElement("Estate");
+                    while (xtr.Read() && xtr.NodeType != XmlNodeType.EndElement)
+                    {
+                        switch (xtr.Name)
+                        {
+                            case "AllowDirectTeleport":
+                                estateSettings.AllowDirectTeleport = bool.Parse(xtr.ReadElementContentAsString());
+                                break;
+                            case "AllowEnvironmentOverride":
+                                estateSettings.AllowEnvironmentOverride = bool.Parse(xtr.ReadElementContentAsString());
+                                break;
+                        }
+                    }
+                    xtr.ReadEndElement();
                 }
             }
 
@@ -216,7 +271,7 @@ namespace OpenSim.Framework.Serialization.External
             return settings;
         }
 
-        public static string Serialize(RegionSettings settings)
+        public static string Serialize(RegionSettings settings, ViewerEnvironment RegionEnv, EstateSettings estateSettings)
         {
             StringWriter sw = new StringWriter();
             XmlTextWriter xtw = new XmlTextWriter(sw);
@@ -263,17 +318,27 @@ namespace OpenSim.Framework.Serialization.External
             xtw.WriteElementString("UseEstateSun", settings.UseEstateSun.ToString());
             xtw.WriteElementString("FixedSun", settings.FixedSun.ToString());
             xtw.WriteElementString("SunPosition", settings.SunPosition.ToString());
-            // Note: 'SunVector' isn't saved because this value is owned by the Sun Module, which
-            // calculates it automatically according to the date and other factors.
             xtw.WriteEndElement();
 
             xtw.WriteStartElement("Telehub");
-            if (settings.TelehubObject != UUID.Zero)
+            if (!settings.TelehubObject.IsZero())
             {
                 xtw.WriteElementString("TelehubObject", settings.TelehubObject.ToString());
                 foreach (SpawnPoint sp in settings.SpawnPoints())
                     xtw.WriteElementString("SpawnPoint", sp.ToString());
             }
+            xtw.WriteEndElement();
+
+            if (RegionEnv != null)
+            {
+                xtw.WriteStartElement("Environment");
+                xtw.WriteElementString("data", ViewerEnvironment.ToOSDString(RegionEnv));
+                xtw.WriteEndElement();
+            }
+
+            xtw.WriteStartElement("Estate");
+            xtw.WriteElementString("AllowDirectTeleport", estateSettings.AllowDirectTeleport.ToString());
+            xtw.WriteElementString("AllowEnvironmentOverride", estateSettings.AllowEnvironmentOverride.ToString());
             xtw.WriteEndElement();
 
             xtw.WriteEndElement();

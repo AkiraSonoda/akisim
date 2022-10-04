@@ -25,6 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using Nini.Config;
 using System;
 using System.Collections.Generic;
 using System.Xml;
@@ -82,6 +83,7 @@ namespace OpenSim.Framework
     }
 
     public delegate void OnOutputDelegate(string message);
+    public delegate void OnCntrCCelegate();
 
     public interface ICommandConsole : IConsole
     {
@@ -102,5 +104,8 @@ namespace OpenSim.Framework
         void RunCommand(string cmd);
 
         string ReadLine(string p, bool isCommand, bool e);
+
+        void ReadConfig(IConfigSource configSource);
+        void SetCntrCHandler(OnCntrCCelegate handler);
     }
 }

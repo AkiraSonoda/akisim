@@ -83,6 +83,7 @@ namespace OpenSim.Region.OptionalModules
             m_scene = scene;
             scene.Permissions.OnRezObject += CanRezObject;
             scene.Permissions.OnObjectEntry += CanObjectEnter;
+            scene.Permissions.OnObjectEnterWithScripts += CanObjectEnterWithScripts;
             scene.Permissions.OnDuplicateObject += CanDuplicateObject;
 
             m_log.DebugFormat("[PRIM LIMITS]: Region {0} added", scene.RegionInfo.RegionName);
@@ -95,6 +96,7 @@ namespace OpenSim.Region.OptionalModules
 
             m_scene.Permissions.OnRezObject -= CanRezObject;
             m_scene.Permissions.OnObjectEntry -= CanObjectEnter;
+            scene.Permissions.OnObjectEnterWithScripts -= CanObjectEnterWithScripts;
             m_scene.Permissions.OnDuplicateObject -= CanDuplicateObject;
         }
 
@@ -105,7 +107,6 @@ namespace OpenSim.Region.OptionalModules
 
         private bool CanRezObject(int objectCount, UUID ownerID, Vector3 objectPosition)
         {
-            
             ILandObject lo = m_scene.LandChannel.GetLandObject(objectPosition.X, objectPosition.Y);
 
             string response = DoCommonChecks(objectCount, ownerID, lo);
@@ -173,12 +174,32 @@ namespace OpenSim.Region.OptionalModules
             return true;
         }
 
+        private bool CanObjectEnterWithScripts(SceneObjectGroup sog, ILandObject newParcel)
+        {
+            if (sog == null)
+                return false;
+
+            if (newParcel == null)
+                return true;
+
+            int objectCount = sog.PrimCount;
+
+            // TODO: Add Special Case here for temporary prims
+
+            string response = DoCommonChecks(objectCount, sog.OwnerID, newParcel);
+
+            if (response != null)
+                return false;
+
+            return true;
+        }
+
         private string DoCommonChecks(int objectCount, UUID ownerID, ILandObject lo)
         {
             string response = null;
 
             int OwnedParcelsCapacity = lo.GetSimulatorMaxPrimCount();
-            if ((objectCount + lo.PrimCounts.Total) > OwnedParcelsCapacity)
+            if ((objectCount + lo.PrimCounts.Simulator) > OwnedParcelsCapacity)
             {
                 response = "Unable to rez object because the parcel is full";
             }

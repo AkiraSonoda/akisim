@@ -47,13 +47,17 @@ namespace OpenSim.Region.Framework.Scenes
     public delegate bool TransferObjectHandler(UUID objectID, UUID recipient);
     public delegate bool TakeObjectHandler(SceneObjectGroup sog, ScenePresence sp);
     public delegate bool SellGroupObjectHandler(UUID userID, UUID groupID);
+    public delegate bool SellObjectHandlerByUserID(SceneObjectGroup sog, UUID userID, byte saleType);
+    public delegate bool SellObjectHandler(SceneObjectGroup sog, ScenePresence sp, byte saleType);
     public delegate bool TakeCopyObjectHandler(SceneObjectGroup sog, ScenePresence sp);
     public delegate bool DuplicateObjectHandler(SceneObjectGroup sog, ScenePresence sp);
     public delegate bool EditObjectByIDsHandler(UUID objectID, UUID editorID);
     public delegate bool EditObjectHandler(SceneObjectGroup sog, ScenePresence sp);
+    public delegate bool EditObjectPermsHandler(SceneObjectGroup sog, UUID editorID);
     public delegate bool EditObjectInventoryHandler(UUID objectID, UUID editorID);
     public delegate bool MoveObjectHandler(SceneObjectGroup sog, ScenePresence sp);
     public delegate bool ObjectEntryHandler(SceneObjectGroup sog, bool enteringRegion, Vector3 newPoint);
+    public delegate bool ObjectEnterWithScriptsHandler(SceneObjectGroup sog, ILandObject land);
     public delegate bool ReturnObjectsHandler(ILandObject land, ScenePresence sp, List<SceneObjectGroup> objects);
     public delegate bool InstantMessageHandler(UUID user, UUID target);
     public delegate bool InventoryTransferHandler(UUID user, UUID target);
@@ -102,16 +106,15 @@ namespace OpenSim.Region.Framework.Scenes
 
     public class ScenePermissions
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Scene m_scene;
-
         public ScenePermissions(Scene scene)
         {
             m_scene = scene;
         }
 
-        #region Events
+        #region events
         public event GenerateClientFlagsHandler OnGenerateClientFlags;
         public event SetBypassPermissionsHandler OnSetBypassPermissions;
         public event BypassPermissionsHandler OnBypassPermissions;
@@ -121,14 +124,20 @@ namespace OpenSim.Region.Framework.Scenes
         public event DeleteObjectHandler OnDeleteObject;
         public event TransferObjectHandler OnTransferObject;
         public event TakeObjectHandler OnTakeObject;
+
         public event SellGroupObjectHandler OnSellGroupObject;
+        public event SellObjectHandlerByUserID OnSellObjectByUserID;
+        public event SellObjectHandler OnSellObject;
+
         public event TakeCopyObjectHandler OnTakeCopyObject;
         public event DuplicateObjectHandler OnDuplicateObject;
         public event EditObjectByIDsHandler OnEditObjectByIDs;
         public event EditObjectHandler OnEditObject;
+        public event EditObjectPermsHandler OnEditObjectPerms;
         public event EditObjectInventoryHandler OnEditObjectInventory;
         public event MoveObjectHandler OnMoveObject;
         public event ObjectEntryHandler OnObjectEntry;
+        public event ObjectEnterWithScriptsHandler OnObjectEnterWithScripts;
         public event ReturnObjectsHandler OnReturnObjects;
         public event InstantMessageHandler OnInstantMessage;
         public event InventoryTransferHandler OnInventoryTransfer;
@@ -148,7 +157,7 @@ namespace OpenSim.Region.Framework.Scenes
         public event IsGridGodHandler OnIsGridGod;
         public event IsAdministratorHandler OnIsAdministrator;
         public event IsEstateManagerHandler OnIsEstateManager;
-//        public event EditParcelHandler OnEditParcel;
+        // public event EditParcelHandler OnEditParcel;
         public event EditParcelPropertiesHandler OnEditParcelProperties;
         public event SellParcelHandler OnSellParcel;
         public event AbandonParcelHandler OnAbandonParcel;
@@ -178,9 +187,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public uint GenerateClientFlags( SceneObjectPart part, ScenePresence sp)
         {
-            // libomv will moan about PrimFlags.ObjectYouOfficer being
-            // obsolete...
-#pragma warning disable 0612
             const PrimFlags DEFAULT_FLAGS =
                 PrimFlags.ObjectModify |
                 PrimFlags.ObjectCopy |
@@ -189,7 +195,6 @@ namespace OpenSim.Region.Framework.Scenes
                 PrimFlags.ObjectYouOwner |
                 PrimFlags.ObjectAnyOwner |
                 PrimFlags.ObjectOwnerModify;
-#pragma warning restore 0612
 
             if (part == null)
                 return 0;
@@ -210,9 +215,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void SetBypassPermissions(bool value)
         {
-            SetBypassPermissionsHandler handler = OnSetBypassPermissions;
-            if (handler != null)
-                handler(value);
+            OnSetBypassPermissions?.Invoke(value);
         }
 
         public bool BypassPermissions()
@@ -281,14 +284,11 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                 }
             }
-
             return result;
         }
 
         public bool CanDeleteObject(SceneObjectGroup sog, IClientAPI client)
         {
-            bool result = true;
-
             DeleteObjectHandler handler = OnDeleteObject;
             if (handler != null)
             {
@@ -301,20 +301,15 @@ namespace OpenSim.Region.Framework.Scenes
                 foreach (DeleteObjectHandler h in list)
                 {
                     if (h(sog, sp) == false)
-                    {
-                        result = false;
-                        break;
-                    }
+                        return false;
                 }
             }
 
-            return result;
+            return true;
         }
 
         public bool CanTransferObject(UUID objectID, UUID recipient)
         {
-            bool result = true;
-
             TransferObjectHandler handler = OnTransferObject;
             if (handler != null)
             {
@@ -322,14 +317,10 @@ namespace OpenSim.Region.Framework.Scenes
                 foreach (TransferObjectHandler h in list)
                 {
                     if (h(objectID, recipient) == false)
-                    {
-                        result = false;
-                        break;
-                    }
+                        return false;
                 }
             }
-
-            return result;
+            return true;
         }
 
         #endregion
@@ -337,8 +328,6 @@ namespace OpenSim.Region.Framework.Scenes
         #region TAKE OBJECT
         public bool CanTakeObject(SceneObjectGroup sog, ScenePresence sp)
         {
-            bool result = true;
-
             TakeObjectHandler handler = OnTakeObject;
             if (handler != null)
             {
@@ -349,18 +338,13 @@ namespace OpenSim.Region.Framework.Scenes
                 foreach (TakeObjectHandler h in list)
                 {
                     if (h(sog, sp) == false)
-                    {
-                        result = false;
-                        break;
-                    }
+                        return false;
                 }
             }
-
 //            m_log.DebugFormat(
 //                "[SCENE PERMISSIONS]: CanTakeObject() fired for object {0}, taker {1}, result {2}",
 //                objectID, AvatarTakingUUID, result);
-
-            return result;
+            return true;
         }
 
         #endregion
@@ -368,8 +352,6 @@ namespace OpenSim.Region.Framework.Scenes
         #region SELL GROUP OBJECT
         public bool CanSellGroupObject(UUID userID, UUID groupID)
         {
-            bool result = true;
-
             SellGroupObjectHandler handler = OnSellGroupObject;
             if (handler != null)
             {
@@ -377,18 +359,52 @@ namespace OpenSim.Region.Framework.Scenes
                 foreach (SellGroupObjectHandler h in list)
                 {
                     if (h(userID, groupID) == false)
-                    {
-                        result = false;
-                        break;
-                    }
+                        return false;
                 }
             }
-
             //m_log.DebugFormat(
             //    "[SCENE PERMISSIONS]: CanSellGroupObject() fired for user {0}, group {1}, result {2}",
             //    userID, groupID, result);
+            return true;
+        }
 
-            return result;
+        #endregion
+
+        #region SELL OBJECT
+        public bool CanSellObject(IClientAPI client, SceneObjectGroup sog, byte saleType)
+        {
+            SellObjectHandler handler = OnSellObject;
+            if (handler != null)
+            {
+                if(sog == null || client == null || client.SceneAgent == null)
+                    return false;
+
+                ScenePresence sp = client.SceneAgent as ScenePresence;
+                Delegate[] list = handler.GetInvocationList();
+                foreach (SellObjectHandler h in list)
+                {
+                    if (h(sog, sp, saleType) == false)
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        public bool CanSellObject(UUID userID, SceneObjectGroup sog, byte saleType)
+        {
+            SellObjectHandlerByUserID handler = OnSellObjectByUserID;
+            if (handler != null)
+            {
+                if(sog == null)
+                    return false;
+                Delegate[] list = handler.GetInvocationList();
+                foreach (SellObjectHandlerByUserID h in list)
+                {
+                    if (h(sog, userID, saleType) == false)
+                        return false;
+                }
+            }
+            return true;
         }
 
         #endregion
@@ -397,8 +413,6 @@ namespace OpenSim.Region.Framework.Scenes
         #region TAKE COPY OBJECT
         public bool CanTakeCopyObject(SceneObjectGroup sog, ScenePresence sp)
         {
-            bool result = true;
-
             TakeCopyObjectHandler handler = OnTakeCopyObject;
             if (handler != null)
             {
@@ -408,18 +422,13 @@ namespace OpenSim.Region.Framework.Scenes
                 foreach (TakeCopyObjectHandler h in list)
                 {
                     if (h(sog, sp) == false)
-                    {
-                        result = false;
-                        break;
-                    }
+                        return false;
                 }
             }
-
 //            m_log.DebugFormat(
 //                "[SCENE PERMISSIONS]: CanTakeCopyObject() fired for object {0}, user {1}, result {2}",
 //                objectID, userID, result);
-
-            return result;
+            return true;
         }
 
         #endregion
@@ -497,6 +506,24 @@ namespace OpenSim.Region.Framework.Scenes
             return true;
         }
 
+        public bool CanEditObjectPermissions(SceneObjectGroup sog, UUID editorID)
+        {
+            EditObjectPermsHandler handler = OnEditObjectPerms;
+            if (handler != null)
+            {
+                if(sog == null)
+                    return false;
+                Delegate[] list = handler.GetInvocationList();
+                foreach (EditObjectPermsHandler h in list)
+                {
+                    if (h(sog, editorID) == false)
+                        return false;
+                }
+            }
+            return true;
+        }
+
+
         public bool CanEditObjectInventory(UUID objectID, UUID editorID)
         {
             EditObjectInventoryHandler handler = OnEditObjectInventory;
@@ -553,13 +580,26 @@ namespace OpenSim.Region.Framework.Scenes
             return true;
         }
 
+        public bool CanObjectEnterWithScripts(SceneObjectGroup sog, ILandObject land)
+        {
+            ObjectEnterWithScriptsHandler handler =  OnObjectEnterWithScripts;
+            if (handler != null)
+            {
+                Delegate[] list = handler.GetInvocationList();
+                foreach (ObjectEnterWithScriptsHandler h in list)
+                {
+                    if (h(sog, land) == false)
+                        return false;
+                }
+            }
+            return true;
+        }
+
         #endregion
 
         #region RETURN OBJECT
         public bool CanReturnObjects(ILandObject land, IClientAPI client, List<SceneObjectGroup> objects)
         {
-            bool result = true;
-
             ReturnObjectsHandler handler = OnReturnObjects;
             if (handler != null)
             {
@@ -574,18 +614,14 @@ namespace OpenSim.Region.Framework.Scenes
                 foreach (ReturnObjectsHandler h in list)
                 {
                     if (h(land, sp, objects) == false)
-                    {
-                        result = false;
-                        break;
-                    }
+                        return false;
                 }
             }
-
 //            m_log.DebugFormat(
 //                "[SCENE PERMISSIONS]: CanReturnObjects() fired for user {0} for {1} objects on {2}, result {3}",
 //                user, objects.Count, land.LandData.Name, result);
 
-            return result;
+            return true;
         }
 
         #endregion
@@ -801,6 +837,8 @@ namespace OpenSim.Region.Framework.Scenes
         #endregion
 
         #region TERRAFORM LAND
+        // if pos.x < 0, pos.y <0 and pos.z >=0 pos.z is parcel localID
+        // id pos.z < 0 x a and y identify the parcel
         public bool CanTerraformLand(UUID user, Vector3 pos)
         {
             TerraformLandHandler handler = OnTerraformLand;
@@ -1002,7 +1040,7 @@ namespace OpenSim.Region.Framework.Scenes
             DeedObjectHandler handler = OnDeedObject;
             if (handler != null)
             {
-               if(sog == null || client == null || client.SceneAgent == null || targetGroupID == UUID.Zero)
+               if(sog == null || client == null || client.SceneAgent == null || targetGroupID.IsZero())
                     return false;
 
                 ScenePresence sp = client.SceneAgent as ScenePresence;

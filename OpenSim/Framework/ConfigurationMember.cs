@@ -262,14 +262,14 @@ namespace OpenSim.Framework
                                 if (configurationDescription.Trim() != String.Empty)
                                 {
                                     console_result =
-                                        MainConsole.Instance.CmdPrompt(
+                                        MainConsole.Instance.Prompt(
                                             configurationDescription + ": " + configOption.configurationQuestion,
                                             configOption.configurationDefault);
                                 }
                                 else
                                 {
                                     console_result =
-                                        MainConsole.Instance.CmdPrompt(configOption.configurationQuestion,
+                                        MainConsole.Instance.Prompt(configOption.configurationQuestion,
                                                                        configOption.configurationDefault);
                                 }
                             }
@@ -382,7 +382,7 @@ namespace OpenSim.Framework
                             {
                                 convertSuccess = true;
 
-                                if (uuidResult2 == UUID.Zero)
+                                if (uuidResult2.IsZero())
                                     uuidResult2 = UUID.Random();
 
                                 return_result = uuidResult2;

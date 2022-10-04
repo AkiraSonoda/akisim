@@ -169,7 +169,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
         {
             if (cmd.Length != 2 && cmd.Length < 4)
             {
-                MainConsole.Instance.OutputFormat("Usage: appearance send [<first-name> <last-name>]");
+                MainConsole.Instance.Output("Usage: appearance send [<first-name> <last-name>]");
                 return;
             }
 
@@ -193,7 +193,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                         ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
                         if (sp != null && !sp.IsChildAgent)
                         {
-                            MainConsole.Instance.OutputFormat(
+                            MainConsole.Instance.Output(
                                 "Sending appearance information for {0} to all other avatars in {1}",
                                 sp.Name, scene.RegionInfo.RegionName);
 
@@ -205,7 +205,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                         scene.ForEachRootScenePresence(
                             sp =>
                             {
-                                MainConsole.Instance.OutputFormat(
+                                MainConsole.Instance.Output(
                                     "Sending appearance information for {0} to all other avatars in {1}",
                                     sp.Name, scene.RegionInfo.RegionName);
 
@@ -225,7 +225,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             if (cmd.Length != 2 && cmd.Length < 4)
             {
-                MainConsole.Instance.OutputFormat("Usage: appearance show [<first-name> <last-name>]");
+                MainConsole.Instance.Output("Usage: appearance show [<first-name> <last-name>]");
                 return;
             }
 
@@ -257,7 +257,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                             sp =>
                             {
                                 bool bakedTextureValid = scene.AvatarFactory.ValidateBakedTextureCache(sp);
-                                MainConsole.Instance.OutputFormat(
+                                MainConsole.Instance.Output(
                                     "{0} baked appearance texture is {1}", sp.Name, bakedTextureValid ? "OK" : "incomplete");
                             }
                         );
@@ -268,20 +268,11 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         private void HandleRebakeAppearanceCommand(string module, string[] cmd)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-
             if (cmd.Length != 4)
             {
-                MainConsole.Instance.OutputFormat("Usage: appearance rebake <first-name> <last-name>");
+                MainConsole.Instance.Output("Usage: appearance rebake <first-name> <last-name>");
                 return;
             }
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
 
             string firstname = cmd[2];
             string lastname = cmd[3];
@@ -298,11 +289,11 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                         int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, true);
 
                         if (rebakesRequested > 0)
-                            MainConsole.Instance.OutputFormat(
+                            MainConsole.Instance.Output(
                                 "Requesting rebake of {0} uploaded textures for {1} in {2}",
                                 rebakesRequested, sp.Name, scene.RegionInfo.RegionName);
                         else
-                            MainConsole.Instance.OutputFormat(
+                            MainConsole.Instance.Output(
                                 "No texture IDs available for rebake request for {0} in {1}",
                                 sp.Name, scene.RegionInfo.RegionName);
                     }
@@ -312,13 +303,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         private void HandleFindAppearanceCommand(string module, string[] cmd)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             if (cmd.Length != 3)
             {
-                MainConsole.Instance.OutputFormat("Usage: appearance find <uuid-or-start-of-uuid>");
+                MainConsole.Instance.Output("Usage: appearance find <uuid-or-start-of-uuid>");
                 return;
             }
 
@@ -345,11 +332,11 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             if (matchedAvatars.Count == 0)
             {
-                MainConsole.Instance.OutputFormat("{0} did not match any baked avatar textures in use", rawUuid);
+                MainConsole.Instance.Output("{0} did not match any baked avatar textures in use", null, rawUuid);
             }
             else
             {
-                MainConsole.Instance.OutputFormat(
+                MainConsole.Instance.Output(
                     "{0} matched {1}",
                     rawUuid,
                     string.Join(", ", matchedAvatars.ToList().ConvertAll<string>(sp => sp.Name).ToArray()));
@@ -360,7 +347,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
         {
             if (cmd.Length != 2 && cmd.Length < 4)
             {
-                MainConsole.Instance.OutputFormat("Usage: wearables show [<first-name> <last-name>]");
+                MainConsole.Instance.Output("Usage: wearables show [<first-name> <last-name>]");
                 return;
             }
 
@@ -423,7 +410,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
         {
             if (cmd.Length != 4)
             {
-                MainConsole.Instance.OutputFormat("Usage: wearables check <first-name> <last-name>");
+                MainConsole.Instance.Output("Usage: wearables check <first-name> <last-name>");
                 return;
             }
 
@@ -442,15 +429,21 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     {
                         sb.AppendFormat("Wearables checks for {0}\n\n", sp.Name);
 
-                        for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
+                        AvatarWearable[] wearables = sp.Appearance.Wearables;
+                        if(wearables.Length == 0)
                         {
-                            AvatarWearable aw = sp.Appearance.Wearables[i];
+                            MainConsole.Instance.Output("avatar has no wearables");
+                            return;
+                        }
+                        
+                        for (int i = 0; i < wearables.Length; i++)
+                        {
+                            AvatarWearable aw = wearables[i];
 
+                            sb.Append(Enum.GetName(typeof(WearableType), i));
+                            sb.Append("\n");
                             if (aw.Count > 0)
                             {
-                                sb.Append(Enum.GetName(typeof(WearableType), i));
-                                sb.Append("\n");
-
                                 for (int j = 0; j < aw.Count; j++)
                                 {
                                     WearableItem wi = aw[j];
@@ -483,6 +476,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                                     sb.Append("\n");
                                 }
                             }
+                            else
+                                sb.Append("  Empty\n");
                         }
                     }
                 }
@@ -499,8 +494,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
             cdt.AddColumn("Type", 10);
             cdt.AddColumn("Item UUID", ConsoleDisplayUtil.UuidSize);
             cdt.AddColumn("Asset UUID", ConsoleDisplayUtil.UuidSize);
+            AvatarWearable[] wearables = sp.Appearance.Wearables;
 
-            for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
+            for (int i = 0; i < wearables.Length; i++)
             {
                 AvatarWearable aw = sp.Appearance.Wearables[i];
 

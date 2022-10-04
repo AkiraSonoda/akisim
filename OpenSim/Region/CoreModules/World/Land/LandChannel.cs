@@ -37,10 +37,8 @@ namespace OpenSim.Region.CoreModules.World.Land
     {
         #region Constants
 
-        public const float BAN_LINE_SAFETY_HEIGHT = 100;
         //Land types set with flags in ParcelOverlay.
         //Only one of these can be used.
-
 
         //RequestResults (I think these are right, they seem to work):
         public const int LAND_RESULT_MULTIPLE = 1; // The request they made contained more than a single peice of land
@@ -77,33 +75,45 @@ namespace OpenSim.Region.CoreModules.World.Land
         private readonly Scene m_scene;
         private readonly LandManagementModule m_landManagementModule;
 
+        private float m_BanLineSafeHeight = 100.0f;
+        public float BanLineSafeHeight
+        {
+            get
+            {
+                return m_BanLineSafeHeight;
+            }
+            private set
+            {
+                if (value >= 20f && value <= 5000f)
+                    m_BanLineSafeHeight = value;
+                else
+                    m_BanLineSafeHeight = 100.0f;
+            }
+        }
+
         public LandChannel(Scene scene, LandManagementModule landManagementMod)
         {
             m_scene = scene;
             m_landManagementModule = landManagementMod;
+            if(landManagementMod != null)
+                m_BanLineSafeHeight = landManagementMod.BanLineSafeHeight;
         }
 
         #region ILandChannel Members
 
         public ILandObject GetLandObject(float x_float, float y_float)
         {
-            if (m_landManagementModule != null)
-            {
-                return m_landManagementModule.GetLandObject(x_float, y_float);
-            }
-
-            ILandObject obj = new LandObject(UUID.Zero, false, m_scene);
-            obj.LandData.Name = "NO LAND";
-            return obj;
+            return m_landManagementModule != null ? m_landManagementModule.GetLandObject(x_float, y_float) : null;
         }
 
         public ILandObject GetLandObject(int localID)
         {
-            if (m_landManagementModule != null)
-            {
-                return m_landManagementModule.GetLandObject(localID);
-            }
-            return null;
+            return m_landManagementModule != null ? m_landManagementModule.GetLandObject(localID) : null;
+        }
+
+        public ILandObject GetLandObject(UUID GlobalID)
+        {
+                return m_landManagementModule != null ? m_landManagementModule.GetLandObject(GlobalID) : null;
         }
 
         public ILandObject GetLandObject(Vector3 position)
@@ -113,113 +123,84 @@ namespace OpenSim.Region.CoreModules.World.Land
 
         public ILandObject GetLandObject(int x, int y)
         {
-            if (m_landManagementModule != null)
-            {
-                return m_landManagementModule.GetLandObject(x, y);
-            }
+            return m_landManagementModule != null ? m_landManagementModule.GetLandObject(x, y) : null;
+        }
 
-            ILandObject obj = new LandObject(UUID.Zero, false, m_scene);
-            obj.LandData.Name = "NO LAND";
-            return obj;
+        public ILandObject GetLandObjectClippedXY(float x, float y)
+        {
+            return m_landManagementModule != null ? m_landManagementModule.GetLandObjectClippedXY(x, y) : null;
         }
 
         public List<ILandObject> AllParcels()
         {
-            if (m_landManagementModule != null)
-            {
-                return m_landManagementModule.AllParcels();
-            }
-
-            return new List<ILandObject>();
+            return m_landManagementModule != null ? m_landManagementModule.AllParcels() : new List<ILandObject>();
         }
 
         public void Clear(bool setupDefaultParcel)
         {
-            if (m_landManagementModule != null)
-                m_landManagementModule.Clear(setupDefaultParcel);
+             m_landManagementModule?.Clear(setupDefaultParcel);
         }
 
         public List<ILandObject> ParcelsNearPoint(Vector3 position)
         {
-            if (m_landManagementModule != null)
-            {
-                return m_landManagementModule.ParcelsNearPoint(position);
-            }
-
-            return new List<ILandObject>();
+            return m_landManagementModule != null ? m_landManagementModule.ParcelsNearPoint(position) : new List<ILandObject>();
         }
 
         public bool IsForcefulBansAllowed()
         {
-            if (m_landManagementModule != null)
-            {
-                return m_landManagementModule.AllowedForcefulBans;
-            }
-
-            return false;
+            return m_landManagementModule != null ? m_landManagementModule.AllowedForcefulBans : false;
         }
 
         public void UpdateLandObject(int localID, LandData data)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.UpdateLandObject(localID, data);
-            }
+            m_landManagementModule?.UpdateLandObject(localID, data);
+        }
+
+        public void SendParcelsOverlay(IClientAPI client)
+        {
+            m_landManagementModule?.SendParcelOverlay(client);
         }
 
         public void Join(int start_x, int start_y, int end_x, int end_y, UUID attempting_user_id)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.Join(start_x, start_y, end_x, end_y, attempting_user_id);
-            }
+            m_landManagementModule?.Join(start_x, start_y, end_x, end_y, attempting_user_id);
         }
 
         public void Subdivide(int start_x, int start_y, int end_x, int end_y, UUID attempting_user_id)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.Subdivide(start_x, start_y, end_x, end_y, attempting_user_id);
-            }
+            m_landManagementModule?.Subdivide(start_x, start_y, end_x, end_y, attempting_user_id);
         }
 
         public void ReturnObjectsInParcel(int localID, uint returnType, UUID[] agentIDs, UUID[] taskIDs, IClientAPI remoteClient)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.ReturnObjectsInParcel(localID, returnType, agentIDs, taskIDs, remoteClient);
-            }
+            m_landManagementModule?.ReturnObjectsInParcel(localID, returnType, agentIDs, taskIDs, remoteClient);
         }
 
         public void setParcelObjectMaxOverride(overrideParcelMaxPrimCountDelegate overrideDel)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.setParcelObjectMaxOverride(overrideDel);
-            }
+            m_landManagementModule?.setParcelObjectMaxOverride(overrideDel);
         }
 
         public void setSimulatorObjectMaxOverride(overrideSimulatorMaxPrimCountDelegate overrideDel)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.setSimulatorObjectMaxOverride(overrideDel);
-            }
+            m_landManagementModule?.setSimulatorObjectMaxOverride(overrideDel);
         }
 
         public void SetParcelOtherCleanTime(IClientAPI remoteClient, int localID, int otherCleanTime)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.setParcelOtherCleanTime(remoteClient, localID, otherCleanTime);
-            }
+            m_landManagementModule?.SetParcelOtherCleanTime(remoteClient, localID, otherCleanTime);
         }
-        public void sendClientInitialLandInfo(IClientAPI remoteClient)
+
+        public void sendClientInitialLandInfo(IClientAPI remoteClient, bool overlay)
         {
-            if (m_landManagementModule != null)
-            {
-                m_landManagementModule.sendClientInitialLandInfo(remoteClient);
-            }
+            m_landManagementModule?.sendClientInitialLandInfo(remoteClient, overlay);
+        }
+
+        public void ClearAllEnvironments()
+        {
+            List<ILandObject> parcels = AllParcels();
+            for(int i=0; i< parcels.Count; ++i)
+                parcels[i].StoreEnvironment(null);
         }
         #endregion
     }

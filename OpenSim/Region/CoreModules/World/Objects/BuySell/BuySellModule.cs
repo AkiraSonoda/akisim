@@ -89,185 +89,192 @@ namespace OpenSim.Region.CoreModules.World.Objects.BuySell
             if (part == null)
                 return;
 
-            if (part.ParentGroup.IsDeleted)
+            SceneObjectGroup sog = part.ParentGroup;
+            if (sog == null || sog.IsDeleted)
                 return;
 
-            if (part.OwnerID != part.GroupID && part.OwnerID != client.AgentId && (!m_scene.Permissions.IsGod(client.AgentId)))
-                return;
-
-            if (part.OwnerID == part.GroupID) // Group owned
+            // Does the user have the power to put the object on sale?
+            if (!m_scene.Permissions.CanSellObject(client, sog, saleType))
             {
-                // Does the user have the power to put the object on sale?
-                if (!m_scene.Permissions.CanSellGroupObject(client.AgentId, part.GroupID))
-                {
-                    client.SendAgentAlertMessage("You don't have permission to set group-owned objects on sale", false);
-                    return;
-                }
+                client.SendAgentAlertMessage("You don't have permission to set object on sale", false);
+                return;
             }
 
-            part = part.ParentGroup.RootPart;
+            part = sog.RootPart;
 
             part.ObjectSaleType = saleType;
             part.SalePrice = salePrice;
 
-            part.ParentGroup.HasGroupChanged = true;
+            sog.HasGroupChanged = true;
 
             part.SendPropertiesToClient(client);
         }
 
         public bool BuyObject(IClientAPI remoteClient, UUID categoryID, uint localID, byte saleType, int salePrice)
         {
-            SceneObjectPart part = m_scene.GetSceneObjectPart(localID);
+            SceneObjectPart rootpart = m_scene.GetSceneObjectPart(localID);
 
-            if (part == null)
+            if (rootpart == null)
                 return false;
 
-            SceneObjectGroup group = part.ParentGroup;
+            SceneObjectGroup group = rootpart.ParentGroup;
+            if(group == null || group.IsDeleted || group.inTransit)
+                return false;
 
-            switch (saleType)
+            // make sure we are not buying a child part
+            rootpart = group.RootPart;            
+
+            switch ((SaleType)saleType)
             {
-            case 1: // Sell as original (in-place sale)
-                uint effectivePerms = group.EffectiveOwnerPerms;
+                case SaleType.Original: // Sell as original (in-place sale)
+                    uint effectivePerms = group.EffectiveOwnerPerms;
 
-                if ((effectivePerms & (uint)PermissionMask.Transfer) == 0)
-                {
-                    if (m_dialogModule != null)
-                        m_dialogModule.SendAlertToUser(remoteClient, "This item doesn't appear to be for sale");
-                    return false;
-                }
-
-                group.SetOwner(remoteClient.AgentId, remoteClient.ActiveGroupId);
-
-                if (m_scene.Permissions.PropagatePermissions())
-                {
-                    foreach (SceneObjectPart child in group.Parts)
+                    if ((effectivePerms & (uint)PermissionMask.Transfer) == 0)
                     {
-                        child.Inventory.ChangeInventoryOwner(remoteClient.AgentId);
-                        child.TriggerScriptChangedEvent(Changed.OWNER);
-                        child.ApplyNextOwnerPermissions();
+                        if (m_dialogModule != null)
+                            m_dialogModule.SendAlertToUser(remoteClient, "This item doesn't appear to be for sale");
+                        return false;
                     }
-                    group.AggregatePerms();
-                }
 
-                part.ObjectSaleType = 0;
-                part.SalePrice = 10;
-                part.ClickAction = Convert.ToByte(0);
+                    group.SetOwner(remoteClient.AgentId, remoteClient.ActiveGroupId);
 
-                group.HasGroupChanged = true;
-                part.SendPropertiesToClient(remoteClient);
-                part.TriggerScriptChangedEvent(Changed.OWNER);
-                group.ResumeScripts();
-                part.ScheduleFullUpdate();
-
-                break;
-
-            case 2: // Sell a copy
-                Vector3 inventoryStoredPosition = new Vector3(
-                        Math.Min(group.AbsolutePosition.X, m_scene.RegionInfo.RegionSizeX - 6),
-                        Math.Min(group.AbsolutePosition.Y, m_scene.RegionInfo.RegionSizeY - 6),
-                        group.AbsolutePosition.Z);
-
-                Vector3 originalPosition = group.AbsolutePosition;
-
-                group.AbsolutePosition = inventoryStoredPosition;
-
-                string sceneObjectXml = SceneObjectSerializer.ToOriginalXmlFormat(group);
-                group.AbsolutePosition = originalPosition;
-
-                uint perms = group.EffectiveOwnerPerms;
-
-                if ((perms & (uint)PermissionMask.Transfer) == 0)
-                {
-                    if (m_dialogModule != null)
-                        m_dialogModule.SendAlertToUser(remoteClient, "This item doesn't appear to be for sale");
-                    return false;
-                }
-
-                if ((perms & (uint)PermissionMask.Copy) == 0)
-                {
-                    if (m_dialogModule != null)
-                        m_dialogModule.SendAlertToUser(remoteClient, "This sale has been blocked by the permissions system");
-                    return false;
-                }
-
-                AssetBase asset = m_scene.CreateAsset(
-                    group.GetPartName(localID),
-                    group.GetPartDescription(localID),
-                    (sbyte)AssetType.Object,
-                    Utils.StringToBytes(sceneObjectXml),
-                    group.OwnerID);
-                m_scene.AssetService.Store(asset);
-
-                InventoryItemBase item = new InventoryItemBase();
-                item.CreatorId = part.CreatorID.ToString();
-                item.CreatorData = part.CreatorData;
-
-                item.ID = UUID.Random();
-                item.Owner = remoteClient.AgentId;
-                item.AssetID = asset.FullID;
-                item.Description = asset.Description;
-                item.Name = asset.Name;
-                item.AssetType = asset.Type;
-                item.InvType = (int)InventoryType.Object;
-                item.Folder = categoryID;
-
-                uint nextPerms=(perms & 7) << 13;
-                if ((nextPerms & (uint)PermissionMask.Copy) == 0)
-                    perms &= ~(uint)PermissionMask.Copy;
-                if ((nextPerms & (uint)PermissionMask.Transfer) == 0)
-                    perms &= ~(uint)PermissionMask.Transfer;
-                if ((nextPerms & (uint)PermissionMask.Modify) == 0)
-                    perms &= ~(uint)PermissionMask.Modify;
-
-                item.BasePermissions = perms & part.NextOwnerMask;
-                item.CurrentPermissions = perms & part.NextOwnerMask;
-                item.NextPermissions = part.NextOwnerMask;
-                item.EveryOnePermissions = part.EveryoneMask &
-                                           part.NextOwnerMask;
-                item.GroupPermissions = part.GroupMask &
-                                           part.NextOwnerMask;
-                item.Flags |= (uint)InventoryItemFlags.ObjectSlamPerm;
-                item.CreationDate = Util.UnixTimeSinceEpoch();
-
-                if (m_scene.AddInventoryItem(item))
-                {
-                    remoteClient.SendInventoryItemCreateUpdate(item, 0);
-                }
-                else
-                {
-                    if (m_dialogModule != null)
-                        m_dialogModule.SendAlertToUser(remoteClient, "Cannot buy now. Your inventory is unavailable");
-                    return false;
-                }
-                break;
-
-            case 3: // Sell contents
-                List<UUID> invList = part.Inventory.GetInventoryList();
-
-                bool okToSell = true;
-
-                foreach (UUID invID in invList)
-                {
-                    TaskInventoryItem item1 = part.Inventory.GetInventoryItem(invID);
-                    if ((item1.CurrentPermissions &
-                            (uint)PermissionMask.Transfer) == 0)
+                    if (m_scene.Permissions.PropagatePermissions())
                     {
-                        okToSell = false;
-                        break;
+                        foreach (SceneObjectPart child in group.Parts)
+                        {
+                            child.Inventory.ChangeInventoryOwner(remoteClient.AgentId);
+                            child.TriggerScriptChangedEvent(Changed.OWNER);
+                            child.ApplyNextOwnerPermissions();
+                        }
+                        group.InvalidateDeepEffectivePerms();
                     }
-                }
 
-                if (!okToSell)
-                {
-                    if (m_dialogModule != null)
-                        m_dialogModule.SendAlertToUser(
-                            remoteClient, "This item's inventory doesn't appear to be for sale");
+                    rootpart.ObjectSaleType = 0;
+                    rootpart.SalePrice = 10;
+                    rootpart.ClickAction = 0;
+
+                    group.HasGroupChanged = true;
+                    rootpart.SendPropertiesToClient(remoteClient);
+                    rootpart.TriggerScriptChangedEvent(Changed.OWNER);
+                    group.ResumeScripts();
+                    rootpart.ScheduleFullUpdate();
+
+                    break;
+
+                case SaleType.Copy: // Sell a copy
+                    uint perms = group.EffectiveOwnerPerms;
+
+                    if ((perms & (uint)PermissionMask.Transfer) == 0)
+                    {
+                        if (m_dialogModule != null)
+                            m_dialogModule.SendAlertToUser(remoteClient, "This item doesn't appear to be for sale");
+                        return false;
+                    }
+
+                    if ((perms & (uint)PermissionMask.Copy) == 0)
+                    {
+                        if (m_dialogModule != null)
+                            m_dialogModule.SendAlertToUser(remoteClient, "This sale has been blocked by the permissions system");
+                        return false;
+                    }
+
+                    // save sell data
+                    int price = rootpart.SalePrice;
+                    byte clickAction = rootpart.ClickAction;
+
+                    // reset sale data for the copy
+                    rootpart.ObjectSaleType = 0;
+                    rootpart.SalePrice = 10;
+                    rootpart.ClickAction = 0;
+
+                    string sceneObjectXml = SceneObjectSerializer.ToOriginalXmlFormat(group);
+
+                    rootpart.ObjectSaleType = saleType;
+                    rootpart.SalePrice = price;
+                    rootpart.ClickAction = clickAction;
+
+                    string name = rootpart.Name;
+                    string desc = rootpart.Description;
+
+                    AssetBase asset = m_scene.CreateAsset(
+                        name, desc,
+                        (sbyte)AssetType.Object,
+                        Utils.StringToBytes(sceneObjectXml),
+                        rootpart.CreatorID);
+                    m_scene.AssetService.Store(asset);
+
+                    InventoryItemBase item = new InventoryItemBase();
+                    item.CreatorId = rootpart.CreatorID.ToString();
+                    item.CreatorData = rootpart.CreatorData;
+
+                    item.ID = UUID.Random();
+                    item.Owner = remoteClient.AgentId;
+                    item.AssetID = asset.FullID;
+                    item.Description = desc;
+                    item.Name = name;
+                    item.AssetType = asset.Type;
+                    item.InvType = (int)InventoryType.Object;
+                    item.Folder = categoryID;
+                
+                    perms = group.CurrentAndFoldedNextPermissions();
+                    // apply parts inventory next perms            
+                    PermissionsUtil.ApplyNoModFoldedPermissions(perms, ref perms);
+                    // change to next owner perms
+                    perms &=  rootpart.NextOwnerMask; 
+                    // update folded
+                    perms = PermissionsUtil.FixAndFoldPermissions(perms);
+
+                    item.BasePermissions = perms;
+                    item.CurrentPermissions = perms;
+                    item.NextPermissions = rootpart.NextOwnerMask & perms;
+                    item.EveryOnePermissions = rootpart.EveryoneMask & perms;
+                    item.GroupPermissions = rootpart.GroupMask & perms;
+
+                    item.Flags |= (uint)InventoryItemFlags.ObjectSlamPerm;
+                    item.CreationDate = Util.UnixTimeSinceEpoch();
+
+                    if (m_scene.AddInventoryItem(item))
+                    {
+                        remoteClient.SendInventoryItemCreateUpdate(item, 0);
+                    }
+                    else
+                    {
+                        if (m_dialogModule != null)
+                            m_dialogModule.SendAlertToUser(remoteClient, "Cannot buy now. Your inventory is unavailable");
+                        return false;
+                    }
+                    break;
+
+                case SaleType.Contents: // Sell contents
+                    List<UUID> invList = rootpart.Inventory.GetInventoryList();
+
+                    bool okToSell = true;
+
+                    foreach (UUID invID in invList)
+                    {
+                        TaskInventoryItem item1 = rootpart.Inventory.GetInventoryItem(invID);
+                        if ((item1.CurrentPermissions &
+                                (uint)PermissionMask.Transfer) == 0)
+                        {
+                            okToSell = false;
+                            break;
+                        }
+                    }
+
+                    if (!okToSell)
+                    {
+                        if (m_dialogModule != null)
+                            m_dialogModule.SendAlertToUser(
+                                remoteClient, "This item's inventory doesn't appear to be for sale");
+                        return false;
+                    }
+
+                    if (invList.Count > 0)
+                        m_scene.MoveTaskInventoryItems(remoteClient.AgentId, rootpart.Name, rootpart, invList);
+                    break;
+
+                default:
                     return false;
-                }
-
-                if (invList.Count > 0)
-                    m_scene.MoveTaskInventoryItems(remoteClient.AgentId, part.Name, part, invList);
-                break;
             }
 
             return true;

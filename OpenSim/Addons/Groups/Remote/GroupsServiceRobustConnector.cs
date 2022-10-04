@@ -91,9 +91,10 @@ namespace OpenSim.Groups
         protected override byte[] ProcessRequest(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            StreamReader sr = new StreamReader(requestData);
-            string body = sr.ReadToEnd();
-            sr.Close();
+            string body;
+            using(StreamReader sr = new StreamReader(requestData))
+                body = sr.ReadToEnd();
+
             body = body.Trim();
 
             //m_log.DebugFormat("[XXX]: query String: {0}", body);
@@ -185,7 +186,7 @@ namespace OpenSim.Groups
 
                 }
 
-                if (grec.GroupID != UUID.Zero)
+                if (!grec.GroupID.IsZero())
                 {
                     grec = m_GroupsService.GetGroupRecord(RequestingAgentID, grec.GroupID);
                     if (grec == null)
@@ -313,7 +314,7 @@ namespace OpenSim.Groups
                 if (!all)
                 {
                     ExtendedGroupMembershipData membership = null;
-                    if (groupID == UUID.Zero)
+                    if (groupID.IsZero())
                     {
                         membership = m_GroupsService.GetAgentActiveMembership(requestingAgentID, agentID);
                     }

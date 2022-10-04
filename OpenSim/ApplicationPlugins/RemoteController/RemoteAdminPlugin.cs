@@ -359,6 +359,42 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                     notice = false;
                 }
 
+                if (startupConfig.GetBoolean("SkipDelayOnEmptyRegion", false))
+                {
+                    m_log.Info("[RADMIN]: Counting affected avatars");
+                    int agents = 0;
+
+                    if (restartAll)
+                    {
+                        foreach (Scene s in m_application.SceneManager.Scenes)
+                        {
+                            foreach (ScenePresence sp in s.GetScenePresences())
+                            {
+                                if (!sp.IsChildAgent && !sp.IsNPC)
+                                    agents++;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (ScenePresence sp in rebootedScene.GetScenePresences())
+                        {
+                            if (!sp.IsChildAgent && !sp.IsNPC)
+                                agents++;
+                        }
+                    }
+
+                    m_log.InfoFormat("[RADMIN]: Avatars in region: {0}", agents);
+
+                    if (agents == 0)
+                    {
+                        m_log.Info("[RADMIN]: No avatars detected, shutting down without delay");
+
+                        times.Clear();
+                        times.Add(0);
+                    }
+                }
+
                 List<Scene> restartList;
 
                 if (restartAll)
@@ -376,10 +412,10 @@ namespace OpenSim.ApplicationPlugins.RemoteController
             }
             catch (Exception e)
             {
-//                m_log.ErrorFormat("[RADMIN]: Restart region: failed: {0} {1}", e.Message, e.StackTrace);
+                m_log.ErrorFormat("[RADMIN]: Restart region: failed: {0} {1}", e.Message, e.StackTrace);
                 responseData["rebooting"] = false;
 
-                throw e;
+                throw;
             }
 
             m_log.Info("[RADMIN]: Restart Region request complete");
@@ -1708,13 +1744,14 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                 //}
 
                 if (requestData.Contains("home"))
-                {
                     options["home"] = (string)requestData["home"];
-                }
 
-                if ((string)requestData["noassets"] == "true")
+                if (requestData.Contains("noassets"))
                 {
-                    options["noassets"] = (string)requestData["noassets"] ;
+                    string tmp = (string)requestData["noassets"];
+                    if (!string.IsNullOrWhiteSpace(tmp) &&
+                        (tmp.Equals("true", StringComparison.InvariantCultureIgnoreCase) || tmp.Equals("1")))
+                        options["noassets"] = true;
                 }
 
                 if (requestData.Contains("perm"))
@@ -1722,9 +1759,12 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                     options["checkPermissions"] = (string)requestData["perm"];
                 }
 
-                if ((string)requestData["all"] == "true")
+                if (requestData.Contains("all"))
                 {
-                    options["all"] = (string)requestData["all"];
+                    string tmp = (string)requestData["all"];
+                    if (!string.IsNullOrWhiteSpace(tmp) &&
+                        (tmp.Equals("true", StringComparison.InvariantCultureIgnoreCase) || tmp.Equals("1")))
+                        options["all"] = true;
                 }
 
                 IRegionArchiverModule archiver = scene.RequestModuleInterface<IRegionArchiverModule>();
@@ -1898,7 +1938,7 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                 GetSceneFromRegionParams(requestData, responseData, out scene);
                 health = scene.GetHealth(out flags, out text);
             }
-            catch (Exception e)
+            catch
             {
                 responseData["error"] = null;
             }
@@ -2833,7 +2873,7 @@ namespace OpenSim.ApplicationPlugins.RemoteController
             for (int i = 0; i<wearables.Length; i++)
             {
                 wearable = wearables[i];
-                if (wearable[0].ItemID != UUID.Zero)
+                if (!wearable[0].ItemID.IsZero())
                 {
                     // Get inventory item and copy it
                     InventoryItemBase item = inventoryService.GetItem(source, wearable[0].ItemID);
@@ -2886,7 +2926,7 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                 int attachpoint = attachment.AttachPoint;
                 UUID itemID = attachment.ItemID;
 
-                if (itemID != UUID.Zero)
+                if (!itemID.IsZero())
                 {
                     // Get inventory item and copy it
                     InventoryItemBase item = inventoryService.GetItem(source, itemID);
@@ -3051,15 +3091,13 @@ namespace OpenSim.ApplicationPlugins.RemoteController
         /// </summary>
         private void ApplyNextOwnerPermissions(InventoryItemBase item)
         {
-            if (item.InvType == (int)InventoryType.Object && (item.CurrentPermissions & 7) != 0)
+            if (item.InvType == (int)InventoryType.Object)
             {
-                if ((item.CurrentPermissions & ((uint)PermissionMask.Copy >> 13)) == 0)
-                    item.CurrentPermissions &= ~(uint)PermissionMask.Copy;
-                if ((item.CurrentPermissions & ((uint)PermissionMask.Transfer >> 13)) == 0)
-                    item.CurrentPermissions &= ~(uint)PermissionMask.Transfer;
-                if ((item.CurrentPermissions & ((uint)PermissionMask.Modify >> 13)) == 0)
-                    item.CurrentPermissions &= ~(uint)PermissionMask.Modify;
+                uint perms = item.CurrentPermissions;
+                PermissionsUtil.ApplyFoldedPermissions(item.CurrentPermissions, ref perms);
+                item.CurrentPermissions = perms;
             }
+
             item.CurrentPermissions &= item.NextPermissions;
             item.BasePermissions &= item.NextPermissions;
             item.EveryOnePermissions &= item.NextPermissions;

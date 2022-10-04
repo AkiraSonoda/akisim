@@ -66,7 +66,7 @@ namespace OpenSim.Services.Interfaces
         List<GridRegion> GetNeighbours(UUID scopeID, UUID regionID);
 
         GridRegion GetRegionByUUID(UUID scopeID, UUID regionID);
-
+        GridRegion GetRegionByHandle(UUID scopeID, ulong regionhandle);
         /// <summary>
         /// Get the region at the given position (in meters)
         /// </summary>
@@ -83,6 +83,7 @@ namespace OpenSim.Services.Interfaces
         /// <param name="regionName"></param>
         /// <returns>Returns the region information if the name matched.  Null otherwise.</returns>
         GridRegion GetRegionByName(UUID scopeID, string regionName);
+        GridRegion GetRegionByURI(UUID scopeID, RegionURI uri);
 
         /// <summary>
         /// Get information about regions starting with the provided name.
@@ -98,6 +99,7 @@ namespace OpenSim.Services.Interfaces
         /// grid-server couldn't be contacted or returned an error, return null.
         /// </returns>
         List<GridRegion> GetRegionsByName(UUID scopeID, string name, int maxNumber);
+        List<GridRegion> GetRegionsByURI(UUID scopeID, RegionURI uri, int maxNumber);
 
         List<GridRegion> GetRegionRange(UUID scopeID, int xmin, int xmax, int ymin, int ymax);
 
@@ -105,6 +107,7 @@ namespace OpenSim.Services.Interfaces
         List<GridRegion> GetDefaultHypergridRegions(UUID scopeID);
         List<GridRegion> GetFallbackRegions(UUID scopeID, int x, int y);
         List<GridRegion> GetHyperlinks(UUID scopeID);
+        List<GridRegion> GetOnlineRegions(UUID scopeID, int x, int y, int maxCount);
 
         /// <summary>
         /// Get internal OpenSimulator region flags.
@@ -270,31 +273,6 @@ namespace OpenSim.Services.Interfaces
             RegionSizeY = (int)Constants.RegionSize;
             m_serverURI = string.Empty;
         }
-
-        /*
-        public GridRegion(int regionLocX, int regionLocY, IPEndPoint internalEndPoint, string externalUri)
-        {
-            m_regionLocX = regionLocX;
-            m_regionLocY = regionLocY;
-            RegionSizeX = (int)Constants.RegionSize;
-            RegionSizeY = (int)Constants.RegionSize;
-
-            m_internalEndPoint = internalEndPoint;
-            m_externalHostName = externalUri;
-        }
-
-        public GridRegion(int regionLocX, int regionLocY, string externalUri, uint port)
-        {
-            m_regionLocX = regionLocX;
-            m_regionLocY = regionLocY;
-            RegionSizeX = (int)Constants.RegionSize;
-            RegionSizeY = (int)Constants.RegionSize;
-
-            m_externalHostName = externalUri;
-
-            m_internalEndPoint = new IPEndPoint(IPAddress.Parse("0.0.0.0"), (int)port);
-        }
-         */
 
         public GridRegion(uint xcell, uint ycell)
         {
@@ -463,7 +441,7 @@ namespace OpenSim.Services.Interfaces
             if ((object)region == null)
                 return false;
             // Return true if the non-zero UUIDs are equal:
-            return (RegionID != UUID.Zero) && RegionID.Equals(region.RegionID);
+            return (!RegionID.IsZero()) && RegionID.Equals(region.RegionID);
         }
 
         public override bool Equals(Object obj)
@@ -487,45 +465,7 @@ namespace OpenSim.Services.Interfaces
         /// </value>
         public IPEndPoint ExternalEndPoint
         {
-            get
-            {
-                // Old one defaults to IPv6
-                //return new IPEndPoint(Dns.GetHostAddresses(m_externalHostName)[0], m_internalEndPoint.Port);
-
-                IPAddress ia = null;
-                // If it is already an IP, don't resolve it - just return directly
-                if (IPAddress.TryParse(m_externalHostName, out ia))
-                    return new IPEndPoint(ia, m_internalEndPoint.Port);
-
-                // Reset for next check
-                ia = null;
-                try
-                {
-                    foreach (IPAddress Adr in Dns.GetHostAddresses(m_externalHostName))
-                    {
-                        if (ia == null)
-                            ia = Adr;
-
-                        if (Adr.AddressFamily == AddressFamily.InterNetwork)
-                        {
-                            ia = Adr;
-                            break;
-                        }
-                    }
-                }
-                catch (SocketException e)
-                {
-                    /*throw new Exception(
-                        "Unable to resolve local hostname " + m_externalHostName + " innerException of type '" +
-                        e + "' attached to this exception", e);*/
-                    // Don't throw a fatal exception here, instead, return Null and handle it in the caller.
-                    // Reason is, on systems such as OSgrid it has occured that known hostnames stop
-                    // resolving and thus make surrounding regions crash out with this exception.
-                    return null;
-                }
-
-                return new IPEndPoint(ia, m_internalEndPoint.Port);
-            }
+            get { return Util.getEndPoint(m_externalHostName, m_internalEndPoint.Port); }
         }
 
         public string ExternalHostName

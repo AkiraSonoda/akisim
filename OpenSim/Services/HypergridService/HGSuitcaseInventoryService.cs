@@ -80,7 +80,7 @@ namespace OpenSim.Services.HypergridService
             if (invConfig != null)
             {
                 string userAccountsDll = invConfig.GetString("UserAccountsService", string.Empty);
-                if (userAccountsDll == string.Empty)
+                if (userAccountsDll.Length == 0)
                     throw new Exception("Please specify UserAccountsService in HGInventoryService configuration");
 
                 Object[] args = new Object[] { config };
@@ -89,7 +89,7 @@ namespace OpenSim.Services.HypergridService
                     throw new Exception(String.Format("Unable to create UserAccountService from {0}", userAccountsDll));
 
                 string avatarDll = invConfig.GetString("AvatarService", string.Empty);
-                if (avatarDll == string.Empty)
+                if (avatarDll.Length == 0)
                     throw new Exception("Please specify AvatarService in HGInventoryService configuration");
 
                 m_AvatarService = ServerUtils.LoadPlugin<IAvatarService>(avatarDll, args);
@@ -210,6 +210,8 @@ namespace OpenSim.Services.HypergridService
                 CreateFolder(principalID, rootID, (int)FolderType.Texture, "Textures");
             if (!Array.Exists(sysFolders, delegate(XInventoryFolder f) { if (f.type == (int)FolderType.Trash) return true; return false; }))
                 CreateFolder(principalID, rootID, (int)FolderType.Trash, "Trash");
+            if (!Array.Exists(sysFolders, delegate (XInventoryFolder f) { if (f.type == (int)FolderType.Settings) return true; return false; }))
+                CreateFolder(principalID, rootID, (int)FolderType.Settings, "Settings");
         }
 
         public override InventoryFolderBase GetFolderForType(UUID principalID, FolderType type)
@@ -399,13 +401,13 @@ namespace OpenSim.Services.HypergridService
             return false;
         }
 
-        public new InventoryItemBase GetItem(InventoryItemBase item)
+        public override InventoryItemBase GetItem(UUID principalID, UUID itemID)
         {
-            InventoryItemBase it = base.GetItem(item.Owner, item.ID);
+            InventoryItemBase it = base.GetItem(principalID, itemID);
             if (it == null)
             {
-                m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: Unable to retrieve item {0} ({1}) in folder {2}",
-                    item.Name, item.ID, item.Folder);
+                m_log.DebugFormat("[HG SUITCASE INVENTORY SERVICE]: Unable to retrieve item {0}",
+                    itemID);
                 return null;
             }
 

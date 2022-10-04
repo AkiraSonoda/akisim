@@ -4,14 +4,9 @@ The following people have contributed to OpenSim (Thank you for your effort!)
 These folks represent the current core team for OpenSim, and are the
 people that make the day to day of OpenSim happen.
 
-* justincc (OSVW Consulting, justincc.org) 
 * Melanie Thielker
 * Diva (Crista Lopes, University of California, Irvine)
-* BlueWall (James Hughes)
-* Nebadon Izumi (Michael Cerquoni, OSgrid)
-* Snoopy Pfeffer
 * Robert Adams (MisterBlue)
-* Oren Hurvitz (Kitely)
 * Kevin Cozens
 * Leal Duarte (Ubit Umarov)
 
@@ -20,11 +15,8 @@ Core developers who have temporarily (we hope) gone chasing the white rabbit.
 They are in all similar to the active core developers, except that they haven't
 been that active lately, so their voting rights are awaiting their come back. 
 
-* Teravus (w3z)
-* Arthur Rodrigo S Valadares (IBM)
-* Dan Lake 
-* Marck
-* Mic Bowman
+* Nebadon Izumi (Michael Cerquoni, OSgrid)
+* Alicia Raven
 
 = Past Open Sim Developers =
 These folks are alumns of the OpenSim core group, but are now
@@ -57,7 +49,15 @@ where we are today.
 * John Hurliman
 * chi11ken (Genkii)
 * dahlia
-
+* justincc (OSVW Consulting, justincc.org)
+* Arthur Rodrigo S Valadares (IBM)
+* BlueWall (James Hughes)
+* Dan Lake 
+* Marck
+* Mic Bowman
+* Oren Hurvitz (Kitely)
+* Snoopy Pfeffer
+* Teravus (w3z)
 
 = Additional OpenSim Contributors =
 These folks have contributed code patches or content to OpenSimulator to help make it
@@ -69,9 +69,9 @@ what it is today.
 * alex_carnell
 * Alan Webb (IBM)
 * Aleric
-* Alicia Raven
 * Allen Kerensky
 * BigFootAg
+* Bill Blight
 * BlueWall Slade
 * bobshaffer2
 * brianw/Sir_Ahzz
@@ -131,6 +131,7 @@ what it is today.
 * KittyLiu
 * Kurt Taylor (IBM)
 * Lani Global
+* lickx
 * lillith_xue
 * lkalif
 * LuciusSirnah
@@ -142,6 +143,7 @@ what it is today.
 * Mandarinka Tasty
 * MarcelEdward
 * Matt Lehmann
+* mewtwo0641
 * Mic Bowman
 * Michelle Argus
 * Michael Cortez (The Flotsam Project, http://osflotsam.org/)
@@ -149,6 +151,7 @@ what it is today.
 * Micheil Merlin
 * Mike Osias (IBM)
 * Mike Pitman (IBM)
+* Mike Rieker (Dreamnation)
 * mikemig
 * mikkopa/_someone - RealXtend
 * Misterblue
@@ -182,16 +185,20 @@ what it is today.
 * SpotOn3D
 * Stefan_Boom / stoehr
 * Steven Zielinski (MOSES)
+* Stolen Ruby 
 * Strawberry Fride
 * Talun
 * TechplexEngineer (Blake Bourque)
 * TBG Renfold
+* Terry Ford
 * tglion
 * tlaukkan/Tommil (Tommi S. E. Laukkanen, Bubble Cloud)
 * TomDataWorks
 * TomTheDragon (muckwaddle)
 * tyre
+* uriesk
 * Vegaslon <vegaslon@gmail.com>
+* Vincent Sylvester
 * VikingErik
 * Vytek
 * webmage (IBM)

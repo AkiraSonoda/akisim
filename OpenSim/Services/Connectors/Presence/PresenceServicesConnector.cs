@@ -43,9 +43,7 @@ namespace OpenSim.Services.Connectors
 {
     public class PresenceServicesConnector : BaseServiceConnector, IPresenceService
     {
-        private static readonly ILog m_log =
-                LogManager.GetLogger(
-                MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private string m_ServerURI = String.Empty;
 
@@ -75,7 +73,7 @@ namespace OpenSim.Services.Connectors
             string serviceURI = gridConfig.GetString("PresenceServerURI",
                     String.Empty);
 
-            if (serviceURI == String.Empty)
+            if (serviceURI.Length == 0)
             {
                 m_log.Error("[PRESENCE CONNECTOR]: No Server URI named in section PresenceService");
                 throw new Exception("Presence connector init error");
@@ -111,18 +109,10 @@ namespace OpenSim.Services.Connectors
                         m_Auth);
                 if (reply != string.Empty)
                 {
-                    Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
-
-                    if (replyData.ContainsKey("result"))
-                    {
-                        if (replyData["result"].ToString().ToLower() == "success")
-                            return true;
-                        else
-                            return false;
-                    }
-                    else
-                        m_log.DebugFormat("[PRESENCE CONNECTOR]: LoginAgent reply data does not contain result field");
-
+                    int indx = reply.IndexOf("success", StringComparison.InvariantCultureIgnoreCase);
+                    if (indx > 0)
+                        return true;
+                    return false;
                 }
                 else
                     m_log.DebugFormat("[PRESENCE CONNECTOR]: LoginAgent received empty reply");
@@ -155,20 +145,13 @@ namespace OpenSim.Services.Connectors
                         uri,
                         reqString,
                         m_Auth);
+
                 if (reply != string.Empty)
                 {
-                    Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
-
-                    if (replyData.ContainsKey("result"))
-                    {
-                        if (replyData["result"].ToString().ToLower() == "success")
-                            return true;
-                        else
-                            return false;
-                    }
-                    else
-                        m_log.DebugFormat("[PRESENCE CONNECTOR]: LogoutAgent reply data does not contain result field");
-
+                    int indx = reply.IndexOf("success", StringComparison.InvariantCultureIgnoreCase);
+                    if (indx > 0)
+                        return true;
+                    return false;
                 }
                 else
                     m_log.DebugFormat("[PRESENCE CONNECTOR]: LogoutAgent received empty reply");
@@ -202,18 +185,10 @@ namespace OpenSim.Services.Connectors
                         m_Auth);
                 if (reply != string.Empty)
                 {
-                    Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
-
-                    if (replyData.ContainsKey("result"))
-                    {
-                        if (replyData["result"].ToString().ToLower() == "success")
-                            return true;
-                        else
-                            return false;
-                    }
-                    else
-                        m_log.DebugFormat("[PRESENCE CONNECTOR]: LogoutRegionAgents reply data does not contain result field");
-
+                    int indx = reply.IndexOf("success", StringComparison.InvariantCultureIgnoreCase);
+                    if (indx > 0)
+                        return true;
+                    return false;
                 }
                 else
                     m_log.DebugFormat("[PRESENCE CONNECTOR]: LogoutRegionAgents received empty reply");
@@ -292,7 +267,7 @@ namespace OpenSim.Services.Connectors
                         uri,
                         reqString,
                         m_Auth);
-                if (reply == null || (reply != null && reply == string.Empty))
+                if (string.IsNullOrEmpty(reply))
                 {
                     m_log.DebugFormat("[PRESENCE CONNECTOR]: GetAgent received null or empty reply");
                     return null;
@@ -349,7 +324,7 @@ namespace OpenSim.Services.Connectors
                         uri,
                         reqString,
                         m_Auth);
-                if (reply == null || (reply != null && reply == string.Empty))
+                if (string.IsNullOrEmpty(reply))
                 {
                     m_log.DebugFormat("[PRESENCE CONNECTOR]: GetAgents received null or empty reply");
                     return null;

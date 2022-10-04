@@ -50,7 +50,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                 result = this.parseParameters(args, out data);
 
                 // Context-specific validation
-                if (result == String.Empty)
+                if (result.Length == 0)
                 {
                     if (data.bevel == "taper")
                     {
@@ -69,7 +69,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                         result = String.Format("Noise strength must be 0.0 to 1.0: {0}", data.elevation);
                     }
 
-                    if (data.shape == String.Empty)
+                    if (data.shape.Length == 0)
                     {
                         data.shape = "rectangle";
                         data.x0 = 0;
@@ -80,7 +80,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                 }
 
                 // if it's all good, then do the work
-                if (result == String.Empty)
+                if (result.Length == 0)
                 {
                     this.applyModification(map, data);
                 }
@@ -96,11 +96,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
             return val;
         }
 
-        public override double operate(double[,] map, TerrainModifierData data, int x, int y)
+        public override float operate(float[,] map, TerrainModifierData data, int x, int y)
         {
-            double factor = this.computeBevel(data, x, y);
-            double noise = TerrainUtil.PerlinNoise2D((double)x / map.GetLength(0), (double)y / map.GetLength(1), 8, 1.0);
-            return map[x, y] + (data.elevation - (data.elevation - data.bevelevation) * factor) * (noise - .5);
+            float factor = this.computeBevel(data, x, y);
+            float noise = (float)TerrainUtil.PerlinNoise2D((double)x / map.GetLength(0), (double)y / map.GetLength(1), 8, 1.0);
+            return map[x, y] + (data.elevation - (data.elevation - data.bevelevation) * factor) * (noise - .5f);
         }
 
     }

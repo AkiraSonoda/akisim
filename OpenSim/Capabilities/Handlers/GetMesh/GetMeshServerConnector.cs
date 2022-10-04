@@ -52,7 +52,7 @@ namespace OpenSim.Capabilities.Handlers
 
             string assetService = serverConfig.GetString("AssetService", String.Empty);
 
-            if (assetService == String.Empty)
+            if (assetService.Length == 0)
                 throw new Exception("No AssetService in config file");
 
             Object[] args = new Object[] { config };
@@ -68,7 +68,7 @@ namespace OpenSim.Capabilities.Handlers
             IRequestHandler reqHandler
                 = new RestHTTPHandler(
                     "GET",
-                    "/CAPS/" + UUID.Random(),
+                    "/" + UUID.Random(),
                     httpMethod => gmeshHandler.ProcessGetMesh(httpMethod, UUID.Zero, null),
                     "GetMesh",
                     null);

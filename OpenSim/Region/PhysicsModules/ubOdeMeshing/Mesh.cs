@@ -39,24 +39,6 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 {
     public class MeshBuildingData
     {
-        private class vertexcomp : IEqualityComparer<Vertex>
-        {
-            public bool Equals(Vertex v1, Vertex v2)
-            {
-                if (v1.X == v2.X && v1.Y == v2.Y && v1.Z == v2.Z)
-                    return true;
-                else
-                    return false;
-            }
-            public int GetHashCode(Vertex v)
-            {
-                int a = v.X.GetHashCode();
-                int b = v.Y.GetHashCode();
-                int c = v.Z.GetHashCode();
-                return (a << 16) ^ (b << 8) ^ c;
-            }
-        }
-
         public Dictionary<Vertex, int> m_vertices;
         public List<Triangle> m_triangles;
         public float m_obbXmin;
@@ -70,8 +52,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 
         public  MeshBuildingData()
         {
-            vertexcomp vcomp = new vertexcomp();
-            m_vertices = new Dictionary<Vertex, int>(vcomp);
+            m_vertices = new Dictionary<Vertex, int>();
             m_triangles = new List<Triangle>();
             m_centroid = Vector3.Zero;
             m_centroidDiv = 0;
@@ -117,7 +98,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             m_obboffset = Vector3.Zero;
         }
 
-        public Mesh Scale(Vector3 scale)
+        public unsafe Mesh Scale(Vector3 scale)
         {
             if (m_verticesPtr == null || m_indicesPtr == null)
                 return null;
@@ -149,15 +130,21 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             result.m_obboffset.Z = m_obboffset.Z * z;
 
             result.vertices = new float[vertices.Length];
-            int j = 0;
-            for (int i = 0; i < m_vertexCount; i++)
+
+            fixed(float* dsts = result.vertices, srcs = vertices)
             {
-                result.vertices[j] = vertices[j] * x;
-                j++;
-                result.vertices[j] = vertices[j] * y;
-                j++;
-                result.vertices[j] = vertices[j] * z;
-                j++;
+                float* dst = dsts;
+                float* src = srcs;
+                float* end = srcs + vertices.Length;
+                while (src < end)
+                {
+                    *dst = *src * x;
+                    dst++; src++;
+                    *dst = *src * y;
+                    dst++; src++;
+                    *dst = *src * z;
+                    dst++; src++;
+                }
             }
 
             result.indexes = new int[indexes.Length];
@@ -218,7 +205,6 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                 m_bdata.m_obbZmax = z;
             if (z < m_bdata.m_obbZmin)
                 m_bdata.m_obbZmin = z;
-
         }
 
         public void Add(Triangle triangle)
@@ -324,13 +310,15 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             if (m_bdata.m_vertices == null)
                 throw new NotSupportedException();
             float[] result = new float[m_bdata.m_vertices.Count * 3];
+            int k = 0;
             foreach (KeyValuePair<Vertex, int> kvp in m_bdata.m_vertices)
             {
                 Vertex v = kvp.Key;
                 int i = kvp.Value;
-                result[3 * i + 0] = v.X;
-                result[3 * i + 1] = v.Y;
-                result[3 * i + 2] = v.Z;
+                k = 3 * i;
+                result[k] = v.X;
+                result[k + 1] = v.Y;
+                result[k + 2] = v.Z;
             }
             return result;
         }
@@ -364,12 +352,14 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             if (m_bdata.m_triangles == null)
                 throw new NotSupportedException();
             int[] result = new int[m_bdata.m_triangles.Count * 3];
+            int k;
             for (int i = 0; i < m_bdata.m_triangles.Count; i++)
             {
+                k= 3 * i;
                 Triangle t = m_bdata.m_triangles[i];
-                result[3 * i + 0] = m_bdata.m_vertices[t.v1];
-                result[3 * i + 1] = m_bdata.m_vertices[t.v2];
-                result[3 * i + 2] = m_bdata.m_vertices[t.v3];
+                result[k] = m_bdata.m_vertices[t.v1];
+                result[k + 1] = m_bdata.m_vertices[t.v2];
+                result[k + 2] = m_bdata.m_vertices[t.v3];
             }
             return result;
         }
@@ -463,9 +453,9 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                 if (v == null)
                     continue;
                 float x, y, z;
-                x = v.X*matrix[0, 0] + v.Y*matrix[1, 0] + v.Z*matrix[2, 0];
-                y = v.X*matrix[0, 1] + v.Y*matrix[1, 1] + v.Z*matrix[2, 1];
-                z = v.X*matrix[0, 2] + v.Y*matrix[1, 2] + v.Z*matrix[2, 2];
+                x = v.X * matrix[0, 0] + v.Y * matrix[1, 0] + v.Z * matrix[2, 0];
+                y = v.X * matrix[0, 1] + v.Y * matrix[1, 1] + v.Z * matrix[2, 1];
+                z = v.X * matrix[0, 2] + v.Y * matrix[1, 2] + v.Z * matrix[2, 2];
                 v.X = x + offset[0];
                 v.Y = y + offset[1];
                 v.Z = z + offset[2];

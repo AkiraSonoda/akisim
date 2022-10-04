@@ -44,7 +44,7 @@ using Mono.Addins;
 
 namespace OpenSim.Region.CoreModules.World.Estate
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "XEstate")]
+    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EstateModule")]
     public class EstateModule : ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -95,7 +95,7 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
             // Instantiate the request handler
             IHttpServer server = MainServer.GetHttpServer(port);
-            server.AddStreamHandler(new EstateRequestHandler(this, token));
+            server.AddSimpleStreamHandler(new EstateSimpleRequestHandler(this, token));
         }
 
         public void PostInitialise()
@@ -150,7 +150,7 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
         private Scene FindScene(UUID RegionID)
         {
-            foreach (Scene s in Scenes)
+            foreach (Scene s in m_Scenes)
             {
                 if (s.RegionInfo.RegionID == RegionID)
                     return s;
@@ -187,16 +187,14 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
             uint estateID = senderScenes.RegionInfo.EstateSettings.EstateID;
 
-            foreach (Scene s in Scenes)
+            foreach (Scene s in m_Scenes)
             {
                 if (s.RegionInfo.EstateSettings.EstateID == estateID)
                 {
                     IDialogModule dm = s.RequestModuleInterface<IDialogModule>();
-
                     if (dm != null)
                     {
-                        dm.SendNotificationToUsersInRegion(FromID, FromName,
-                                Message);
+                        dm.SendNotificationToUsersInRegion(FromID, FromName, Message);
                     }
                 }
             }
@@ -204,33 +202,40 @@ namespace OpenSim.Region.CoreModules.World.Estate
                 m_EstateConnector.SendEstateMessage(estateID, FromID, FromName, Message);
         }
 
-        private void OnEstateTeleportOneUserHomeRequest(IClientAPI client, UUID invoice, UUID senderID, UUID prey)
+        private void OnEstateTeleportOneUserHomeRequest(IClientAPI client, UUID invoice, UUID senderID, UUID prey, bool kick)
         {
-            if (prey == UUID.Zero)
+            if (prey.IsZero())
                 return;
 
-            if (!(client.Scene is Scene))
+            Scene scene = client.Scene as Scene;
+            if (scene == null)
                 return;
-
-            Scene scene = (Scene)client.Scene;
-
-            uint estateID = scene.RegionInfo.EstateSettings.EstateID;
 
             if (!scene.Permissions.CanIssueEstateCommand(client.AgentId, false))
                 return;
 
-            foreach (Scene s in Scenes)
+            uint estateID = scene.RegionInfo.EstateSettings.EstateID;
+            foreach (Scene s in m_Scenes)
             {
                 if (s.RegionInfo.EstateSettings.EstateID != estateID)
                     continue;
 
                 ScenePresence p = scene.GetScenePresence(prey);
-                if (p != null && !p.IsChildAgent )
+                if (p != null && !p.IsChildAgent && !p.IsDeleted && !p.IsInTransit)
                 {
-                    if(!p.IsDeleted && !p.IsInTransit)
+                    if (kick)
+                    {
+                        p.ControllingClient.Kick("You have been kicked out");
+                        s.CloseAgent(p.UUID, false);
+                    }
+                    else
                     {
                         p.ControllingClient.SendTeleportStart(16);
-                        scene.TeleportClientHome(prey, p.ControllingClient);
+                        if (!s.TeleportClientHome(prey, client))
+                        {
+                            p.ControllingClient.Kick("You were teleported home by the region owner, but the TP failed");
+                            s.CloseAgent(p.UUID, false);
+                        }
                     }
                     return;
                 }
@@ -241,28 +246,32 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
         private void OnEstateTeleportAllUsersHomeRequest(IClientAPI client, UUID invoice, UUID senderID)
         {
-            if (!(client.Scene is Scene))
+            Scene scene = client.Scene as Scene;
+            if(scene == null)
                 return;
-
-            Scene scene = (Scene)client.Scene;
-
-            uint estateID = scene.RegionInfo.EstateSettings.EstateID;
 
             if (!scene.Permissions.CanIssueEstateCommand(client.AgentId, false))
                 return;
 
-            foreach (Scene s in Scenes)
+            uint estateID = scene.RegionInfo.EstateSettings.EstateID;
+            foreach (Scene s in m_Scenes)
             {
                 if (s.RegionInfo.EstateSettings.EstateID != estateID)
                     continue;
 
-                scene.ForEachScenePresence(delegate(ScenePresence p) {
-                    if (p != null && !p.IsChildAgent)
+                scene.ForEachScenePresence(delegate(ScenePresence p)
                     {
-                        p.ControllingClient.SendTeleportStart(16);
-                        scene.TeleportClientHome(p.ControllingClient.AgentId, p.ControllingClient);
-                    }
-                });
+                        if (p != null && !p.IsChildAgent && !p.IsDeleted && !p.IsInTransit)
+                        {
+                            p.ControllingClient.SendTeleportStart(16);
+                            scene.TeleportClientHome(p.ControllingClient.AgentId, client);
+                            if (!s.TeleportClientHome(p.ControllingClient.AgentId, client))
+                            {
+                                p.ControllingClient.Kick("You were teleported home by the region owner, but the TP failed - you have been logged out.");
+                                s.CloseAgent(p.UUID, false);
+                            }
+                        }
+                    });
             }
 
             m_EstateConnector.SendTeleportHomeAllUsers(estateID);

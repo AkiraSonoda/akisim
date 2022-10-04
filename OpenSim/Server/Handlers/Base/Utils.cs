@@ -26,13 +26,12 @@
  */
 
 using System;
-using System.Collections;
-using System.Net;
+using System.IO;
+using System.IO.Compression;
 
-using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
-using OpenSim.Services.Interfaces;
 using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Server.Handlers.Base
 {
@@ -41,8 +40,9 @@ namespace OpenSim.Server.Handlers.Base
         /// <summary>
         /// Extract the param from an uri.
         /// </summary>
-        /// <param name="uri">Something like this: /uuid/ or /uuid/handle/release</param>
-        /// <param name="uri">uuid on uuid field</param>
+        /// <param name="uri">Something like this: /xxxx/uuid/ or /xxxx/uuid/handle/release</param>
+        /// <param name="uuid">uuid on uuid field</param>
+        /// <param name="regionHandle">optional regionHandle</param>
         /// <param name="action">optional action</param>
         public static bool GetParams(string path, out UUID uuid, out ulong regionHandle, out string action)
         {
@@ -58,13 +58,13 @@ namespace OpenSim.Server.Handlers.Base
             }
             else
             {
-                if (!UUID.TryParse(parts[0], out uuid))
+                if (!UUID.TryParse(parts[1], out uuid))
                     return false;
 
-                if (parts.Length >= 2)
-                    UInt64.TryParse(parts[1], out regionHandle);
                 if (parts.Length >= 3)
-                    action = parts[2];
+                    UInt64.TryParse(parts[2], out regionHandle);
+                if (parts.Length >= 4)
+                    action = parts[3];
 
                 return true;
             }
@@ -93,5 +93,28 @@ namespace OpenSim.Server.Handlers.Base
             return false;
         }
 
+        public static OSDMap DeserializeOSMap(IOSHttpRequest httpRequest)
+        {
+            Stream inputStream = httpRequest.InputStream;
+            Stream innerStream = null;
+            try
+            {
+                if ((httpRequest.ContentType == "application/x-gzip" || httpRequest.Headers["Content-Encoding"] == "gzip") || (httpRequest.Headers["X-Content-Encoding"] == "gzip"))
+                {
+                    innerStream = inputStream;
+                    inputStream = new GZipStream(innerStream, CompressionMode.Decompress);
+                }
+                return (OSDMap)OSDParser.DeserializeJson(inputStream);
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                if (innerStream != null)
+                    innerStream.Dispose();
+            }
+        }
     }
 }

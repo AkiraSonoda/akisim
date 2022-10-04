@@ -52,7 +52,6 @@ namespace OpenSim.Services.FSAssetService
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         static System.Text.ASCIIEncoding enc = new System.Text.ASCIIEncoding();
-        static SHA256CryptoServiceProvider SHA256 = new SHA256CryptoServiceProvider();
 
         static byte[] ToCString(string s)
         {
@@ -131,10 +130,10 @@ namespace OpenSim.Services.FSAssetService
 
             if (dbConfig != null)
             {
-                if (dllName == String.Empty)
+                if (dllName.Length == 0)
                     dllName = dbConfig.GetString("StorageProvider", String.Empty);
 
-                if (connectionString == String.Empty)
+                if (connectionString.Length == 0)
                     connectionString = dbConfig.GetString("ConnectionString", String.Empty);
             }
 
@@ -179,7 +178,7 @@ namespace OpenSim.Services.FSAssetService
             Directory.CreateDirectory(spoolTmp);
 
             m_FSBase = assetConfig.GetString("BaseDirectory", String.Empty);
-            if (m_FSBase == String.Empty)
+            if (m_FSBase.Length == 0)
             {
                 m_log.ErrorFormat("[FSASSETS]: BaseDirectory not specified");
                 throw new Exception("Configuration error");
@@ -329,7 +328,6 @@ namespace OpenSim.Services.FSAssetService
                                 using (GZipStream gz = new GZipStream(new FileStream(diskFile + ".gz", FileMode.Create), CompressionMode.Compress))
                                 {
                                     gz.Write(data, 0, data.Length);
-                                    gz.Close();
                                 }
                                 File.Delete(files[i]);
 
@@ -358,7 +356,9 @@ namespace OpenSim.Services.FSAssetService
 
         string GetSHA256Hash(byte[] data)
         {
-            byte[] hash = SHA256.ComputeHash(data);
+            byte[] hash;
+            using (SHA256CryptoServiceProvider SHA256 = new SHA256CryptoServiceProvider())
+                hash = SHA256.ComputeHash(data);
 
             return BitConverter.ToString(hash).Replace("-", String.Empty);
         }
@@ -418,6 +418,11 @@ namespace OpenSim.Services.FSAssetService
             string hash;
 
             return Get(id, out hash);
+        }
+
+        public AssetBase Get(string id, string ForeignAssetService, bool dummy)
+        {
+            return null;
         }
 
         private AssetBase Get(string id, out string sha)
@@ -620,6 +625,24 @@ namespace OpenSim.Services.FSAssetService
             int tickCount = Environment.TickCount;
             string hash = GetSHA256Hash(asset.Data);
 
+            if (asset.Name.Length > AssetBase.MAX_ASSET_NAME)
+            {
+                string assetName = asset.Name.Substring(0, AssetBase.MAX_ASSET_NAME);
+                m_log.WarnFormat(
+                    "[FSASSETS]: Name '{0}' for asset {1} truncated from {2} to {3} characters on add",
+                    asset.Name, asset.ID, asset.Name.Length, assetName.Length);
+                asset.Name = assetName;
+            }
+
+            if (asset.Description.Length > AssetBase.MAX_ASSET_DESC)
+            {
+                string assetDescription = asset.Description.Substring(0, AssetBase.MAX_ASSET_DESC);
+                m_log.WarnFormat(
+                    "[FSASSETS]: Description '{0}' for asset {1} truncated from {2} to {3} characters on add",
+                    asset.Description, asset.ID, asset.Description.Length, assetDescription.Length);
+                asset.Description = assetDescription;
+            }
+
             if (!AssetExists(hash))
             {
                 string tempFile = Path.Combine(Path.Combine(m_SpoolDirectory, "spool"), hash + ".asset");
@@ -645,15 +668,15 @@ namespace OpenSim.Services.FSAssetService
                 }
             }
 
-            if (asset.ID == string.Empty)
+            if (asset.ID.Length == 0)
             {
-                if (asset.FullID == UUID.Zero)
+                if (asset.FullID.IsZero())
                 {
                     asset.FullID = UUID.Random();
                 }
                 asset.ID = asset.FullID.ToString();
             }
-            else if (asset.FullID == UUID.Zero)
+            else if (asset.FullID.IsZero())
             {
                 UUID uuid = UUID.Zero;
                 if (UUID.TryParse(asset.ID, out uuid))
@@ -810,6 +833,11 @@ namespace OpenSim.Services.FSAssetService
         public AssetBase GetCached(string id)
         {
             return Get(id);
+        }
+
+        public void Get(string id, string ForeignAssetService, bool StoreOnLocalGrid, SimpleAssetRetrieved callBack)
+        {
+            return;
         }
     }
 }

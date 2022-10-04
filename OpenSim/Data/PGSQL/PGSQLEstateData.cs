@@ -177,10 +177,12 @@ namespace OpenSim.Data.PGSQL
             return es;
         }
 
-        public EstateSettings CreateNewEstate()
+        public EstateSettings CreateNewEstate(int estateID)
         {
             EstateSettings es = new EstateSettings();
+            
             es.OnSave += StoreEstateSettings;
+            es.EstateID = Convert.ToUInt32(estateID);
 
             DoCreate(es);
 
@@ -197,7 +199,9 @@ namespace OpenSim.Data.PGSQL
         {
             List<string> names = new List<string>(FieldList);
 
-            names.Remove("EstateID");
+            // Remove EstateID and use AutoIncrement
+            if (es.EstateID < 100)
+                names.Remove("EstateID");
 
             string sql = string.Format("insert into estate_settings (\"{0}\") values ( :{1} )", String.Join("\",\"", names.ToArray()), String.Join(", :", names.ToArray()));
 
@@ -215,10 +219,9 @@ namespace OpenSim.Data.PGSQL
                 //insertCommand.Parameters.Add(idParameter);
                 conn.Open();
 
-                es.EstateID = 100;
-
-                if (insertCommand.ExecuteNonQuery() > 0)
+                if (insertCommand.ExecuteNonQuery() > 0 && es.EstateID < 100)
                 {
+                    // Only get Auto ID if we actually used it
                     insertCommand.CommandText = "Select cast(lastval() as int) as ID ;";
 
                     using (NpgsqlDataReader result = insertCommand.ExecuteReader())
@@ -286,7 +289,7 @@ namespace OpenSim.Data.PGSQL
         {
             es.ClearBans();
 
-            string sql = "select \"bannedUUID\" from estateban where \"EstateID\" = :EstateID";
+            string sql = "select * from estateban where \"EstateID\" = :EstateID";
 
             using (NpgsqlConnection conn = new NpgsqlConnection(m_connectionString))
             using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
@@ -302,6 +305,8 @@ namespace OpenSim.Data.PGSQL
                         EstateBan eb = new EstateBan();
 
                         eb.BannedUserID = new UUID((Guid)reader["bannedUUID"]); //uuid;
+                        eb.BanningUserID = new UUID((Guid)reader["banningUUID"]); //uuid;
+                        eb.BanTime = Convert.ToInt32(reader["banTime"]);
                         eb.BannedHostAddress = "0.0.0.0";
                         eb.BannedHostIPMask = "0.0.0.0";
                         es.AddBan(eb);
@@ -346,11 +351,15 @@ namespace OpenSim.Data.PGSQL
                     cmd.ExecuteNonQuery();
 
                     //Insert after
-                    cmd.CommandText = "insert into estateban (\"EstateID\", \"bannedUUID\",\"bannedIp\", \"bannedIpHostMask\", \"bannedNameMask\") values ( :EstateID, :bannedUUID, '','','' )";
+                    cmd.CommandText = "insert into estateban (\"EstateID\", \"bannedUUID\",\"bannedIp\", \"bannedIpHostMask\", \"bannedNameMask\", \"banningUUID\",\"banTime\" ) values ( :EstateID, :bannedUUID, '','','', :banningUUID, :banTime )";
                     cmd.Parameters.AddWithValue("bannedUUID", Guid.Empty);
                     foreach (EstateBan b in es.EstateBans)
                     {
+                        cmd.Parameters["EstateID"].Value = b.EstateID;
                         cmd.Parameters["bannedUUID"].Value = b.BannedUserID.Guid;
+                        cmd.Parameters["banningUUID"].Value = b.BanningUserID.Guid;
+                        cmd.Parameters["banTime"].Value = b.BanTime;
+
                         cmd.ExecuteNonQuery();
                     }
                 }

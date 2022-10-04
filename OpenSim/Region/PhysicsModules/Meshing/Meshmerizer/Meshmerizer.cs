@@ -66,7 +66,7 @@ namespace OpenSim.Region.PhysicsModule.Meshing
 
         private bool cacheSculptMaps = true;
         private string decodedSculptMapPath = null;
-        private bool useMeshiesPhysicsMesh = false;
+        private bool useMeshiesPhysicsMesh = true;
 
         private float minSizeForComplexMesh = 0.2f; // prims with all dimensions smaller than this will have a bounding box mesh
 
@@ -597,28 +597,22 @@ namespace OpenSim.Region.PhysicsModule.Meshing
         {
             OSD decodedOsd = null;
 
-            using (MemoryStream inMs = new MemoryStream(meshBytes))
+            using (MemoryStream outMs = new MemoryStream())
             {
-                using (MemoryStream outMs = new MemoryStream())
+                using (MemoryStream inMs = new MemoryStream(meshBytes))
                 {
                     using (DeflateStream decompressionStream = new DeflateStream(inMs, CompressionMode.Decompress))
                     {
-                        byte[] readBuffer = new byte[2048];
+                        byte[] readBuffer = new byte[8192];
                         inMs.Read(readBuffer, 0, 2); // skip first 2 bytes in header
                         int readLen = 0;
 
                         while ((readLen = decompressionStream.Read(readBuffer, 0, readBuffer.Length)) > 0)
                             outMs.Write(readBuffer, 0, readLen);
-
-                        outMs.Flush();
-
-                        outMs.Seek(0, SeekOrigin.Begin);
-
-                        byte[] decompressedBuf = outMs.GetBuffer();
-
-                        decodedOsd = OSDParser.DeserializeLLSDBinary(decompressedBuf);
                     }
                 }
+                outMs.Seek(0, SeekOrigin.Begin);
+                decodedOsd = OSDParser.DeserializeLLSDBinary(outMs);
             }
             return decodedOsd;
         }
@@ -642,7 +636,7 @@ namespace OpenSim.Region.PhysicsModule.Meshing
             Image idata = null;
             string decodedSculptFileName = "";
 
-            if (cacheSculptMaps && primShape.SculptTexture != UUID.Zero)
+            if (cacheSculptMaps && !primShape.SculptTexture.IsZero())
             {
                 decodedSculptFileName = System.IO.Path.Combine(decodedSculptMapPath, "smap_" + primShape.SculptTexture.ToString());
                 try

@@ -28,7 +28,7 @@
 using System.IO;
 using System.Net;
 using System.Text;
-using HttpServer;
+using OSHttpServer;
 
 namespace OpenSim.Framework.Servers.HttpServer
 {
@@ -195,18 +195,53 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
         }
 
-        /// <summary>
-        /// Set a redirct location.
-        /// </summary>
-        public string RedirectLocation
+        public byte[] RawBuffer
         {
-            // get { return _redirectLocation; }
+            get
+            {
+                return _httpResponse.RawBuffer;
+            }
             set
             {
-                _httpResponse.Redirect(value);
+                _httpResponse.RawBuffer = value;
             }
         }
 
+        public int RawBufferStart
+        {
+            get
+            {
+                return _httpResponse.RawBufferStart;
+            }
+            set
+            {
+                _httpResponse.RawBufferStart = value;
+            }
+        }
+
+        public int RawBufferLen
+        {
+            get
+            {
+                return _httpResponse.RawBufferLen;
+            }
+            set
+            {
+                _httpResponse.RawBufferLen = value;
+            }
+        }
+
+        public int Priority
+        {
+            get
+            {
+                return _httpResponse.Priority;
+            }
+            set
+            {
+                _httpResponse.Priority = value;
+            }
+        }
 
         /// <summary>
         /// Chunk transfers.
@@ -215,12 +250,12 @@ namespace OpenSim.Framework.Servers.HttpServer
         {
             get
             {
-                    return _httpResponse.Chunked;
+               return _httpResponse.Chunked;
             }
 
             set
             {
-                _httpResponse.Chunked = value;
+               _httpResponse.Chunked = value;
             }
         }
 
@@ -240,6 +275,10 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
         }
 
+        public double RequestTS
+        {
+            get {return _httpResponse.RequestTS; }
+        }
 
         /// <summary>
         /// HTTP status description.
@@ -257,27 +296,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
         }
 
-        public bool ReuseContext
-        {
-            get
-            {
-                if (_httpClientContext != null)
-                {
-                    return !_httpClientContext.EndWhenDone;
-                }
-                return true;
-            }
-            set
-            {
-                if (_httpClientContext != null)
-                {
-                    _httpClientContext.EndWhenDone = !value;
-                }
-            }
-        }
-
         protected IHttpResponse _httpResponse;
-        private IHttpClientContext _httpClientContext;
 
         public OSHttpResponse() {}
 
@@ -294,13 +313,22 @@ namespace OpenSim.Framework.Servers.HttpServer
         /// replying</param>
         public OSHttpResponse(OSHttpRequest req)
         {
-            _httpResponse = new HttpResponse(req.IHttpClientContext, req.IHttpRequest);
-            _httpClientContext = req.IHttpClientContext;
+            _httpResponse = new HttpResponse(req.IHttpRequest);
         }
-        public OSHttpResponse(HttpResponse resp, IHttpClientContext clientContext)
+
+        public OSHttpResponse(HttpResponse resp)
         {
             _httpResponse = resp;
-            _httpClientContext = clientContext;
+        }
+
+        /// <summary>
+        /// Set response as a http redirect
+        /// </summary>
+        /// <param name="url">redirection target url</param>
+        /// <param name="redirStatusCode">the response Status, must be Found, Redirect, Moved,MovedPermanently,RedirectKeepVerb, RedirectMethod, TemporaryRedirect. Defaults to Redirect</param>
+        public void Redirect(string url, HttpStatusCode redirStatusCode = HttpStatusCode.Redirect)
+        {
+            _httpResponse.Redirect(url, redirStatusCode);
         }
 
         /// <summary>
@@ -320,15 +348,8 @@ namespace OpenSim.Framework.Servers.HttpServer
         /// </summary>
         public void Send()
         {
-            _httpResponse.Body.Flush();
-
+            _httpResponse.Chunked = false;
             _httpResponse.Send();
-        }
-
-        public void FreeContext()
-        {
-            if (_httpClientContext != null)
-                _httpClientContext.Close();
         }
     }
 }

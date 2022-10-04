@@ -74,7 +74,7 @@ namespace OpenSim.Services.Connectors
             string serviceURI = assetConfig.GetString("AuthenticationServerURI",
                     String.Empty);
 
-            if (serviceURI == String.Empty)
+            if (serviceURI.Length == 0)
             {
                 m_log.Error("[AUTH CONNECTOR]: No Server URI named in section AuthenticationService");
                 throw new Exception("Authentication connector init error");
@@ -148,8 +148,7 @@ namespace OpenSim.Services.Connectors
                     m_ServerURI + "/auth/plain",
                     ServerUtils.BuildQueryString(sendData), m_Auth);
 
-            Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(
-                    reply);
+            Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
 
             if (replyData["Result"].ToString() != "Success")
                 return false;

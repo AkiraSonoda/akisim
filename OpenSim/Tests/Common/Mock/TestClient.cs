@@ -141,7 +141,7 @@ namespace OpenSim.Tests.Common
         public event SpinStop OnSpinStop;
         public event ViewerEffectEventHandler OnViewerEffect;
 
-        public event FetchInventory OnAgentDataUpdateRequest;
+        public event AgentDataUpdate OnAgentDataUpdateRequest;
         public event TeleportLocationRequest OnSetStartLocationRequest;
 
         public event UpdateShape OnUpdatePrimShape;
@@ -343,6 +343,8 @@ namespace OpenSim.Tests.Common
         public event GodlikeMessage onGodlikeMessage;
         public event GodUpdateRegionInfoUpdate OnGodUpdateRegionInfoUpdate;
         public event GenericCall2 OnUpdateThrottles;
+        public event AgentFOV OnAgentFOV;
+
 #pragma warning restore 67
 
         /// <value>
@@ -351,6 +353,8 @@ namespace OpenSim.Tests.Common
         private UUID m_agentId;
 
         public ISceneAgent SceneAgent { get; set; }
+
+        public bool SupportObjectAnimations { get; set; }
 
         /// <value>
         /// The last caps seed url that this client was given.
@@ -364,6 +368,8 @@ namespace OpenSim.Tests.Common
             get { return startPos; }
             set { }
         }
+
+        public float StartFar { get; set; }
 
         public virtual UUID AgentId
         {
@@ -439,11 +445,17 @@ namespace OpenSim.Tests.Common
         public virtual int NextAnimationSequenceNumber
         {
             get { return 1; }
+            set { }
         }
 
         public IScene Scene
         {
             get { return m_scene; }
+        }
+
+        public UUID ScopeId
+        {
+            get { return UUID.Zero; }
         }
 
         public bool SendLogoutPacketWhenClosing
@@ -558,7 +570,7 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public virtual void SendAppearance(UUID agentID, byte[] visualParams, byte[] textureEntry)
+        public virtual void SendAppearance(UUID agentID, byte[] visualParams, byte[] textureEntry, float hover)
         {
         }
 
@@ -571,11 +583,7 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public virtual void SendStartPingCheck(byte seq)
-        {
-        }
-
-        public virtual void SendAvatarPickerReply(AvatarPickerReplyAgentDataArgs AgentData, List<AvatarPickerReplyDataArgs> Data)
+        public virtual void SendAvatarPickerReply(UUID QueryID, List<UserData> users)
         {
         }
 
@@ -648,14 +656,11 @@ namespace OpenSim.Tests.Common
             return false;
         }
 
-        public virtual void SendLayerData(float[] map)
+        public virtual void SendLayerData()
         {
         }
 
-        public virtual void SendLayerData(int px, int py, float[] map)
-        {
-        }
-        public virtual void SendLayerData(int px, int py, float[] map, bool track)
+        public void SendLayerData(int[] map)
         {
         }
 
@@ -760,7 +765,11 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public void SendAvatarDataImmediate(ISceneEntity avatar)
+        public void SendEntityFullUpdateImmediate(ISceneEntity ent)
+        {
+        }
+
+        public void SendEntityTerseUpdateImmediate(ISceneEntity ent)
         {
         }
 
@@ -778,20 +787,21 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public virtual void SendInventoryFolderDetails(UUID ownerID, UUID folderID,
-                                                       List<InventoryItemBase> items,
-                                                       List<InventoryFolderBase> folders,
-                                                       int version,
-                                                       bool fetchFolders,
-                                                       bool fetchItems)
+        public void SendInventoryFolderDetails(UUID ownerID, UUID folderID,
+                                               List<InventoryItemBase> items,
+                                               List<InventoryFolderBase> folders,
+                                               int version,
+                                               int descendents,
+                                               bool fetchFolders,
+                                               bool fetchItems)
         {
         }
 
-        public virtual void SendInventoryItemDetails(UUID ownerID, InventoryItemBase item)
+        public void SendInventoryItemDetails(InventoryItemBase[] items)
         {
         }
 
-        public virtual void SendInventoryItemCreateUpdate(InventoryItemBase Item, uint callbackID)
+        public void SendInventoryItemCreateUpdate(InventoryItemBase Item, uint callbackID)
         {
         }
 
@@ -799,11 +809,19 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public virtual void SendRemoveInventoryItem(UUID itemID)
+        public void SendRemoveInventoryItem(UUID itemID)
         {
         }
 
-        public virtual void SendBulkUpdateInventory(InventoryNodeBase node)
+        public void SendRemoveInventoryItems(UUID[] items)
+        {
+        }
+
+        public void SendBulkUpdateInventory(InventoryNodeBase node, UUID? transactionID = null)
+        {
+        }
+
+        public void SendBulkUpdateInventory(InventoryFolderBase[] folders, InventoryItemBase[] items)
         {
         }
 
@@ -815,7 +833,8 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public virtual void SendXferPacket(ulong xferID, uint packet, byte[] data, bool isTaskInventory)
+        public virtual void SendXferPacket(ulong xferID, uint packet,
+                byte[] XferData, int XferDataOffset, int XferDatapktLen, bool isTaskInventory)
         {
         }
 
@@ -874,7 +893,7 @@ namespace OpenSim.Tests.Common
         {
         }
 
-        public virtual void SendRegionHandshake(RegionInfo regionInfo, RegionHandshakeArgs args)
+        public virtual void SendRegionHandshake()
         {
             if (OnRegionHandShakeReply != null)
             {
@@ -970,23 +989,17 @@ namespace OpenSim.Tests.Common
 
         public void SendAdminResponse(UUID Token, uint AdminLevel)
         {
-
         }
 
         public void SendGroupMembership(GroupMembershipData[] GroupMembership)
         {
-
         }
 
-        public void SendSunPos(Vector3 sunPos, Vector3 sunVel, ulong time, uint dlen, uint ylen, float phase)
+        public void SendViewerTime(Vector3 sunDir, float sunphase)
         {
         }
 
         public void SendViewerEffect(ViewerEffectPacket.EffectBlock[] effectBlocks)
-        {
-        }
-
-        public void SendViewerTime(int phase)
         {
         }
 
@@ -1311,6 +1324,10 @@ namespace OpenSim.Tests.Common
         {
         }
 
+        public void SendEmpytMuteList()
+        {
+        }
+
         public void SendMuteListUpdate(string filename)
         {
         }
@@ -1391,5 +1408,11 @@ namespace OpenSim.Tests.Common
         public void SendPartPhysicsProprieties(ISceneEntity entity)
         {
         }
+
+        public uint GetViewerCaps()
+        {
+            return 0x1000;
+        }
+
     }
 }

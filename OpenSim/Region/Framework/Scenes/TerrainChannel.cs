@@ -61,7 +61,7 @@ namespace OpenSim.Region.Framework.Scenes
         // Default, not-often-used builder
         public TerrainChannel()
         {
-            m_terrainData = new HeightmapTerrainData((int)Constants.RegionSize, (int)Constants.RegionSize, (int)Constants.RegionHeight);
+            m_terrainData = new TerrainData((int)Constants.RegionSize, (int)Constants.RegionSize, (int)Constants.RegionHeight);
             FlatLand();
             // PinHeadIsland();
         }
@@ -69,14 +69,14 @@ namespace OpenSim.Region.Framework.Scenes
         // Create terrain of given size
         public TerrainChannel(int pX, int pY)
         {
-            m_terrainData = new HeightmapTerrainData(pX, pY, (int)Constants.RegionHeight);
+            m_terrainData = new TerrainData(pX, pY, (int)Constants.RegionHeight);
         }
 
         // Create terrain of specified size and initialize with specified terrain.
         // TODO: join this with the terrain initializers.
         public TerrainChannel(String type, int pX, int pY, int pZ)
         {
-            m_terrainData = new HeightmapTerrainData(pX, pY, pZ);
+            m_terrainData = new TerrainData(pX, pY, pZ);
             if (type.Equals("flat"))
                 FlatLand();
             else
@@ -90,7 +90,7 @@ namespace OpenSim.Region.Framework.Scenes
             int hmSizeX = pM.GetLength(0);
             int hmSizeY = pM.GetLength(1);
 
-            m_terrainData = new HeightmapTerrainData(pSizeX, pSizeY, pAltitude);
+            m_terrainData = new TerrainData(pSizeX, pSizeY, pAltitude);
 
             for (int xx = 0; xx < pSizeX; xx++)
                 for (int yy = 0; yy < pSizeY; yy++)
@@ -119,10 +119,7 @@ namespace OpenSim.Region.Framework.Scenes
             return m_terrainData;
         }
 
-        // ITerrainChannel.GetFloatsSerialized()
         // This one dimensional version is ordered so height = map[y*sizeX+x];
-        // DEPRECATED: don't use this function as it does not retain the dimensions of the terrain
-        //     and the caller will probably do the wrong thing if the terrain is not the legacy 256x256.
         public float[] GetFloatsSerialised()
         {
             return m_terrainData.GetFloatsSerialized();
@@ -147,12 +144,12 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         // ITerrainChannel.this[x,y]
-        public double this[int x, int y]
+        public float this[int x, int y]
         {
             get {
                 if (x < 0 || x >= Width || y < 0 || y >= Height)
                     return 0;
-                return (double)m_terrainData[x, y];
+                return m_terrainData[x, y];
             }
             set
             {
@@ -196,13 +193,14 @@ namespace OpenSim.Region.Framework.Scenes
         // ITerrainChannel.LoadFromXmlString()
         public void LoadFromXmlString(string data)
         {
-            StringReader sr = new StringReader(data);
-            XmlTextReader reader = new XmlTextReader(sr);
-            reader.Read();
-
-            ReadXml(reader);
-            reader.Close();
-            sr.Close();
+            using(StringReader sr = new StringReader(data))
+            {
+                using(XmlTextReader reader = new XmlTextReader(sr))
+                {
+                    reader.DtdProcessing = DtdProcessing.Ignore;
+                    ReadXml(reader);
+                }
+            }
         }
 
         // ITerrainChannel.Merge
@@ -311,7 +309,7 @@ namespace OpenSim.Region.Framework.Scenes
             int tmpY = baseY + baseY / 2;
             int centreX = tmpX / 2;
             int centreY = tmpY / 2;
-            TerrainData terrain_tmp = new HeightmapTerrainData(tmpX, tmpY, (int)Constants.RegionHeight);
+            TerrainData terrain_tmp = new TerrainData(tmpX, tmpY, (int)Constants.RegionHeight);
             for (int xx = 0; xx < tmpX; xx++)
                 for (int yy = 0; yy < tmpY; yy++)
                     terrain_tmp[xx, yy] = -65535f; //use this height like an 'alpha' mask channel
@@ -485,7 +483,7 @@ namespace OpenSim.Region.Framework.Scenes
             byte[] dataArray = (byte[])serializer.Deserialize(xmlReader);
             int index = 0;
 
-            m_terrainData = new HeightmapTerrainData(Height, Width, (int)Constants.RegionHeight);
+            m_terrainData = new TerrainData(Height, Width, (int)Constants.RegionHeight);
 
             for (int y = 0; y < Height; y++)
             {
@@ -494,7 +492,7 @@ namespace OpenSim.Region.Framework.Scenes
                     float value;
                     value = BitConverter.ToSingle(dataArray, index);
                     index += 4;
-                    this[x, y] = (double)value;
+                    this[x, y] = value;
                 }
             }
         }
@@ -532,7 +530,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             XmlSerializer serializer = new XmlSerializer(typeof(TerrainChannelXMLPackage));
             TerrainChannelXMLPackage package = (TerrainChannelXMLPackage)serializer.Deserialize(xmlReader);
-            m_terrainData = new HeightmapTerrainData(package.Map, package.CompressionFactor, package.SizeX, package.SizeY, package.SizeZ);
+            m_terrainData = new TerrainData(package.Map, package.CompressionFactor, package.SizeX, package.SizeY, package.SizeZ);
         }
 
         // Fill the heightmap with the center bump terrain
@@ -540,19 +538,15 @@ namespace OpenSim.Region.Framework.Scenes
         {
             float cx = m_terrainData.SizeX * 0.5f;
             float cy = m_terrainData.SizeY * 0.5f;
-            float h;
+            float h, b;
             for (int x = 0; x < Width; x++)
             {
                 for (int y = 0; y < Height; y++)
                 {
- //                   h = (float)TerrainUtil.PerlinNoise2D(x, y, 2, 0.125) * 10;
-                    h = 1.0f;
-                    float spherFacA = (float)(TerrainUtil.SphericalFactor(x, y, cx, cy, 50) * 0.01d);
-                    float spherFacB = (float)(TerrainUtil.SphericalFactor(x, y, cx, cy, 100) * 0.001d);
-                    if (h < spherFacA)
-                        h = spherFacA;
-                    if (h < spherFacB)
-                        h = spherFacB;
+                    h = 25 * TerrainUtil.SphericalFactor(x - cx, y - cy, 50);
+                    b = 10 * TerrainUtil.SphericalFactor(x - cx, y - cy, 100);
+                    if (h < b)
+                        h = b;
                     m_terrainData[x, y] = h;
                 }
             }

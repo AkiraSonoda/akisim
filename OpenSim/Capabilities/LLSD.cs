@@ -83,6 +83,8 @@ namespace OpenSim.Framework.Capabilities
         {
             using (XmlTextReader reader = new XmlTextReader(st))
             {
+                reader.DtdProcessing = DtdProcessing.Ignore;
+
                 reader.Read();
                 SkipWS(reader);
 
@@ -107,17 +109,17 @@ namespace OpenSim.Framework.Capabilities
         /// <returns></returns>
         public static byte[] LLSDSerialize(object obj)
         {
-            StringWriter sw = new StringWriter();
-            XmlTextWriter writer = new XmlTextWriter(sw);
-            writer.Formatting = Formatting.None;
+            using(StringWriter sw = new StringWriter())
+            using(XmlTextWriter writer = new XmlTextWriter(sw))
+            {
+                writer.Formatting = Formatting.None;
 
-            writer.WriteStartElement(String.Empty, "llsd", String.Empty);
-            LLSDWriteOne(writer, obj);
-            writer.WriteEndElement();
-
-            writer.Close();
-
-            return Util.UTF8.GetBytes(sw.ToString());
+                writer.WriteStartElement(String.Empty, "llsd", String.Empty);
+                LLSDWriteOne(writer, obj);
+                writer.WriteEndElement();
+                writer.Flush();
+                return Util.UTF8.GetBytes(sw.ToString());
+            }           
         }
 
         /// <summary>
@@ -146,7 +148,7 @@ namespace OpenSim.Framework.Capabilities
                 writer.WriteString(obj.ToString());
                 writer.WriteEndElement();
             }
-            else if (obj is double)
+            else if (obj is double || obj is float)
             {
                 writer.WriteStartElement(String.Empty, "real", String.Empty);
                 writer.WriteString(obj.ToString());
@@ -566,7 +568,7 @@ namespace OpenSim.Framework.Capabilities
                         endPos = FindEnd(llsd, 1);
 
                         if (Double.TryParse(llsd.Substring(1, endPos - 1), NumberStyles.Float,
-                                            Utils.EnUsCulture.NumberFormat, out value))
+                                            Culture.NumberFormatInfo, out value))
                             return value;
                         else
                             throw new LLSDParseException("Failed to parse double value type");

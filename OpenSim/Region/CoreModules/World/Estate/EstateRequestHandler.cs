@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Reflection;
 using System.Xml;
 
@@ -42,7 +43,7 @@ using log4net;
 
 namespace OpenSim.Region.CoreModules.World.Estate
 {
-    public class EstateRequestHandler : BaseStreamHandler
+    public class EstateSimpleRequestHandler :SimpleStreamHandler
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -50,61 +51,83 @@ namespace OpenSim.Region.CoreModules.World.Estate
         protected Object m_RequestLock = new Object();
         private string token;
 
-        public EstateRequestHandler(EstateModule fmodule, string _token)
-                : base("POST", "/estate")
+        public EstateSimpleRequestHandler(EstateModule fmodule, string _token) : base("/estate")
         {
             m_EstateModule = fmodule;
             token = _token;
         }
 
-        protected override byte[] ProcessRequest(string path, Stream requestData,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+        protected override void ProcessRequest(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            StreamReader sr = new StreamReader(requestData);
-            string body = sr.ReadToEnd();
-            sr.Close();
-            body = body.Trim();
+            httpResponse.KeepAlive = false;
+            if (httpRequest.HttpMethod != "POST")
+            {
+                httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
 
-            // m_log.DebugFormat("[XESTATE HANDLER]: query String: {0}", body);
+            httpResponse.StatusCode = (int)HttpStatusCode.OK;
+
+            // m_log.DebugFormat("[ESTATE HANDLER]: query String: {0}", body);
 
             try
             {
+                string body;
+                using (StreamReader sr = new StreamReader(httpRequest.InputStream))
+                    body = sr.ReadToEnd();
+
+                body = body.Trim();
                 lock (m_RequestLock)
                 {
-                    Dictionary<string, object> request =
-                            ServerUtils.ParseQueryString(body);
+                    Dictionary<string, object> request = ServerUtils.ParseQueryString(body);
 
-                    if (!request.ContainsKey("METHOD"))
-                        return FailureResult();
+                    bool fail = true;
+                    while(true)
+                    {
+                        if (!request.ContainsKey("METHOD"))
+                            break;
 
-                    if (!request.ContainsKey("TOKEN"))
-                        return FailureResult();
+                        if (!request.ContainsKey("TOKEN"))
+                            break;
 
-                    string reqToken = request["TOKEN"].ToString();
-                    request.Remove("TOKEN");
+                        string reqToken = request["TOKEN"].ToString();
 
-                    if(token != reqToken)
-                        return FailureResult();
+                        if(token != reqToken)
+                            break;
+
+                        fail = false;
+                        break;
+                    }
+                    if(fail)
+                    {
+                        httpResponse.RawBuffer = FailureResult();
+                        return;
+                    }
 
                     string method = request["METHOD"].ToString();
                     request.Remove("METHOD");
+                    request.Remove("TOKEN");
 
                     try
                     {
                         m_EstateModule.InInfoUpdate = false;
-
                         switch (method)
                         {
                             case "update_covenant":
-                                return UpdateCovenant(request);
+                                httpResponse.RawBuffer = UpdateCovenant(request);
+                                return;
                             case "update_estate":
-                                return UpdateEstate(request);
+                                httpResponse.RawBuffer = UpdateEstate(request);
+                                return;
                             case "estate_message":
-                                return EstateMessage(request);
+                                httpResponse.RawBuffer = EstateMessage(request);
+                                return;
                             case "teleport_home_one_user":
-                                return TeleportHomeOneUser(request);
+                                httpResponse.RawBuffer = TeleportHomeOneUser(request);
+                                return;
                             case "teleport_home_all_users":
-                                return TeleportHomeAllUsers(request);
+                                httpResponse.RawBuffer = TeleportHomeAllUsers(request);
+                                return;
                         }
                     }
                     finally
@@ -115,10 +138,10 @@ namespace OpenSim.Region.CoreModules.World.Estate
             }
             catch (Exception e)
             {
-                m_log.Debug("[XESTATE]: Exception {0}" + e.ToString());
+                m_log.Debug("[ESTATE]: Exception {0}" + e.ToString());
             }
 
-            return FailureResult();
+            httpResponse.RawBuffer = FailureResult();
         }
 
         byte[] TeleportHomeAllUsers(Dictionary<string, object> request)

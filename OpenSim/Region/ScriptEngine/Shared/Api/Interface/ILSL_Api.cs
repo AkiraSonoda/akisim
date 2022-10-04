@@ -35,26 +35,32 @@ using LSL_Rotation = OpenSim.Region.ScriptEngine.Shared.LSL_Types.Quaternion;
 using LSL_String = OpenSim.Region.ScriptEngine.Shared.LSL_Types.LSLString;
 using LSL_Vector = OpenSim.Region.ScriptEngine.Shared.LSL_Types.Vector3;
 
+#pragma warning disable IDE1006
+
 namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
 {
     public interface ILSL_Api
     {
         void state(string newState);
 
-       LSL_Integer llAbs(int i);
-         LSL_Float llAcos(double val);
-              void llAddToLandBanList(string avatar, double hours);
-              void llAddToLandPassList(string avatar, double hours);
-              void llAdjustSoundVolume(double volume);
-              void llAllowInventoryDrop(int add);
+       LSL_Integer llAbs(LSL_Integer val);
+         LSL_Float llAcos(LSL_Float val);
+                   //ApiDesc Sleep 0.1
+              void llAddToLandBanList(LSL_Key avatarId, LSL_Float hours);
+                    //ApiDesc Sleep 0.1
+              void llAddToLandPassList(LSL_Key avatarId, LSL_Float hours);
+                   //ApiDesc Sleep 0.1
+              void llAdjustSoundVolume(LSL_Float volume);
+              void llAllowInventoryDrop(LSL_Integer add);
          LSL_Float llAngleBetween(LSL_Rotation a, LSL_Rotation b);
-              void llApplyImpulse(LSL_Vector force, int local);
+              void llApplyImpulse(LSL_Vector force, LSL_Integer local);
               void llApplyRotationalImpulse(LSL_Vector force, int local);
-         LSL_Float llAsin(double val);
-         LSL_Float llAtan2(double x, double y);
-              void llAttachToAvatar(int attachment);
+         LSL_Float llAsin(LSL_Float val);
+         LSL_Float llAtan2(LSL_Float x, LSL_Float y);
+              void llAttachToAvatar(LSL_Integer attachment);
+              void llAttachToAvatarTemp(LSL_Integer attachmentPoint);
            LSL_Key llAvatarOnSitTarget();
-           LSL_Key llAvatarOnLinkSitTarget(int linknum);
+           LSL_Key llAvatarOnLinkSitTarget(LSL_Integer linknum);
       LSL_Rotation llAxes2Rot(LSL_Vector fwd, LSL_Vector left, LSL_Vector up);
       LSL_Rotation llAxisAngle2Rot(LSL_Vector axis, double angle);
        LSL_Integer llBase64ToInteger(string str);
@@ -65,14 +71,18 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
        LSL_Integer llCeil(double f);
               void llClearCameraParams();
        LSL_Integer llClearLinkMedia(LSL_Integer link, LSL_Integer face);
+                   //ApiDesc Sleep 0.1
        LSL_Integer llClearPrimMedia(LSL_Integer face);
+                   //ApiDesc Sleep 1.0
               void llCloseRemoteDataChannel(string channel);
          LSL_Float llCloud(LSL_Vector offset);
-              void llCollisionFilter(string name, string id, int accept);
-              void llCollisionSound(string impact_sound, double impact_volume);
-              void llCollisionSprite(string impact_sprite);
+              void llCollisionFilter(LSL_String name, LSL_Key id, LSL_Integer accept);
+              void llCollisionSound(LSL_String impact_sound, LSL_Float impact_volume);
+                   //ApiDesc Not Supported - does nothing
+              void llCollisionSprite(LSL_String impact_sprite);
          LSL_Float llCos(double f);
-              void llCreateLink(string target, int parent);
+                   //ApiDesc Sleep 1.0
+              void llCreateLink(LSL_Key targetId, LSL_Integer parent);
           LSL_List llCSV2List(string src);
           LSL_List llDeleteSubList(LSL_List src, int start, int end);
         LSL_String llDeleteSubString(string src, int start, int end);
@@ -93,11 +103,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         LSL_Vector llDetectedTouchST(int index);
         LSL_Vector llDetectedTouchUV(int index);
         LSL_Vector llDetectedVel(int number);
-              void llDialog(string avatar, string message, LSL_List buttons, int chat_channel);
+              void llDialog(LSL_Key avatarId, LSL_String message, LSL_List buttons, int chat_channel);
               void llDie();
         LSL_String llDumpList2String(LSL_List src, string seperator);
        LSL_Integer llEdgeOfWorld(LSL_Vector pos, LSL_Vector dir);
-              void llEjectFromLand(string pest);
+                   //ApiDesc Sleep 1.0
+              void llEjectFromLand(LSL_Key avatarId);
               void llEmail(string address, string subject, string message);
         LSL_String llEscapeURL(string url);
       LSL_Rotation llEuler2Rot(LSL_Vector v);
@@ -107,22 +118,22 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
          LSL_Float llFrand(double mag);
            LSL_Key llGenerateKey();
         LSL_Vector llGetAccel();
-       LSL_Integer llGetAgentInfo(string id);
-        LSL_String llGetAgentLanguage(string id);
+       LSL_Integer llGetAgentInfo(LSL_Key id);
+        LSL_String llGetAgentLanguage(LSL_Key id);
           LSL_List llGetAgentList(LSL_Integer scope, LSL_List options);
-        LSL_Vector llGetAgentSize(string id);
+        LSL_Vector llGetAgentSize(LSL_Key id);
          LSL_Float llGetAlpha(int face);
          LSL_Float llGetAndResetTime();
-        LSL_String llGetAnimation(string id);
-          LSL_List llGetAnimationList(string id);
+        LSL_String llGetAnimation(LSL_Key id);
+          LSL_List llGetAnimationList(LSL_Key id);
        LSL_Integer llGetAttached();
-          LSL_List llGetAttachedList(string id);
+          LSL_List llGetAttachedList(LSL_Key id);
           LSL_List llGetBoundingBox(string obj);
         LSL_Vector llGetCameraPos();
       LSL_Rotation llGetCameraRot();
         LSL_Vector llGetCenterOfMass();
         LSL_Vector llGetColor(int face);
-        LSL_String llGetCreator();
+        LSL_Key    llGetCreator();
         LSL_String llGetDate();
          LSL_Float llGetEnergy();
         LSL_String llGetEnv(LSL_String name);
@@ -155,16 +166,16 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
          LSL_Float llGetMassMKS();
        LSL_Integer llGetMemoryLimit();
               void llGetNextEmail(string address, string subject);
-        LSL_String llGetNotecardLine(string name, int line);
+           LSL_Key llGetNotecardLine(string name, int line);
            LSL_Key llGetNumberOfNotecardLines(string name);
        LSL_Integer llGetNumberOfPrims();
        LSL_Integer llGetNumberOfSides();
         LSL_String llGetObjectDesc();
-          LSL_List llGetObjectDetails(string id, LSL_List args);
-         LSL_Float llGetObjectMass(string id);
+          LSL_List llGetObjectDetails(LSL_Key objectId, LSL_List args);
+         LSL_Float llGetObjectMass(LSL_Key objectId);
         LSL_String llGetObjectName();
        LSL_Integer llGetObjectPermMask(int mask);
-       LSL_Integer llGetObjectPrimCount(string object_id);
+       LSL_Integer llGetObjectPrimCount(LSL_Key objectId);
         LSL_Vector llGetOmega();
            LSL_Key llGetOwner();
            LSL_Key llGetOwnerKey(string id);
@@ -196,7 +207,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
        LSL_Integer llGetStartParameter();
        LSL_Integer llGetStatus(int status);
         LSL_String llGetSubString(string src, int start, int end);
-        LSL_Vector llGetSunDirection();
         LSL_String llGetTexture(int face);
         LSL_Vector llGetTextureOffset(int face);
          LSL_Float llGetTextureRot(int side);
@@ -208,28 +218,28 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
        LSL_Integer llGetUnixTime();
         LSL_Vector llGetVel();
          LSL_Float llGetWallclock();
-              void llGiveInventory(string destination, string inventory);
-              void llGiveInventoryList(string destination, string category, LSL_List inventory);
-       LSL_Integer llGiveMoney(string destination, int amount);
-        LSL_String llTransferLindenDollars(string destination, int amount);
+              void llGiveInventory(LSL_Key destination, LSL_String inventory);
+              void llGiveInventoryList(LSL_Key destination, LSL_String folderName, LSL_List inventory);
+       LSL_Integer llGiveMoney(LSL_Key destination, LSL_Integer amount);
+           LSL_Key llTransferLindenDollars(LSL_Key destination, LSL_Integer amount);
               void llGodLikeRezObject(string inventory, LSL_Vector pos);
          LSL_Float llGround(LSL_Vector offset);
         LSL_Vector llGroundContour(LSL_Vector offset);
         LSL_Vector llGroundNormal(LSL_Vector offset);
               void llGroundRepel(double height, int water, double tau);
         LSL_Vector llGroundSlope(LSL_Vector offset);
-        LSL_String llHTTPRequest(string url, LSL_List parameters, string body);
+           LSL_Key llHTTPRequest(string url, LSL_List parameters, string body);
               void llHTTPResponse(LSL_Key id, int status, string body);
         LSL_String llInsertString(string dst, int position, string src);
               void llInstantMessage(string user, string message);
         LSL_String llIntegerToBase64(int number);
-        LSL_String llKey2Name(string id);
-        LSL_String llGetUsername(string id);
-        LSL_String llRequestUsername(string id);
-        LSL_String llGetDisplayName(string id);
-        LSL_String llRequestDisplayName(string id);
-        void llLinkParticleSystem(int linknum, LSL_List rules);
-        void llLinkSitTarget(LSL_Integer link, LSL_Vector offset, LSL_Rotation rot);
+        LSL_String llKey2Name(LSL_Key id);
+        LSL_String llGetUsername(LSL_Key id);
+           LSL_Key llRequestUsername(LSL_Key id);
+        LSL_String llGetDisplayName(LSL_Key id);
+           LSL_Key llRequestDisplayName(LSL_Key id);
+              void llLinkParticleSystem(int linknum, LSL_List rules);
+              void llLinkSitTarget(LSL_Integer link, LSL_Vector offset, LSL_Rotation rot);
         LSL_String llList2CSV(LSL_List src);
          LSL_Float llList2Float(LSL_List src, int index);
        LSL_Integer llList2Integer(LSL_List src, int index);
@@ -261,13 +271,14 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void llMakeFountain(int particles, double scale, double vel, double lifetime, double arc, int bounce, string texture, LSL_Vector offset, double bounce_offset);
               void llMakeSmoke(int particles, double scale, double vel, double lifetime, double arc, string texture, LSL_Vector offset);
               void llMapDestination(string simname, LSL_Vector pos, LSL_Vector look_at);
-              LSL_String llMD5String(string src, int nonce);
-              LSL_String llSHA1String(string src);
+        LSL_String llMD5String(string src, int nonce);
+        LSL_String llSHA1String(string src);
               void llMessageLinked(int linknum, int num, string str, string id);
               void llMinEventDelay(double delay);
               void llModifyLand(int action, int brush);
        LSL_Integer llModPow(int a, int b, int c);
               void llMoveToTarget(LSL_Vector target, double tau);
+           LSL_Key llName2Key(LSL_String name);
               void llOffsetTexture(double u, double v, int face);
               void llOpenRemoteDataChannel();
        LSL_Integer llOverMyLand(string id);
@@ -299,10 +310,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void llRemoveFromLandPassList(string avatar);
               void llRemoveInventory(string item);
               void llRemoveVehicleFlags(int flags);
+           LSL_Key llRequestUserKey(LSL_String username);
            LSL_Key llRequestAgentData(string id, int data);
-           LSL_Key llRequestInventoryData(string name);
+           LSL_Key llRequestInventoryData(LSL_String name);
               void llRequestPermissions(string agent, int perm);
-        LSL_String llRequestSecureURL();
+           LSL_Key llRequestSecureURL();
            LSL_Key llRequestSimulatorData(string simulator, int data);
            LSL_Key llRequestURL();
               void llResetLandBanList();
@@ -399,6 +411,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
          LSL_Float llSqrt(double f);
               void llStartAnimation(string anim);
               void llStopAnimation(string anim);
+              void llStartObjectAnimation(string anim);
+              void llStopObjectAnimation(string anim);
+          LSL_List llGetObjectAnimationNames();
               void llStopHover();
               void llStopLookAt();
               void llStopMoveToTarget();
@@ -406,7 +421,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void llStopSound();
        LSL_Integer llStringLength(string str);
         LSL_String llStringToBase64(string str);
-        LSL_String llStringTrim(string src, int type);
+        LSL_String llStringTrim(LSL_String src, LSL_Integer type);
        LSL_Integer llSubStringIndex(string source, string pattern);
               void llTakeCamera(string avatar);
               void llTakeControls(int controls, int accept, int pass_on);
@@ -414,6 +429,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
        LSL_Integer llTarget(LSL_Vector position, double range);
               void llTargetOmega(LSL_Vector axis, double spinrate, double gain);
               void llTargetRemove(int number);
+              void llTargetedEmail(LSL_Integer target, LSL_String subject, LSL_String message);
               void llTeleportAgentHome(string agent);
               void llTeleportAgent(string agent, string simname, LSL_Vector pos, LSL_Vector lookAt);
               void llTeleportAgentGlobalCoords(string agent, LSL_Vector global, LSL_Vector pos, LSL_Vector lookAt);
@@ -431,6 +447,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
          LSL_Float llWater(LSL_Vector offset);
               void llWhisper(int channelID, string text);
         LSL_Vector llWind(LSL_Vector offset);
+        LSL_String llXorBase64(string str1, string str2);
         LSL_String llXorBase64Strings(string str1, string str2);
         LSL_String llXorBase64StringsCorrect(string str1, string str2);
        LSL_Integer llGetLinkNumberOfSides(LSL_Integer link);
@@ -440,7 +457,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void llSetKeyframedMotion(LSL_List frames, LSL_List options);
           LSL_List GetPrimitiveParamsEx(LSL_Key prim, LSL_List rules);
           LSL_List llGetPhysicsMaterial();
-          void     llSetAnimationOverride(LSL_String animState, LSL_String anim);
+              void llSetAnimationOverride(LSL_String animState, LSL_String anim);
               void llResetAnimationOverride(LSL_String anim_state);
         LSL_String llGetAnimationOverride(LSL_String anim_state);
         LSL_String llJsonGetValue(LSL_String json, LSL_List specifiers);
@@ -448,5 +465,23 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         LSL_String llList2Json(LSL_String type, LSL_List values);
         LSL_String llJsonSetValue(LSL_String json, LSL_List specifiers, LSL_String value);
         LSL_String llJsonValueType(LSL_String json, LSL_List specifiers);
+
+
+        LSL_Integer llGetDayLength();
+        LSL_Integer llGetRegionDayLength();
+        LSL_Integer llGetDayOffset();
+        LSL_Integer llGetRegionDayOffset();
+        LSL_Vector llGetSunDirection();
+        LSL_Vector llGetRegionSunDirection();
+        LSL_Vector llGetMoonDirection();
+        LSL_Vector llGetRegionMoonDirection();
+        LSL_Rotation llGetSunRotation();
+        LSL_Rotation llGetRegionSunRotation();
+        LSL_Rotation llGetMoonRotation();
+        LSL_Rotation llGetRegionMoonRotation();
+
+         LSL_String llChar(LSL_Integer unicode);
+        LSL_Integer llOrd(LSL_String s, LSL_Integer index);
+        LSL_Integer llHash(LSL_String s);
     }
 }

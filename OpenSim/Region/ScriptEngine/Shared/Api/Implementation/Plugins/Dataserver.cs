@@ -26,16 +26,16 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using OpenMetaverse;
-using OpenSim.Region.ScriptEngine.Shared;
-using OpenSim.Region.ScriptEngine.Shared.Api;
+using OpenSim.Framework;
 
 namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 {
     public class Dataserver
     {
+        private ObjectJobEngine m_WorkPool;
+
         public AsyncCommandManager m_CmdManager;
 
         public int DataserverRequestsCount
@@ -47,12 +47,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
             }
         }
 
-        private Dictionary<string, DataserverRequest> DataserverRequests =
-                new Dictionary<string, DataserverRequest>();
+        private Dictionary<string, DataserverRequest> DataserverRequests =  new Dictionary<string, DataserverRequest>();
 
         public Dataserver(AsyncCommandManager CmdManager)
         {
             m_CmdManager = CmdManager;
+            m_WorkPool = new ObjectJobEngine(ProcessActions, "ScriptDataServer", 1000, 4);
         }
 
         private class DataserverRequest
@@ -64,32 +64,139 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
             public string handle;
 
             public DateTime startTime;
+            public Action<string> action;
         }
 
-        public UUID RegisterRequest(uint localID, UUID itemID,
-                                      string identifier)
+        public string RequestWithImediatePost(uint localID, UUID itemID, string reply)
+        {
+            string ID = UUID.Random().ToString();
+            m_CmdManager.m_ScriptEngine.PostObjectEvent(localID,
+                    new EventParams("dataserver", new Object[]
+                            { new LSL_Types.LSLString(ID),
+                            new LSL_Types.LSLString(reply)},
+                    new DetectParams[0]));
+            return ID;
+        }
+
+        //legacy
+        public UUID RegisterRequest(uint localID, UUID itemID, string identifier)
         {
             lock (DataserverRequests)
             {
                 if (DataserverRequests.ContainsKey(identifier))
                     return UUID.Zero;
 
-                DataserverRequest ds = new DataserverRequest();
+                DataserverRequest ds = new DataserverRequest()
+                {
+                    localID = localID,
+                    itemID = itemID,
 
-                ds.localID = localID;
-                ds.itemID = itemID;
+                    ID = UUID.Random(),
+                    handle = identifier,
 
-                ds.ID = UUID.Random();
-                ds.handle = identifier;
-
-                ds.startTime = DateTime.Now;
+                    startTime = DateTime.UtcNow,
+                    action = null
+                };
 
                 DataserverRequests[identifier] = ds;
+                return ds.ID;
+            }
+        }
+
+        // action, if provided, is executed async
+        // its code pattern should be:
+        //Action<string> act = eventID =>
+        //{
+        //     need operations to get reply string
+        //  m_AsyncCommands.DataserverPlugin.DataserverReply(eventID, reply);
+        //}
+        // eventID is the event id, provided by this on Invoque
+        // see ProcessActions below
+
+        // temporary don't use
+        public UUID RegisterRequest(uint localID, UUID itemID, string identifier, Action<string> action)
+        {
+            lock (DataserverRequests)
+            {
+                if (DataserverRequests.ContainsKey(identifier))
+                    return UUID.Zero;
+
+                DataserverRequest ds = new DataserverRequest()
+                {
+                    localID = localID,
+                    itemID = itemID,
+
+                    ID = UUID.Random(),
+                    handle = identifier,
+
+                    startTime = DateTime.UtcNow,
+                    action = action
+                };
+
+                DataserverRequests[identifier] = ds;
+                if (action != null)
+                    m_WorkPool.Enqueue(identifier);
 
                 return ds.ID;
             }
         }
 
+        public UUID RegisterRequest(uint localID, UUID itemID, Action<string> action)
+        {
+            lock (DataserverRequests)
+            {
+                string identifier = UUID.Random().ToString();
+
+                DataserverRequest ds = new DataserverRequest()
+                {
+                    localID = localID,
+                    itemID = itemID,
+
+                    ID = UUID.Random(),
+                    handle = identifier,
+
+                    startTime = DateTime.MaxValue,
+                    action = action
+                };
+
+                DataserverRequests[identifier] = ds;
+                if (action != null)
+                    m_WorkPool.Enqueue(identifier);
+
+                return ds.ID;
+            }
+        }
+
+        public void ProcessActions(object st)
+        {
+            string id = st as string;
+            if(string.IsNullOrEmpty(id))
+                return;
+
+            DataserverRequest ds = null;
+            lock (DataserverRequests)
+            {
+                if (!DataserverRequests.TryGetValue(id, out ds))
+                    return;
+            }
+
+            if (ds == null || ds.action == null)
+                return;
+            try
+            {
+                ds.action.Invoke(ds.handle);
+            }
+            catch { }
+
+            ds.action = null;
+            lock (DataserverRequests)
+            {
+                if (DataserverRequests.TryGetValue(id, out ds))
+                    DataserverRequests.Remove(id);
+            }
+        }
+
+        //legacy ?
         public void DataserverReply(string identifier, string reply)
         {
             DataserverRequest ds;
@@ -114,10 +221,15 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         {
             lock (DataserverRequests)
             {
-                foreach (DataserverRequest ds in new List<DataserverRequest>(DataserverRequests.Values))
+                List<string> toremove = new List<string>(DataserverRequests.Count);
+                foreach (DataserverRequest ds in DataserverRequests.Values)
                 {
                     if (ds.itemID == itemID)
-                        DataserverRequests.Remove(ds.handle);
+                        toremove.Add(ds.handle);
+                }
+                foreach (string s in toremove)
+                {
+                    DataserverRequests.Remove(s);
                 }
             }
         }
@@ -126,10 +238,16 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         {
             lock (DataserverRequests)
             {
-                foreach (DataserverRequest ds in new List<DataserverRequest>(DataserverRequests.Values))
+                List<string> toremove = new List<string>(DataserverRequests.Count);
+                DateTime expirebase = DateTime.UtcNow.AddSeconds(-30);
+                foreach (DataserverRequest ds in DataserverRequests.Values)
                 {
-                    if (ds.startTime > DateTime.Now.AddSeconds(30))
-                        DataserverRequests.Remove(ds.handle);
+                    if (ds.action == null && ds.startTime < expirebase)
+                        toremove.Add(ds.handle);
+                }
+                foreach (string s in toremove)
+                {
+                    DataserverRequests.Remove(s);
                 }
             }
         }

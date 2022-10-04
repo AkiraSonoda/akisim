@@ -60,13 +60,14 @@ namespace OpenSim.Data.MySQL
                 dbcon.Open();
                 Migration m = new Migration(dbcon, Assembly, "GridStore");
                 m.Update();
+                dbcon.Close();
             }
         }
 
         public List<RegionData> Get(string regionName, UUID scopeID)
         {
             string command = "select * from `"+m_Realm+"` where regionName like ?regionName";
-            if (scopeID != UUID.Zero)
+            if (!scopeID.IsZero())
                 command += " and ScopeID = ?scopeID";
 
             command += " order by regionName";
@@ -80,17 +81,15 @@ namespace OpenSim.Data.MySQL
             }
         }
 
-        public RegionData Get(int posX, int posY, UUID scopeID)
+        public RegionData GetSpecific(string regionName, UUID scopeID)
         {
-/* fixed size regions
-            string command = "select * from `"+m_Realm+"` where locX = ?posX and locY = ?posY";
-            if (scopeID != UUID.Zero)
+            string command = "select * from `" + m_Realm + "` where regionName = ?regionName";
+            if (!scopeID.IsZero())
                 command += " and ScopeID = ?scopeID";
 
             using (MySqlCommand cmd = new MySqlCommand(command))
             {
-                cmd.Parameters.AddWithValue("?posX", posX.ToString());
-                cmd.Parameters.AddWithValue("?posY", posY.ToString());
+                cmd.Parameters.AddWithValue("?regionName", regionName);
                 cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
 
                 List<RegionData> ret = RunCommand(cmd);
@@ -99,10 +98,13 @@ namespace OpenSim.Data.MySQL
 
                 return ret[0];
             }
-*/
-            // extend database search for maximum region size area
+
+        }
+
+        public RegionData Get(int posX, int posY, UUID scopeID)
+        {
             string command = "select * from `" + m_Realm + "` where locX between ?startX and ?endX and locY between ?startY and ?endY";
-            if (scopeID != UUID.Zero)
+            if (!scopeID.IsZero())
                 command += " and ScopeID = ?scopeID";
 
             int startX = posX - (int)Constants.MaximumRegionSize;
@@ -143,7 +145,7 @@ namespace OpenSim.Data.MySQL
         public RegionData Get(UUID regionID, UUID scopeID)
         {
             string command = "select * from `"+m_Realm+"` where uuid = ?regionID";
-            if (scopeID != UUID.Zero)
+            if (!scopeID.IsZero())
                 command += " and ScopeID = ?scopeID";
 
             using (MySqlCommand cmd = new MySqlCommand(command))
@@ -260,6 +262,8 @@ namespace OpenSim.Data.MySQL
                         retList.Add(ret);
                     }
                 }
+                cmd.Connection = null;
+                dbcon.Close();
             }
 
             return retList;
@@ -321,7 +325,7 @@ namespace OpenSim.Data.MySQL
 
                 update += " where uuid = ?regionID";
 
-                if (data.ScopeID != UUID.Zero)
+                if (!data.ScopeID.IsZero())
                     update += " and ScopeID = ?scopeID";
 
                 cmd.CommandText = update;
@@ -388,12 +392,9 @@ namespace OpenSim.Data.MySQL
             return Get((int)RegionFlags.DefaultHGRegion, scopeID);
         }
 
-        public List<RegionData> GetFallbackRegions(UUID scopeID, int x, int y)
+        public List<RegionData> GetFallbackRegions(UUID scopeID)
         {
-            List<RegionData> regions = Get((int)RegionFlags.FallbackRegion, scopeID);
-            RegionDataDistanceCompare distanceComparer = new RegionDataDistanceCompare(x, y);
-            regions.Sort(distanceComparer);
-            return regions;
+            return Get((int)RegionFlags.FallbackRegion, scopeID);
         }
 
         public List<RegionData> GetHyperlinks(UUID scopeID)
@@ -401,10 +402,15 @@ namespace OpenSim.Data.MySQL
             return Get((int)RegionFlags.Hyperlink, scopeID);
         }
 
+        public List<RegionData> GetOnlineRegions(UUID scopeID)
+        {
+            return Get((int)RegionFlags.RegionOnline, scopeID);
+        }
+
         private List<RegionData> Get(int regionFlags, UUID scopeID)
         {
             string command = "select * from `" + m_Realm + "` where (flags & " + regionFlags.ToString() + ") <> 0";
-            if (scopeID != UUID.Zero)
+            if (!scopeID.IsZero())
                 command += " and ScopeID = ?scopeID";
 
             using (MySqlCommand cmd = new MySqlCommand(command))

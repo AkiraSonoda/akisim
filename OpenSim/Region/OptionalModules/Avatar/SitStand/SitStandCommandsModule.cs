@@ -132,7 +132,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.SitStand
 
                     foreach (SceneObjectPart part in sceneObject.Parts)
                     {
-                        if (part.IsSitTargetSet && part.SitTargetAvatar == UUID.Zero)
+                        if (part.IsSitTargetSet && part.SitTargetAvatar.IsZero())
                         {
                             sitPart = part;
                             break;
@@ -142,7 +142,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.SitStand
 
                 if (sitPart != null)
                 {
-                    MainConsole.Instance.OutputFormat(
+                    MainConsole.Instance.Output(
                         "Sitting {0} on {1} {2} in {3}",
                         sp.Name, sitPart.ParentGroup.Name, sitPart.ParentGroup.UUID, m_scene.Name);
 
@@ -151,7 +151,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.SitStand
                 }
                 else
                 {
-                    MainConsole.Instance.OutputFormat(
+                    MainConsole.Instance.Output(
                         "Could not find any unoccupied set seat on which to sit {0} in {1}.  Aborting",
                         sp.Name, m_scene.Name);
 
@@ -177,7 +177,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.SitStand
             {
                 if (sp.SitGround || sp.IsSatOnObject)
                 {
-                    MainConsole.Instance.OutputFormat("Standing {0} in {1}", sp.Name, m_scene.Name);
+                    MainConsole.Instance.Output("Standing {0} in {1}", sp.Name, m_scene.Name);
                     sp.StandUp();
                 }
             }

@@ -36,6 +36,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using log4net;
 using OpenSim.Framework;
+using Nini.Config;
 
 namespace OpenSim.Framework.Console
 {
@@ -404,7 +405,7 @@ namespace OpenSim.Framework.Console
                 bool addcr = false;
                 foreach (string s in current.Keys)
                 {
-                    if (s == String.Empty)
+                    if (s.Length == 0)
                     {
                         CommandInfo ci = (CommandInfo)current[String.Empty];
                         if (ci.fn.Count != 0)
@@ -719,18 +720,15 @@ namespace OpenSim.Framework.Console
     /// </summary>
     public class CommandConsole : ConsoleBase, ICommandConsole
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public event OnOutputDelegate OnOutput;
+        public static event OnCntrCCelegate OnCntrC;
 
         public ICommands Commands { get; private set; }
 
         public CommandConsole(string defaultPrompt) : base(defaultPrompt)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             Commands = new Commands();
 
             Commands.AddCommand(
@@ -792,6 +790,33 @@ namespace OpenSim.Framework.Console
                 }
             }
             return cmdinput;
+        }
+
+        public virtual void ReadConfig(IConfigSource configSource)
+        {
+        }
+
+        public virtual void SetCntrCHandler(OnCntrCCelegate handler)
+        {
+            if(OnCntrC == null)
+            {
+                OnCntrC += handler;
+                System.Console.CancelKeyPress += CancelKeyPressed;
+            }
+        }
+
+        protected static void CancelKeyPressed(object sender, ConsoleCancelEventArgs args)
+        {
+            if (OnCntrC != null && args.SpecialKey == ConsoleSpecialKey.ControlC)
+            {
+                OnCntrC?.Invoke();
+                args.Cancel = false;
+            }
+        }
+
+        protected static void LocalCancelKeyPressed()
+        {
+            OnCntrC?.Invoke();
         }
     }
 }

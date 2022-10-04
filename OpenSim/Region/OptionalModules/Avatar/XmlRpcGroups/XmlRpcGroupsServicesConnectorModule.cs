@@ -88,6 +88,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
                 | GroupPowers.LandDeed
                 | GroupPowers.LandDivideJoin
                 | GroupPowers.LandEdit
+                | GroupPowers.AllowEnvironment
                 | GroupPowers.LandEjectAndFreeze
                 | GroupPowers.LandGardening
                 | GroupPowers.LandManageAllowed
@@ -347,7 +348,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
         public GroupRecord GetGroupRecord(UUID requestingAgentID, UUID GroupID, string GroupName)
         {
             Hashtable param = new Hashtable();
-            if (GroupID != UUID.Zero)
+            if (!GroupID.IsZero())
             {
                 param["GroupID"] = GroupID.ToString();
             }
@@ -666,6 +667,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
                 data.ListInProfile = ((string)membership["ListInProfile"]) == "1";
                 data.AgentPowers = ulong.Parse((string)membership["AgentPowers"]);
                 data.Title = (string)membership["Title"];
+                if(membership.ContainsKey("OnlineStatus"))
+                    data.OnlineStatus = (string)membership["OnlineStatus"];
 
                 members.Add(data);
             }

@@ -27,16 +27,15 @@
 */
 
 using System.Collections;
+using System.Net;
 using System.Reflection;
 using System.Xml;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Capabilities;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Scenes;
-using Caps = OpenSim.Framework.Capabilities.Caps;
 
 namespace OpenSim.Region.DataSnapshot
 {
@@ -45,6 +44,7 @@ namespace OpenSim.Region.DataSnapshot
 //        private Scene m_scene = null;
         private DataSnapshotManager m_externalData = null;
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private ExpiringCache<string, int> throotleGen = new ExpiringCache<string, int>();
 
         public DataRequestHandler(Scene scene, DataSnapshotManager externalData)
         {
@@ -52,48 +52,65 @@ namespace OpenSim.Region.DataSnapshot
             m_externalData = externalData;
 
             //Register HTTP handler
-            if (MainServer.Instance.AddHTTPHandler("collector", OnGetSnapshot))
-            {
-                m_log.Info("[DATASNAPSHOT]: Set up snapshot service");
-            }
+            MainServer.UnSecureInstance.AddGloblaMethodHandler("collector", OnGetSnapshot);
             // Register validation callback handler
-            MainServer.Instance.AddHTTPHandler("validate", OnValidate);
+            MainServer.UnSecureInstance.AddGloblaMethodHandler("validate", OnValidate);
 
+            m_log.Info("[DATASNAPSHOT]: Set up snapshot service");
         }
 
-        public Hashtable OnGetSnapshot(Hashtable keysvals)
+        public void OnGetSnapshot(IOSHttpRequest req, IOSHttpResponse resp)
         {
-            m_log.Debug("[DATASNAPSHOT] Received collection request");
-            Hashtable reply = new Hashtable();
-            int statuscode = 200;
+            string reqtag;
+            if(req.QueryAsDictionary.TryGetValue("region", out string snapObj) && !string.IsNullOrWhiteSpace(snapObj))
+                reqtag = snapObj + req.RemoteIPEndPoint.Address.ToString();
+            else
+                reqtag = req.RemoteIPEndPoint.Address.ToString();
 
-            string snapObj = (string)keysvals["region"];
+            if (!string.IsNullOrWhiteSpace(reqtag))
+            {
+                if(throotleGen.Contains(reqtag))
+                {
+                    resp.StatusCode = (int)HttpStatusCode.ServiceUnavailable;
+                    resp.StatusDescription = "Please try again later";
+                    resp.ContentType = "text/plain";
+                    m_log.Debug("[DATASNAPSHOT] Collection request spam. reply try later");
+                    return;
+                }
+
+                throotleGen.AddOrUpdate(reqtag, 0, 60);
+            }
+
+            if(string.IsNullOrWhiteSpace(snapObj))
+                m_log.DebugFormat("[DATASNAPSHOT] Received collection request for all");
+            else
+               m_log.DebugFormat("[DATASNAPSHOT] Received collection request for {0}", snapObj);
 
             XmlDocument response = m_externalData.GetSnapshot(snapObj);
+            if(response == null)
+            {
+                resp.StatusCode = (int)HttpStatusCode.ServiceUnavailable;
+                resp.ContentType = "text/plain";
+                m_log.Debug("[DATASNAPSHOT] Collection request spam. reply try later");
+                return;
+            }
 
-            reply["str_response_string"] = response.OuterXml;
-            reply["int_response_code"] = statuscode;
-            reply["content_type"] = "text/xml";
-
-            return reply;
+            resp.RawBuffer = Util.UTF8NBGetbytes(response.OuterXml);
+            resp.ContentType = "text/xml";
+            resp.StatusCode = (int)HttpStatusCode.OK;
         }
 
-        public Hashtable OnValidate(Hashtable keysvals)
+        public void OnValidate(IOSHttpRequest req, IOSHttpResponse resp)
         {
             m_log.Debug("[DATASNAPSHOT] Received validation request");
-            Hashtable reply = new Hashtable();
-            int statuscode = 200;
+            resp.ContentType = "text/xml";
+            resp.StatusCode = (int)HttpStatusCode.Forbidden;
 
-            string secret = (string)keysvals["secret"];
-            if (secret == m_externalData.Secret.ToString())
-                statuscode = 403;
-
-            reply["str_response_string"] = string.Empty;
-            reply["int_response_code"] = statuscode;
-            reply["content_type"] = "text/plain";
-
-            return reply;
+            if(req.QueryAsDictionary.TryGetValue("secret", out string secret))
+            {
+                if (secret == m_externalData.Secret.ToString())
+                    resp.StatusCode = (int)HttpStatusCode.OK;
+            }
         }
-
     }
 }

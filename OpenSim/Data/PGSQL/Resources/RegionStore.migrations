@@ -1195,3 +1195,63 @@ CREATE TABLE bakedterrain
 	);
 
 COMMIT;
+
+:VERSION 45 #---- Add RezzerID filed in table prims
+
+BEGIN TRANSACTION;
+
+ALTER TABLE prims ADD "RezzerID" uuid NULL;
+
+COMMIT;
+
+:VERSION 46 #---- Add physics inertia data to table prims
+
+BEGIN TRANSACTION;
+
+ALTER TABLE prims ADD "PhysInertia" TEXT;
+
+COMMIT;
+
+
+:VERSION 47 #---- Convert field PassCollisions in table prims to BOOLEAN
+
+BEGIN TRANSACTION;
+
+ALTER TABLE "public"."prims" ALTER COLUMN "PassCollisions" DROP DEFAULT;
+ALTER TABLE "public"."prims"
+    ALTER COLUMN "PassCollisions" TYPE BOOLEAN
+        USING CASE WHEN "PassCollisions" = 0 THEN FALSE
+            WHEN "PassCollisions" = 1 THEN TRUE
+            ELSE NULL
+            END;
+COMMIT;
+
+:VERSION 48 #---- field Vehicle to table prims
+
+BEGIN TRANSACTION;
+
+ALTER TABLE prims ADD "Vehicle" TEXT;
+COMMIT;
+
+:VERSION 49         #----- Add standtarget and sit range
+
+BEGIN;
+ALTER TABLE `prims` 
+ADD COLUMN `standtargetx` real DEFAULT '0.0',
+ADD COLUMN `standtargety` real DEFAULT '0.0',
+ADD COLUMN `standtargetz` real DEFAULT '0.0',
+ADD COLUMN `sitactrange` real DEFAULT '0.0';
+COMMIT;
+
+
+:VERSION 50         #----- Add pseudo CRC and region cache id
+
+BEGIN;
+ALTER TABLE `prims` ADD COLUMN `pseudocrc` integer DEFAULT '0';
+ALTER TABLE `regionsettings` ADD COLUMN `cacheID` uuid DEFAULT NULL;
+COMMIT;
+
+:VERSION 51         #----- parcel environment store
+BEGIN;
+ALTER TABLE `land` ADD COLUMN `environment` varchar default NULL;
+COMMIT;

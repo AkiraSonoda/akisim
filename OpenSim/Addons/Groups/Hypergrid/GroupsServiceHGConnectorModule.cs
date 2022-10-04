@@ -279,9 +279,9 @@ namespace OpenSim.Groups
             return null;
         }
 
-        public List<DirGroupsReplyData> FindGroups(string RequestingAgentID, string search)
+        public List<DirGroupsReplyData> FindGroups(string RequestingAgentIDstr, string search)
         {
-            return m_LocalGroupsConnector.FindGroups(AgentUUI(RequestingAgentID), search);
+            return m_LocalGroupsConnector.FindGroups(RequestingAgentIDstr, search);
         }
 
         public List<GroupMembersData> GetGroupMembers(string RequestingAgentID, UUID GroupID)
@@ -469,7 +469,7 @@ namespace OpenSim.Groups
                         // Here we always return true. The user has been added to the local group,
                         // independent of whether the remote operation succeeds or not
                         url = m_UserManagement.GetUserServerURL(uid, "GroupsServerURI");
-                        if (url == string.Empty)
+                        if (url.Length == 0)
                         {
                             reason = "You don't have an accessible groups server in your home world. You membership to this group in only within this grid.";
                             return true;
@@ -742,14 +742,8 @@ namespace OpenSim.Groups
 
 
             UUID AgentID = UUID.Zero;
-            try
-            {
-                AgentID = new UUID(AgentIDStr);
-            }
-            catch (FormatException)
-            {
-                return AgentID.ToString();
-            }
+            if (!UUID.TryParse(AgentIDStr, out AgentID) || AgentID.IsZero())
+                return UUID.Zero.ToString();
 
             if (m_UserManagement.IsLocalGridUser(AgentID))
                 return AgentID.ToString();
@@ -778,14 +772,8 @@ namespace OpenSim.Groups
 
 
             UUID AgentID = UUID.Zero;
-            try
-            {
-                AgentID = new UUID(AgentIDStr);
-            }
-            catch (FormatException)
-            {
-                return AgentID.ToString();
-            }
+            if (!UUID.TryParse(AgentIDStr, out AgentID) || AgentID.IsZero())
+                return UUID.ZeroString;
 
             AgentCircuitData agent = null;
             foreach (Scene scene in m_Scenes)
@@ -835,7 +823,7 @@ namespace OpenSim.Groups
 
             serviceLocation = group.ServiceLocation;
             name = group.GroupName;
-            bool isLocal = (group.ServiceLocation == string.Empty);
+            bool isLocal = (group.ServiceLocation.Length == 0);
             //m_log.DebugFormat("[XXX]: IsLocal? {0}", isLocal);
             return isLocal;
         }

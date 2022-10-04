@@ -58,7 +58,7 @@ namespace OpenSim.Server.Handlers.Authentication
             string userService = serverConfig.GetString("UserAccountServiceModule",
                     String.Empty);
 
-            if (authService == String.Empty || userService == String.Empty)
+            if (authService.Length == 0 || userService.Length == 0)
                 throw new Exception("No AuthenticationServiceModule or no UserAccountServiceModule in config file for OpenId authentication");
 
             Object[] args = new Object[] { config };
@@ -66,10 +66,10 @@ namespace OpenSim.Server.Handlers.Authentication
             m_UserAccountService = ServerUtils.LoadPlugin<IUserAccountService>(userService, args);
 
             // Handler for OpenID user identity pages
-            server.AddStreamHandler(new OpenIdStreamHandler("GET", "/users/", m_UserAccountService, m_AuthenticationService));
+            server.AddStreamHandler(new OpenIdStreamHandler("GET", "/users", m_UserAccountService, m_AuthenticationService));
             // Handlers for the OpenID endpoint server
-            server.AddStreamHandler(new OpenIdStreamHandler("POST", "/openid/server/", m_UserAccountService, m_AuthenticationService));
-            server.AddStreamHandler(new OpenIdStreamHandler("GET", "/openid/server/", m_UserAccountService, m_AuthenticationService));
+            server.AddStreamHandler(new OpenIdStreamHandler("POST", "/openid/server", m_UserAccountService, m_AuthenticationService));
+            server.AddStreamHandler(new OpenIdStreamHandler("GET", "/openid/server", m_UserAccountService, m_AuthenticationService));
 
             m_log.Info("[OPENID]: OpenId service enabled");
         }

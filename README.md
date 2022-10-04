@@ -1,4 +1,4 @@
-Welcome to OpenSim!
+Welcome to OpenSimulator (OpenSim for short)!
 
 # Overview
 
@@ -17,7 +17,7 @@ need to build OpenSim before running it.
 
 # Running OpenSim on Windows
 
-You will need .NET 4.0 installed to run OpenSimulator.
+You will need .NET 4.0 for versions up to 0.9.0.1 and .NET 4.6 for others.
 
 We recommend that you run OpenSim from a command prompt on Windows in order
 to capture any errors.
@@ -25,22 +25,22 @@ to capture any errors.
 To run OpenSim from a command prompt
 
  * cd to the bin/ directory where you unpacked OpenSim
- * run OpenSim.exe
+ * review and change configuration files (.ini) for your needs. see the "Configuring OpenSim" section
+ * run OpenSim.exe or opensim32.exe for small regions
 
-Now see the "Configuring OpenSim" section
 
 # Running OpenSim on Linux
 
-You will need Mono >= 2.10.8.1 to run OpenSimulator.  On some Linux distributions you
+You will need Mono >= 2.10.8.1 up to version 0.9.0.1 and mono > 5.0 on others.  On some Linux distributions you
 may need to install additional packages.  See http://opensimulator.org/wiki/Dependencies
 for more information.
 
 To run OpenSim, from the unpacked distribution type:
 
  * cd bin
- * mono OpenSim.exe
+ * review and change configuration files (.ini) for your needs. see the "Configuring OpenSim" section
+ * run ./opensim.sh
 
-Now see the "Configuring OpenSim" section
 
 # Configuring OpenSim
 
@@ -112,5 +112,4 @@ OpenSim, as well as how to report bugs, and participate in the OpenSim
 project can always be found at http://opensimulator.org.
 
 Thanks for trying OpenSim, we hope it is a pleasant experience.
-
 

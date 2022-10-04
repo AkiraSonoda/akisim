@@ -82,6 +82,7 @@ namespace OpenSim.Data.MySQL
 
                 Migration m = new Migration(dbcon, Assembly, "EstateStore");
                 m.Update();
+                dbcon.Close();
 
                 Type t = typeof(EstateSettings);
                 m_Fields = t.GetFields(BindingFlags.NonPublic |
@@ -119,10 +120,12 @@ namespace OpenSim.Data.MySQL
             }
         }
 
-        public EstateSettings CreateNewEstate()
+        public EstateSettings CreateNewEstate(int estateID)
         {
             EstateSettings es = new EstateSettings();
+
             es.OnSave += StoreEstateSettings;
+            es.EstateID = Convert.ToUInt32(estateID);
 
             DoCreate(es);
 
@@ -143,7 +146,6 @@ namespace OpenSim.Data.MySQL
             using (MySqlConnection dbcon = new MySqlConnection(m_connectionString))
             {
                 dbcon.Open();
-
                 cmd.Connection = dbcon;
 
                 bool found = false;
@@ -171,6 +173,8 @@ namespace OpenSim.Data.MySQL
                         }
                     }
                 }
+                dbcon.Close();
+                cmd.Connection = null;
 
                 if (!found && create)
                 {
@@ -191,7 +195,9 @@ namespace OpenSim.Data.MySQL
             // Migration case
             List<string> names = new List<string>(FieldList);
 
-            names.Remove("EstateID");
+            // Remove EstateID and use AutoIncrement
+            if (es.EstateID < 100)
+                names.Remove("EstateID");
 
             string sql = "insert into estate_settings (" + String.Join(",", names.ToArray()) + ") values ( ?" + String.Join(", ?", names.ToArray()) + ")";
 
@@ -220,17 +226,22 @@ namespace OpenSim.Data.MySQL
 
                     cmd2.ExecuteNonQuery();
 
-                    cmd2.CommandText = "select LAST_INSERT_ID() as id";
-                    cmd2.Parameters.Clear();
-
-                    using (IDataReader r = cmd2.ExecuteReader())
+                    // Only get Auto ID if we actually used it else we just get 0
+                    if (es.EstateID < 100)
                     {
-                        r.Read();
-                        es.EstateID = Convert.ToUInt32(r["id"]);
-                    }
+                        cmd2.CommandText = "select LAST_INSERT_ID() as id";
+                        cmd2.Parameters.Clear();
 
-                    es.Save();
+                        using (IDataReader r = cmd2.ExecuteReader())
+                        {
+                            r.Read();
+                            es.EstateID = Convert.ToUInt32(r["id"]);
+                        }
+
+                        es.Save();
+                    }
                 }
+                dbcon.Close();
             }
         }
 
@@ -263,6 +274,7 @@ namespace OpenSim.Data.MySQL
 
                     cmd.ExecuteNonQuery();
                 }
+                dbcon.Close();
             }
 
             SaveBanList(es);
@@ -281,7 +293,7 @@ namespace OpenSim.Data.MySQL
 
                 using (MySqlCommand cmd = dbcon.CreateCommand())
                 {
-                    cmd.CommandText = "select bannedUUID from estateban where EstateID = ?EstateID";
+                    cmd.CommandText = "select *  from estateban where EstateID = ?EstateID";
                     cmd.Parameters.AddWithValue("?EstateID", es.EstateID);
 
                     using (IDataReader r = cmd.ExecuteReader())
@@ -289,17 +301,16 @@ namespace OpenSim.Data.MySQL
                         while (r.Read())
                         {
                             EstateBan eb = new EstateBan();
-
-                            UUID uuid = new UUID();
-                            UUID.TryParse(r["bannedUUID"].ToString(), out uuid);
-
-                            eb.BannedUserID = uuid;
+                            eb.BannedUserID = DBGuid.FromDB(r["bannedUUID"]); ;
                             eb.BannedHostAddress = "0.0.0.0";
                             eb.BannedHostIPMask = "0.0.0.0";
+                            eb.BanningUserID = DBGuid.FromDB(r["banningUUID"]);
+                            eb.BanTime = Convert.ToInt32(r["banTime"]);
                             es.AddBan(eb);
                         }
                     }
                 }
+                dbcon.Close();
             }
         }
 
@@ -318,17 +329,20 @@ namespace OpenSim.Data.MySQL
 
                     cmd.Parameters.Clear();
 
-                    cmd.CommandText = "insert into estateban (EstateID, bannedUUID, bannedIp, bannedIpHostMask, bannedNameMask) values ( ?EstateID, ?bannedUUID, '', '', '' )";
+                    cmd.CommandText = "insert into estateban (EstateID, bannedUUID, bannedIp, bannedIpHostMask, bannedNameMask, banningUUID, banTime) values ( ?EstateID, ?bannedUUID, '', '', '', ?banningUUID, ?banTime)";
 
                     foreach (EstateBan b in es.EstateBans)
                     {
                         cmd.Parameters.AddWithValue("?EstateID", es.EstateID.ToString());
                         cmd.Parameters.AddWithValue("?bannedUUID", b.BannedUserID.ToString());
+                        cmd.Parameters.AddWithValue("?banningUUID", b.BanningUserID.ToString());
+                        cmd.Parameters.AddWithValue("?banTime", b.BanTime);
 
                         cmd.ExecuteNonQuery();
                         cmd.Parameters.Clear();
                     }
                 }
+                dbcon.Close();
             }
         }
 
@@ -358,6 +372,7 @@ namespace OpenSim.Data.MySQL
                         cmd.Parameters.Clear();
                     }
                 }
+                dbcon.Close();
             }
         }
 
@@ -383,6 +398,7 @@ namespace OpenSim.Data.MySQL
                         }
                     }
                 }
+                dbcon.Close();
             }
 
             return uuids.ToArray();
@@ -437,7 +453,6 @@ namespace OpenSim.Data.MySQL
                         reader.Close();
                     }
                 }
-
                 dbcon.Close();
             }
 
@@ -466,7 +481,6 @@ namespace OpenSim.Data.MySQL
                         reader.Close();
                     }
                 }
-
                 dbcon.Close();
             }
 

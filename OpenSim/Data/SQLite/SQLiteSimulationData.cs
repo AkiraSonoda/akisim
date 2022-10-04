@@ -429,75 +429,6 @@ namespace OpenSim.Data.SQLite
             }
         }
 
-        /// <summary>
-        /// Load windlight settings from region storage
-        /// </summary>
-        /// <param name="regionUUID">RegionID</param>
-        public RegionLightShareData LoadRegionWindlightSettings(UUID regionUUID)
-        {
-            RegionLightShareData wl = null;
-
-            lock (ds)
-            {
-                DataTable windlightTable = ds.Tables["regionwindlight"];
-                DataRow windlightRow = windlightTable.Rows.Find(regionUUID.ToString());
-                if (windlightRow == null)
-                {
-                    wl = new RegionLightShareData();
-                    wl.regionID = regionUUID;
-                    StoreRegionWindlightSettings(wl);
-                    return wl;
-                }
-                wl = buildRegionWindlight(windlightRow);
-                return wl;
-            }
-        }
-
-        /// <summary>
-        /// Remove windlight settings from region storage
-        /// </summary>
-        /// <param name="regionID">RegionID</param>
-        public void RemoveRegionWindlightSettings(UUID regionID)
-        {
-            lock (ds)
-            {
-                DataTable windlightTable = ds.Tables["regionwindlight"];
-                DataRow windlightRow = windlightTable.Rows.Find(regionID.ToString());
-
-                if (windlightRow != null)
-                {
-                    windlightRow.Delete();
-                }
-            }
-            Commit();
-        }
-
-        /// <summary>
-        /// Adds an windlight into region storage
-        /// </summary>
-        /// <param name="wl">RegionLightShareData</param>
-        public void StoreRegionWindlightSettings(RegionLightShareData wl)
-        {
-            lock (ds)
-            {
-                DataTable windlightTable = ds.Tables["regionwindlight"];
-                DataRow windlightRow = windlightTable.Rows.Find(wl.regionID.ToString());
-
-                if (windlightRow == null)
-                {
-                    windlightRow = windlightTable.NewRow();
-                    fillRegionWindlightRow(windlightRow, wl);
-                    windlightTable.Rows.Add(windlightRow);
-                }
-                else
-                {
-                    fillRegionWindlightRow(windlightRow, wl);
-                }
-
-                Commit();
-            }
-        }
-
         #region Region Environment Settings
         public string LoadRegionEnvironmentSettings(UUID regionUUID)
         {
@@ -626,10 +557,13 @@ namespace OpenSim.Data.SQLite
 //                    m_log.Info("[REGION DB]: Adding obj: " + obj.UUID + " to region: " + regionUUID);
                     addPrim(prim, obj.UUID, regionUUID);
                 }
+                primDa.Update(ds, "prims");
+                shapeDa.Update(ds, "primshapes");
+                itemsDa.Update(ds, "primitems");
+                ds.AcceptChanges();
             }
 
-            Commit();
-//            m_log.Info("[Dump of prims]: " + ds.GetXml());
+            // m_log.Info("[Dump of prims]: " + ds.GetXml());
         }
 
         /// <summary>
@@ -663,9 +597,8 @@ namespace OpenSim.Data.SQLite
                     // Remove prim row
                     row.Delete();
                 }
+                Commit();
             }
-
-            Commit();
         }
 
         /// <summary>
@@ -823,7 +756,7 @@ namespace OpenSim.Data.SQLite
         // Legacy entry point for when terrain was always a 256x256 hieghtmap
         public void StoreTerrain(double[,] ter, UUID regionID)
         {
-            StoreTerrain(new HeightmapTerrainData(ter), regionID);
+            StoreTerrain(new TerrainData(ter), regionID);
         }
 
         /// <summary>
@@ -835,8 +768,7 @@ namespace OpenSim.Data.SQLite
         {
             lock (ds)
             {
-                using (
-                    SqliteCommand cmd = new SqliteCommand("delete from terrain where RegionUUID=:RegionUUID", m_conn))
+                using (SqliteCommand cmd = new SqliteCommand("delete from terrain where RegionUUID=:RegionUUID", m_conn))
                 {
                     cmd.Parameters.Add(new SqliteParameter(":RegionUUID", regionID.ToString()));
                     cmd.ExecuteNonQuery();
@@ -1014,8 +946,8 @@ namespace OpenSim.Data.SQLite
                 {
                     rowsToDelete[iter].Delete();
                 }
+                Commit();
             }
-            Commit();
         }
 
         /// <summary>
@@ -1058,21 +990,17 @@ namespace OpenSim.Data.SQLite
                     if (rowToCheck["LandUUID"].ToString() == parcel.LandData.GlobalID.ToString())
                         rowsToDelete.Add(rowToCheck);
                 }
-                for (int iter = 0; iter < rowsToDelete.Count; iter++)
-                {
+                for (int iter = 0; iter < rowsToDelete.Count; ++iter)
                     rowsToDelete[iter].Delete();
-                    landaccesslist.Rows.Remove(rowsToDelete[iter]);
-                }
-                rowsToDelete.Clear();
+
                 foreach (LandAccessEntry entry in parcel.LandData.ParcelAccessList)
                 {
                     DataRow newAccessRow = landaccesslist.NewRow();
                     fillLandAccessRow(newAccessRow, entry, parcel.LandData.GlobalID);
                     landaccesslist.Rows.Add(newAccessRow);
                 }
+                Commit();
             }
-
-            Commit();
         }
 
         /// <summary>
@@ -1111,7 +1039,7 @@ namespace OpenSim.Data.SQLite
         public void Commit()
         {
 //            m_log.Debug("[SQLITE]: Starting commit");
-            lock (ds)
+            //lock (ds) caller must lock
             {
                 primDa.Update(ds, "prims");
                 shapeDa.Update(ds, "primshapes");
@@ -1141,7 +1069,8 @@ namespace OpenSim.Data.SQLite
         /// </summary>
         public void Shutdown()
         {
-            Commit();
+            lock(ds)
+                Commit();
         }
 
         /***********************************************************************
@@ -1265,10 +1194,6 @@ namespace OpenSim.Data.SQLite
             createCol(prims, "TextureAnimation", typeof(String));
             createCol(prims, "ParticleSystem", typeof(String));
 
-            createCol(prims, "OmegaX", typeof(Double));
-            createCol(prims, "OmegaY", typeof(Double));
-            createCol(prims, "OmegaZ", typeof(Double));
-
             createCol(prims, "CameraEyeOffsetX", typeof(Double));
             createCol(prims, "CameraEyeOffsetY", typeof(Double));
             createCol(prims, "CameraEyeOffsetZ", typeof(Double));
@@ -1313,6 +1238,21 @@ namespace OpenSim.Data.SQLite
 
             createCol(prims, "KeyframeMotion", typeof(Byte[]));
 
+            createCol(prims, "PassTouches", typeof(bool));
+            createCol(prims, "PassCollisions", typeof(bool));
+            createCol(prims, "Vehicle", typeof(string));
+
+            createCol(prims, "RotationAxisLocks", typeof(byte));
+
+            createCol(prims, "PhysInertia", typeof(string));
+
+            createCol(prims, "standtargetx", typeof(float));
+            createCol(prims, "standtargety", typeof(float));
+            createCol(prims, "standtargetz", typeof(float));
+            createCol(prims, "sitactrange", typeof(float));
+
+            createCol(prims, "pseudocrc", typeof(int));
+
             // Add in contraints
             prims.PrimaryKey = new DataColumn[] { prims.Columns["UUID"] };
 
@@ -1355,6 +1295,7 @@ namespace OpenSim.Data.SQLite
             createCol(shapes, "ProfileCurve", typeof(Int32));
             createCol(shapes, "ProfileHollow", typeof(Int32));
             createCol(shapes, "State", typeof(Int32));
+            createCol(shapes, "LastAttachPoint", typeof(Int32));
             // text TODO: this isn't right, but I'm not sure the right
             // way to specify this as a blob atm
             createCol(shapes, "Texture", typeof(Byte[]));
@@ -1456,6 +1397,7 @@ namespace OpenSim.Data.SQLite
             createCol(land, "SeeAVs", typeof(Boolean));
             createCol(land, "AnyAVSounds", typeof(Boolean));
             createCol(land, "GroupAVSounds", typeof(Boolean));
+            createCol(land, "environment", typeof(string));
 
             land.PrimaryKey = new DataColumn[] { land.Columns["UUID"] };
 
@@ -1520,6 +1462,9 @@ namespace OpenSim.Data.SQLite
             createCol(regionsettings, "map_tile_ID", typeof(String));
             createCol(regionsettings, "TelehubObject", typeof(String));
             createCol(regionsettings, "parcel_tile_ID", typeof(String));
+            createCol(regionsettings, "block_search", typeof(Boolean));
+            createCol(regionsettings, "casino", typeof(Boolean));
+            createCol(regionsettings, "cacheID", typeof(string));
             regionsettings.PrimaryKey = new DataColumn[] { regionsettings.Columns["regionUUID"] };
             return regionsettings;
         }
@@ -1725,14 +1670,18 @@ namespace OpenSim.Data.SQLite
                                                    Convert.ToSingle(row["SitTargetOffsetY"]),
                                                    Convert.ToSingle(row["SitTargetOffsetZ"]));
             prim.SitTargetOrientationLL = new Quaternion(
-                                                         Convert.ToSingle(
-                                                                          row["SitTargetOrientX"]),
-                                                         Convert.ToSingle(
-                                                                          row["SitTargetOrientY"]),
-                                                         Convert.ToSingle(
-                                                                          row["SitTargetOrientZ"]),
-                                                         Convert.ToSingle(
-                                                                          row["SitTargetOrientW"]));
+                                                         Convert.ToSingle(row["SitTargetOrientX"]),
+                                                         Convert.ToSingle(row["SitTargetOrientY"]),
+                                                         Convert.ToSingle(row["SitTargetOrientZ"]),
+                                                         Convert.ToSingle(row["SitTargetOrientW"]));
+
+            prim.StandOffset = new Vector3(
+                            Convert.ToSingle(row["standtargetx"]),
+                            Convert.ToSingle(row["standtargety"]),
+                            Convert.ToSingle(row["standtargetz"])
+                            );
+
+            prim.SitActiveRange = Convert.ToSingle(row["sitactrange"]);
 
             prim.ClickAction = Convert.ToByte(row["ClickAction"]);
             prim.PayPrice[0] = Convert.ToInt32(row["PayPrice"]);
@@ -1743,18 +1692,15 @@ namespace OpenSim.Data.SQLite
 
             prim.Sound = new UUID(row["LoopedSound"].ToString());
             prim.SoundGain = Convert.ToSingle(row["LoopedSoundGain"]);
-            prim.SoundFlags = 1; // If it's persisted at all, it's looped
+            if (prim.Sound.IsZero())
+                prim.SoundFlags = 0;
+            else
+                prim.SoundFlags = 1; // If it's persisted at all, it's looped
 
             if (!row.IsNull("TextureAnimation"))
                 prim.TextureAnimation = Convert.FromBase64String(row["TextureAnimation"].ToString());
             if (!row.IsNull("ParticleSystem"))
                 prim.ParticleSystem = Convert.FromBase64String(row["ParticleSystem"].ToString());
-
-            prim.AngularVelocity = new Vector3(
-                Convert.ToSingle(row["OmegaX"]),
-                Convert.ToSingle(row["OmegaY"]),
-                Convert.ToSingle(row["OmegaZ"])
-                );
 
             prim.SetCameraEyeOffset(new Vector3(
                 Convert.ToSingle(row["CameraEyeOffsetX"]),
@@ -1809,7 +1755,7 @@ namespace OpenSim.Data.SQLite
             }
             else
             {
-                prim.DynAttrs = new DAMap();
+                prim.DynAttrs = null;
             }
 
             prim.PhysicsShapeType = Convert.ToByte(row["PhysicsShapeType"]);
@@ -1843,6 +1789,16 @@ namespace OpenSim.Data.SQLite
                 if (vehicle != null)
                     prim.VehicleParams = vehicle;
             }
+
+            PhysicsInertiaData pdata = null;
+            if (!(row["PhysInertia"] is DBNull) && row["PhysInertia"].ToString() != String.Empty)
+                pdata = PhysicsInertiaData.FromXml2(row["PhysInertia"].ToString());
+            prim.PhysicsInertia = pdata;
+
+            int pseudocrc = Convert.ToInt32(row["pseudocrc"]);
+            if(pseudocrc != 0)
+                prim.PseudoCRC = pseudocrc;
+
             return prim;
         }
 
@@ -1954,6 +1910,36 @@ namespace OpenSim.Data.SQLite
 
             newData.OtherCleanTime = Convert.ToInt32(row["OtherCleanTime"]);
 
+            if (row["environment"] is DBNull)
+            {
+                newData.Environment = null;
+                newData.EnvironmentVersion = -1;
+            }
+            else
+            {
+                string env = (string)row["environment"];
+                if (string.IsNullOrEmpty(env))
+                {
+                    newData.Environment = null;
+                    newData.EnvironmentVersion = -1;
+                }
+                else
+                {
+                    try
+                    {
+                        ViewerEnvironment VEnv = ViewerEnvironment.FromOSDString(env);
+                        newData.Environment = VEnv;
+                        newData.EnvironmentVersion = VEnv.version;
+                    }
+                    catch
+                    {
+                        newData.Environment = null;
+                        newData.EnvironmentVersion = -1;
+                    }
+                }
+            }
+
+
             return newData;
         }
 
@@ -2006,84 +1992,10 @@ namespace OpenSim.Data.SQLite
             newSettings.ParcelImageID = new UUID((String)row["parcel_tile_ID"]);
             newSettings.GodBlockSearch = Convert.ToBoolean(row["block_search"]);
             newSettings.Casino = Convert.ToBoolean(row["casino"]);
+            if (!(row["cacheID"] is System.DBNull))
+                newSettings.CacheID = new UUID((String)row["cacheID"]);
+
             return newSettings;
-        }
-
-        /// <summary>
-        /// Build a windlight entry from the persisted data.
-        /// </summary>
-        /// <param name="row"></param>
-        /// <returns>RegionLightShareData</returns>
-        private RegionLightShareData buildRegionWindlight(DataRow row)
-        {
-            RegionLightShareData windlight = new RegionLightShareData();
-
-            windlight.regionID = new UUID((string)row["region_id"]);
-            windlight.waterColor.X = Convert.ToSingle(row["water_color_r"]);
-            windlight.waterColor.Y = Convert.ToSingle(row["water_color_g"]);
-            windlight.waterColor.Z = Convert.ToSingle(row["water_color_b"]);
-            //windlight.waterColor.W = Convert.ToSingle(row["water_color_i"]); //not implemented
-            windlight.waterFogDensityExponent = Convert.ToSingle(row["water_fog_density_exponent"]);
-            windlight.underwaterFogModifier = Convert.ToSingle(row["underwater_fog_modifier"]);
-            windlight.reflectionWaveletScale.X = Convert.ToSingle(row["reflection_wavelet_scale_1"]);
-            windlight.reflectionWaveletScale.Y = Convert.ToSingle(row["reflection_wavelet_scale_2"]);
-            windlight.reflectionWaveletScale.Z = Convert.ToSingle(row["reflection_wavelet_scale_3"]);
-            windlight.fresnelScale = Convert.ToSingle(row["fresnel_scale"]);
-            windlight.fresnelOffset = Convert.ToSingle(row["fresnel_offset"]);
-            windlight.refractScaleAbove = Convert.ToSingle(row["refract_scale_above"]);
-            windlight.refractScaleBelow = Convert.ToSingle(row["refract_scale_below"]);
-            windlight.blurMultiplier = Convert.ToSingle(row["blur_multiplier"]);
-            windlight.bigWaveDirection.X = Convert.ToSingle(row["big_wave_direction_x"]);
-            windlight.bigWaveDirection.Y = Convert.ToSingle(row["big_wave_direction_y"]);
-            windlight.littleWaveDirection.X = Convert.ToSingle(row["little_wave_direction_x"]);
-            windlight.littleWaveDirection.Y = Convert.ToSingle(row["little_wave_direction_y"]);
-            windlight.normalMapTexture = new UUID((string)row["normal_map_texture"]);
-            windlight.horizon.X = Convert.ToSingle(row["horizon_r"]);
-            windlight.horizon.Y = Convert.ToSingle(row["horizon_g"]);
-            windlight.horizon.Z = Convert.ToSingle(row["horizon_b"]);
-            windlight.horizon.W = Convert.ToSingle(row["horizon_i"]);
-            windlight.hazeHorizon = Convert.ToSingle(row["haze_horizon"]);
-            windlight.blueDensity.X = Convert.ToSingle(row["blue_density_r"]);
-            windlight.blueDensity.Y = Convert.ToSingle(row["blue_density_g"]);
-            windlight.blueDensity.Z = Convert.ToSingle(row["blue_density_b"]);
-            windlight.blueDensity.W = Convert.ToSingle(row["blue_density_i"]);
-            windlight.hazeDensity = Convert.ToSingle(row["haze_density"]);
-            windlight.densityMultiplier = Convert.ToSingle(row["density_multiplier"]);
-            windlight.distanceMultiplier = Convert.ToSingle(row["distance_multiplier"]);
-            windlight.maxAltitude = Convert.ToUInt16(row["max_altitude"]);
-            windlight.sunMoonColor.X = Convert.ToSingle(row["sun_moon_color_r"]);
-            windlight.sunMoonColor.Y = Convert.ToSingle(row["sun_moon_color_g"]);
-            windlight.sunMoonColor.Z = Convert.ToSingle(row["sun_moon_color_b"]);
-            windlight.sunMoonColor.W = Convert.ToSingle(row["sun_moon_color_i"]);
-            windlight.sunMoonPosition = Convert.ToSingle(row["sun_moon_position"]);
-            windlight.ambient.X = Convert.ToSingle(row["ambient_r"]);
-            windlight.ambient.Y = Convert.ToSingle(row["ambient_g"]);
-            windlight.ambient.Z = Convert.ToSingle(row["ambient_b"]);
-            windlight.ambient.W = Convert.ToSingle(row["ambient_i"]);
-            windlight.eastAngle = Convert.ToSingle(row["east_angle"]);
-            windlight.sunGlowFocus = Convert.ToSingle(row["sun_glow_focus"]);
-            windlight.sunGlowSize = Convert.ToSingle(row["sun_glow_size"]);
-            windlight.sceneGamma = Convert.ToSingle(row["scene_gamma"]);
-            windlight.starBrightness = Convert.ToSingle(row["star_brightness"]);
-            windlight.cloudColor.X = Convert.ToSingle(row["cloud_color_r"]);
-            windlight.cloudColor.Y = Convert.ToSingle(row["cloud_color_g"]);
-            windlight.cloudColor.Z = Convert.ToSingle(row["cloud_color_b"]);
-            windlight.cloudColor.W = Convert.ToSingle(row["cloud_color_i"]);
-            windlight.cloudXYDensity.X = Convert.ToSingle(row["cloud_x"]);
-            windlight.cloudXYDensity.Y = Convert.ToSingle(row["cloud_y"]);
-            windlight.cloudXYDensity.Z = Convert.ToSingle(row["cloud_density"]);
-            windlight.cloudCoverage = Convert.ToSingle(row["cloud_coverage"]);
-            windlight.cloudScale = Convert.ToSingle(row["cloud_scale"]);
-            windlight.cloudDetailXYDensity.X = Convert.ToSingle(row["cloud_detail_x"]);
-            windlight.cloudDetailXYDensity.Y = Convert.ToSingle(row["cloud_detail_y"]);
-            windlight.cloudDetailXYDensity.Z = Convert.ToSingle(row["cloud_detail_density"]);
-            windlight.cloudScrollX = Convert.ToSingle(row["cloud_scroll_x"]);
-            windlight.cloudScrollXLock = Convert.ToBoolean(row["cloud_scroll_x_lock"]);
-            windlight.cloudScrollY = Convert.ToSingle(row["cloud_scroll_y"]);
-            windlight.cloudScrollYLock = Convert.ToBoolean(row["cloud_scroll_y_lock"]);
-            windlight.drawClassicClouds = Convert.ToBoolean(row["draw_classic_clouds"]);
-
-            return windlight;
         }
 
         /// <summary>
@@ -2166,6 +2078,14 @@ namespace OpenSim.Data.SQLite
             row["SitTargetOrientX"] = sitTargetOrient.X;
             row["SitTargetOrientY"] = sitTargetOrient.Y;
             row["SitTargetOrientZ"] = sitTargetOrient.Z;
+
+            Vector3 standTarget = prim.StandOffset;
+            row["standtargetx"] = standTarget.X;
+            row["standtargety"] = standTarget.Y;
+            row["standtargetz"] = standTarget.Z;
+
+            row["sitactrange"] = prim.SitActiveRange;
+
             row["ColorR"] = Convert.ToInt32(prim.Color.R);
             row["ColorG"] = Convert.ToInt32(prim.Color.G);
             row["ColorB"] = Convert.ToInt32(prim.Color.B);
@@ -2179,10 +2099,6 @@ namespace OpenSim.Data.SQLite
             row["TextureAnimation"] = Convert.ToBase64String(prim.TextureAnimation);
             row["ParticleSystem"] = Convert.ToBase64String(prim.ParticleSystem);
 
-            row["OmegaX"] = prim.AngularVelocity.X;
-            row["OmegaY"] = prim.AngularVelocity.Y;
-            row["OmegaZ"] = prim.AngularVelocity.Z;
-
             row["CameraEyeOffsetX"] = prim.GetCameraEyeOffset().X;
             row["CameraEyeOffsetY"] = prim.GetCameraEyeOffset().Y;
             row["CameraEyeOffsetZ"] = prim.GetCameraEyeOffset().Z;
@@ -2190,7 +2106,6 @@ namespace OpenSim.Data.SQLite
             row["CameraAtOffsetX"] = prim.GetCameraAtOffset().X;
             row["CameraAtOffsetY"] = prim.GetCameraAtOffset().Y;
             row["CameraAtOffsetZ"] = prim.GetCameraAtOffset().Z;
-
 
             if ((prim.SoundFlags & 1) != 0) // Looped
             {
@@ -2241,7 +2156,7 @@ namespace OpenSim.Data.SQLite
             row["AttachedPosY"] = prim.AttachedPos.Y;
             row["AttachedPosZ"] = prim.AttachedPos.Z;
 
-            if (prim.DynAttrs.CountNamespaces > 0)
+            if (prim.DynAttrs!= null && prim.DynAttrs.CountNamespaces > 0)
                 row["DynAttrs"] = prim.DynAttrs.ToXml();
             else
                 row["DynAttrs"] = null;
@@ -2266,6 +2181,12 @@ namespace OpenSim.Data.SQLite
             else
                 row["Vehicle"] = String.Empty;
 
+            if (prim.PhysicsInertia != null)
+                row["PhysInertia"] = prim.PhysicsInertia.ToXml2();
+            else
+                row["PhysInertia"] = String.Empty;
+
+            row["pseudocrc"] = prim.PseudoCRC;
         }
 
         /// <summary>
@@ -2353,6 +2274,20 @@ namespace OpenSim.Data.SQLite
             row["AnyAVSounds"] = land.AnyAVSounds;
             row["GroupAVSounds"] = land.GroupAVSounds;
 
+            if (land.Environment == null)
+                row["environment"] = "";
+            else
+            {
+                try
+                {
+                    row["environment"] = ViewerEnvironment.ToOSDString(land.Environment);
+                }
+                catch
+                {
+                    row["environment"] = "";
+                }
+            }
+
         }
 
         /// <summary>
@@ -2413,79 +2348,7 @@ namespace OpenSim.Data.SQLite
             row["parcel_tile_ID"] = settings.ParcelImageID.ToString();
             row["block_search"] = settings.GodBlockSearch;
             row["casino"] = settings.Casino;
-        }
-
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="row"></param>
-        /// <param name="windlight"></param>
-        private static void fillRegionWindlightRow(DataRow row, RegionLightShareData windlight)
-        {
-            row["region_id"] = windlight.regionID.ToString();
-            row["water_color_r"] = windlight.waterColor.X;
-            row["water_color_g"] = windlight.waterColor.Y;
-            row["water_color_b"] = windlight.waterColor.Z;
-            row["water_color_i"] = 1; //windlight.waterColor.W;  //not implemented
-            row["water_fog_density_exponent"] = windlight.waterFogDensityExponent;
-            row["underwater_fog_modifier"] = windlight.underwaterFogModifier;
-            row["reflection_wavelet_scale_1"] = windlight.reflectionWaveletScale.X;
-            row["reflection_wavelet_scale_2"] = windlight.reflectionWaveletScale.Y;
-            row["reflection_wavelet_scale_3"] = windlight.reflectionWaveletScale.Z;
-            row["fresnel_scale"] = windlight.fresnelScale;
-            row["fresnel_offset"] = windlight.fresnelOffset;
-            row["refract_scale_above"] = windlight.refractScaleAbove;
-            row["refract_scale_below"] = windlight.refractScaleBelow;
-            row["blur_multiplier"] = windlight.blurMultiplier;
-            row["big_wave_direction_x"] = windlight.bigWaveDirection.X;
-            row["big_wave_direction_y"] = windlight.bigWaveDirection.Y;
-            row["little_wave_direction_x"] = windlight.littleWaveDirection.X;
-            row["little_wave_direction_y"] = windlight.littleWaveDirection.Y;
-            row["normal_map_texture"] = windlight.normalMapTexture.ToString();
-            row["horizon_r"] = windlight.horizon.X;
-            row["horizon_g"] = windlight.horizon.Y;
-            row["horizon_b"] = windlight.horizon.Z;
-            row["horizon_i"] = windlight.horizon.W;
-            row["haze_horizon"] = windlight.hazeHorizon;
-            row["blue_density_r"] = windlight.blueDensity.X;
-            row["blue_density_g"] = windlight.blueDensity.Y;
-            row["blue_density_b"] = windlight.blueDensity.Z;
-            row["blue_density_i"] = windlight.blueDensity.W;
-            row["haze_density"] = windlight.hazeDensity;
-            row["density_multiplier"] = windlight.densityMultiplier;
-            row["distance_multiplier"] = windlight.distanceMultiplier;
-            row["max_altitude"] = windlight.maxAltitude;
-            row["sun_moon_color_r"] = windlight.sunMoonColor.X;
-            row["sun_moon_color_g"] = windlight.sunMoonColor.Y;
-            row["sun_moon_color_b"] = windlight.sunMoonColor.Z;
-            row["sun_moon_color_i"] = windlight.sunMoonColor.W;
-            row["sun_moon_position"] = windlight.sunMoonPosition;
-            row["ambient_r"] = windlight.ambient.X;
-            row["ambient_g"] = windlight.ambient.Y;
-            row["ambient_b"] = windlight.ambient.Z;
-            row["ambient_i"] = windlight.ambient.W;
-            row["east_angle"] = windlight.eastAngle;
-            row["sun_glow_focus"] = windlight.sunGlowFocus;
-            row["sun_glow_size"] = windlight.sunGlowSize;
-            row["scene_gamma"] = windlight.sceneGamma;
-            row["star_brightness"] = windlight.starBrightness;
-            row["cloud_color_r"] = windlight.cloudColor.X;
-            row["cloud_color_g"] = windlight.cloudColor.Y;
-            row["cloud_color_b"] = windlight.cloudColor.Z;
-            row["cloud_color_i"] = windlight.cloudColor.W;
-            row["cloud_x"] = windlight.cloudXYDensity.X;
-            row["cloud_y"] = windlight.cloudXYDensity.Y;
-            row["cloud_density"] = windlight.cloudXYDensity.Z;
-            row["cloud_coverage"] = windlight.cloudCoverage;
-            row["cloud_scale"] = windlight.cloudScale;
-            row["cloud_detail_x"] = windlight.cloudDetailXYDensity.X;
-            row["cloud_detail_y"] = windlight.cloudDetailXYDensity.Y;
-            row["cloud_detail_density"] = windlight.cloudDetailXYDensity.Z;
-            row["cloud_scroll_x"] = windlight.cloudScrollX;
-            row["cloud_scroll_x_lock"] = windlight.cloudScrollXLock;
-            row["cloud_scroll_y"] = windlight.cloudScrollY;
-            row["cloud_scroll_y_lock"] = windlight.cloudScrollYLock;
-            row["draw_classic_clouds"] = windlight.drawClassicClouds;
+            row["cacheID"] = settings.CacheID;
         }
 
         /// <summary>
@@ -2646,9 +2509,8 @@ namespace OpenSim.Data.SQLite
                     fillItemRow(newItemRow, newItem);
                     dbItems.Rows.Add(newItemRow);
                 }
+                Commit();
             }
-
-            Commit();
         }
 
         /***********************************************************************

@@ -46,6 +46,7 @@ namespace OpenSim.Framework.Console
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private string m_historyPath;
         private bool m_historyEnable;
+        private bool m_historytimestamps;
 
         // private readonly object m_syncRoot = new object();
         private const string LOGLEVEL_NONE = "(none)";
@@ -98,15 +99,30 @@ namespace OpenSim.Framework.Console
             string m_historyFile = startupConfig.GetString("ConsoleHistoryFile", "OpenSimConsoleHistory.txt");
             int m_historySize = startupConfig.GetInt("ConsoleHistoryFileLines", 100);
             m_historyPath = Path.GetFullPath(Path.Combine(Util.configDir(), m_historyFile));
-            m_log.InfoFormat("[LOCAL CONSOLE]: Persistent command line history is Enabled, up to {0} lines from file {1}", m_historySize, m_historyPath);
+            m_historytimestamps = startupConfig.GetBoolean("ConsoleHistoryTimeStamp", false);
+            m_log.InfoFormat("[LOCAL CONSOLE]: Persistent command line history is Enabled, up to {0} lines from file {1} {2} timestamps",
+                m_historySize, m_historyPath, m_historytimestamps?"with":"without");
 
             if (File.Exists(m_historyPath))
             {
+                List<string> originallines = new List<string>();
                 using (StreamReader history_file = new StreamReader(m_historyPath))
                 {
                     string line;
                     while ((line = history_file.ReadLine()) != null)
                     {
+                        originallines.Add(line);
+                        if(line.StartsWith("["))
+                        {
+                            int indx = line.IndexOf("]:> ");
+                            if(indx > 0)
+                            {
+                                if(indx + 4 >= line.Length)
+                                    line = String.Empty;
+                                else
+                                   line = line.Substring(indx + 4);
+                            }
+                        }
                         m_history.Add(line);
                     }
                 }
@@ -114,11 +130,14 @@ namespace OpenSim.Framework.Console
                 if (m_history.Count > m_historySize)
                 {
                     while (m_history.Count > m_historySize)
+                    {
                         m_history.RemoveAt(0);
+                        originallines.RemoveAt(0);
+                    }
 
                     using (StreamWriter history_file = new StreamWriter(m_historyPath))
                     {
-                        foreach (string line in m_history)
+                        foreach (string line in originallines)
                         {
                             history_file.WriteLine(line);
                         }
@@ -131,6 +150,8 @@ namespace OpenSim.Framework.Console
                 m_log.InfoFormat("[LOCAL CONSOLE]: Creating new empty command line history file {0}", m_historyPath);
                 File.Create(m_historyPath).Dispose();
             }
+
+            System.Console.TreatControlCAsInput = true;
         }
 
         private void AddToHistory(string text)
@@ -141,6 +162,8 @@ namespace OpenSim.Framework.Console
             m_history.Add(text);
             if (m_historyEnable)
             {
+                if (m_historytimestamps)
+                    text = String.Format("[{0} {1}]:> {2}", DateTime.Now.ToShortDateString(), DateTime.Now.ToShortTimeString(), text);
                 File.AppendAllText(m_historyPath, text + Environment.NewLine);
             }
         }
@@ -338,7 +361,7 @@ namespace OpenSim.Framework.Console
         {
             string outText = text;
 
-            if (level != LOGLEVEL_NONE)
+            if (level != null)
             {
                 MatchCollection matches = m_categoryRegex.Matches(text);
 
@@ -368,13 +391,37 @@ namespace OpenSim.Framework.Console
             System.Console.WriteLine();
         }
 
-        public override void Output(string text)
+        public override void Output(string format)
         {
-            Output(text, LOGLEVEL_NONE);
+            Output(format, null);
         }
 
-        public override void Output(string text, string level)
+        public override void Output(string format, params object[] components)
         {
+            string level = null;
+            if(components != null && components.Length > 0)
+            {
+                if(components[0] == null || components[0] is ConsoleLevel)
+                {
+                    if(components[0] is ConsoleLevel)
+                        level = ((ConsoleLevel)components[0]).ToString();
+
+                    if (components.Length > 1)
+                    {
+                        object[] tmp = new object[components.Length - 1];
+                        Array.Copy(components, 1, tmp, 0, components.Length - 1);
+                        components = tmp;
+                    }
+                    else
+                        components = null;
+                }
+            }
+            string text;
+            if (components == null || components.Length == 0)
+                text = format;
+            else
+                text = String.Format(format, components);
+
             FireOnOutput(text);
 
             lock (m_commandLine)
@@ -382,7 +429,6 @@ namespace OpenSim.Framework.Console
                 if (m_cursorYPosition == -1)
                 {
                     WriteLocalText(text, level);
-
                     return;
                 }
 
@@ -447,6 +493,13 @@ namespace OpenSim.Framework.Console
                 Show();
 
                 ConsoleKeyInfo key = System.Console.ReadKey(true);
+
+                if((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.C)
+                {
+                    System.Console.Write(Environment.NewLine);
+                    LocalCancelKeyPressed();
+                    return string.Empty;
+                }
                 char enteredChar = key.KeyChar;
 
                 if (!Char.IsControl(enteredChar))

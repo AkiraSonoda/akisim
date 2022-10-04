@@ -33,6 +33,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using log4net;
 using log4net.Appender;
 using log4net.Core;
@@ -84,29 +87,45 @@ namespace OpenSim.Framework.Servers
 
         public BaseOpenSimServer() : base()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             // Random uuid for private data
             m_osSecret = UUID.Random().ToString();
         }
 
+        private static bool m_NoVerifyCertChain = false;
+        private static bool m_NoVerifyCertHostname = false;
+
+        public static bool ValidateServerCertificate(
+            object sender,
+            X509Certificate certificate,
+            X509Chain chain,
+            SslPolicyErrors sslPolicyErrors)
+        {
+            if (m_NoVerifyCertChain)
+                sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateChainErrors;
+ 
+            if (m_NoVerifyCertHostname)
+                sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
+
+            if (sslPolicyErrors == SslPolicyErrors.None)
+                return true;
+
+            return false;
+        }
         /// <summary>
         /// Must be overriden by child classes for their own server specific startup behaviour.
         /// </summary>
         protected virtual void StartupSpecific()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
-
             StatsManager.SimExtraStats = new SimExtraStatsCollector();
             RegisterCommonCommands();
             RegisterCommonComponents(Config);
 
             IConfig startupConfig = Config.Configs["Startup"];
+
+            m_NoVerifyCertChain = startupConfig.GetBoolean("NoVerifyCertChain", m_NoVerifyCertChain);
+            m_NoVerifyCertHostname = startupConfig.GetBoolean("NoVerifyCertHostname", m_NoVerifyCertHostname);
+            ServicePointManager.ServerCertificateValidationCallback = ValidateServerCertificate;
+
             int logShowStatsSeconds = startupConfig.GetInt("LogShowStatsSeconds", m_periodDiagnosticTimerMS / 1000);
             m_periodDiagnosticTimerMS = logShowStatsSeconds * 1000;
             m_periodicDiagnosticsTimer.Elapsed += new ElapsedEventHandler(LogDiagnostics);
@@ -119,13 +138,20 @@ namespace OpenSim.Framework.Servers
 
         protected override void ShutdownSpecific()
         {
-            m_log.Info("[SHUTDOWN]: Shutdown processing on main thread complete.  Exiting...");
+            Watchdog.Enabled = false;
+            base.ShutdownSpecific();
+            
+            MainServer.Stop();
+
+            Thread.Sleep(500);
+            Util.StopThreadPool();
+            WorkManager.Stop();
 
             RemovePIDFile();
 
-            base.ShutdownSpecific();
+            m_log.Info("[SHUTDOWN]: Shutdown processing on main thread complete.  Exiting...");
 
-            if (!SuppressExit)
+           if (!SuppressExit)
                 Environment.Exit(0);
         }
 
@@ -166,20 +192,26 @@ namespace OpenSim.Framework.Servers
             //m_log.Info("[STARTUP]: Virtual machine runtime version: " + Environment.Version + Environment.NewLine);
             m_log.InfoFormat(
                 "[STARTUP]: Operating system version: {0}, .NET platform {1}, {2}-bit\n",
-                Environment.OSVersion, Environment.OSVersion.Platform, Util.Is64BitProcess() ? "64" : "32");
+                Environment.OSVersion, Environment.OSVersion.Platform, Environment.Is64BitProcess ? "64" : "32");
 
+            // next code can be changed on .net 4.7.x
+            if(Util.IsWindows())
+                m_log.InfoFormat("[STARTUP]: Processor Architecture: {0}({1})",
+                    System.Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE", EnvironmentVariableTarget.Machine),
+                    BitConverter.IsLittleEndian ?"le":"be");
+
+            // on other platforms we need to wait for .net4.7.1
             try
             {
                 StartupSpecific();
             }
             catch(Exception e)
             {
-                m_log.FatalFormat("Fatal error: {0}",
-                    (e.Message == null || e.Message == String.Empty) ? "Unknown reason":e.Message );
+                m_log.Fatal("Fatal error: " + e.ToString());
                 Environment.Exit(1);
             }
 
-            TimeSpan timeTaken = DateTime.Now - m_startuptime;
+            //TimeSpan timeTaken = DateTime.Now - m_startuptime;
 
 //            MainConsole.Instance.OutputFormat(
 //                "PLEASE WAIT FOR LOGINS TO BE ENABLED ON REGIONS ONCE SCRIPTS HAVE STARTED.  Non-script portion of startup took {0}m {1}s.",
@@ -194,18 +226,16 @@ namespace OpenSim.Framework.Servers
 
         public string StatReport(IOSHttpRequest httpRequest)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            httpRequest.QueryAsDictionary.TryGetValue("region", out string id);
 
             // If we catch a request for "callback", wrap the response in the value for jsonp
-            if (httpRequest.Query.ContainsKey("callback"))
+            if (httpRequest.QueryAsDictionary.TryGetValue("callback", out string cb) && ! string.IsNullOrEmpty(cb))
             {
-                return httpRequest.Query["callback"].ToString() + "(" + StatsManager.SimExtraStats.XReport((DateTime.Now - m_startuptime).ToString() , m_version) + ");";
+                return cb + "(" + StatsManager.SimExtraStats.XReport((DateTime.Now - m_startuptime).ToString() , m_version, id) + ");";
             }
             else
             {
-                return StatsManager.SimExtraStats.XReport((DateTime.Now - m_startuptime).ToString() , m_version);
+                return StatsManager.SimExtraStats.XReport((DateTime.Now - m_startuptime).ToString() , m_version, id);
             }
         }
     }

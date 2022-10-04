@@ -54,9 +54,7 @@ namespace OpenSim.Region.CoreModules.Framework
 
         public void Initialise(IConfigSource config)
         {
-            m_processorJobEngine = new JobEngine(
-                "ServiceThrottle","ServiceThrottle");
-            m_processorJobEngine.RequestProcessTimeoutOnStop = 31000; // many webrequests have 30s expire
+            m_processorJobEngine = new JobEngine("ServiceThrottle","ServiceThrottle", 5000, 2);
             m_processorJobEngine.Start();
         }
 
@@ -116,16 +114,25 @@ namespace OpenSim.Region.CoreModules.Framework
             //m_log.DebugFormat("[SERVICE THROTTLE]: RegionHandleRequest {0}", regionID);
             Action action = delegate
             {
-                if(!client.IsActive)
+                if(!client.IsActive || m_scenes.Count == 0 || m_scenes[0] == null )
+                {
+                    client = null;
                     return;
+                }
 
-                GridRegion r = m_scenes[0].GridService.GetRegionByUUID(UUID.Zero, regionID);
-
-                if(!client.IsActive)
+                Scene baseScene = m_scenes[0];
+                if(baseScene.ShuttingDown)
+                {
+                    client = null;
                     return;
+                }
 
-                if (r != null && r.RegionHandle != 0)
+                GridRegion r = baseScene.GridService.GetRegionByUUID(UUID.Zero, regionID);
+
+                if (client.IsActive && r != null && r.RegionHandle != 0)
                     client.SendRegionHandle(regionID, r.RegionHandle);
+
+                client = null;
             };
 
             m_processorJobEngine.QueueJob("regionHandle", action, regionID.ToString());

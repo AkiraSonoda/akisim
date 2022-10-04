@@ -26,11 +26,13 @@
  */
 
 using System;
-using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using OpenSim.Framework.Servers.HttpServer;
 
 using log4net;
 
@@ -39,6 +41,8 @@ namespace OpenSim.Server.Handlers.Simulation
     public class Utils
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+        public static byte[] falseStrBytes = osUTF8.GetASCIIBytes("false");
 
         /// <summary>
         /// Extract the param from an uri.
@@ -72,32 +76,29 @@ namespace OpenSim.Server.Handlers.Simulation
             }
         }
 
-        public static OSDMap GetOSDMap(string data)
+        public static OSDMap DeserializeJSONOSMap(IOSHttpRequest httpRequest)
         {
-            OSDMap args = null;
+            Stream inputStream = httpRequest.InputStream;
+            Stream innerStream = null;
             try
             {
-                OSD buffer;
-                // We should pay attention to the content-type, but let's assume we know it's Json
-                buffer = OSDParser.DeserializeJson(data);
-                if (buffer.Type == OSDType.Map)
+                if ((httpRequest.ContentType == "application/x-gzip" || httpRequest.Headers["Content-Encoding"] == "gzip") || (httpRequest.Headers["X-Content-Encoding"] == "gzip"))
                 {
-                    args = (OSDMap)buffer;
-                    return args;
+                    innerStream = inputStream;
+                    inputStream = new GZipStream(innerStream, CompressionMode.Decompress);
                 }
-                else
-                {
-                    // uh?
-                    m_log.Debug(("[REST COMMS]: Got OSD of unexpected type " + buffer.Type.ToString()));
-                    return null;
-                }
+                return (OSDMap)OSDParser.DeserializeJson(inputStream);
             }
-            catch (Exception ex)
+            catch
             {
-                m_log.Debug("[REST COMMS]: exception on parse of REST message " + ex.Message);
                 return null;
             }
+            finally
+            {
+                if (innerStream != null)
+                    innerStream.Dispose();
+                inputStream.Dispose();
+            }
         }
-
     }
 }

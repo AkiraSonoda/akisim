@@ -28,16 +28,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Net;
-using System.Text;
-using System.Web;
 
-using OpenSim.Server.Base;
-using OpenSim.Server.Handlers.Base;
 using OpenSim.Services.Interfaces;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OpenSim.Framework;
@@ -45,122 +40,303 @@ using OpenSim.Framework.Servers.HttpServer;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using Nini.Config;
+
 using log4net;
 
 
 namespace OpenSim.Server.Handlers.Simulation
 {
-    public class AgentHandler
+    //this is only for hg homeagent and gatekeeperagent
+    public class AgentPostHandler : SimpleStreamHandler
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private ISimulationService m_SimulationService;
+        protected bool m_Proxy = false;
 
-        public AgentHandler() { }
-
-        public AgentHandler(ISimulationService sim)
+        public AgentPostHandler(string path) : base(path)
         {
-            m_SimulationService = sim;
         }
 
-        public Hashtable Handler(Hashtable request)
+        protected override void ProcessRequest(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.Debug ("[CONNECTION DEBUGGING]: AgentHandler Called");
-				m_log.Debug ("---------------------------");
-				m_log.Debug (" >> uri=" + request ["uri"]);
-				m_log.Debug (" >> content-type=" + request ["content-type"]);
-				m_log.Debug (" >> http-method=" + request ["http-method"]);
-				m_log.Debug ("---------------------------\n");
-			}
-            Hashtable responsedata = new Hashtable();
-            responsedata["content_type"] = "text/html";
-            responsedata["keepalive"] = false;
+            // m_log.DebugFormat("[SIMULATION]: Stream handler called");
 
+            httpResponse.ContentType = "text/html"; //??
+            httpResponse.KeepAlive = false;
+
+            if(httpRequest.HttpMethod != "POST")
+            {
+                httpResponse.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+                httpResponse.RawBuffer = Utils.falseStrBytes;
+            }
+
+            if (httpRequest.ContentType != "application/json" && httpRequest.ContentType != "application/x-gzip")
+            {
+                httpResponse.StatusCode = (int)HttpStatusCode.NotAcceptable;
+                httpResponse.RawBuffer = Utils.falseStrBytes;
+            }
 
             UUID agentID;
             UUID regionID;
             string action;
-            if (!Utils.GetParams((string)request["uri"], out agentID, out regionID, out action))
-            {
-                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", request["uri"]);
-                responsedata["int_response_code"] = 404;
-                responsedata["str_response_string"] = "false";
 
-                return responsedata;
+            if (!Utils.GetParams(httpRequest.UriPath, out agentID, out regionID, out action))
+            {
+                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", httpRequest.RawUrl);
+
+                httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
+                httpResponse.RawBuffer = Utils.falseStrBytes;
             }
 
-            // Next, let's parse the verb
-            string method = (string)request["http-method"];
-            if (method.Equals("DELETE"))
+            OSDMap args = Utils.DeserializeJSONOSMap(httpRequest);
+            if (args == null)
             {
-                string auth_token = string.Empty;
-                if (request.ContainsKey("auth"))
-                    auth_token = request["auth"].ToString();
-
-                DoAgentDelete(request, responsedata, agentID, action, regionID, auth_token);
-                return responsedata;
-            }
-            else if (method.Equals("QUERYACCESS"))
-            {
-                DoQueryAccess(request, responsedata, agentID, regionID);
-                return responsedata;
-            }
-            else
-            {
-                m_log.ErrorFormat("[AGENT HANDLER]: method {0} not supported in agent message {1} (caller is {2})", method, (string)request["uri"], Util.GetCallerIP(request));
-                responsedata["int_response_code"] = HttpStatusCode.MethodNotAllowed;
-                responsedata["str_response_string"] = "Method not allowed";
-
-                return responsedata;
+                httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                httpResponse.RawBuffer = Utils.falseStrBytes;
             }
 
+            DoAgentPost(args, httpRequest.RemoteIPEndPoint.Address.ToString(), httpResponse, agentID);
+
+            httpResponse.StatusCode = 200;
         }
 
-        protected virtual void DoQueryAccess(Hashtable request, Hashtable responsedata, UUID agentID, UUID regionID)
+        protected void DoAgentPost(OSDMap args, string remoteAddress, IOSHttpResponse response, UUID id)
         {
-            Culture.SetCurrentCulture();
-
+            OSD tmpOSD;
             EntityTransferContext ctx = new EntityTransferContext();
+            if (args.TryGetValue("context", out tmpOSD) && tmpOSD is OSDMap)
+                ctx.Unpack((OSDMap)tmpOSD);
 
+            AgentDestinationData data = CreateAgentDestinationData();
+            UnpackData(args, data, remoteAddress);
+
+            GridRegion destination = new GridRegion();
+            destination.RegionID = data.uuid;
+            destination.RegionLocX = data.x;
+            destination.RegionLocY = data.y;
+            destination.RegionName = data.name;
+
+            GridRegion gatekeeper = ExtractGatekeeper(data);
+
+            AgentCircuitData aCircuit = new AgentCircuitData();
+            try
+            {
+                aCircuit.UnpackAgentCircuitData(args);
+            }
+            catch (Exception ex)
+            {
+                m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildCreate message {0}", ex.Message);
+                response.StatusCode = (int)HttpStatusCode.BadRequest;
+                return;
+            }
+
+            GridRegion source = null;
+
+            if (args.TryGetValue("source_uuid", out tmpOSD))
+            {
+                source = new GridRegion();
+                source.RegionID = UUID.Parse(tmpOSD.AsString());
+                source.RegionLocX = Int32.Parse(args["source_x"].AsString());
+                source.RegionLocY = Int32.Parse(args["source_y"].AsString());
+                source.RegionName = args["source_name"].AsString();
+
+                if (args.TryGetValue("source_server_uri", out tmpOSD))
+                    source.RawServerURI = tmpOSD.AsString();
+                else
+                    source.RawServerURI = null;
+            }
+
+            OSDMap resp = new OSDMap(2);
+            string reason = string.Empty;
+
+            bool result = CreateAgent(source, gatekeeper, destination, aCircuit, data.flags, data.fromLogin, ctx, out reason);
+
+            resp["reason"] = OSD.FromString(reason);
+            resp["success"] = OSD.FromBoolean(result);
+            // Let's also send out the IP address of the caller back to the caller (HG 1.5)
+            resp["your_ip"] = remoteAddress;
+
+            response.StatusCode = (int)HttpStatusCode.OK;
+            response.RawBuffer = OSDParser.SerializeJsonToBytes(resp);
+        }
+
+        protected virtual AgentDestinationData CreateAgentDestinationData()
+        {
+            return new AgentDestinationData();
+        }
+
+        protected virtual void UnpackData(OSDMap args, AgentDestinationData data, string remoteAddress)
+        {
+            OSD tmpOSD;
+            // retrieve the input arguments
+            if (args.TryGetValue("destination_x", out tmpOSD) && tmpOSD != null)
+                Int32.TryParse(tmpOSD.AsString(), out data.x);
+            else
+                m_log.WarnFormat("  -- request didn't have destination_x");
+
+            if (args.TryGetValue("destination_y", out tmpOSD) && tmpOSD != null)
+                Int32.TryParse(tmpOSD.AsString(), out data.y);
+            else
+                m_log.WarnFormat("  -- request didn't have destination_y");
+
+            if (args.TryGetValue("destination_uuid", out tmpOSD) && tmpOSD != null)
+                UUID.TryParse(tmpOSD.AsString(), out data.uuid);
+
+            if (args.TryGetValue("destination_name", out tmpOSD) && tmpOSD != null)
+                data.name = tmpOSD.ToString();
+
+            if (args.TryGetValue("teleport_flags", out tmpOSD) && tmpOSD != null)
+                data.flags = tmpOSD.AsUInteger();
+        }
+
+        protected virtual GridRegion ExtractGatekeeper(AgentDestinationData data)
+        {
+            return null;
+        }
+
+        // subclasses must override this
+        protected virtual bool CreateAgent(GridRegion source, GridRegion gatekeeper, GridRegion destination,
+            AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, EntityTransferContext ctx, out string reason)
+        {
+            reason = "Configuration issues, plz mantis";
+            return false;
+        }
+    }
+
+    public class AgentSimpleHandler : SimpleStreamHandler
+    {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+        private ISimulationService m_SimulationService;
+        protected bool m_Proxy = false;
+
+        public AgentSimpleHandler(ISimulationService service) : base("/agent")
+        {
+            m_SimulationService = service;
+        }
+
+        protected override void ProcessRequest(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+        {
+            httpResponse.KeepAlive = false;
+            httpResponse.ContentType = "application/json";
             if (m_SimulationService == null)
             {
-                m_log.Debug("[AGENT HANDLER]: Agent QUERY called. Harmless but useless.");
-                responsedata["content_type"] = "application/json";
-                responsedata["int_response_code"] = HttpStatusCode.NotImplemented;
-                responsedata["str_response_string"] = string.Empty;
+                m_log.Debug("[AGENT HANDLER]: ProcessRequest called with null Simulation Service");
+                httpResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                httpResponse.RawBuffer = Utils.falseStrBytes;
+                return;
+            }
 
-				return;
-			}
+            if (!Utils.GetParams(httpRequest.UriPath, out UUID agentID, out UUID regionID, out string action))
+            {
+                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", httpRequest.UriPath);
 
+                httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
+                httpResponse.RawBuffer = Utils.falseStrBytes;
+                return;
+            }
 
-            OSDMap args = Utils.GetOSDMap((string)request["body"]);
+            switch(httpRequest.HttpMethod)
+            {
+                case "QUERYACCESS":
+                {
+                    if (agentID.IsZero() || regionID.IsZero())
+                    {
+                        httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                        httpResponse.RawBuffer = Utils.falseStrBytes;
+                        return;
+                    }
+                    OSDMap args = Utils.DeserializeJSONOSMap(httpRequest);
+                    if (args == null)
+                    {
+                        httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                        httpResponse.RawBuffer = Utils.falseStrBytes;
+                        return;
+                    }
+                    DoQueryAccess(args, httpResponse, agentID, regionID);
+                    break;
+                }
+                case "PUT":
+                {
+                    OSDMap args = Utils.DeserializeJSONOSMap(httpRequest);
+                    if (args == null)
+                    {
+                        httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                        httpResponse.RawBuffer = Utils.falseStrBytes;
+                        return;
+                    }
 
+                    DoAgentPut(args, httpResponse);
+                    break;
+                }
+                case "POST":
+                {
+                    if (agentID.IsZero())
+                    {
+                        httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                        httpResponse.RawBuffer = Utils.falseStrBytes;
+                        return;
+                    }
+                    OSDMap args = Utils.DeserializeJSONOSMap(httpRequest);
+                    if (args == null)
+                    {
+                        httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                        httpResponse.RawBuffer = Utils.falseStrBytes;
+                        return;
+                    }
+                    DoAgentPost(args, httpRequest, httpResponse, agentID);
+                    break;
+                }
+                case "DELETE":
+                {
+                    if (agentID.IsZero() || regionID.IsZero())
+                    {
+                        httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                        httpResponse.RawBuffer = Utils.falseStrBytes;
+                        return;
+                    }
+                    httpRequest.QueryAsDictionary.TryGetValue("auth", out string auth_token);
+
+                    DoAgentDelete(httpRequest, httpResponse, agentID, action, regionID, auth_token);
+                    break;
+                }
+                default:
+                {
+                    httpResponse.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+                    httpResponse.RawBuffer = Utils.falseStrBytes;
+                    return;
+                }
+            }
+        }
+
+        protected virtual void DoQueryAccess(OSDMap args, IOSHttpResponse httpResponse, UUID agentID, UUID regionID)
+        {
             bool viaTeleport = true;
-            if (args.ContainsKey("viaTeleport"))
-                viaTeleport = args["viaTeleport"].AsBoolean();
+            OSD tmpOSD;
+            if (args.TryGetValue("viaTeleport", out tmpOSD))
+                viaTeleport = tmpOSD.AsBoolean();
 
             Vector3 position = Vector3.Zero;
-            if (args.ContainsKey("position"))
-                position = Vector3.Parse(args["position"].AsString());
+            if (args.TryGetValue("position", out tmpOSD))
+                position = Vector3.Parse(tmpOSD.AsString());
 
             string agentHomeURI = null;
-            if (args.ContainsKey("agent_home_uri"))
-                agentHomeURI = args["agent_home_uri"].AsString();
+            if (args.TryGetValue("agent_home_uri", out tmpOSD))
+                agentHomeURI = tmpOSD.AsString();
 
             // Decode the legacy (string) version and extract the number
             float theirVersion = 0f;
-            if (args.ContainsKey("my_version"))
+            if (args.TryGetValue("my_version", out tmpOSD))
             {
-                string theirVersionStr = args["my_version"].AsString();
-                string[] parts = theirVersionStr.Split(new char[] {'/'});
+                string theirVersionStr = tmpOSD.AsString();
+                string[] parts = theirVersionStr.Split(new char[] { '/' });
                 if (parts.Length > 1)
-                    theirVersion = float.Parse(parts[1]);
+                    theirVersion = float.Parse(parts[1], Culture.FormatProvider);
             }
 
-            if (args.ContainsKey("context"))
-                ctx.Unpack((OSDMap)args["context"]);
+            EntityTransferContext ctx = new EntityTransferContext();
+            if (args.TryGetValue("context", out tmpOSD) && tmpOSD is OSDMap)
+                ctx.Unpack((OSDMap)tmpOSD);
 
             // Decode the new versioning data
             float minVersionRequired = 0f;
@@ -168,20 +344,22 @@ namespace OpenSim.Server.Handlers.Simulation
             float minVersionProvided = 0f;
             float maxVersionProvided = 0f;
 
-            if (args.ContainsKey("simulation_service_supported_min"))
-                minVersionProvided = (float)args["simulation_service_supported_min"].AsReal();
-            if (args.ContainsKey("simulation_service_supported_max"))
-                maxVersionProvided = (float)args["simulation_service_supported_max"].AsReal();
+            if (args.TryGetValue("simulation_service_supported_min", out tmpOSD))
+                minVersionProvided = (float)tmpOSD.AsReal();
+            if (args.TryGetValue("simulation_service_supported_max", out tmpOSD))
+                maxVersionProvided = (float)tmpOSD.AsReal();
 
-            if (args.ContainsKey("simulation_service_accepted_min"))
-                minVersionRequired = (float)args["simulation_service_accepted_min"].AsReal();
-            if (args.ContainsKey("simulation_service_accepted_max"))
-                maxVersionRequired = (float)args["simulation_service_accepted_max"].AsReal();
+            if (args.TryGetValue("simulation_service_accepted_min", out tmpOSD))
+                minVersionRequired = (float)tmpOSD.AsReal();
+            if (args.TryGetValue("simulation_service_accepted_max", out tmpOSD))
+                maxVersionRequired = (float)tmpOSD.AsReal();
 
-            responsedata["int_response_code"] = HttpStatusCode.OK;
             OSDMap resp = new OSDMap(3);
 
             float version = 0f;
+
+            httpResponse.StatusCode = (int)HttpStatusCode.OK;
+            
 
             float outboundVersion = 0f;
             float inboundVersion = 0f;
@@ -190,22 +368,22 @@ namespace OpenSim.Server.Handlers.Simulation
             {
                 // If there is no version in the packet at all we're looking at 0.6 or
                 // even more ancient. Refuse it.
-                if(theirVersion == 0f)
+                if (theirVersion == 0f)
                 {
                     resp["success"] = OSD.FromBoolean(false);
                     resp["reason"] = OSD.FromString("Your region is running a old version of opensim no longer supported. Consider updating it");
-                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    httpResponse.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeJsonString(resp, true));
                     return;
                 }
 
                 version = theirVersion;
 
                 if (version < VersionInfo.SimulationServiceVersionAcceptedMin ||
-                    version > VersionInfo.SimulationServiceVersionAcceptedMax )
+                    version > VersionInfo.SimulationServiceVersionAcceptedMax)
                 {
                     resp["success"] = OSD.FromBoolean(false);
                     resp["reason"] = OSD.FromString(String.Format("Your region protocol version is {0} and we accept only {1} - {2}. No version overlap.", theirVersion, VersionInfo.SimulationServiceVersionAcceptedMin, VersionInfo.SimulationServiceVersionAcceptedMax));
-                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    httpResponse.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeJsonString(resp, true));
                     return;
                 }
             }
@@ -217,7 +395,7 @@ namespace OpenSim.Server.Handlers.Simulation
                 {
                     resp["success"] = OSD.FromBoolean(false);
                     resp["reason"] = OSD.FromString(String.Format("Your region provide protocol versions {0} - {1} and we accept only {2} - {3}. No version overlap.", minVersionProvided, maxVersionProvided, VersionInfo.SimulationServiceVersionAcceptedMin, VersionInfo.SimulationServiceVersionAcceptedMax));
-                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    httpResponse.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeJsonString(resp, true));
                     return;
                 }
                 if (minVersionRequired > VersionInfo.SimulationServiceVersionSupportedMax ||
@@ -225,7 +403,7 @@ namespace OpenSim.Server.Handlers.Simulation
                 {
                     resp["success"] = OSD.FromBoolean(false);
                     resp["reason"] = OSD.FromString(String.Format("You require region protocol versions {0} - {1} and we provide only {2} - {3}. No version overlap.", minVersionRequired, maxVersionRequired, VersionInfo.SimulationServiceVersionSupportedMin, VersionInfo.SimulationServiceVersionSupportedMax));
-                    responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+                    httpResponse.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeJsonString(resp, true));
                     return;
                 }
 
@@ -239,9 +417,9 @@ namespace OpenSim.Server.Handlers.Simulation
 
             List<UUID> features = new List<UUID>();
 
-            if (args.ContainsKey("features"))
+            if (args.TryGetValue("features", out tmpOSD) && tmpOSD is OSDArray)
             {
-                OSDArray array = (OSDArray)args["features"];
+                OSDArray array = (OSDArray)tmpOSD;
 
                 foreach (OSD o in array)
                     features.Add(new UUID(o.AsString()));
@@ -266,7 +444,7 @@ namespace OpenSim.Server.Handlers.Simulation
 
             resp["success"] = OSD.FromBoolean(result);
             resp["reason"] = OSD.FromString(reason);
-            string legacyVersion = String.Format("SIMULATION/{0}", version);
+            string legacyVersion = String.Format(Culture.FormatProvider, "SIMULATION/{0}", version);
             resp["version"] = OSD.FromString(legacyVersion);
             resp["negotiated_inbound_version"] = OSD.FromReal(inboundVersion);
             resp["negotiated_outbound_version"] = OSD.FromReal(outboundVersion);
@@ -277,160 +455,48 @@ namespace OpenSim.Server.Handlers.Simulation
 
             resp["features"] = featuresWanted;
 
-            // We must preserve defaults here, otherwise a false "success" will not be put into the JSON map!
-            responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp, true);
+            httpResponse.KeepAlive = result;
 
-//            Console.WriteLine("str_response_string [{0}]", responsedata["str_response_string"]);
+            // We must preserve defaults here, otherwise a false "success" will not be put into the JSON map!
+            httpResponse.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeJsonString(resp, true));
+
+            // console.WriteLine("str_response_string [{0}]", responsedata["str_response_string"]);
         }
 
-        protected void DoAgentDelete(Hashtable request, Hashtable responsedata, UUID id, string action, UUID regionID, string auth_token)
+        protected void DoAgentDelete(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, UUID agentID, string action, UUID regionID, string auth_token)
         {
             if (string.IsNullOrEmpty(action))
-                m_log.DebugFormat("[AGENT HANDLER]: >>> DELETE <<< RegionID: {0}; from: {1}; auth_code: {2}", regionID, Util.GetCallerIP(request), auth_token);
+                m_log.DebugFormat("[AGENT HANDLER]: >>> DELETE <<< RegionID: {0}; from: {1}; auth_code: {2}",
+                    regionID, httpRequest.RemoteIPEndPoint.Address.ToString(), auth_token);
             else
-                m_log.DebugFormat("[AGENT HANDLER]: Release {0} to RegionID: {1}", id, regionID);
+                m_log.DebugFormat("[AGENT HANDLER]: Release {0} to RegionID: {1}", agentID, regionID);
 
-            GridRegion destination = new GridRegion();
-            destination.RegionID = regionID;
 
             if (action.Equals("release"))
-                ReleaseAgent(regionID, id);
+                m_SimulationService.ReleaseAgent(regionID, agentID, "");
             else
+            {
+                GridRegion destination = new GridRegion();
+                destination.RegionID = regionID;
                 Util.FireAndForget(
-                    o => m_SimulationService.CloseAgent(destination, id, auth_token), null, "AgentHandler.DoAgentDelete");
+                    o => m_SimulationService.CloseAgent(destination, agentID, auth_token), null, "AgentHandler.DoAgentDelete");
+            }
 
-            responsedata["int_response_code"] = HttpStatusCode.OK;
-            responsedata["str_response_string"] = "OpenSim agent " + id.ToString();
+            httpResponse.StatusCode = (int)HttpStatusCode.OK;
+            httpResponse.RawBuffer = Util.UTF8.GetBytes("OpenSim agent " + agentID.ToString());
 
             //m_log.DebugFormat("[AGENT HANDLER]: Agent {0} Released/Deleted from region {1}", id, regionID);
         }
 
-        protected virtual void ReleaseAgent(UUID regionID, UUID id)
+        protected void DoAgentPost(OSDMap args, IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, UUID agentID)
         {
-            m_SimulationService.ReleaseAgent(regionID, id, "");
-        }
-    }
-
-    public class AgentPostHandler : BaseStreamHandler
-    {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
-        private ISimulationService m_SimulationService;
-        protected bool m_Proxy = false;
-
-        public AgentPostHandler(ISimulationService service) :
-                base("POST", "/agent")
-        {
-            m_SimulationService = service;
-        }
-
-        public AgentPostHandler(string path) :
-                base("POST", path)
-        {
-            m_SimulationService = null;
-        }
-
-        protected override byte[] ProcessRequest(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            Hashtable keysvals = new Hashtable();
-            Hashtable headervals = new Hashtable();
-
-            string[] querystringkeys = httpRequest.QueryString.AllKeys;
-            string[] rHeaders = httpRequest.Headers.AllKeys;
-
-            keysvals.Add("uri", httpRequest.RawUrl);
-            keysvals.Add("content-type", httpRequest.ContentType);
-            keysvals.Add("http-method", httpRequest.HttpMethod);
-
-            foreach (string queryname in querystringkeys)
-                keysvals.Add(queryname, httpRequest.QueryString[queryname]);
-
-            foreach (string headername in rHeaders)
-                headervals[headername] = httpRequest.Headers[headername];
-
-            keysvals.Add("headers", headervals);
-            keysvals.Add("querystringkeys", querystringkeys);
-
-            httpResponse.StatusCode = 200;
-            httpResponse.ContentType = "text/html";
-            httpResponse.KeepAlive = false;
-            Encoding encoding = Encoding.UTF8;
-
-            if (httpRequest.ContentType != "application/json")
-            {
-                httpResponse.StatusCode = 406;
-                return encoding.GetBytes("false");
-            }
-
-            string requestBody;
-
-            Stream inputStream = request;
-            Stream innerStream = null;
-            try
-            {
-                if ((httpRequest.ContentType == "application/x-gzip" || httpRequest.Headers["Content-Encoding"] == "gzip") || (httpRequest.Headers["X-Content-Encoding"] == "gzip"))
-                {
-                    innerStream = inputStream;
-                    inputStream = new GZipStream(innerStream, CompressionMode.Decompress);
-                }
-
-                using (StreamReader reader = new StreamReader(inputStream, encoding))
-                {
-                    requestBody = reader.ReadToEnd();
-                }
-            }
-            finally
-            {
-                if (innerStream != null)
-                    innerStream.Dispose();
-                inputStream.Dispose();
-            }
-
-            keysvals.Add("body", requestBody);
-
-            Hashtable responsedata = new Hashtable();
-
-            UUID agentID;
-            UUID regionID;
-            string action;
-
-            if (!Utils.GetParams((string)keysvals["uri"], out agentID, out regionID, out action))
-            {
-                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", keysvals["uri"]);
-
-                httpResponse.StatusCode = 404;
-
-                return encoding.GetBytes("false");
-            }
-
-            DoAgentPost(keysvals, responsedata, agentID);
-
-            httpResponse.StatusCode = (int)responsedata["int_response_code"];
-            return encoding.GetBytes((string)responsedata["str_response_string"]);
-        }
-
-        protected void DoAgentPost(Hashtable request, Hashtable responsedata, UUID id)
-        {
+            OSD tmpOSD;
             EntityTransferContext ctx = new EntityTransferContext();
-
-            OSDMap args = Utils.GetOSDMap((string)request["body"]);
-            if (args == null)
-            {
-                responsedata["int_response_code"] = HttpStatusCode.BadRequest;
-                responsedata["str_response_string"] = "Bad request";
-                return;
-            }
-
-            if (args.ContainsKey("context"))
-                ctx.Unpack((OSDMap)args["context"]);
+            if (args.TryGetValue("context", out tmpOSD) && tmpOSD is OSDMap)
+                ctx.Unpack((OSDMap)tmpOSD);
 
             AgentDestinationData data = CreateAgentDestinationData();
-            UnpackData(args, data, request);
+            UnpackData(args, data);
 
             GridRegion destination = new GridRegion();
             destination.RegionID = data.uuid;
@@ -447,45 +513,41 @@ namespace OpenSim.Server.Handlers.Simulation
             }
             catch (Exception ex)
             {
-                m_log.ErrorFormat("[AGENT HANDLER]: exception on unpacking ChildCreate message {0}", ex.Message);
-                responsedata["int_response_code"] = HttpStatusCode.BadRequest;
-                responsedata["str_response_string"] = "Bad request";
+                m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildCreate message {0}", ex.Message);
+                httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                httpResponse.RawBuffer = Util.UTF8.GetBytes("false");
                 return;
             }
 
             GridRegion source = null;
 
-            if (args.ContainsKey("source_uuid"))
+            if (args.TryGetValue("source_uuid", out tmpOSD))
             {
                 source = new GridRegion();
+                source.RegionID = UUID.Parse(tmpOSD.AsString());
                 source.RegionLocX = Int32.Parse(args["source_x"].AsString());
                 source.RegionLocY = Int32.Parse(args["source_y"].AsString());
                 source.RegionName = args["source_name"].AsString();
-                source.RegionID = UUID.Parse(args["source_uuid"].AsString());
 
-                if (args.ContainsKey("source_server_uri"))
-                    source.RawServerURI = args["source_server_uri"].AsString();
+                if (args.TryGetValue("source_server_uri", out tmpOSD))
+                    source.RawServerURI = tmpOSD.AsString();
                 else
                     source.RawServerURI = null;
             }
 
             OSDMap resp = new OSDMap(2);
-            string reason = String.Empty;
+            string reason = string.Empty;
 
-            // This is the meaning of POST agent
-            //m_regionClient.AdjustUserInformation(aCircuit);
-            //bool result = m_SimulationService.CreateAgent(destination, aCircuit, teleportFlags, out reason);
-
-            bool result = CreateAgent(source, gatekeeper, destination, aCircuit, data.flags, data.fromLogin, ctx, out reason);
+            bool result = CreateAgent(source, gatekeeper, destination, aCircuit, data.flags, ctx, out reason);
 
             resp["reason"] = OSD.FromString(reason);
             resp["success"] = OSD.FromBoolean(result);
             // Let's also send out the IP address of the caller back to the caller (HG 1.5)
-            resp["your_ip"] = OSD.FromString(GetCallerIP(request));
+            resp["your_ip"] = OSD.FromString(httpRequest.RemoteIPEndPoint.Address.ToString());
 
-            // TODO: add reason if not String.Empty?
-            responsedata["int_response_code"] = HttpStatusCode.OK;
-            responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp);
+            httpResponse.StatusCode = (int)HttpStatusCode.OK;
+            httpResponse.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeJsonString(resp));
+            httpResponse.KeepAlive = (data.flags & (uint)(TeleportFlags.ViaLogin | TeleportFlags.ViaHGLogin)) != (uint)TeleportFlags.ViaLogin;
         }
 
         protected virtual AgentDestinationData CreateAgentDestinationData()
@@ -493,23 +555,28 @@ namespace OpenSim.Server.Handlers.Simulation
             return new AgentDestinationData();
         }
 
-        protected virtual void UnpackData(OSDMap args, AgentDestinationData data, Hashtable request)
+        protected virtual void UnpackData(OSDMap args, AgentDestinationData data)
         {
+            OSD tmpOSD;
             // retrieve the input arguments
-            if (args.ContainsKey("destination_x") && args["destination_x"] != null)
-                Int32.TryParse(args["destination_x"].AsString(), out data.x);
+            if (args.TryGetValue("destination_x", out tmpOSD) && tmpOSD != null)
+                Int32.TryParse(tmpOSD.AsString(), out data.x);
             else
                 m_log.WarnFormat("  -- request didn't have destination_x");
-            if (args.ContainsKey("destination_y") && args["destination_y"] != null)
-                Int32.TryParse(args["destination_y"].AsString(), out data.y);
+
+            if (args.TryGetValue("destination_y", out tmpOSD) && tmpOSD != null)
+                Int32.TryParse(tmpOSD.AsString(), out data.y);
             else
                 m_log.WarnFormat("  -- request didn't have destination_y");
-            if (args.ContainsKey("destination_uuid") && args["destination_uuid"] != null)
-                UUID.TryParse(args["destination_uuid"].AsString(), out data.uuid);
-            if (args.ContainsKey("destination_name") && args["destination_name"] != null)
-                data.name = args["destination_name"].ToString();
-            if (args.ContainsKey("teleport_flags") && args["teleport_flags"] != null)
-                data.flags = args["teleport_flags"].AsUInteger();
+
+            if (args.TryGetValue("destination_uuid", out tmpOSD) && tmpOSD != null)
+                UUID.TryParse(tmpOSD.AsString(), out data.uuid);
+
+            if (args.TryGetValue("destination_name", out tmpOSD) && tmpOSD != null)
+                data.name = tmpOSD.ToString();
+
+            if (args.TryGetValue("teleport_flags", out tmpOSD) && tmpOSD != null)
+                data.flags = tmpOSD.AsUInteger();
         }
 
         protected virtual GridRegion ExtractGatekeeper(AgentDestinationData data)
@@ -517,193 +584,34 @@ namespace OpenSim.Server.Handlers.Simulation
             return null;
         }
 
-        protected string GetCallerIP(Hashtable request)
-        {
-            if (!m_Proxy)
-                return Util.GetCallerIP(request);
-
-            // We're behind a proxy
-            Hashtable headers = (Hashtable)request["headers"];
-
-            //// DEBUG
-            //foreach (object o in headers.Keys)
-            //    m_log.DebugFormat("XXX {0} = {1}", o.ToString(), (headers[o] == null? "null" : headers[o].ToString()));
-
-            string xff = "X-Forwarded-For";
-            if (headers.ContainsKey(xff.ToLower()))
-                xff = xff.ToLower();
-
-            if (!headers.ContainsKey(xff) || headers[xff] == null)
-            {
-                m_log.WarnFormat("[AGENT HANDLER]: No XFF header");
-                return Util.GetCallerIP(request);
-            }
-
-            m_log.DebugFormat("[AGENT HANDLER]: XFF is {0}", headers[xff]);
-
-            IPEndPoint ep = Util.GetClientIPFromXFF((string)headers[xff]);
-            if (ep != null)
-                return ep.Address.ToString();
-
-            // Oops
-            return Util.GetCallerIP(request);
-        }
-
         // subclasses can override this
         protected virtual bool CreateAgent(GridRegion source, GridRegion gatekeeper, GridRegion destination,
-            AgentCircuitData aCircuit, uint teleportFlags, bool fromLogin, EntityTransferContext ctx, out string reason)
+            AgentCircuitData aCircuit, uint teleportFlags, EntityTransferContext ctx, out string reason)
         {
-            reason = String.Empty;
-            // The data and protocols are already defined so this is just a dummy to satisfy the interface
-            // TODO: make this end-to-end
-
-/* this needs to be sync
-            if ((teleportFlags & (uint)TeleportFlags.ViaLogin) == 0)
-            {
-                Util.FireAndForget(x =>
-                {
-                    string r;
-                    m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out r);
-                    m_log.DebugFormat("[AGENT HANDLER]: ASYNC CreateAgent {0}", r);
-                });
-
-                return true;
-            }
-            else
-            {
-*/
-
-                bool ret = m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
-//                m_log.DebugFormat("[AGENT HANDLER]: SYNC CreateAgent {0} {1}", ret.ToString(), reason);
-                return ret;
-//            }
-        }
-    }
-
-    public class AgentPutHandler : BaseStreamHandler
-    {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-
-        private ISimulationService m_SimulationService;
-        protected bool m_Proxy = false;
-
-        public AgentPutHandler(ISimulationService service) :
-                base("PUT", "/agent")
-        {
-            m_SimulationService = service;
+            reason = string.Empty;
+            bool ret = m_SimulationService.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
+            //                m_log.DebugFormat("[AGENT HANDLER]: SYNC CreateAgent {0} {1}", ret.ToString(), reason);
+            return ret;
         }
 
-        public AgentPutHandler(string path) :
-                base("PUT", path)
+        protected void DoAgentPut(OSDMap args, IOSHttpResponse httpResponse)
         {
-            m_SimulationService = null;
-        }
-
-        protected override byte[] ProcessRequest(string path, Stream request,
-                IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
-        {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            Hashtable keysvals = new Hashtable();
-            Hashtable headervals = new Hashtable();
-
-            string[] querystringkeys = httpRequest.QueryString.AllKeys;
-            string[] rHeaders = httpRequest.Headers.AllKeys;
-
-            keysvals.Add("uri", httpRequest.RawUrl);
-            keysvals.Add("content-type", httpRequest.ContentType);
-            keysvals.Add("http-method", httpRequest.HttpMethod);
-
-            foreach (string queryname in querystringkeys)
-                keysvals.Add(queryname, httpRequest.QueryString[queryname]);
-
-            foreach (string headername in rHeaders)
-                headervals[headername] = httpRequest.Headers[headername];
-
-            keysvals.Add("headers", headervals);
-            keysvals.Add("querystringkeys", querystringkeys);
-
-            String requestBody;
-            Encoding encoding = Encoding.UTF8;
-
-            Stream inputStream = request;
-            Stream innerStream = null;
-            try
-            {
-                if ((httpRequest.ContentType == "application/x-gzip" || httpRequest.Headers["Content-Encoding"] == "gzip") || (httpRequest.Headers["X-Content-Encoding"] == "gzip"))
-                {
-                    innerStream = inputStream;
-                    inputStream = new GZipStream(innerStream, CompressionMode.Decompress);
-                }
-
-                using (StreamReader reader = new StreamReader(inputStream, encoding))
-                {
-                    requestBody = reader.ReadToEnd();
-                }
-            }
-            finally
-            {
-                if (innerStream != null)
-                    innerStream.Dispose();
-                inputStream.Dispose();
-            }
-
-            keysvals.Add("body", requestBody);
-
-            httpResponse.StatusCode = 200;
-            httpResponse.ContentType = "text/html";
-            httpResponse.KeepAlive = false;
-
-            Hashtable responsedata = new Hashtable();
-
-            UUID agentID;
-            UUID regionID;
-            string action;
-
-            if (!Utils.GetParams((string)keysvals["uri"], out agentID, out regionID, out action))
-            {
-                m_log.InfoFormat("[AGENT HANDLER]: Invalid parameters for agent message {0}", keysvals["uri"]);
-
-                httpResponse.StatusCode = 404;
-
-                return encoding.GetBytes("false");
-            }
-
-            DoAgentPut(keysvals, responsedata);
-
-            httpResponse.StatusCode = (int)responsedata["int_response_code"];
-            return encoding.GetBytes((string)responsedata["str_response_string"]);
-        }
-
-        protected void DoAgentPut(Hashtable request, Hashtable responsedata)
-        {
-            // TODO: Encode the ENtityTransferContext
-            EntityTransferContext ctx = new EntityTransferContext();
-
-            OSDMap args = Utils.GetOSDMap((string)request["body"]);
-            if (args == null)
-            {
-                responsedata["int_response_code"] = HttpStatusCode.BadRequest;
-                responsedata["str_response_string"] = "Bad request";
-                return;
-            }
-
             // retrieve the input arguments
+            OSD tmpOSD;
+            EntityTransferContext ctx = new EntityTransferContext();
             int x = 0, y = 0;
             UUID uuid = UUID.Zero;
             string regionname = string.Empty;
-            if (args.ContainsKey("destination_x") && args["destination_x"] != null)
-                Int32.TryParse(args["destination_x"].AsString(), out x);
-            if (args.ContainsKey("destination_y") && args["destination_y"] != null)
-                Int32.TryParse(args["destination_y"].AsString(), out y);
-            if (args.ContainsKey("destination_uuid") && args["destination_uuid"] != null)
-                UUID.TryParse(args["destination_uuid"].AsString(), out uuid);
-            if (args.ContainsKey("destination_name") && args["destination_name"] != null)
-                regionname = args["destination_name"].ToString();
-            if (args.ContainsKey("context"))
-                ctx.Unpack((OSDMap)args["context"]);
+            if (args.TryGetValue("destination_x", out tmpOSD) && tmpOSD != null)
+                Int32.TryParse(tmpOSD.AsString(), out x);
+            if (args.TryGetValue("destination_y", out tmpOSD) && tmpOSD != null)
+                Int32.TryParse(tmpOSD.AsString(), out y);
+            if (args.TryGetValue("destination_uuid", out tmpOSD) && tmpOSD != null)
+                UUID.TryParse(tmpOSD.AsString(), out uuid);
+            if (args.TryGetValue("destination_name", out tmpOSD) && tmpOSD != null)
+                regionname = tmpOSD.ToString();
+            if (args.TryGetValue("context", out tmpOSD) && tmpOSD is OSDMap)
+                ctx.Unpack((OSDMap)tmpOSD);
 
             GridRegion destination = new GridRegion();
             destination.RegionID = uuid;
@@ -731,8 +639,8 @@ namespace OpenSim.Server.Handlers.Simulation
                 catch (Exception ex)
                 {
                     m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildAgentUpdate message {0}", ex.Message);
-                    responsedata["int_response_code"] = HttpStatusCode.BadRequest;
-                    responsedata["str_response_string"] = "Bad request";
+                    httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                    httpResponse.RawBuffer = Util.UTF8.GetBytes("false");
                     return;
                 }
 
@@ -750,16 +658,17 @@ namespace OpenSim.Server.Handlers.Simulation
                 catch (Exception ex)
                 {
                     m_log.InfoFormat("[AGENT HANDLER]: exception on unpacking ChildAgentUpdate message {0}", ex.Message);
+                    httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
+                    httpResponse.RawBuffer = Util.UTF8.GetBytes("false");
                     return;
                 }
                 //agent.Dump();
                 // This is one of the meanings of PUT agent
                 result = m_SimulationService.UpdateAgent(destination, agent);
-
             }
 
-            responsedata["int_response_code"] = HttpStatusCode.OK;
-            responsedata["str_response_string"] = result.ToString();
+            httpResponse.StatusCode = (int)HttpStatusCode.OK;
+            httpResponse.RawBuffer = Util.UTF8.GetBytes(result.ToString());
             //responsedata["str_response_string"] = OSDParser.SerializeJsonString(resp); ??? instead
         }
 
@@ -768,8 +677,7 @@ namespace OpenSim.Server.Handlers.Simulation
         {
             // The data and protocols are already defined so this is just a dummy to satisfy the interface
             // TODO: make this end-to-end
-            EntityTransferContext ctx = new EntityTransferContext();
-            return m_SimulationService.UpdateAgent(destination, agent, ctx);
+            return m_SimulationService.UpdateAgent(destination, agent, new EntityTransferContext());
         }
     }
 

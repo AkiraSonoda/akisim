@@ -35,13 +35,39 @@ using log4net;
 
 namespace OpenSim.Framework.Console
 {
-    public class ConsoleBase
+    public class ConsoleLevel
+    {
+        public string m_string;
+
+        ConsoleLevel(string v)
+        {
+            m_string = v;
+        }
+
+        static public implicit operator ConsoleLevel(string s)
+        {
+            return new ConsoleLevel(s);
+        }
+
+        public static string ToString(ConsoleLevel s)
+        {
+            return s.m_string;
+        }
+
+        public override string ToString()
+        {
+            return m_string;
+        }
+    }
+
+
+    public class ConsoleBase : IConsole
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected string prompt = "# ";
 
-        public object ConsoleScene { get; set; }
+        public IScene ConsoleScene { get; set; }
 
         public string DefaultPrompt { get; set; }
 
@@ -58,43 +84,63 @@ namespace OpenSim.Framework.Console
         {
         }
 
-        public virtual void Output(string text, string level)
+        public virtual void Output(string format)
         {
-            Output(text);
+            System.Console.WriteLine(format);
         }
 
-        public virtual void Output(string text)
+        public virtual void Output(string format, params object[] components)
         {
+            string level = null;
+            if (components != null && components.Length > 0)
+            {
+                if (components[0] == null || components[0] is ConsoleLevel)
+                {
+                    if (components[0] is ConsoleLevel)
+                        level = ((ConsoleLevel)components[0]).ToString();
+
+                    if (components.Length > 1)
+                    {
+                        object[] tmp = new object[components.Length - 1];
+                        Array.Copy(components, 1, tmp, 0, components.Length - 1);
+                        components = tmp;
+                    }
+                    else
+                        components = null;
+                }
+
+            }
+            string text;
+            if (components == null || components.Length == 0)
+                text = format;
+            else
+                text = String.Format(format, components);
+
             System.Console.WriteLine(text);
         }
 
-        public virtual void OutputFormat(string format, params object[] components)
-        {
-            Output(string.Format(format, components));
-        }
-
-        public string CmdPrompt(string p)
+        public string Prompt(string p)
         {
             return ReadLine(String.Format("{0}: ", p), false, true);
         }
 
-        public string CmdPrompt(string p, string def)
+        public string Prompt(string p, string def)
         {
             string ret = ReadLine(String.Format("{0} [{1}]: ", p, def), false, true);
-            if (ret == String.Empty)
+            if (ret.Length == 0)
                 ret = def;
 
             return ret;
         }
 
-        public string CmdPrompt(string p, List<char> excludedCharacters)
+        public string Prompt(string p, List<char> excludedCharacters)
         {
             bool itisdone = false;
             string ret = String.Empty;
             while (!itisdone)
             {
                 itisdone = true;
-                ret = CmdPrompt(p);
+                ret = Prompt(p);
 
                 foreach (char c in excludedCharacters)
                 {
@@ -109,27 +155,34 @@ namespace OpenSim.Framework.Console
             return ret;
         }
 
-        public string CmdPrompt(string p, string def, List<char> excludedCharacters)
+        public virtual string Prompt(string p, string def, List<char> excludedCharacters, bool echo = true)
         {
             bool itisdone = false;
             string ret = String.Empty;
             while (!itisdone)
             {
                 itisdone = true;
-                ret = CmdPrompt(p, def);
 
-                if (ret == String.Empty)
+                if (def == null)
+                    ret = ReadLine(String.Format("{0}: ", p), false, echo);
+                else
+                    ret = ReadLine(String.Format("{0} [{1}]: ", p, def), false, echo);
+
+                if (ret.Length == 0 && def != null)
                 {
                     ret = def;
                 }
                 else
                 {
-                    foreach (char c in excludedCharacters)
+                    if (excludedCharacters != null)
                     {
-                        if (ret.Contains(c.ToString()))
+                        foreach (char c in excludedCharacters)
                         {
-                            System.Console.WriteLine("The character \"" + c.ToString() + "\" is not permitted.");
-                            itisdone = false;
+                            if (ret.Contains(c.ToString()))
+                            {
+                                System.Console.WriteLine("The character \"" + c.ToString() + "\" is not permitted.");
+                                itisdone = false;
+                            }
                         }
                     }
                 }
@@ -139,14 +192,14 @@ namespace OpenSim.Framework.Console
         }
 
         // Displays a command prompt and returns a default value, user may only enter 1 of 2 options
-        public string CmdPrompt(string prompt, string defaultresponse, List<string> options)
+        public virtual string Prompt(string prompt, string defaultresponse, List<string> options)
         {
             bool itisdone = false;
             string optstr = String.Empty;
             foreach (string s in options)
                 optstr += " " + s;
 
-            string temp = CmdPrompt(prompt, defaultresponse);
+            string temp = Prompt(prompt, defaultresponse);
             while (itisdone == false)
             {
                 if (options.Contains(temp))
@@ -156,17 +209,10 @@ namespace OpenSim.Framework.Console
                 else
                 {
                     System.Console.WriteLine("Valid options are" + optstr);
-                    temp = CmdPrompt(prompt, defaultresponse);
+                    temp = Prompt(prompt, defaultresponse);
                 }
             }
             return temp;
-        }
-
-        // Displays a prompt and waits for the user to enter a string, then returns that string
-        // (Done with no echo and suitable for passwords)
-        public string PasswdPrompt(string p)
-        {
-            return ReadLine(String.Format("{0}: ", p), false, false);
         }
 
         public virtual string ReadLine(string p, bool isCommand, bool e)

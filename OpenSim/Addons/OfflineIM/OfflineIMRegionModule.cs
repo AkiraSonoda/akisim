@@ -63,7 +63,7 @@ namespace OpenSim.OfflineIM
             m_Enabled = true;
 
             string serviceLocation = cnf.GetString("OfflineMessageURL", string.Empty);
-            if (serviceLocation == string.Empty)
+            if (serviceLocation.Length == 0)
                 m_OfflineIMService = new OfflineIMService(config);
             else
                 m_OfflineIMService = new OfflineIMServiceRemoteConnector(config);
@@ -114,7 +114,6 @@ namespace OpenSim.OfflineIM
             scene.ForEachClient(delegate(IClientAPI client)
             {
                 client.OnRetrieveInstantMessages -= RetrieveInstantMessages;
-                client.OnMuteListRequest -= OnMuteListRequest;
             });
         }
 
@@ -162,7 +161,6 @@ namespace OpenSim.OfflineIM
         private void OnNewClient(IClientAPI client)
         {
             client.OnRetrieveInstantMessages += RetrieveInstantMessages;
-            client.OnMuteListRequest += OnMuteListRequest;
         }
 
         private void RetrieveInstantMessages(IClientAPI client)
@@ -187,24 +185,13 @@ namespace OpenSim.OfflineIM
                     // Needed for proper state management for stored group
                     // invitations
                     //
-                    Scene s = FindScene(client.AgentId);
+                    Scene s = client.Scene as Scene;
                     if (s != null)
+                    {
+                        im.offline = 1;
                         s.EventManager.TriggerIncomingInstantMessage(im);
+                    }
                 }
-            }
-        }
-
-        // Apparently this is needed in order for the viewer to request the IMs.
-        private void OnMuteListRequest(IClientAPI client, uint crc)
-        {
-            m_log.DebugFormat("[OfflineIM.V2] Got mute list request for crc {0}", crc);
-            string filename = "mutes" + client.AgentId.ToString();
-
-            IXfer xfer = client.Scene.RequestModuleInterface<IXfer>();
-            if (xfer != null)
-            {
-                xfer.AddNewFile(filename, new Byte[0]);
-                client.SendMuteListUpdate(filename);
             }
         }
 

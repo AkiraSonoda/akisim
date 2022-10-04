@@ -135,6 +135,7 @@ public static class BSParam
     public static bool AvatarToAvatarCollisionsByDefault { get; private set; }
     public static float AvatarFriction { get; private set; }
     public static float AvatarStandingFriction { get; private set; }
+    public static float AvatarWalkVelocityFactor { get; private set; }
     public static float AvatarAlwaysRunFactor { get; private set; }
     public static float AvatarDensity { get; private set; }
     public static float AvatarRestitution { get; private set; }
@@ -148,6 +149,7 @@ public static class BSParam
     public static float AvatarHeightHighFudge { get; private set; }
     public static float AvatarFlyingGroundMargin { get; private set; }
     public static float AvatarFlyingGroundUpForce { get; private set; }
+    public static int AvatarAddForceFrames { get; private set; }
     public static float AvatarTerminalVelocity { get; private set; }
     public static float AvatarContactProcessingThreshold { get; private set; }
     public static float AvatarAddForcePushFactor { get; private set; }
@@ -229,6 +231,8 @@ public static class BSParam
     public static float LinkConstraintERP { get; private set; }
     public static float LinkConstraintCFM { get; private set; }
     public static float LinkConstraintSolverIterations { get; private set; }
+
+    public static bool UseBulletRaycast { get; private set; }
 
     public static float PID_D { get; private set; }    // derivative
     public static float PID_P { get; private set; }    // proportional
@@ -602,6 +606,8 @@ public static class BSParam
             0.2f ),
         new ParameterDefn<float>("AvatarStandingFriction", "Avatar friction when standing. Changed on avatar recreation.",
             0.95f ),
+        new ParameterDefn<float>("AvatarWalkVelocityFactor", "Speed multiplier if avatar is walking",
+            1.0f ),
         new ParameterDefn<float>("AvatarAlwaysRunFactor", "Speed multiplier if avatar is set to always run",
             1.3f ),
             // For historical reasons, density is reported  * 100
@@ -629,6 +635,8 @@ public static class BSParam
             5f ),
         new ParameterDefn<float>("AvatarFlyingGroundUpForce", "Upward force applied to the avatar to keep it at flying ground margin",
             2.0f ),
+        new ParameterDefn<int>("AvatarAddForceFrames", "Frames to allow AddForce to apply before checking for stationary",
+            10 ),
         new ParameterDefn<float>("AvatarTerminalVelocity", "Terminal Velocity of falling avatar",
             -54.0f ),
         new ParameterDefn<float>("AvatarContactProcessingThreshold", "Distance from capsule to check for collisions",
@@ -823,6 +831,9 @@ public static class BSParam
         new ParameterDefn<float>("LinkConstraintSolverIterations", "Number of solver iterations when computing constraint. (0 = Bullet default)",
             40 ),
 
+        new ParameterDefn<bool>("UseBulletRaycast", "If 'true', use the raycast function of the Bullet physics engine",
+            true ),
+
         new ParameterDefn<float>("DebugNumber", "A console setable number sometimes used for debugging",
             1.0f ),
 
@@ -833,7 +844,7 @@ public static class BSParam
         new ParameterDefn<float>("ResetBroadphasePool", "Setting this is any value resets the broadphase collision pool",
             0f,
             (s) => { return 0f; },
-            (s,v) => { BSParam.ResetBroadphasePoolTainted(s, v, false /* inTaintTime */); } ),
+            (s,v) => { BSParam.ResetBroadphasePoolTainted(s, v); } ),
         new ParameterDefn<float>("ResetConstraintSolver", "Setting this is any value resets the constraint solver",
             0f,
             (s) => { return 0f; },
@@ -919,10 +930,10 @@ public static class BSParam
     // =====================================================================
     // There are parameters that, when set, cause things to happen in the physics engine.
     // This causes the broadphase collision cache to be cleared.
-    private static void ResetBroadphasePoolTainted(BSScene pPhysScene, float v, bool inTaintTime)
+    private static void ResetBroadphasePoolTainted(BSScene pPhysScene, float v)
     {
         BSScene physScene = pPhysScene;
-        physScene.TaintedObject(inTaintTime, "BSParam.ResetBroadphasePoolTainted", delegate()
+        physScene.TaintedObject(BSScene.DetailLogZero, "BSParam.ResetBroadphasePoolTainted", delegate()
         {
             physScene.PE.ResetBroadphasePool(physScene.World);
         });

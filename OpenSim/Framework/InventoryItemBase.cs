@@ -26,7 +26,9 @@
  */
 
 using System;
+using System.Text;
 using OpenMetaverse;
+using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Framework
 {
@@ -132,7 +134,7 @@ namespace OpenSim.Framework
             }
             set
             {
-                if ((value == null) || (value != null && value == string.Empty))
+                if (string.IsNullOrEmpty(value))
                 {
                     m_creatorData = string.Empty;
                     return;
@@ -161,19 +163,13 @@ namespace OpenSim.Framework
         /// <value>
         /// The description of the inventory item (must be less than 64 characters)
         /// </value>
+        
+        public osUTF8 UTF8Description;
         public string Description
         {
-            get
-            {
-                return m_description;
-            }
-
-            set
-            {
-                m_description = value;
-            }
+            get { return UTF8Description == null ? string.Empty : UTF8Description.ToString();}
+            set { UTF8Description = string.IsNullOrWhiteSpace(value) ? null : new osUTF8(value);}
         }
-        protected string m_description = String.Empty;
 
         /// <value>
         ///
@@ -414,6 +410,38 @@ namespace OpenSim.Framework
         public object Clone()
         {
             return MemberwiseClone();
+        }
+
+        public void ToLLSDxml(osUTF8 lsl, uint flagsMask = 0xffffffff)
+        {
+            LLSDxmlEncode2.AddMap(lsl);
+                LLSDxmlEncode2.AddElem_parent_id(Folder, lsl);
+                LLSDxmlEncode2.AddElem_asset_id( AssetID, lsl);
+                LLSDxmlEncode2.AddElem_item_id( ID, lsl);
+
+                LLSDxmlEncode2.AddMap("permissions",lsl);
+                    LLSDxmlEncode2.AddElem_creator_id(CreatorIdAsUuid, lsl);
+                    LLSDxmlEncode2.AddElem_owner_id(Owner, lsl);
+                    LLSDxmlEncode2.AddElem_group_id(GroupID, lsl);
+                    LLSDxmlEncode2.AddElem("base_mask", (int)CurrentPermissions, lsl);
+                    LLSDxmlEncode2.AddElem("owner_mask", (int)CurrentPermissions, lsl);
+                    LLSDxmlEncode2.AddElem("group_mask", (int)GroupPermissions, lsl);
+                    LLSDxmlEncode2.AddElem("everyone_mask", (int)EveryOnePermissions, lsl);
+                    LLSDxmlEncode2.AddElem("next_owner_mask", (int)NextPermissions, lsl);
+                    LLSDxmlEncode2.AddElem("is_owner_group", GroupOwned, lsl);
+                LLSDxmlEncode2.AddEndMap(lsl);
+
+                LLSDxmlEncode2.AddElem("type", AssetType, lsl);
+                LLSDxmlEncode2.AddElem("inv_type", InvType, lsl);
+                LLSDxmlEncode2.AddElem("flags", (int)(Flags & flagsMask), lsl);
+
+                LLSDxmlEncode2.AddElem_sale_info(SalePrice, SaleType, lsl);
+
+                LLSDxmlEncode2.AddElem_name(Name, lsl);
+                LLSDxmlEncode2.AddElem("desc", Description, lsl);
+                LLSDxmlEncode2.AddElem("created_at", CreationDate, lsl);
+
+            LLSDxmlEncode2.AddEndMap(lsl);
         }
     }
 }

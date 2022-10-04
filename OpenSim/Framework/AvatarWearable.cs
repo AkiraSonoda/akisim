@@ -67,10 +67,14 @@ namespace OpenSim.Framework
 
         public static readonly int ALPHA = 13;
         public static readonly int TATTOO = 14;
-
         public static readonly int LEGACY_VERSION_MAX_WEARABLES = 15;
-//        public static readonly int PHYSICS = 15;
-//        public static int MAX_WEARABLES = 16;
+
+        public static readonly int PHYSICS = 15;
+
+        public static int MAX_WEARABLES_PV7 = 16;
+
+        public static readonly int UNIVERSAL = 16;
+        public static int MAX_WEARABLES = 17;
 
 
         public static readonly UUID DEFAULT_BODY_ITEM = new UUID("66c41e39-38f9-f75a-024e-585989bfaba9");
@@ -91,11 +95,11 @@ namespace OpenSim.Framework
         public static readonly UUID DEFAULT_PANTS_ITEM = new UUID("77c41e39-38f9-f75a-0000-5859892f1111");
         public static readonly UUID DEFAULT_PANTS_ASSET = new UUID("00000000-38f9-1111-024e-222222111120");
 
-//        public static readonly UUID DEFAULT_ALPHA_ITEM = new UUID("bfb9923c-4838-4d2d-bf07-608c5b1165c8");
-//        public static readonly UUID DEFAULT_ALPHA_ASSET = new UUID("1578a2b1-5179-4b53-b618-fe00ca5a5594");
+        public static readonly UUID DEFAULT_ALPHA_ITEM = new UUID("bfb9923c-4838-4d2d-bf07-608c5b1165c8");
+        public static readonly UUID DEFAULT_ALPHA_ASSET = new UUID("1578a2b1-5179-4b53-b618-fe00ca5a5594");
 
-//        public static readonly UUID DEFAULT_TATTOO_ITEM = new UUID("c47e22bd-3021-4ba4-82aa-2b5cb34d35e1");
-//        public static readonly UUID DEFAULT_TATTOO_ASSET = new UUID("00000000-0000-2222-3333-100000001007");
+        public static readonly UUID DEFAULT_TATTOO_ITEM = new UUID("c47e22bd-3021-4ba4-82aa-2b5cb34d35e1");
+        public static readonly UUID DEFAULT_TATTOO_ASSET = new UUID("00000000-0000-2222-3333-100000001007");
 
         protected Dictionary<UUID, UUID> m_items = new Dictionary<UUID, UUID>();
         protected List<UUID> m_ids = new List<UUID>();
@@ -132,10 +136,12 @@ namespace OpenSim.Framework
         public void Unpack(OSDArray args)
         {
             Clear();
-
+            OSD tmpOSDA, tmpOSDB;
             foreach (OSDMap weardata in args)
             {
-                Add(weardata["item"].AsUUID(), weardata["asset"].AsUUID());
+                tmpOSDA = weardata["item"];
+                tmpOSDB = weardata["asset"];
+                Add(tmpOSDA.AsUUID(), tmpOSDB.AsUUID());
             }
         }
 
@@ -146,7 +152,7 @@ namespace OpenSim.Framework
 
         public void Add(UUID itemID, UUID assetID)
         {
-            if (itemID == UUID.Zero)
+            if (itemID.IsZero())
                 return;
             if (m_items.ContainsKey(itemID))
             {
@@ -199,7 +205,7 @@ namespace OpenSim.Framework
                 }
             }
 
-            if (itemID != UUID.Zero)
+            if (!itemID.IsZero())
             {
                 m_ids.Remove(itemID);
                 m_items.Remove(itemID);

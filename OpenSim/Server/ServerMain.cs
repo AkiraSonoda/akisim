@@ -29,34 +29,78 @@ using Nini.Config;
 using log4net;
 using System.Reflection;
 using System;
+using System.IO;
 using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Collections.Generic;
+using OpenSim.Framework;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Server.Base;
 using OpenSim.Server.Handlers.Base;
-using Mono.Addins;
 
 namespace OpenSim.Server
 {
     public class OpenSimServer
     {
-        private static readonly ILog m_log =
-                LogManager.GetLogger(
-                MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger( MethodBase.GetCurrentMethod().DeclaringType);
 
         protected static HttpServerBase m_Server = null;
-
-        protected static List<IServiceConnector> m_ServiceConnectors =
-                new List<IServiceConnector>();
+        protected static List<IServiceConnector> m_ServiceConnectors = new List<IServiceConnector>();
 
         protected static PluginLoader loader;
+        private static bool m_NoVerifyCertChain = false;
+        private static bool m_NoVerifyCertHostname = false;
+
+        public static bool ValidateServerCertificate(
+            object sender,
+            X509Certificate certificate,
+            X509Chain chain,
+            SslPolicyErrors sslPolicyErrors)
+        {
+            if (m_NoVerifyCertChain)
+                sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateChainErrors;
+ 
+            if (m_NoVerifyCertHostname)
+                sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
+
+            if (sslPolicyErrors == SslPolicyErrors.None)
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Opens a file and uses it as input to the console command parser.
+        /// </summary>
+        /// <param name="fileName">name of file to use as input to the console</param>
+        private static void PrintFileToConsole(string fileName)
+        {
+            if (File.Exists(fileName))
+            {
+                using(StreamReader readFile = File.OpenText(fileName))
+                {
+                    string currentLine;
+                    while ((currentLine = readFile.ReadLine()) != null)
+                    {
+                        m_log.InfoFormat("[!]" + currentLine);
+                    }
+                }
+            }
+        }
 
         public static int Main(string[] args)
         {
-            // Make sure we don't get outbound connections queueing
-            ServicePointManager.DefaultConnectionLimit = 50;
+            Culture.SetCurrentCulture();
+            Culture.SetDefaultCurrentCulture();
+
+            ServicePointManager.DefaultConnectionLimit = 64;
+            ServicePointManager.MaxServicePointIdleTime = 30000;
+
+            ServicePointManager.Expect100Continue = false;
             ServicePointManager.UseNagleAlgorithm = false;
+            ServicePointManager.ServerCertificateValidationCallback = ValidateServerCertificate;
 
             m_Server = new HttpServerBase("R.O.B.U.S.T.", args);
 
@@ -69,7 +113,14 @@ namespace OpenSim.Server
                 throw new Exception("Configuration error");
             }
 
-            string connList = serverConfig.GetString("ServiceConnectors", String.Empty);
+            int dnsTimeout = serverConfig.GetInt("DnsTimeout", 30000);
+            try { ServicePointManager.DnsRefreshTimeout = dnsTimeout; } catch { }
+
+            m_NoVerifyCertChain = serverConfig.GetBoolean("NoVerifyCertChain", m_NoVerifyCertChain);
+            m_NoVerifyCertHostname = serverConfig.GetBoolean("NoVerifyCertHostname", m_NoVerifyCertHostname);
+
+
+            string connList = serverConfig.GetString("ServiceConnectors", string.Empty);
 
             registryLocation = serverConfig.GetString("RegistryLocation",".");
 
@@ -77,28 +128,27 @@ namespace OpenSim.Server
             if (servicesConfig != null)
             {
                 List<string> servicesList = new List<string>();
-                if (connList != String.Empty)
+                if (!string.IsNullOrEmpty(connList))
                     servicesList.Add(connList);
 
                 foreach (string k in servicesConfig.GetKeys())
                 {
                     string v = servicesConfig.GetString(k);
-                    if (v != String.Empty)
+                    if (!string.IsNullOrEmpty(v))
                         servicesList.Add(v);
                 }
 
-                connList = String.Join(",", servicesList.ToArray());
+                connList = string.Join(",", servicesList.ToArray());
             }
 
             string[] conns = connList.Split(new char[] {',', ' ', '\n', '\r', '\t'});
 
-//            int i = 0;
             foreach (string c in conns)
             {
-                if (c == String.Empty)
+                if (string.IsNullOrEmpty(c))
                     continue;
 
-                string configName = String.Empty;
+                string configName = string.Empty;
                 string conn = c;
                 uint port = 0;
 
@@ -123,23 +173,26 @@ namespace OpenSim.Server
                 if (parts.Length > 1)
                     friendlyName = parts[1];
 
-                IHttpServer server;
+                BaseHttpServer server;
 
                 if (port != 0)
-                    server = MainServer.GetHttpServer(port);
+                    server = (BaseHttpServer)MainServer.GetHttpServer(port);
                 else
                     server = MainServer.Instance;
+
+                if (friendlyName == "LLLoginServiceInConnector")
+                    server.AddSimpleStreamHandler(new IndexPHPHandler(server));
 
                 m_log.InfoFormat("[SERVER]: Loading {0} on port {1}", friendlyName, server.Port);
 
                 IServiceConnector connector = null;
 
-                Object[] modargs = new Object[] { m_Server.Config, server, configName };
+                object[] modargs = new object[] { m_Server.Config, server, configName };
                 connector = ServerUtils.LoadPlugin<IServiceConnector>(conn, modargs);
 
                 if (connector == null)
                 {
-                    modargs = new Object[] { m_Server.Config, server };
+                    modargs = new object[] { m_Server.Config, server };
                     connector = ServerUtils.LoadPlugin<IServiceConnector>(conn, modargs);
                 }
 
@@ -154,9 +207,16 @@ namespace OpenSim.Server
                 }
             }
 
+            PrintFileToConsole("robuststartuplogo.txt");
+
             loader = new PluginLoader(m_Server.Config, registryLocation);
 
             int res = m_Server.Run();
+
+            if(m_Server != null)
+                m_Server.Shutdown();
+
+            Util.StopThreadPool();
 
             Environment.Exit(res);
 

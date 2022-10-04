@@ -61,19 +61,26 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         internal SceneObjectPart m_host;
         internal bool m_LSFunctionsEnabled = false;
         internal IScriptModuleComms m_comms = null;
+        internal IConfig m_osslconfig;
+        internal IEnvironmentModule m_environment = null;
 
-        public void Initialize(
-            IScriptEngine scriptEngine, SceneObjectPart host, TaskInventoryItem item)
+        public void Initialize(IScriptEngine scriptEngine, SceneObjectPart host, TaskInventoryItem item)
         {
             m_ScriptEngine = scriptEngine;
             m_host = host;
 
-            if (m_ScriptEngine.Config.GetBoolean("AllowLightShareFunctions", false))
+            m_osslconfig = m_ScriptEngine.ConfigSource.Configs["OSSL"];
+            if(m_osslconfig == null)
+                m_osslconfig = m_ScriptEngine.Config;
+
+            if (m_osslconfig.GetBoolean("AllowLightShareFunctions", false))
                 m_LSFunctionsEnabled = true;
 
             m_comms = m_ScriptEngine.World.RequestModuleInterface<IScriptModuleComms>();
             if (m_comms == null)
                 m_LSFunctionsEnabled = false;
+
+            m_environment = m_ScriptEngine.World.RequestModuleInterface<IEnvironmentModule>();
         }
 
         public override Object InitializeLifetimeService()
@@ -83,8 +90,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             if (lease.CurrentState == LeaseState.Initial)
             {
                 lease.InitialLeaseTime = TimeSpan.FromMinutes(0);
-                //                lease.RenewOnCallTime = TimeSpan.FromSeconds(10.0);
-                //                lease.SponsorshipTimeout = TimeSpan.FromMinutes(1.0);
+                //lease.RenewOnCallTime = TimeSpan.FromSeconds(10.0);
+                //lease.SponsorshipTimeout = TimeSpan.FromMinutes(1.0);
             }
             return lease;
         }
@@ -115,13 +122,13 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         /// <returns>List of windlight parameters</returns>
         public LSL_List lsGetWindlightScene(LSL_List rules)
         {
-            if (!m_LSFunctionsEnabled)
+            if (!m_LSFunctionsEnabled || m_environment == null)
             {
                 LSShoutError("LightShare functions are not enabled.");
                 return new LSL_List();
             }
-            m_host.AddScriptLPS(1);
-            RegionLightShareData wl = m_host.ParentGroup.Scene.RegionInfo.WindlightSettings;
+
+            RegionLightShareData wl = m_environment.ToLightShare();
 
             LSL_List values = new LSL_List();
             int idx = 0;
@@ -259,9 +266,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         private RegionLightShareData getWindlightProfileFromRules(LSL_List rules)
         {
-            RegionLightShareData wl = (RegionLightShareData)m_host.ParentGroup.Scene.RegionInfo.WindlightSettings.Clone();
+            RegionLightShareData wl = m_environment.ToLightShare();
 
-//            LSL_List values = new LSL_List();
             int idx = 0;
             while (idx < rules.Length)
             {
@@ -711,7 +717,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         /// <returns>success: true or false</returns>
         public int lsSetWindlightScene(LSL_List rules)
         {
-            if (!m_LSFunctionsEnabled)
+            if (!m_LSFunctionsEnabled || m_environment == null)
             {
                 LSShoutError("LightShare functions are not enabled.");
                 return 0;
@@ -728,37 +734,23 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 }
             }
 
-            int success = 0;
-            m_host.AddScriptLPS(1);
-
-            if (LightShareModule.EnableWindlight)
+            try
             {
-                RegionLightShareData wl;
-                try
-                {
-                    wl = getWindlightProfileFromRules(rules);
-                }
-                catch(InvalidCastException e)
-                {
-                    LSShoutError(e.Message);
-                    return 0;
-                }
-                wl.valid = true;
-                m_host.ParentGroup.Scene.StoreWindlightProfile(wl);
-                success = 1;
+                RegionLightShareData wl = getWindlightProfileFromRules(rules);
+                m_environment.FromLightShare(wl);
             }
-            else
+            catch(InvalidCastException e)
             {
-                LSShoutError("Windlight module is disabled");
+                LSShoutError(e.Message);
                 return 0;
             }
 
-            return success;
+            return 1;
         }
 
         public void lsClearWindlightScene()
         {
-            if (!m_LSFunctionsEnabled)
+            if (!m_LSFunctionsEnabled || m_environment == null)
             {
                 LSShoutError("LightShare functions are not enabled.");
                 return;
@@ -775,11 +767,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 }
             }
 
-            m_host.ParentGroup.Scene.RegionInfo.WindlightSettings.valid = false;
-            if (m_host.ParentGroup.Scene.SimulationDataService != null)
-                m_host.ParentGroup.Scene.SimulationDataService.RemoveRegionWindlightSettings(m_host.ParentGroup.Scene.RegionInfo.RegionID);
-
-            m_host.ParentGroup.Scene.EventManager.TriggerOnSaveNewWindlightProfile();
+            m_environment.ResetEnvironmentSettings(m_host.ParentGroup.Scene.RegionInfo.RegionID);
         }
 
         /// <summary>
@@ -789,6 +777,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         /// <returns>success: true or false</returns>
         public int lsSetWindlightSceneTargeted(LSL_List rules, LSL_Key target)
         {
+            LSShoutError("Function temporary not supported");
+            return 0;
+
+            /* disabled code until we add force a WL into a single user
             if (!m_LSFunctionsEnabled)
             {
                 LSShoutError("LightShare functions are not enabled.");
@@ -807,9 +799,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
 
             int success = 0;
-            m_host.AddScriptLPS(1);
-
-            if (LightShareModule.EnableWindlight)
+            if (m_environment != null)
             {
                 RegionLightShareData wl;
                 try
@@ -831,6 +821,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
 
             return success;
+            */
         }
     }
 }

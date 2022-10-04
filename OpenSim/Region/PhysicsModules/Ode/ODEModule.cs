@@ -44,6 +44,13 @@ namespace OpenSim.Region.PhysicsModule.ODE
                 if (physics == Name)
                 {
                     m_config = source;
+                    string mesher = config.GetString("meshing", string.Empty);
+                    if (string.IsNullOrEmpty(mesher) || !mesher.Equals("Meshmerizer"))
+                    {
+                        m_log.Error("[ODE] Opensim.ini meshing option must be set to \"Meshmerizer\"");
+                        throw new Exception("Invalid physics meshing option");
+                    }
+
                     m_Enabled = true;
                 }
             }
@@ -63,7 +70,7 @@ namespace OpenSim.Region.PhysicsModule.ODE
 
             // Initializing ODE only when a scene is created allows alternative ODE plugins to co-habit (according to
             // http://opensimulator.org/mantis/view.php?id=2750).
-            d.InitODE();
+            SafeNativeMethods.InitODE();
 
             m_scene = new OdeScene(scene, m_config, Name, Version);
         }

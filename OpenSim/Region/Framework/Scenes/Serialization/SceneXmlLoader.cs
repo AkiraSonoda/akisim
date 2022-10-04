@@ -53,10 +53,13 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
 
             if (fileName.StartsWith("http:") || File.Exists(fileName))
             {
-                XmlTextReader reader = new XmlTextReader(fileName);
-                reader.WhitespaceHandling = WhitespaceHandling.None;
-                doc.Load(reader);
-                reader.Close();
+                using(XmlTextReader reader = new XmlTextReader(fileName))
+                {
+                    reader.DtdProcessing = DtdProcessing.Ignore;
+                    reader.WhitespaceHandling = WhitespaceHandling.None;
+
+                    doc.Load(reader);
+                }
                 rootNode = doc.FirstChild;
                 foreach (XmlNode aPrimNode in rootNode.ChildNodes)
                 {
@@ -70,7 +73,7 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
                     //obj.RegenerateFullIDs();
 
                     scene.AddNewSceneObject(obj, true);
-                    obj.AggregateDeepPerms();
+                    obj.InvalidateDeepEffectivePerms();
                 }
             }
             else
@@ -190,14 +193,14 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
             XmlTextWriter writer = new XmlTextWriter(stream);
 
             int primCount = 0;
-            stream.WriteLine("<scene>\n");
+            stream.WriteLine("<scene>");
 
             foreach (EntityBase ent in entityList)
             {
                 if (ent is SceneObjectGroup)
                 {
                     SceneObjectGroup g = (SceneObjectGroup)ent;
-                    if (!min.Equals(Vector3.Zero) || !max.Equals(Vector3.Zero))
+                    if (!min.IsZero() || !max.IsZero())
                     {
                         Vector3 pos = g.RootPart.GetWorldPosition();
                         if (min.X > pos.X || min.Y > pos.Y || min.Z > pos.Z)
@@ -208,13 +211,13 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
 
                     //stream.WriteLine(SceneObjectSerializer.ToXml2Format(g));
                     SceneObjectSerializer.SOGToXml2(writer, (SceneObjectGroup)ent, new Dictionary<string,object>());
-                    stream.WriteLine();
+//                    stream.WriteLine();
 
                     primCount++;
                 }
             }
 
-            stream.WriteLine("</scene>\n");
+            stream.WriteLine("</scene>");
             stream.Flush();
         }
 
@@ -234,7 +237,9 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
         /// <param name="fileName"></param>
         public static void LoadPrimsFromXml2(Scene scene, string fileName)
         {
-            LoadPrimsFromXml2(scene, new XmlTextReader(fileName), false);
+            var xr = new XmlTextReader(fileName);
+            xr.DtdProcessing = DtdProcessing.Ignore;
+            LoadPrimsFromXml2(scene, xr , false);
         }
 
         /// <summary>
@@ -245,7 +250,9 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
         /// <param name="startScripts"></param>
         public static void LoadPrimsFromXml2(Scene scene, TextReader reader, bool startScripts)
         {
-            LoadPrimsFromXml2(scene, new XmlTextReader(reader), startScripts);
+            var xr = new XmlTextReader(reader);
+            xr.DtdProcessing = DtdProcessing.Ignore;
+            LoadPrimsFromXml2(scene, xr, startScripts);
         }
 
         /// <summary>
@@ -256,7 +263,9 @@ namespace OpenSim.Region.Framework.Scenes.Serialization
         /// <param name="startScripts"></param>
         protected static void LoadPrimsFromXml2(Scene scene, XmlTextReader reader, bool startScripts)
         {
+
             XmlDocument doc = new XmlDocument();
+            reader.DtdProcessing = DtdProcessing.Ignore; 
             reader.WhitespaceHandling = WhitespaceHandling.None;
             doc.Load(reader);
             reader.Close();

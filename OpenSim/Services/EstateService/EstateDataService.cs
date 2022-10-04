@@ -70,7 +70,7 @@ namespace OpenSim.Services.EstateService
             }
 
             // We tried, but this doesn't exist. We can't proceed
-            if (dllName == String.Empty)
+            if (dllName.Length == 0)
                 throw new Exception("No StorageProvider configured");
 
             m_database = LoadPlugin<IEstateDataStore>(dllName, new Object[] { connString });
@@ -88,9 +88,9 @@ namespace OpenSim.Services.EstateService
             return m_database.LoadEstateSettings(estateID);
         }
 
-        public EstateSettings CreateNewEstate()
+        public EstateSettings CreateNewEstate(int estateID = 0)
         {
-            return m_database.CreateNewEstate();
+            return m_database.CreateNewEstate(estateID);
         }
 
         public List<EstateSettings> LoadEstateSettingsAll()

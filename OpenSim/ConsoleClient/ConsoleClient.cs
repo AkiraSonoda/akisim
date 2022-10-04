@@ -80,7 +80,7 @@ namespace OpenSim.ConsoleClient
             while (m_Server.Running)
             {
                 System.Threading.Thread.Sleep(500);
-                // MainConsole.Instance.Prompt();
+                MainConsole.Instance.Prompt();
             }
 
             if (pidFile != String.Empty)
@@ -212,10 +212,10 @@ namespace OpenSim.ConsoleClient
 
             Requester.MakeRequest(requestUrl, requestData, ReadResponses);
 
-            if (prompt.StartsWith("+++"))
-                MainConsole.Instance.ReadLine(prompt.Substring(3), true, true);
-            else if (prompt.StartsWith("-++"))
-                SendCommand(String.Empty, new string[] { MainConsole.Instance.ReadLine(prompt.Substring(3), false, true) });
+//            if (prompt.StartsWith("+++"))
+                MainConsole.Instance.ReadLine(prompt.Substring(0), true, true);
+//            else if (prompt.StartsWith("-++"))
+//                SendCommand(String.Empty, new string[] { MainConsole.Instance.ReadLine(prompt.Substring(3), false, true) });
         }
 
         public static void CommandReply(string requestUrl, string requestData, string replyData)

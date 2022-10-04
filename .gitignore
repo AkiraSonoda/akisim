@@ -12,6 +12,7 @@
 *.dll.build
 *.dll
 *.log
+.idea
 
 # Ignore .user and .suo files as these are user preference specific
 # http://stackoverflow.com/questions/72298/should-i-add-the-visual-studio-suo-and-user-files-to-source-control
@@ -113,5 +114,6 @@ test-results/
 doc/html
 doc/doxygen.error.log
 doc/ini/inidb/.metadata
+bin/OpenSim.ini
 
 *.patch

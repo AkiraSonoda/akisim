@@ -29,13 +29,15 @@ using log4net;
 using System;
 using System.Threading;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Reflection;
 using System.Timers;
 using Nini.Config;
 using OpenSim.Server.Base;
 using OpenSim.Framework;
-using OpenSim.Framework.Console;
+using OpenSim.Framework.Monitoring;
+using OpenSim.Framework.ServiceAuth;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -48,19 +50,13 @@ namespace OpenSim.Services.Connectors
 {
     public class AssetServicesConnector : BaseServiceConnector, IAssetService
     {
-        private static readonly ILog m_log =
-                LogManager.GetLogger(
-                MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        const int MAXSENDRETRIESLEN = 30;
+        public readonly object ConnectorLock = new object();
 
-        private string m_ServerURI = String.Empty;
-        private IAssetCache m_Cache = null;
-        private int m_retryCounter;
-        private bool m_inRetries;
-        private List<AssetBase>[] m_sendRetries = new  List<AssetBase>[MAXSENDRETRIESLEN];
-        private System.Timers.Timer m_retryTimer;
-        private int m_maxAssetRequestConcurrency = 30;
+        protected IAssetCache m_Cache = null;
+
+        private string m_ServerURI = string.Empty;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
 
@@ -69,19 +65,8 @@ namespace OpenSim.Services.Connectors
 
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
-//        private Dictionary<string, AssetRetrievedEx> m_AssetHandlers = new Dictionary<string, AssetRetrievedEx>();
 
         private Dictionary<string, List<AssetRetrievedEx>> m_AssetHandlers = new Dictionary<string, List<AssetRetrievedEx>>();
-
-        private Dictionary<string, string> m_UriMap = new Dictionary<string, string>();
-
-        private Thread[] m_fetchThreads;
-
-        public int MaxAssetRequestConcurrency
-        {
-            get { return m_maxAssetRequestConcurrency; }
-            set { m_maxAssetRequestConcurrency = value; }
-        }
 
         public AssetServicesConnector()
         {
@@ -89,11 +74,11 @@ namespace OpenSim.Services.Connectors
 
         public AssetServicesConnector(string serverURI)
         {
-            m_ServerURI = serverURI.TrimEnd('/');
+            OSHHTPHost tmp = new OSHHTPHost(serverURI, true);
+            m_ServerURI = tmp.IsResolvedHost ? tmp.URI : null;
         }
 
-        public AssetServicesConnector(IConfigSource source)
-            : base(source, "AssetService")
+        public AssetServicesConnector(IConfigSource source) 
         {
             Initialise(source);
         }
@@ -101,8 +86,6 @@ namespace OpenSim.Services.Connectors
         public virtual void Initialise(IConfigSource source)
         {
             IConfig netconfig = source.Configs["Network"];
-            if (netconfig != null)
-                m_maxAssetRequestConcurrency = netconfig.GetInt("MaxRequestConcurrency",m_maxAssetRequestConcurrency);
 
             IConfig assetConfig = source.Configs["AssetService"];
             if (assetConfig == null)
@@ -111,135 +94,34 @@ namespace OpenSim.Services.Connectors
                 throw new Exception("Asset connector init error");
             }
 
-            string serviceURI = assetConfig.GetString("AssetServerURI",
-                    String.Empty);
-
-            m_ServerURI = serviceURI;
-
-            if (serviceURI == String.Empty)
+            m_ServerURI = assetConfig.GetString("AssetServerURI", string.Empty);
+            if (string.IsNullOrEmpty(m_ServerURI))
             {
-                m_log.Error("[ASSET CONNECTOR]: No Server URI named in section AssetService");
+                if(netconfig != null)
+                    m_ServerURI = netconfig.GetString("asset_server_url", string.Empty);
+            }
+            if (string.IsNullOrEmpty(m_ServerURI))
+            {
+                m_log.Error("[ASSET CONNECTOR]: AssetServerURI not defined in section AssetService");
                 throw new Exception("Asset connector init error");
             }
 
-            m_retryTimer = new System.Timers.Timer();
-            m_retryTimer.Elapsed += new ElapsedEventHandler(retryCheck);
-            m_retryTimer.AutoReset = true;
-            m_retryTimer.Interval = 60000;
-
-            Uri serverUri = new Uri(m_ServerURI);
-
-            string groupHost = serverUri.Host;
-
-            for (int i = 0 ; i < 256 ; i++)
+            OSHHTPHost m_GridAssetsURL = new OSHHTPHost(m_ServerURI, true);
+            if(!m_GridAssetsURL.IsResolvedHost)
             {
-                string prefix = i.ToString("x2");
-                groupHost = assetConfig.GetString("AssetServerHost_"+prefix, groupHost);
-
-                m_UriMap[prefix] = groupHost;
-                //m_log.DebugFormat("[ASSET]: Using {0} for prefix {1}", groupHost, prefix);
+                m_log.Error("[ASSET CONNECTOR]: Could not parse or resolve AssetServerURI");
+                throw new Exception("Asset connector init error");
             }
 
-            m_fetchThreads = new Thread[2];
-
-            for (int i = 0 ; i < 2 ; i++)
-            {
-                m_fetchThreads[i] = new Thread(AssetRequestProcessor);
-                m_fetchThreads[i].Start();
-            }
+            m_ServerURI = m_GridAssetsURL.URI;
+            Initialise(source, "AssetService");
         }
 
-        private string MapServer(string id)
+        private int m_maxAssetRequestConcurrency = 8;
+        public int MaxAssetRequestConcurrency
         {
-            if (m_UriMap.Count == 0)
-                return m_ServerURI;
-
-            UriBuilder serverUri = new UriBuilder(m_ServerURI);
-
-            string prefix = id.Substring(0, 2).ToLower();
-
-            string host;
-
-            // HG URLs will not be valid UUIDS
-            if (m_UriMap.ContainsKey(prefix))
-                host = m_UriMap[prefix];
-            else
-                host = m_UriMap["00"];
-
-            serverUri.Host = host;
-
-            // m_log.DebugFormat("[ASSET]: Using {0} for host name for prefix {1}", host, prefix);
-
-            string ret = serverUri.Uri.AbsoluteUri;
-            if (ret.EndsWith("/"))
-                ret = ret.Substring(0, ret.Length - 1);
-            return ret;
-        }
-
-        protected void retryCheck(object source, ElapsedEventArgs e)
-        {
-            lock(m_sendRetries)
-            {
-                if(m_inRetries)
-                    return;
-                m_inRetries = true;
-            }
-
-            m_retryCounter++;
-            if(m_retryCounter >= 61 ) // avoid overflow 60 is max in use below
-                m_retryCounter = 1;
-
-            int inUse = 0;
-            int nextlevel;
-            int timefactor;
-            List<AssetBase> retrylist;
-            // we need to go down
-            for(int i = MAXSENDRETRIESLEN - 1; i >= 0; i--)
-            {
-                lock(m_sendRetries)
-                    retrylist = m_sendRetries[i];
-
-                if(retrylist == null)
-                    continue;
-
-                inUse++;
-                nextlevel = i + 1;
-
-                //We exponentially fall back on frequency until we reach one attempt per hour
-                //The net result is that we end up in the queue for roughly 24 hours..
-                //24 hours worth of assets could be a lot, so the hope is that the region admin
-                //will have gotten the asset connector back online quickly!
-                if(i == 0)
-                    timefactor = 1;
-                else
-                {
-                    timefactor = 1 << nextlevel;
-                    if (timefactor > 60)
-                        timefactor = 60;
-                }
-
-                if(m_retryCounter < timefactor)
-                    continue; // to update inUse;
-
-                if (m_retryCounter % timefactor != 0)
-                    continue;
-
-                // a list to retry
-                lock(m_sendRetries)
-                    m_sendRetries[i] = null;
-
-                // we are the only ones with a copy of this retrylist now
-                foreach(AssetBase ass in retrylist)
-                   retryStore(ass, nextlevel);
-            }
-
-            lock(m_sendRetries)
-            {
-                if(inUse == 0 )
-                    m_retryTimer.Stop();
-
-                m_inRetries = false;
-            }
+            get { return m_maxAssetRequestConcurrency; }
+            set { m_maxAssetRequestConcurrency = value; }
         }
 
         protected void SetCache(IAssetCache cache)
@@ -247,33 +129,32 @@ namespace OpenSim.Services.Connectors
             m_Cache = cache;
         }
 
-        public AssetBase Get(string id)
+        public AssetBase GetCached(string id)
+        {
+            AssetBase asset = null;
+            if (m_Cache != null)
+            {
+                m_Cache.Get(id, out asset);
+            }
+
+            return asset;
+        }
+
+        public virtual AssetBase Get(string id)
         {
             m_log.DebugFormat("[AssetServicesConnector]: Synchronous get request for {0}", id);
-            string uri = MapServer(id) + "/assets/" + id;
-
             AssetBase asset = null;
-
             if (m_Cache != null)
             {
                 if (!m_Cache.Get(id, out asset))
                     return null;
             }
 
-            if (asset == null || asset.Data == null || asset.Data.Length == 0)
+            if (asset == null && m_ServerURI != null)
             {
-                // XXX: Commented out for now since this has either never been properly operational or not for some time
-                // as m_maxAssetRequestConcurrency was being passed as the timeout, not a concurrency limiting option.
-                // Wasn't noticed before because timeout wasn't actually used.
-                // Not attempting concurrency setting for now as this omission was discovered in release candidate
-                // phase for OpenSimulator 0.8.  Need to revisit afterwards.
-//                asset
-//                    = SynchronousRestObjectRequester.MakeRequest<int, AssetBase>(
-//                        "GET", uri, 0, m_maxAssetRequestConcurrency);
+                string uri = m_ServerURI + "/assets/" + id;
 
-                asset = SynchronousRestObjectRequester.MakeRequest<int, AssetBase>("GET", uri, 0, m_Auth);
-
-
+                asset = SynchronousRestObjectRequester.MakeGetRequest<AssetBase>(uri, 0, m_Auth);
                 if (m_Cache != null)
                 {
                     if (asset != null)
@@ -285,20 +166,12 @@ namespace OpenSim.Services.Connectors
             return asset;
         }
 
-        public AssetBase GetCached(string id)
+        public AssetBase Get(string id, string ForeignAssetService, bool dummy)
         {
-            m_log.DebugFormat("[AssetServicesConnector]: Cache request for {0}", id);
-
-            AssetBase asset = null;
-            if (m_Cache != null)
-            {
-                m_Cache.Get(id, out asset);
-            }
-
-            return asset;
+            return null;
         }
 
-        public AssetMetadata GetMetadata(string id)
+        public virtual AssetMetadata GetMetadata(string id)
         {
             if (m_Cache != null)
             {
@@ -310,104 +183,44 @@ namespace OpenSim.Services.Connectors
                     return fullAsset.Metadata;
             }
 
-            string uri = MapServer(id) + "/assets/" + id + "/metadata";
+            if (m_ServerURI == null)
+                return null;
 
-            AssetMetadata asset = SynchronousRestObjectRequester.MakeRequest<int, AssetMetadata>("GET", uri, 0, m_Auth);
-            return asset;
+            string uri = m_ServerURI + "/assets/" + id + "/metadata";
+            return SynchronousRestObjectRequester.MakeGetRequest<AssetMetadata>(uri, 0, m_Auth);
         }
 
-        public byte[] GetData(string id)
+
+        public virtual byte[] GetData(string id)
         {
             if (m_Cache != null)
             {
-                AssetBase fullAsset;
-                if (!m_Cache.Get(id, out fullAsset))
+                if (!m_Cache.Get(id, out AssetBase fullAsset))
                     return null;
 
                 if (fullAsset != null)
                     return fullAsset.Data;
             }
 
-            using (RestClient rc = new RestClient(MapServer(id)))
-            {
-                rc.AddResourcePath("assets");
-                rc.AddResourcePath(id);
-                rc.AddResourcePath("data");
+            if (m_ServerURI == null)
+                return null;
 
+            using (RestClient rc = new RestClient(m_ServerURI))
+            {
+                rc.AddResourcePath("assets/" + id + "/data");
                 rc.RequestMethod = "GET";
 
-                using (Stream s = rc.Request(m_Auth))
+                using (MemoryStream s = rc.Request(m_Auth))
                 {
-                    if (s == null)
+                    if (s == null || s.Length == 0)
                         return null;
-
-                    if (s.Length > 0)
-                    {
-                        byte[] ret = new byte[s.Length];
-                        s.Read(ret, 0, (int)s.Length);
-
-                        return ret;
-                    }
+                    return s.ToArray();
                 }
-                return null;
             }
         }
 
-        private class QueuedAssetRequest
+        public virtual bool Get(string id, object sender, AssetRetrieved handler)
         {
-            public string uri;
-            public string id;
-        }
-
-        private OpenMetaverse.BlockingQueue<QueuedAssetRequest> m_requestQueue =
-                new OpenMetaverse.BlockingQueue<QueuedAssetRequest>();
-
-        private void AssetRequestProcessor()
-        {
-            QueuedAssetRequest r;
-
-            while (true)
-            {
-                r = m_requestQueue.Dequeue();
-
-                string uri = r.uri;
-                string id = r.id;
-
-                try
-                {
-                    AssetBase a = SynchronousRestObjectRequester.MakeRequest<int, AssetBase>("GET", uri, 0, 30000, m_Auth);
-
-                    if (a != null && m_Cache != null)
-                        m_Cache.Cache(a);
-
-                    List<AssetRetrievedEx> handlers;
-                    lock (m_AssetHandlers)
-                    {
-                        handlers = m_AssetHandlers[id];
-                        m_AssetHandlers.Remove(id);
-                    }
-
-                    if(handlers != null)
-                    {
-                        Util.FireAndForget(x =>
-                        {
-                            foreach (AssetRetrievedEx h in handlers)
-                            {
-                                try { h.Invoke(a); }
-                                catch { }
-                            }
-                            handlers.Clear();
-                        });
-                    }
-                }
-                catch { }
-            }
-        }
-
-        public bool Get(string id, Object sender, AssetRetrieved handler)
-        {
-            string uri = MapServer(id) + "/assets/" + id;
-
             AssetBase asset = null;
             if (m_Cache != null)
             {
@@ -415,11 +228,13 @@ namespace OpenSim.Services.Connectors
                     return false;
             }
 
-            if (asset == null || asset.Data == null || asset.Data.Length == 0)
+            if (asset == null && m_ServerURI != null)
             {
+                string uri = m_ServerURI + "/assets/" + id;
+
                 lock (m_AssetHandlers)
                 {
-                    AssetRetrievedEx handlerEx = new AssetRetrievedEx(delegate(AssetBase _asset) { handler(id, sender, _asset); });
+                    AssetRetrievedEx handlerEx = new AssetRetrievedEx(delegate (AssetBase _asset) { handler(id, sender, _asset); });
 
                     List<AssetRetrievedEx> handlers;
                     if (m_AssetHandlers.TryGetValue(id, out handlers))
@@ -437,19 +252,63 @@ namespace OpenSim.Services.Connectors
                     QueuedAssetRequest request = new QueuedAssetRequest();
                     request.id = id;
                     request.uri = uri;
-                    m_requestQueue.Enqueue(request);
+                    Util.FireAndForget(x =>
+                    {
+                        AssetRequestProcessor(request);
+                    });
                 }
             }
             else
             {
+                if (asset != null && (asset.Data == null || asset.Data.Length == 0))
+                    asset = null;
                 handler(id, sender, asset);
             }
 
             return true;
         }
 
+        private class QueuedAssetRequest
+        {
+            public string uri;
+            public string id;
+        }
+
+        private void AssetRequestProcessor(QueuedAssetRequest r)
+        {
+            string id = r.id;
+            try
+            {
+                AssetBase a = SynchronousRestObjectRequester.MakeGetRequest<AssetBase>(r.uri, 30000, m_Auth);
+
+                if (a != null && m_Cache != null)
+                    m_Cache.Cache(a);
+
+                List<AssetRetrievedEx> handlers;
+                lock (m_AssetHandlers)
+                {
+                    handlers = m_AssetHandlers[id];
+                    m_AssetHandlers.Remove(id);
+                }
+
+                if(handlers != null)
+                {
+                    foreach (AssetRetrievedEx h in handlers)
+                    {
+                        try { h.Invoke(a); }
+                        catch { }
+                    }
+                    handlers.Clear();
+                }
+            }
+            catch { }
+        }
+
         public virtual bool[] AssetsExist(string[] ids)
         {
+            if (m_ServerURI == null)
+                return null;
+
             string uri = m_ServerURI + "/get_assets_exist";
 
             bool[] exist = null;
@@ -471,30 +330,26 @@ namespace OpenSim.Services.Connectors
 
         string stringUUIDZero = UUID.Zero.ToString();
 
-        public string Store(AssetBase asset)
+        public virtual string Store(AssetBase asset)
         {
             // Have to assign the asset ID here. This isn't likely to
             // trigger since current callers don't pass emtpy IDs
             // We need the asset ID to route the request to the proper
             // cluster member, so we can't have the server assign one.
-            if (asset.ID == string.Empty || asset.ID == stringUUIDZero)
+            if (asset.ID.Length == 0 || asset.ID == stringUUIDZero)
             {
-                if (asset.FullID == UUID.Zero)
+                if (asset.FullID.IsZero())
                 {
                     asset.FullID = UUID.Random();
+                    m_log.WarnFormat("[Assets] Zero ID: {0}", asset.Name);
                 }
-                m_log.WarnFormat("[Assets] Zero ID: {0}",asset.Name);
                 asset.ID = asset.FullID.ToString();
             }
-
-            if (asset.FullID == UUID.Zero)
+            else if (asset.FullID.IsZero())
             {
-                UUID uuid = UUID.Zero;
-                if (UUID.TryParse(asset.ID, out uuid))
-                {
+                if (UUID.TryParse(asset.ID, out UUID uuid))
                     asset.FullID = uuid;
-                }
-                if(asset.FullID == UUID.Zero)
+                else
                 {
                     m_log.WarnFormat("[Assets] Zero IDs: {0}",asset.Name);
                     asset.FullID = UUID.Random();
@@ -508,82 +363,73 @@ namespace OpenSim.Services.Connectors
                }
 
                try {
-      				// it is also possible to disable Surabaya. I'd favor to configure 
-      				// Surabaya in the CAPS Section of the OpenSim.ini but right now with still some 
-      				// old Viwers which do not support http getTexture() I stick to this hack.
-      				if(surabayaServerEnabled) {
-      					// Create an XML of the Texture in order to transport the Asset to Surabaya.
-      					if (asset.Type == (sbyte) AssetType.Texture) {
-      						XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
-      						byte[] result = ServerUtils.SerializeResult(xs, asset);
-      						string resultString = Util.UTF8.GetString(result);
-      						// AKIDO: remove commented code
-      						//m_log.DebugFormat("Dump of XML: {0}", resultString);
-      	               OSDMap serializedAssetCaps = new OSDMap();
-      	               serializedAssetCaps.Add("assetID", asset.ID);
-      						if(asset.Temporary) {
-      							serializedAssetCaps.Add("temporary", "true");
-      						} else {
-      							serializedAssetCaps.Add("temporary", "false");
-      						}
-      	               serializedAssetCaps.Add("serializedAsset", resultString);
-
-                        int tickstart = Util.EnvironmentTickCount();
-
-                            OSDMap surabayaAnswer = WebUtil.PostToServiceCompressed(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
-
-                        if(surabayaAnswer != null) {
-                           // m_log.InfoFormat("Caching baked Texture: {0}",surabayaAnswer.ToString());
-                           OSDBoolean isSuccess = (OSDBoolean) surabayaAnswer["Success"];
-                           if(isSuccess) {
-                              OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
-                              string surabayaResult = answer["result"];
-                              if(!surabayaResult.Equals("ok")) {
-                                 m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
-                              } else {
-                                 m_log.InfoFormat("Caching baked Texture {0} was successful in {1}ms", asset.ID, Util.EnvironmentTickCountSubtract(tickstart));
-                              }
+                   // it is also possible to disable Surabaya. I'd favor to configure 
+                   // Surabaya in the CAPS Section of the OpenSim.ini but right now with still some 
+                   // old Viwers which do not support http getTexture() I stick to this hack.
+                   if(surabayaServerEnabled) {
+                       // Create an XML of the Texture in order to transport the Asset to Surabaya.
+                       if (asset.Type == (sbyte) AssetType.Texture) {
+                           XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
+                           byte[] result = ServerUtils.SerializeResult(xs, asset);
+                           string resultString = Util.UTF8.GetString(result);
+                           // AKIDO: remove commented code
+                           //m_log.DebugFormat("Dump of XML: {0}", resultString);
+                           OSDMap serializedAssetCaps = new OSDMap();
+                           serializedAssetCaps.Add("assetID", asset.ID);
+                           if(asset.Temporary) {
+                               serializedAssetCaps.Add("temporary", "true");
                            } else {
-                              m_log.InfoFormat("Caching baked Texture {0} was not successful: {1}", asset.ID, surabayaAnswer["Message"]);
+                               serializedAssetCaps.Add("temporary", "false");
                            }
-                        } else {
-                           m_log.ErrorFormat("Caching baked texture {0} to Surabaya returned NULL after {1}ms", asset.ID ,Util.EnvironmentTickCountSubtract(tickstart));
-                        }
-      					}
-      				}
+                           serializedAssetCaps.Add("serializedAsset", resultString);
+                           int tickstart = Util.EnvironmentTickCount();
+                           OSDMap surabayaAnswer = WebUtil.PostToServiceCompressed(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
+                           if(surabayaAnswer != null) {
+                               // m_log.InfoFormat("Caching baked Texture: {0}",surabayaAnswer.ToString());
+                               OSDBoolean isSuccess = (OSDBoolean) surabayaAnswer["Success"];
+                               if(isSuccess) {
+                                   OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
+                                   string surabayaResult = answer["result"];
+                                   if(!surabayaResult.Equals("ok")) {
+                                       m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
+                                   } else {
+                                       m_log.InfoFormat("Caching baked Texture {0} was successful in {1}ms", asset.ID, Util.EnvironmentTickCountSubtract(tickstart));
+                                   }
+                               } else {
+                                  m_log.InfoFormat("Caching baked Texture {0} was not successful: {1}", asset.ID, surabayaAnswer["Message"]);
+                               }
+                           } else {
+                               m_log.ErrorFormat("Caching baked texture {0} to Surabaya returned NULL after {1}ms", asset.ID ,Util.EnvironmentTickCountSubtract(tickstart));
+                           }
+                       }
+                   }
                } catch (Exception ex) {
                   m_log.Error("Exception while caching baked texture to Surabaya: ", ex);
                }
-				
-               return asset.ID;
-            }
+               if (asset.Temporary || asset.Local)
+               {
+                   m_Cache?.Cache(asset);
+                   return asset.ID;
+               }
 
-            string uri = MapServer(asset.FullID.ToString()) + "/assets/";
+                if (m_ServerURI == null)
+                    return null;
 
-            string newID = null;
-            try
-            {
-                newID = SynchronousRestObjectRequester.
-                        MakeRequest<AssetBase, string>("POST", uri, asset, 100000, m_Auth);
-            }
-            catch
-            {
-                newID = null;
-            }
+                string uri = m_ServerURI + "/assets/";
 
-            if (newID == null || newID == String.Empty || newID == stringUUIDZero)
-            {
-                //The asset upload failed, try later
-                lock(m_sendRetries)
+                string newID = null;
+                try
                 {
-                    if (m_sendRetries[0] == null)
-                        m_sendRetries[0] = new List<AssetBase>();
-                    List<AssetBase> m_queue = m_sendRetries[0];
-                    m_queue.Add(asset);
-                    m_log.WarnFormat("[Assets] Upload failed: {0} type {1} will retry later",
-                            asset.ID.ToString(), asset.Type.ToString());
-                    m_retryTimer.Start();
+                    newID = SynchronousRestObjectRequester.MakeRequest<AssetBase, string>("POST", uri, asset, 10000, m_Auth);
                 }
+                catch
+                {
+                    newID = null;
+                }
+
+            if (string.IsNullOrEmpty(newID) || newID == stringUUIDZero)
+            {
+                return string.Empty;
             }
             else
             {
@@ -591,78 +437,22 @@ namespace OpenSim.Services.Connectors
                 {
                     // Placing this here, so that this work with old asset servers that don't send any reply back
                     // SynchronousRestObjectRequester returns somethins that is not an empty string
-
                     asset.ID = newID;
-
-                    if (m_Cache != null)
-                        m_Cache.Cache(asset);
+                    m_Cache?.Cache(asset);
                 }
             }
+
             return asset.ID;
         }
 
-        public void retryStore(AssetBase asset, int nextRetryLevel)
+        public virtual bool UpdateContent(string id, byte[] data)
         {
-/* this may be bad, so excluding
-            if (m_Cache != null && !m_Cache.Check(asset.ID))
-            {
-                m_log.WarnFormat("[Assets] Upload giveup asset bc no longer in local cache: {0}",
-                    asset.ID.ToString();
-                return; // if no longer in cache, it was deleted or expired
-            }
-*/
-            string uri = MapServer(asset.FullID.ToString()) + "/assets/";
+            if (m_ServerURI == null)
+                return false;
 
-            string newID = null;
-            try
-            {
-                newID = SynchronousRestObjectRequester.
-                        MakeRequest<AssetBase, string>("POST", uri, asset, 100000, m_Auth);
-            }
-            catch
-            {
-                newID = null;
-            }
-
-            if (newID == null || newID == String.Empty || newID == stringUUIDZero)
-            {
-                if(nextRetryLevel >= MAXSENDRETRIESLEN)
-                    m_log.WarnFormat("[Assets] Upload giveup after several retries id: {0} type {1}",
-                            asset.ID.ToString(), asset.Type.ToString());
-                else
-                {
-                    lock(m_sendRetries)
-                    {
-                        if (m_sendRetries[nextRetryLevel] == null)
-                        {
-                            m_sendRetries[nextRetryLevel] = new List<AssetBase>();
-                        }
-                        List<AssetBase> m_queue = m_sendRetries[nextRetryLevel];
-                        m_queue.Add(asset);
-                    m_log.WarnFormat("[Assets] Upload failed: {0} type {1} will retry later",
-                            asset.ID.ToString(), asset.Type.ToString());
-                    }
-                }
-            }
-            else
-            {
-                m_log.InfoFormat("[Assets] Upload of {0} succeeded after {1} failed attempts", asset.ID.ToString(), nextRetryLevel.ToString());
-                if (newID != asset.ID)
-                {
-                     asset.ID = newID;
-
-                    if (m_Cache != null)
-                        m_Cache.Cache(asset);
-                }
-            }
-        }
-
-        public bool UpdateContent(string id, byte[] data)
-        {
             AssetBase asset = null;
 
-            if (m_Cache != null)
-                m_Cache.Get(id, out asset);
+            m_Cache?.Get(id, out asset);
 
             if (asset == null)
             {
@@ -675,31 +465,30 @@ namespace OpenSim.Services.Connectors
             }
             asset.Data = data;
 
-            string uri = MapServer(id) + "/assets/" + id;
+            string uri = m_ServerURI + "/assets/" + id;
 
             if (SynchronousRestObjectRequester.MakeRequest<AssetBase, bool>("POST", uri, asset, m_Auth))
             {
-                if (m_Cache != null)
-                    m_Cache.Cache(asset);
-
+                m_Cache?.Cache(asset, true);
                 return true;
             }
             return false;
         }
 
-
-        public bool Delete(string id)
+        public virtual bool Delete(string id)
         {
-            string uri = MapServer(id) + "/assets/" + id;
+            m_Cache?.Expire(id);
 
-            if (SynchronousRestObjectRequester.MakeRequest<int, bool>("DELETE", uri, 0, m_Auth))
-            {
-                if (m_Cache != null)
-                    m_Cache.Expire(id);
+            if (m_ServerURI == null)
+                return false;
 
-                return true;
-            }
-            return false;
+            string uri = m_ServerURI + "/assets/" + id;
+            return SynchronousRestObjectRequester.MakeRequest<int, bool>("DELETE", uri, 0, m_Auth);
+        }
+        
+        public void Get(string id, string ForeignAssetService, bool StoreOnLocalGrid, SimpleAssetRetrieved callBack)
+        {
+            return;
         }
     }
 }

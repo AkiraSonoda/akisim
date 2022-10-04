@@ -105,6 +105,10 @@ namespace OpenSim.Region.Framework.Interfaces
         /// </summary>
         void StopScriptInstances();
 
+        void SendReleaseScriptsControl();
+        void RemoveScriptsPermissions(int permissions);
+        void RemoveScriptsPermissions(ScenePresence sp, int permissions);
+
         /// <summary>
         /// Start a script which is in this entity's inventory.
         /// </summary>
@@ -116,8 +120,7 @@ namespace OpenSim.Region.Framework.Interfaces
         /// true if the script instance was valid for starting, false otherwise.  This does not guarantee
         /// that the script was actually started, just that the script was valid (i.e. its asset data could be found, etc.)
         /// </returns>
-        bool CreateScriptInstance(
-            TaskInventoryItem item, int startParam, bool postOnRez, string engine, int stateSource);
+        bool CreateScriptInstance(TaskInventoryItem item, int startParam, bool postOnRez, string engine, int stateSource);
 
         /// <summary>
         /// Start a script which is in this entity's inventory.
@@ -247,6 +250,7 @@ namespace OpenSim.Region.Framework.Interfaces
         /// <param name="veclist">Relative offsets for each object</param>
         /// <returns>true = success, false = the scene object asset couldn't be found</returns>
         bool GetRezReadySceneObjects(TaskInventoryItem item, out List<SceneObjectGroup> objlist, out List<Vector3> veclist, out Vector3 bbox, out float offsetHeight);
+        bool GetRezReadySceneObjects(TaskInventoryItem item, UUID newOwner, UUID NewGroup, out List<SceneObjectGroup> objlist, out List<Vector3> veclist, out Vector3 bbox, out float offsetHeight);
 
         /// <summary>
         /// Update an existing inventory item.

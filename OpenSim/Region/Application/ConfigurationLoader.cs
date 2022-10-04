@@ -73,10 +73,6 @@ namespace OpenSim
                 IConfigSource argvSource, EnvConfigSource envConfigSource, out ConfigSettings configSettings,
                 out NetworkServersInfo networkInfo)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             m_configSettings = configSettings = new ConfigSettings();
             m_networkServersInfo = networkInfo = new NetworkServersInfo();
 
@@ -144,7 +140,6 @@ namespace OpenSim
 
             m_config = new OpenSimConfigSource();
             m_config.Source = new IniConfigSource();
-            m_config.Source.Merge(DefaultConfig());
 
             m_log.Info("[CONFIG]: Reading configuration settings");
 
@@ -230,11 +225,6 @@ namespace OpenSim
         /// <param name="sources">List of URL strings or filename strings</param>
         private void AddIncludes(OpenSimConfigSource configSource, List<string> sources)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
-
             //loop over config sources
             foreach (IConfig config in configSource.Source.Configs)
             {
@@ -305,11 +295,6 @@ namespace OpenSim
         /// <returns></returns>
         private bool ReadConfig(OpenSimConfigSource configSource, string iniPath)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
-
             bool success = false;
 
             if (!IsUri(iniPath))
@@ -343,56 +328,10 @@ namespace OpenSim
         }
 
         /// <summary>
-        /// Setup a default config values in case they aren't present in the ini file
-        /// </summary>
-        /// <returns>A Configuration source containing the default configuration</returns>
-        private static IConfigSource DefaultConfig()
-        {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            IConfigSource defaultConfig = new IniConfigSource();
-
-            {
-                IConfig config = defaultConfig.Configs["Startup"];
-
-                if (null == config)
-                    config = defaultConfig.AddConfig("Startup");
-
-                config.Set("region_info_source", "filesystem");
-
-                config.Set("physics", "OpenDynamicsEngine");
-                config.Set("meshing", "Meshmerizer");
-                config.Set("physical_prim", true);
-                config.Set("serverside_object_permissions", true);
-                config.Set("startup_console_commands_file", String.Empty);
-                config.Set("shutdown_console_commands_file", String.Empty);
-                config.Set("DefaultScriptEngine", "XEngine");
-                config.Set("clientstack_plugin", "OpenSim.Region.ClientStack.LindenUDP.dll");
-            }
-
-            {
-                IConfig config = defaultConfig.Configs["Network"];
-
-                if (null == config)
-                    config = defaultConfig.AddConfig("Network");
-
-                config.Set("http_listener_port", ConfigSettings.DefaultRegionHttpPort);
-            }
-
-            return defaultConfig;
-        }
-
-        /// <summary>
         /// Read initial region settings from the ConfigSource
         /// </summary>
         protected virtual void ReadConfigSettings()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             IConfig startupConfig = m_config.Source.Configs["Startup"];
             if (startupConfig != null)
             {

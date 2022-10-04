@@ -32,15 +32,12 @@ namespace OpenSim.Region.Framework.Scenes
 {
     public static class TerrainUtil
     {
-        public static double MetersToSphericalStrength(double size)
+        public static float SphericalFactor(float dx, float dy, float size)
         {
-            //return Math.Pow(2, size);
-            return (size + 1) * 1.35; // MCP: a more useful brush size range
-        }
-
-        public static double SphericalFactor(double x, double y, double rx, double ry, double size)
-        {
-            return size * size - ((x - rx) * (x - rx) + (y - ry) * (y - ry));
+            float a = ((dx * dx) + (dy * dy))/ (size * size);
+            if( a >= 1.0f)
+                return 0;
+            return 1.0f - a;
         }
 
         public static double GetBilinearInterpolate(double x, double y, ITerrainChannel map)
@@ -62,17 +59,13 @@ namespace OpenSim.Region.Framework.Scenes
             double h10 = map[(int) x + stepSize, (int) y];
             double h01 = map[(int) x, (int) y + stepSize];
             double h11 = map[(int) x + stepSize, (int) y + stepSize];
-            double h1 = h00;
-            double h2 = h10;
-            double h3 = h01;
-            double h4 = h11;
-            double a00 = h1;
-            double a10 = h2 - h1;
-            double a01 = h3 - h1;
-            double a11 = h1 - h2 - h3 + h4;
+            double a00 = h00;
+            double a10 = h10 - h00;
+            double a01 = h01 - h00;
+            double a11 = h11 - h10 - h01 + h00;
             double partialx = x - (int) x;
-            double partialz = y - (int) y;
-            double hi = a00 + (a10 * partialx) + (a01 * partialz) + (a11 * partialx * partialz);
+            double partialy = y - (int) y;
+            double hi = a00 + (a10 * partialx) + (a01 * partialy) + (a11 * partialx * partialy);
             return hi;
         }
 

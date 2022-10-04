@@ -270,11 +270,17 @@
     <Key Name="fileName" Value="water3.jp2" />
   </Section>
   <Section Name="Sea">
-    <Key Name="assetID" Value="2bfd3884-7e27-69b9-ba3a-3e673f680004" />
+    <Key Name="assetID" Value="482E671B-9244-4B86-A036-68953A898D11" />
     <Key Name="name" Value="Sea" />
     <Key Name="assetType" Value="0" />
     <Key Name="fileName" Value="water3.jp2" />
   </Section>
+  <Section Name="SeaWaterTrasp">
+    <Key Name="assetID" Value="2bfd3884-7e27-69b9-ba3a-3e673f680004" />
+    <Key Name="name" Value="SeaWaterTrasp" />
+    <Key Name="assetType" Value="0" />
+    <Key Name="fileName" Value="seaWaterTransp.j2c" />
+  </Section>  
   <Section Name="wood1 Texture">
     <Key Name="assetID" Value="00000000-0000-2222-3333-100000001043" />
     <Key Name="name" Value="wood1" />
@@ -397,7 +403,7 @@
     <Key Name="assetID" Value="5748decc-f629-461c-9a36-a35a221fe21f"/>
     <Key Name="name" Value="Blank Texture"/>
     <Key Name="assetType" Value="0" />
-    <Key Name="fileName" Value="blank.jpc" />
+    <Key Name="fileName" Value="blank.j2c" />
   </Section>
 
   <Section Name="Default Media Texture">
@@ -411,16 +417,15 @@
     <Key Name="assetID" Value="8dcd4a48-2d37-4909-9f78-f7a9eb4ef903"/>
     <Key Name="name" Value="Default Transparent Texture"/>
     <Key Name="assetType" Value="0" />
-    <Key Name="fileName" Value="default_clear.jp2" />
+    <Key Name="fileName" Value="transparency.jp2" />
   </Section>
 
-  <!-- 3a367d1c-bef1-6d43-7595-e88c1e3aadb3 is a UUID that viewers assume exists in the asset server -->
-  <!-- See http://opensimulator.org/mantis/bug_view_advanced_page.php?bug_id=4751 for more details -->
+
   <Section Name="Default Alpha Layer Texture">
     <Key Name="assetID" Value="3a367d1c-bef1-6d43-7595-e88c1e3aadb3"/>
     <Key Name="name" Value="Default Alpha Layer Texture"/>
     <Key Name="assetType" Value="0" />
-    <Key Name="fileName" Value="default_clear.jp2" />
+    <Key Name="fileName" Value="transparency.jp2" />
   </Section>
   
   <Section Name="Default Avatar">
@@ -762,6 +767,135 @@
     <Key Name="name" Value="IMG_BLOOM1 Texture"/>
     <Key Name="assetType" Value="0" />
     <Key Name="fileName" Value="IMG_BLOOM1.jp2" />
+  </Section>
+  
+  <Section Name="Smoke">
+     <Key Name="assetID" Value="b4ba225c-373f-446d-9f7e-6cb7b5cf9b3d"/>
+     <Key Name="name" Value="Smoke"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="b4ba225c-373f-446d-9f7e-6cb7b5cf9b3d.j2c"/>
+  </Section>
+
+  <Section Name="Water">
+    <Key Name="assetID" Value="DB814CAF-26AC-4D75-977B-A68578FE643D"/>
+    <Key Name="name" Value="Water"/>
+    <Key Name="assetType" Value="0" />
+    <Key Name="fileName" Value="water.jp2" />
+  </Section>
+
+  <Section Name="seaWaterOpaque">
+    <Key Name="assetID" Value="43c32285-d658-1793-c123-bf86315de055"/>
+    <Key Name="name" Value="seaWaterOpaque"/>
+    <Key Name="assetType" Value="0" />
+    <Key Name="fileName" Value="seaWaterOpaque.j2c" />
+  </Section>
+  
+  <Section Name="FALLB_BAKED_HEAD">
+     <Key Name="assetID" Value="5a9f4a74-30f2-821c-b88d-70499d3e7183"/>
+     <Key Name="name" Value="FALLB_BAKED_HEAD"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_HEAD_32X32.j2k"/>
+  </Section>
+  
+  <Section Name="FALLB_BAKED_UPPER">
+     <Key Name="assetID" Value="ae2de45c-d252-50b8-5c6e-19f39ce79317"/>
+     <Key Name="name" Value="FALLB_BAKED_UPPER"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_UPPER_32X32.j2k"/>
+  </Section>
+  
+  <Section Name="FALLB_BAKED_LOWER">
+     <Key Name="assetID" Value="24daea5f-0539-cfcf-047f-fbc40b2786ba"/>
+     <Key Name="name" Value="FALLB_BAKED_LOWER"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_LOWER_32X32.j2k"/>
+  </Section>
+
+  <Section Name="FALLB_BAKED_EYES">
+     <Key Name="assetID" Value="52cc6bb6-2ee5-e632-d3ad-50197b1dcb8a"/>
+     <Key Name="name" Value="FALLB_BAKED_EYES"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_EYES_32X32.j2k"/>
+  </Section>
+
+  <Section Name="FALLB_BAKED_SKIRT">
+     <Key Name="assetID" Value="43529ce8-7faa-ad92-165a-bc4078371687"/>
+     <Key Name="name" Value="FALLB_BAKED_SKIRT"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_SKIRT_32X32.j2k"/>
+  </Section>
+
+  <Section Name="FALLB_BAKED_HAIR">
+     <Key Name="assetID" Value="09aac1fb-6bce-0bee-7d44-caac6dbb6c63"/>
+     <Key Name="name" Value="FALLB_BAKED_HAIR"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_HAIR_32X32.j2k"/>
+  </Section>
+
+  <Section Name="FALLB_BAKED_LEFTARM">
+     <Key Name="assetID" Value="ff62763f-d60a-9855-890b-0c96f8f8cd98"/>
+     <Key Name="name" Value="FALLB_BAKED_LEFTARM"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_LEFTARM_32X32.j2k"/>
+  </Section>
+
+  <Section Name="FALLB_BAKED_LEFTLEG">
+     <Key Name="assetID" Value="8e915e25-31d1-cc95-ae08-d58a47488251"/>
+     <Key Name="name" Value="FALLB_BAKED_LEFTLEG"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_LEFTLEG_32X32.j2k"/>
+  </Section>
+  
+  <Section Name="FALLB_BAKED_AUX1">
+     <Key Name="assetID" Value="9742065b-19b5-297c-858a-29711d539043"/>
+     <Key Name="name" Value="FALLB_BAKED_AUX1"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_AUX1_32X32.j2k"/>
+  </Section>
+  
+  <Section Name="FALLB_BAKED_AUX2">
+     <Key Name="assetID" Value="03642e83-2bd1-4eb9-34b4-4c47ed586d2d"/>
+     <Key Name="name" Value="FALLB_BAKED_AUX2"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_AUX2_32X32.j2k"/>
+  </Section>
+
+  <Section Name="FALLB_BAKED_AUX3">
+     <Key Name="assetID" Value="edd51b77-fc10-ce7a-4b3d-011dfc349e4f"/>
+     <Key Name="name" Value="FALLB_BAKED_AUX3"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="FALLBACK_BAKED_AUX3_32X32.j2k"/>
+  </Section>
+  <Section Name="DefaultCloud">
+     <Key Name="assetID" Value="1dc1368f-e8fe-f02d-a08d-9d9f11c1af6b"/>
+     <Key Name="name" Value="DefaultCloud"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="DefaultClouds.j2c"/>
+  </Section>
+  <Section Name="DefaultRainbow">
+     <Key Name="assetID" Value="11b4c57c-56b3-04ed-1f82-2004363882e4"/>
+     <Key Name="name" Value="DefaultRainbow"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="rainbow2.j2c"/>
+  </Section>
+  <Section Name="ReverseRainbow">
+     <Key Name="assetID" Value="11b4c57c-56b3-04ed-1f82-2004363883f4"/>
+     <Key Name="name" Value="Rainbow with reverse colors order"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="rainbow.j2c"/>
+  </Section>
+  <Section Name="DefaultHalo">
+     <Key Name="assetID" Value="12149143-f599-91a7-77ac-b52a3c0f59cd"/>
+     <Key Name="name" Value="DefaultHalo"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="halo.j2c"/>
+  </Section>
+  
+  <Section Name="MoonAlias">
+     <Key Name="assetID" Value="d07f6eed-b96a-47cd-b51d-400ad4a1c428"/>
+     <Key Name="name" Value="MoonAlias"/>
+     <Key Name="assetType" Value="0" />
+     <Key Name="fileName" Value="moon.jp2"/>
   </Section>
 
 </Nini>

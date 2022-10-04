@@ -30,6 +30,7 @@ using System.Threading;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml;
+using Nini.Config;
 
 namespace OpenSim.Framework.Console
 {
@@ -56,23 +57,25 @@ namespace OpenSim.Framework.Console
 
         public string ReadLine(string p, bool isCommand, bool e) { return ""; }
 
-        public object ConsoleScene {
+        public IScene ConsoleScene {
             get { return null; }
             set {}
         }
 
-        public void Output(string text, string level) {}
-        public void Output(string text) {}
-        public void OutputFormat(string format, params object[] components) {}
+        public void Output(string format) { }
+        public void Output(string format, params object[] components) { }
 
-        public string CmdPrompt(string p) { return ""; }
-        public string CmdPrompt(string p, string def) { return ""; }
-        public string CmdPrompt(string p, List<char> excludedCharacters) { return ""; }
-        public string CmdPrompt(string p, string def, List<char> excludedCharacters) { return ""; }
+        public string Prompt(string p) { return ""; }
+        public string Prompt(string p, string def) { return ""; }
+        public string Prompt(string p, List<char> excludedCharacters) { return ""; }
+        public string Prompt(string p, string def, List<char> excludedCharacters, bool echo) { return ""; }
 
-        public string CmdPrompt(string prompt, string defaultresponse, List<string> options) { return ""; }
+        public string Prompt(string prompt, string defaultresponse, List<string> options) { return ""; }
 
         public string PasswdPrompt(string p) { return ""; }
+
+        public void ReadConfig(IConfigSource configSource) { }
+        public void SetCntrCHandler(OnCntrCCelegate handler) { }
     }
 
     public class MockCommands : ICommands

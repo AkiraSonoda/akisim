@@ -187,24 +187,17 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 
         public bool CreateAgent(GridRegion source, GridRegion destination, AgentCircuitData aCircuit, uint teleportFlags, EntityTransferContext ctx, out string reason)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.InfoFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-
             if (destination == null)
             {
                 reason = "Given destination was null";
-                m_log.WarnFormat("CreateAgent was given a null destination");
+                m_log.DebugFormat("[LOCAL SIMULATION CONNECTOR]: CreateAgent was given a null destination");
                 return false;
             }
 
-            if (m_scenes.ContainsKey(destination.RegionID))
+            if (m_scenes.TryGetValue(destination.RegionID, out Scene destScene))
             {
-				if(m_log.IsDebugEnabled) {
-					m_log.DebugFormat("Found region {0} to send SendCreateChildAgent", destination.RegionName);
-				}
-                return m_scenes[destination.RegionID].NewUserConnection(aCircuit, teleportFlags, source, out reason);
+//                    m_log.DebugFormat("[LOCAL SIMULATION CONNECTOR]: Found region {0} to send SendCreateChildAgent", destination.RegionName);
+                return destScene.NewUserConnection(aCircuit, teleportFlags, source, out reason);
             }
 
             reason = "Did not find region " + destination.RegionName;

@@ -68,7 +68,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
             if (sp.IsNPC)
                 return;
 
-            if(sp.gotCrossUpdate)
+            if(sp.m_gotCrossUpdate)
             {
                 Util.FireAndForget(delegate
                 {
@@ -111,7 +111,6 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
             if (client.Scene is Scene)
             {
                 Scene s = (Scene)client.Scene;
-                userId = s.UserManagementModule.GetUserUUI(client.AgentId);
                 if(s.UserManagementModule.GetUserUUI(client.AgentId, out userId))
                 {
                     m_GridUserService.LoggedOut(

@@ -51,9 +51,9 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                 result = this.parseParameters(args, out data);
 
                 // Context-specific validation
-                if (result == String.Empty)
+                if (result.Length == 0)
                 {
-                    if (data.shape == String.Empty)
+                    if (data.shape.Length == 0)
                     {
                         data.shape = "rectangle";
                         data.x0 = 0;
@@ -64,7 +64,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                 }
 
                 // if it's all good, then do the work
-                if (result == String.Empty)
+                if (result.Length == 0)
                 {
                     this.applyModification(map, data);
                 }
@@ -80,10 +80,10 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
             return val;
         }
 
-        public override double operate(double[,] map, TerrainModifierData data, int x, int y)
+        public override float operate(float[,] map, TerrainModifierData data, int x, int y)
         {
-            double factor = this.computeBevel(data, x, y);
-            double result = data.elevation - (data.elevation - data.bevelevation) * factor;
+            float factor = this.computeBevel(data, x, y);
+            float result = data.elevation - (data.elevation - data.bevelevation) * factor;
             return result;
         }
 

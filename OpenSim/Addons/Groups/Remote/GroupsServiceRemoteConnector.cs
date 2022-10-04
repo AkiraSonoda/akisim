@@ -134,11 +134,11 @@ namespace OpenSim.Groups
 
         public ExtendedGroupRecord GetGroupRecord(string RequestingAgentID, UUID GroupID, string GroupName)
         {
-            if (GroupID == UUID.Zero && (GroupName == null || (GroupName != null && GroupName == string.Empty)))
+            if (GroupID.IsZero() && string.IsNullOrEmpty(GroupName))
                 return null;
 
             Dictionary<string, object> sendData = new Dictionary<string, object>();
-            if (GroupID != UUID.Zero)
+            if (!GroupID.IsZero())
                 sendData["GroupID"] = GroupID.ToString();
             if (!string.IsNullOrEmpty(GroupName))
                 sendData["Name"] = GroupsDataUtils.Sanitize(GroupName);
@@ -153,7 +153,7 @@ namespace OpenSim.Groups
             return GroupsDataUtils.GroupRecord((Dictionary<string, object>)ret["RESULT"]);
         }
 
-        public List<DirGroupsReplyData> FindGroups(string RequestingAgentID, string query)
+        public List<DirGroupsReplyData> FindGroups(string RequestingAgentIDstr, string query)
         {
             List<DirGroupsReplyData> hits = new List<DirGroupsReplyData>();
             if (string.IsNullOrEmpty(query))
@@ -161,7 +161,7 @@ namespace OpenSim.Groups
 
             Dictionary<string, object> sendData = new Dictionary<string, object>();
             sendData["Query"] = query;
-            sendData["RequestingAgentID"] = RequestingAgentID;
+            sendData["RequestingAgentID"] = RequestingAgentIDstr;
 
             Dictionary<string, object> ret = MakeRequest("FINDGROUPS", sendData);
 
@@ -224,7 +224,7 @@ namespace OpenSim.Groups
         {
             Dictionary<string, object> sendData = new Dictionary<string, object>();
             sendData["AgentID"] = AgentID;
-            if (GroupID != UUID.Zero)
+            if (!GroupID.IsZero())
                 sendData["GroupID"] = GroupID.ToString();
             sendData["RequestingAgentID"] = RequestingAgentID;
             Dictionary<string, object> ret = MakeRequest("GETMEMBERSHIP", sendData);
@@ -682,7 +682,7 @@ namespace OpenSim.Groups
                          ServerUtils.BuildQueryString(sendData),
                          m_Auth);
 
-            if (reply == string.Empty)
+            if (reply.Length == 0)
                 return null;
 
             Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(

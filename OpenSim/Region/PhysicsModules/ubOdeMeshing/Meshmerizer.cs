@@ -36,15 +36,13 @@ using OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using System.Drawing;
-using System.Drawing.Imaging;
+using System.Threading;
 using System.IO.Compression;
 using PrimMesher;
 using log4net;
 using Nini.Config;
 using System.Reflection;
 using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 
 using Mono.Addins;
 
@@ -58,22 +56,23 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
         // Setting baseDir to a path will enable the dumping of raw files
         // raw files can be imported by blender so a visual inspection of the results can be done
 
+        const float floatPI = (float)Math.PI;
+        private static string cacheControlFilename = "cntr";
         private bool m_Enabled = false;
 
         public static object diskLock = new object();
 
         public bool doMeshFileCache = true;
-
+        public bool doCacheExpire = true;
         public string cachePath = "MeshCache";
         public TimeSpan CacheExpire;
-        public bool doCacheExpire = true;
 
-//        const string baseDir = "rawFiles";
+        //private const string baseDir = "rawFiles";
         private const string baseDir = null; //"rawFiles";
 
-        private bool useMeshiesPhysicsMesh = false;
-
-        private float minSizeForComplexMesh = 0.2f; // prims with all dimensions smaller than this will have a bounding box mesh
+        private bool useMeshiesPhysicsMesh = true;
+        private bool doConvexPrims = true;
+        private bool doConvexSculpts = true;
 
         private Dictionary<AMeshKey, Mesh> m_uniqueMeshes = new Dictionary<AMeshKey, Mesh>();
         private Dictionary<AMeshKey, Mesh> m_uniqueReleasedMeshes = new Dictionary<AMeshKey, Mesh>();
@@ -103,40 +102,31 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                 if (mesh_config != null)
                 {
                     useMeshiesPhysicsMesh = mesh_config.GetBoolean("UseMeshiesPhysicsMesh", useMeshiesPhysicsMesh);
-                    if (useMeshiesPhysicsMesh)
-                    {
-                        doMeshFileCache = mesh_config.GetBoolean("MeshFileCache", doMeshFileCache);
-                        cachePath = mesh_config.GetString("MeshFileCachePath", cachePath);
-                        fcache = mesh_config.GetFloat("MeshFileCacheExpireHours", fcache);
-                        doCacheExpire = mesh_config.GetBoolean("MeshFileCacheDoExpire", doCacheExpire);
-                    }
-                    else
-                    {
-                        doMeshFileCache = false;
-                        doCacheExpire = false;
-                    }
+                    doConvexPrims = mesh_config.GetBoolean("ConvexPrims",doConvexPrims);
+                    doConvexSculpts = mesh_config.GetBoolean("ConvexSculpts",doConvexPrims);
+                    doMeshFileCache = mesh_config.GetBoolean("MeshFileCache", doMeshFileCache);
+                    cachePath = mesh_config.GetString("MeshFileCachePath", cachePath);
+                    fcache = mesh_config.GetFloat("MeshFileCacheExpireHours", fcache);
+                    doCacheExpire = mesh_config.GetBoolean("MeshFileCacheDoExpire", doCacheExpire);
 
                     m_Enabled = true;
                 }
 
                 CacheExpire = TimeSpan.FromHours(fcache);
 
-                lock (diskLock)
+                if(String.IsNullOrEmpty(cachePath))
+                    doMeshFileCache = false;
+
+                if(doMeshFileCache)
                 {
-                    if(doMeshFileCache && cachePath != "")
+                    if(!checkCache())
                     {
-                        try
-                        {
-                            if (!Directory.Exists(cachePath))
-                                Directory.CreateDirectory(cachePath);
-                        }
-                        catch
-                        {
-                            doMeshFileCache = false;
-                            doCacheExpire = false;
-                        }
+                        doMeshFileCache = false;
+                        doCacheExpire = false;
                     }
                 }
+                else
+                    doCacheExpire = false;
             }
         }
 
@@ -168,87 +158,6 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 
         #endregion
 
-        /// <summary>
-        /// creates a simple box mesh of the specified size. This mesh is of very low vertex count and may
-        /// be useful as a backup proxy when level of detail is not needed or when more complex meshes fail
-        /// for some reason
-        /// </summary>
-        /// <param name="minX"></param>
-        /// <param name="maxX"></param>
-        /// <param name="minY"></param>
-        /// <param name="maxY"></param>
-        /// <param name="minZ"></param>
-        /// <param name="maxZ"></param>
-        /// <returns></returns>
-        private static Mesh CreateSimpleBoxMesh(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
-        {
-            Mesh box = new Mesh(true);
-            List<Vertex> vertices = new List<Vertex>();
-            // bottom
-
-            vertices.Add(new Vertex(minX, maxY, minZ));
-            vertices.Add(new Vertex(maxX, maxY, minZ));
-            vertices.Add(new Vertex(maxX, minY, minZ));
-            vertices.Add(new Vertex(minX, minY, minZ));
-
-            box.Add(new Triangle(vertices[0], vertices[1], vertices[2]));
-            box.Add(new Triangle(vertices[0], vertices[2], vertices[3]));
-
-            // top
-
-            vertices.Add(new Vertex(maxX, maxY, maxZ));
-            vertices.Add(new Vertex(minX, maxY, maxZ));
-            vertices.Add(new Vertex(minX, minY, maxZ));
-            vertices.Add(new Vertex(maxX, minY, maxZ));
-
-            box.Add(new Triangle(vertices[4], vertices[5], vertices[6]));
-            box.Add(new Triangle(vertices[4], vertices[6], vertices[7]));
-
-            // sides
-
-            box.Add(new Triangle(vertices[5], vertices[0], vertices[3]));
-            box.Add(new Triangle(vertices[5], vertices[3], vertices[6]));
-
-            box.Add(new Triangle(vertices[1], vertices[0], vertices[5]));
-            box.Add(new Triangle(vertices[1], vertices[5], vertices[4]));
-
-            box.Add(new Triangle(vertices[7], vertices[1], vertices[4]));
-            box.Add(new Triangle(vertices[7], vertices[2], vertices[1]));
-
-            box.Add(new Triangle(vertices[3], vertices[2], vertices[7]));
-            box.Add(new Triangle(vertices[3], vertices[7], vertices[6]));
-
-            return box;
-        }
-
-        /// <summary>
-        /// Creates a simple bounding box mesh for a complex input mesh
-        /// </summary>
-        /// <param name="meshIn"></param>
-        /// <returns></returns>
-        private static Mesh CreateBoundingBoxMesh(Mesh meshIn)
-        {
-            float minX = float.MaxValue;
-            float maxX = float.MinValue;
-            float minY = float.MaxValue;
-            float maxY = float.MinValue;
-            float minZ = float.MaxValue;
-            float maxZ = float.MinValue;
-
-            foreach (Vector3 v in meshIn.getVertexList())
-            {
-                if (v.X < minX) minX = v.X;
-                if (v.Y < minY) minY = v.Y;
-                if (v.Z < minZ) minZ = v.Z;
-
-                if (v.X > maxX) maxX = v.X;
-                if (v.Y > maxY) maxY = v.Y;
-                if (v.Z > maxZ) maxZ = v.Z;
-            }
-
-            return CreateSimpleBoxMesh(minX, maxX, minY, maxY, minZ, maxZ);
-        }
-
         private void ReportPrimError(string message, string primName, PrimMesh primMesh)
         {
             m_log.Error(message);
@@ -263,54 +172,77 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
         /// <param name="size">Size of entire object</param>
         /// <param name="coords"></param>
         /// <param name="faces"></param>
-        private void AddSubMesh(OSDMap subMeshData, List<Coord> coords, List<Face> faces)
+        private unsafe void  AddSubMesh(OSDMap subMeshData, List<Coord> coords, List<Face> faces)
         {
-    //                                    Console.WriteLine("subMeshMap for {0} - {1}", primName, Util.GetFormattedXml((OSD)subMeshMap));
+            // Console.WriteLine("subMeshMap for {0} - {1}", primName, Util.GetFormattedXml((OSD)subMeshMap));
 
             // As per http://wiki.secondlife.com/wiki/Mesh/Mesh_Asset_Format, some Mesh Level
             // of Detail Blocks (maps) contain just a NoGeometry key to signal there is no
             // geometry for this submesh.
-            if (subMeshData.ContainsKey("NoGeometry") && ((OSDBoolean)subMeshData["NoGeometry"]))
+            if (subMeshData.ContainsKey("NoGeometry"))
                 return;
 
-            OpenMetaverse.Vector3 posMax;
-            OpenMetaverse.Vector3 posMin;
-            if (subMeshData.ContainsKey("PositionDomain"))
+            byte[] posBytes = subMeshData["Position"].AsBinary();
+            if (posBytes == null || posBytes.Length == 0)
+                return;
+            byte[] triangleBytes = subMeshData["TriangleList"].AsBinary();
+            if (triangleBytes == null || triangleBytes.Length == 0)
+                return;
+
+            const float invMaxU16 = 1.0f / 65535f;
+            Vector3 posRange;
+            Vector3 posMin;
+            if(subMeshData.TryGetValue("PositionDomain", out OSD tmp))
             {
-                posMax = ((OSDMap)subMeshData["PositionDomain"])["Max"].AsVector3();
-                posMin = ((OSDMap)subMeshData["PositionDomain"])["Min"].AsVector3();
+                posRange = ((OSDMap)tmp)["Max"].AsVector3();
+                posMin = ((OSDMap)tmp)["Min"].AsVector3();
+                posRange = posRange - posMin;
+                posRange *= invMaxU16;
             }
             else
             {
-                posMax = new Vector3(0.5f, 0.5f, 0.5f);
+                posRange = new Vector3(invMaxU16, invMaxU16, invMaxU16);
                 posMin = new Vector3(-0.5f, -0.5f, -0.5f);
             }
 
-            ushort faceIndexOffset = (ushort)coords.Count;
+            int faceIndexOffset = coords.Count;
 
-            byte[] posBytes = subMeshData["Position"].AsBinary();
-            for (int i = 0; i < posBytes.Length; i += 6)
-            {
-                ushort uX = Utils.BytesToUInt16(posBytes, i);
-                ushort uY = Utils.BytesToUInt16(posBytes, i + 2);
-                ushort uZ = Utils.BytesToUInt16(posBytes, i + 4);
+            fixed (byte* ptrstart = posBytes)
+            { 
+                byte* end = ptrstart + posBytes.Length;
+                byte* ptr = ptrstart;
+                while (ptr < end)
+                {
+                    ushort uX = Utils.BytesToUInt16(ptr);
+                    ptr += 2;
+                    ushort uY = Utils.BytesToUInt16(ptr);
+                    ptr += 2;
+                    ushort uZ = Utils.BytesToUInt16(ptr);
+                    ptr += 2;
 
-                Coord c = new Coord(
-                Utils.UInt16ToFloat(uX, posMin.X, posMax.X),
-                Utils.UInt16ToFloat(uY, posMin.Y, posMax.Y),
-                Utils.UInt16ToFloat(uZ, posMin.Z, posMax.Z));
-
-                coords.Add(c);
+                    coords.Add(new Coord(
+                            uX * posRange.X + posMin.X,
+                            uY * posRange.Y + posMin.Y,
+                            uZ * posRange.Z + posMin.Z)
+                        );
+                }
             }
 
-            byte[] triangleBytes = subMeshData["TriangleList"].AsBinary();
-            for (int i = 0; i < triangleBytes.Length; i += 6)
+            fixed (byte* ptrstart = triangleBytes)
             {
-                ushort v1 = (ushort)(Utils.BytesToUInt16(triangleBytes, i) + faceIndexOffset);
-                ushort v2 = (ushort)(Utils.BytesToUInt16(triangleBytes, i + 2) + faceIndexOffset);
-                ushort v3 = (ushort)(Utils.BytesToUInt16(triangleBytes, i + 4) + faceIndexOffset);
-                Face f = new Face(v1, v2, v3);
-                faces.Add(f);
+                byte* end = ptrstart + triangleBytes.Length;
+                byte* ptr = ptrstart;
+                while (ptr < end)
+                {
+                    int v1 = Utils.BytesToUInt16(ptr) + faceIndexOffset;
+                    ptr += 2;
+                    int v2 = Utils.BytesToUInt16(ptr) + faceIndexOffset;
+                    ptr += 2;
+                    int v3 = Utils.BytesToUInt16(ptr) + faceIndexOffset;
+                    ptr += 2;
+                    Face f = new Face(v1, v2, v3);
+                    faces.Add(f);
+                }
             }
         }
 
@@ -330,32 +262,82 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 
             List<Coord> coords;
             List<Face> faces;
+            bool needsConvexProcessing = convex;
 
             if (primShape.SculptEntry)
             {
-                if (((OpenMetaverse.SculptType)primShape.SculptType) == SculptType.Mesh)
+                if (((SculptType)primShape.SculptType) == SculptType.Mesh)
                 {
                     if (!useMeshiesPhysicsMesh)
                         return null;
-
-                    if (!GenerateCoordsAndFacesFromPrimMeshData(primName, primShape, out coords, out faces, convex))
+                    try
+                    {
+                        if (!GenerateCoordsAndFacesFromPrimMeshData(primName, primShape, out coords, out faces, convex))
+                            return null;
+                        needsConvexProcessing = false;
+                    }
+                    catch
+                    {
+                        m_log.ErrorFormat("[MESH]: fail to process mesh asset for prim {0}", primName);
                         return null;
+                    }
                 }
                 else
                 {
-                    if (!GenerateCoordsAndFacesFromPrimSculptData(primName, primShape, lod, out coords, out faces))
+                    try
+                    {
+                        if (!GenerateCoordsAndFacesFromPrimSculptData(primName, primShape, lod, out coords, out faces))
+                            return null;
+                        needsConvexProcessing &= doConvexSculpts;
+                    }
+                    catch
+                    {
+                        m_log.ErrorFormat("[MESH]: fail to process sculpt map for prim {0}", primName);
                         return null;
+                    }
                 }
             }
             else
             {
-                if (!GenerateCoordsAndFacesFromPrimShapeData(primName, primShape, lod, convex, out coords, out faces))
+                try
+                {
+                    if (!GenerateCoordsAndFacesFromPrimShapeData(primName, primShape, lod, convex, out coords, out faces))
+                        return null;
+                     needsConvexProcessing &= doConvexPrims;
+                }
+                catch
+                {
+                    m_log.ErrorFormat("[MESH]: fail to process shape parameters for prim {0}", primName);
                     return null;
+                }
             }
-
 
             int numCoords = coords.Count;
             int numFaces = faces.Count;
+
+            if(numCoords < 3 || (!needsConvexProcessing && numFaces < 1))
+            {
+                m_log.ErrorFormat("[ubODEMesh]: invalid degenerated mesh for prim {0} ignored", primName);
+                return null;
+            }
+
+            if(needsConvexProcessing)
+            {
+                List<Coord> convexcoords;
+                List<Face> convexfaces;
+                if(CreateBoundingHull(coords, out convexcoords, out convexfaces) && convexcoords != null && convexfaces != null)
+                {
+                    coords.Clear();
+                    coords = convexcoords;
+                    numCoords = coords.Count;
+
+                    faces.Clear();
+                    faces = convexfaces;
+                    numFaces = faces.Count;
+                }
+                else
+                     m_log.ErrorFormat("[ubMESH]: failed to create convex for {0} using normal mesh", primName);
+            }
 
             Mesh mesh = new Mesh(true);
             // Add the corresponding triangles to the mesh
@@ -371,10 +353,10 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             faces.Clear();
 
             if(mesh.numberVertices() < 3 || mesh.numberTriangles() < 1)
-                {
-                m_log.ErrorFormat("[MESH]: invalid degenerated mesh for prim " + primName + " ignored");
+            {
+                m_log.ErrorFormat("[ubODEMesh]: invalid degenerated mesh for prim {0} ignored", primName);
                 return null;
-                }
+            }
 
             primShape.SculptData = Utils.EmptyBytes;
 
@@ -390,7 +372,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
         /// <param name="coords">Coords are added to this list by the method.</param>
         /// <param name="faces">Faces are added to this list by the method.</param>
         /// <returns>true if coords and faces were successfully generated, false if not</returns>
-        private bool GenerateCoordsAndFacesFromPrimMeshData(
+        private unsafe bool GenerateCoordsAndFacesFromPrimMeshData(
             string primName, PrimitiveBaseShape primShape, out List<Coord> coords, out List<Face> faces, bool convex)
         {
 //            m_log.DebugFormat("[MESH]: experimental mesh proxy generation for {0}", primName);
@@ -405,7 +387,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             faces = new List<Face>();
             OSD meshOsd = null;
 
-            if (primShape.SculptData.Length <= 0)
+            if (primShape.SculptData == null || primShape.SculptData.Length <= 0)
             {
 //                m_log.InfoFormat("[MESH]: asset data for {0} is zero length", primName);
                 return false;
@@ -421,13 +403,14 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                         meshOsd = (OSDMap)osd;
                     else
                     {
-                        m_log.WarnFormat("[Mesh}: unable to cast mesh asset to OSDMap prim: {0}",primName);
+                        m_log.WarnFormat("[Mesh}: unable to cast mesh asset to OSDMap prim: {0} asset {1}",primName, primShape.SculptTexture);
                         return false;
                     }
                 }
                 catch (Exception e)
                 {
-                    m_log.Error("[MESH]: Exception deserializing mesh asset header:" + e.ToString());
+                    m_log.ErrorFormat("[MESH]: Error deserializing mesh asset header: {0} in Prim '{1}' asset {2}", e.Message, primName, primShape.SculptTexture);
+                    return false;
                 }
 
                 start = data.Position;
@@ -465,32 +448,24 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                     return false; // no mesh data in asset
 
                 OSD decodedMeshOsd = new OSD();
-                byte[] meshBytes = new byte[physSize];
-                System.Buffer.BlockCopy(primShape.SculptData, physOffset, meshBytes, 0, physSize);
-
                 try
                 {
-                    using (MemoryStream inMs = new MemoryStream(meshBytes))
+                    using (MemoryStream outMs = new MemoryStream(4 * physSize))
                     {
-                        using (MemoryStream outMs = new MemoryStream())
+                        using (MemoryStream inMs = new MemoryStream(primShape.SculptData, physOffset, physSize))
                         {
                             using (DeflateStream decompressionStream = new DeflateStream(inMs, CompressionMode.Decompress))
                             {
-                                byte[] readBuffer = new byte[2048];
+                                byte[] readBuffer = new byte[8192];
                                 inMs.Read(readBuffer, 0, 2); // skip first 2 bytes in header
                                 int readLen = 0;
 
                                 while ((readLen = decompressionStream.Read(readBuffer, 0, readBuffer.Length)) > 0)
                                     outMs.Write(readBuffer, 0, readLen);
-
-                                outMs.Flush();
-                                outMs.Seek(0, SeekOrigin.Begin);
-
-                                byte[] decompressedBuf = outMs.GetBuffer();
-
-                                decodedMeshOsd = OSDParser.DeserializeLLSDBinary(decompressedBuf);
                             }
                         }
+                        outMs.Seek(0, SeekOrigin.Begin);
+                        decodedMeshOsd = OSDParser.DeserializeLLSDBinary(outMs);
                     }
                 }
                 catch (Exception e)
@@ -527,8 +502,6 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                     List<float3> vs = new List<float3>();
                     PHullResult hullr = new PHullResult();
                     float3 f3;
-                    Coord c;
-                    Face f;
                     Vector3 range;
                     Vector3 min;
 
@@ -571,139 +544,91 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                             }
 
                             data = cmap["Positions"].AsBinary();
-                            int ptr = 0;
-                            int vertsoffset = 0;
-
-                            if (totalpoints == data.Length / 6) // 2 bytes per coord, 3 coords per point
+                            fixed(byte* ptrstart = data)
                             {
-                                foreach (int hullsize in hsizes)
+                                byte* ptr = ptrstart;
+
+                                int vertsoffset = 0;
+
+                                if (totalpoints == data.Length / 6) // 2 bytes per coord, 3 coords per point
                                 {
-                                    for (i = 0; i < hullsize; i++ )
+                                    foreach (int hullsize in hsizes)
                                     {
-                                        t1 = data[ptr++];
-                                        t1 += data[ptr++] << 8;
-                                        t2 = data[ptr++];
-                                        t2 += data[ptr++] << 8;
-                                        t3 = data[ptr++];
-                                        t3 += data[ptr++] << 8;
-
-                                        f3 = new float3((t1 * range.X + min.X),
-                                                  (t2 * range.Y + min.Y),
-                                                  (t3 * range.Z + min.Z));
-                                        vs.Add(f3);
-                                    }
-
-                                    if(hullsize <3)
-                                    {
-                                        vs.Clear();
-                                        continue;
-                                    }
-
-                                    if (hullsize <5)
-                                    {
-                                        foreach (float3 point in vs)
+                                        if (hullsize < 4)
                                         {
-                                            c.X = point.x;
-                                            c.Y = point.y;
-                                            c.Z = point.z;
-                                            coords.Add(c);
-                                        }
-                                        f = new Face(vertsoffset, vertsoffset + 1, vertsoffset + 2);
-                                        faces.Add(f);
+                                            if (hullsize < 3)
+                                            {
+                                                ptr += 6 * hullsize;
+                                                continue;
+                                            }
 
-                                        if (hullsize == 4)
+                                            for (i = 0; i < hullsize; i++)
+                                            {
+                                                t1 = Utils.BytesToUInt16(ptr); ptr += 2;
+                                                t2 = Utils.BytesToUInt16(ptr); ptr += 2;
+                                                t3 = Utils.BytesToUInt16(ptr); ptr += 2;
+
+                                                coords.Add(new Coord(
+                                                                t1 * range.X + min.X,
+                                                                t2 * range.Y + min.Y,
+                                                                t3 * range.Z + min.Z)
+                                                           );
+                                                
+                                            }
+
+                                            faces.Add(new Face(vertsoffset, vertsoffset + 1, vertsoffset + 2));
+
+                                            vertsoffset += hullsize;
+                                            continue;
+                                        }
+
+                                        for (i = 0; i < hullsize; i++)
                                         {
-                                            // not sure about orientation..
-                                            f = new Face(vertsoffset, vertsoffset + 2, vertsoffset + 3);
-                                            faces.Add(f);
-                                            f = new Face(vertsoffset, vertsoffset + 3, vertsoffset + 1);
-                                            faces.Add(f);
-                                            f = new Face(vertsoffset + 3, vertsoffset + 2, vertsoffset + 1);
-                                            faces.Add(f);
+                                            t1 = Utils.BytesToUInt16(ptr); ptr += 2;
+                                            t2 = Utils.BytesToUInt16(ptr); ptr += 2;
+                                            t3 = Utils.BytesToUInt16(ptr); ptr += 2;
+
+                                            f3 = new float3(t1 * range.X + min.X,
+                                                            t2 * range.Y + min.Y,
+                                                            t3 * range.Z + min.Z);
+                                            vs.Add(f3);
                                         }
-                                        vertsoffset += vs.Count;
+
+                                        List<int> indices;
+                                        if (!HullUtils.ComputeHull(vs, out indices))
+                                        {
+                                            vs.Clear();
+                                            continue;
+                                        }
+
+                                        nverts = vs.Count;
+                                        nindexs = indices.Count;
+
+                                        if (nindexs % 3 != 0)
+                                        {
+                                            vs.Clear();
+                                            continue;
+                                        }
+
+                                        for (i = 0; i < vs.Count; i++)
+                                            coords.Add(new Coord(vs[i].x, vs[i].y, vs[i].z));
+
+                                        for (i = 0; i < indices.Count; i += 3)
+                                        {
+                                            t1 = indices[i];
+                                            if (t1 > nverts)
+                                                break;
+                                            t2 = indices[i + 1];
+                                            if (t2 > nverts)
+                                                break;
+                                            t3 = indices[i + 2];
+                                            if (t3 > nverts)
+                                                break;
+                                            faces.Add(new Face(vertsoffset + t1, vertsoffset + t2, vertsoffset + t3));
+                                        }
+                                        vertsoffset += nverts;
                                         vs.Clear();
-                                        continue;
                                     }
-    /*
-                                    if (!HullUtils.ComputeHull(vs, ref hullr, 0, 0.0f))
-                                    {
-                                        vs.Clear();
-                                        continue;
-                                    }
-
-                                    nverts = hullr.Vertices.Count;
-                                    nindexs = hullr.Indices.Count;
-
-                                    if (nindexs % 3 != 0)
-                                    {
-                                        vs.Clear();
-                                        continue;
-                                    }
-
-                                    for (i = 0; i < nverts; i++)
-                                    {
-                                        c.X = hullr.Vertices[i].x;
-                                        c.Y = hullr.Vertices[i].y;
-                                        c.Z = hullr.Vertices[i].z;
-                                        coords.Add(c);
-                                    }
-
-                                    for (i = 0; i < nindexs; i += 3)
-                                    {
-                                        t1 = hullr.Indices[i];
-                                        if (t1 > nverts)
-                                            break;
-                                        t2 = hullr.Indices[i + 1];
-                                        if (t2 > nverts)
-                                            break;
-                                        t3 = hullr.Indices[i + 2];
-                                        if (t3 > nverts)
-                                            break;
-                                        f = new Face(vertsoffset + t1, vertsoffset + t2, vertsoffset + t3);
-                                        faces.Add(f);
-                                    }
-    */
-                                    List<int> indices;
-                                    if (!HullUtils.ComputeHull(vs, out indices))
-                                    {
-                                        vs.Clear();
-                                        continue;
-                                    }
-
-                                    nverts = vs.Count;
-                                    nindexs = indices.Count;
-
-                                    if (nindexs % 3 != 0)
-                                    {
-                                        vs.Clear();
-                                        continue;
-                                    }
-
-                                    for (i = 0; i < nverts; i++)
-                                    {
-                                        c.X = vs[i].x;
-                                        c.Y = vs[i].y;
-                                        c.Z = vs[i].z;
-                                        coords.Add(c);
-                                    }
-
-                                    for (i = 0; i < nindexs; i += 3)
-                                    {
-                                        t1 = indices[i];
-                                        if (t1 > nverts)
-                                            break;
-                                        t2 = indices[i + 1];
-                                        if (t2 > nverts)
-                                            break;
-                                        t3 = indices[i + 2];
-                                        if (t3 > nverts)
-                                            break;
-                                        f = new Face(vertsoffset + t1, vertsoffset + t2, vertsoffset + t3);
-                                        faces.Add(f);
-                                    }
-                                    vertsoffset += nverts;
-                                    vs.Clear();
                                 }
                             }
                             if (coords.Count > 0 && faces.Count > 0)
@@ -717,90 +642,45 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                     }
                     vs.Clear();
 
-                    if (cmap.ContainsKey("BoundingVerts"))
+                    if (cmap.TryGetValue("BoundingVerts", out OSD odata))
                     {
-                        data = cmap["BoundingVerts"].AsBinary();
-
-                        for (i = 0; i < data.Length; )
+                        data = odata.AsBinary();
+                        if (data.Length < 3 * 6)
                         {
-                            t1 = data[i++];
-                            t1 += data[i++] << 8;
-                            t2 = data[i++];
-                            t2 += data[i++] << 8;
-                            t3 = data[i++];
-                            t3 += data[i++] << 8;
+                            vs.Clear();
+                            return false;
+                        }
 
-                            f3 = new float3((t1 * range.X + min.X),
-                                      (t2 * range.Y + min.Y),
-                                      (t3 * range.Z + min.Z));
-                            vs.Add(f3);
+                        fixed (byte* ptrstart = data)
+                        {
+                            byte* end = ptrstart + data.Length;
+                            byte* ptr = ptrstart;
+                            while(ptr < end)
+                            {
+                                t1 = Utils.BytesToUInt16(ptr); ptr += 2;
+                                t2 = Utils.BytesToUInt16(ptr); ptr += 2;
+                                t3 = Utils.BytesToUInt16(ptr); ptr += 2;
+
+                                f3 = new float3((t1 * range.X + min.X),
+                                          (t2 * range.Y + min.Y),
+                                          (t3 * range.Z + min.Z));
+                                vs.Add(f3);
+                            }
                         }
 
                         nverts = vs.Count;
 
-                        if (nverts < 3)
+                        if (nverts < 4)
                         {
-                            vs.Clear();
-                            return false;
-                        }
+                            for (i = 0; i < vs.Count; i++)
+                                coords.Add(new Coord(vs[i].x, vs[i].y, vs[i].z));
 
-                        if (nverts < 5)
-                        {
-                            foreach (float3 point in vs)
-                            {
-                                c.X = point.x;
-                                c.Y = point.y;
-                                c.Z = point.z;
-                                coords.Add(c);
-                            }
+                            faces.Add(new Face(0, 1, 2));
 
-                            f = new Face(0, 1, 2);
-                            faces.Add(f);
-
-                            if (nverts == 4)
-                            {
-                                f = new Face(0, 2, 3);
-                                faces.Add(f);
-                                f = new Face(0, 3, 1);
-                                faces.Add(f);
-                                f = new Face( 3, 2, 1);
-                                faces.Add(f);
-                            }
                             vs.Clear();
                             return true;
                         }
-/*
-                        if (!HullUtils.ComputeHull(vs, ref hullr, 0, 0.0f))
-                            return false;
 
-                        nverts = hullr.Vertices.Count;
-                        nindexs = hullr.Indices.Count;
-
-                        if (nindexs % 3 != 0)
-                            return false;
-
-                        for (i = 0; i < nverts; i++)
-                        {
-                            c.X = hullr.Vertices[i].x;
-                            c.Y = hullr.Vertices[i].y;
-                            c.Z = hullr.Vertices[i].z;
-                            coords.Add(c);
-                        }
-                        for (i = 0; i < nindexs; i += 3)
-                        {
-                            t1 = hullr.Indices[i];
-                            if (t1 > nverts)
-                                break;
-                            t2 = hullr.Indices[i + 1];
-                            if (t2 > nverts)
-                                break;
-                            t3 = hullr.Indices[i + 2];
-                            if (t3 > nverts)
-                                break;
-                            f = new Face(t1, t2, t3);
-                            faces.Add(f);
-                        }
-*/
                         List<int> indices;
                         if (!HullUtils.ComputeHull(vs, out indices))
                             return false;
@@ -810,14 +690,10 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                         if (nindexs % 3 != 0)
                             return false;
 
-                        for (i = 0; i < nverts; i++)
-                        {
-                            c.X = vs[i].x;
-                            c.Y = vs[i].y;
-                            c.Z = vs[i].z;
-                            coords.Add(c);
-                        }
-                        for (i = 0; i < nindexs; i += 3)
+                        for (i = 0; i < vs.Count; i++)
+                            coords.Add(new Coord(vs[i].x, vs[i].y, vs[i].z));
+
+                        for (i = 0; i < indices.Count; i += 3)
                         {
                             t1 = indices[i];
                             if (t1 > nverts)
@@ -828,15 +704,14 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                             t3 = indices[i + 2];
                             if (t3 > nverts)
                                 break;
-                            f = new Face(t1, t2, t3);
-                            faces.Add(f);
+
+                            faces.Add(new Face(t1, t2, t3));
                         }
                         vs.Clear();
                         if (coords.Count > 0 && faces.Count > 0)
                             return true;
                     }
-                    else
-                        return false;
+                    return false;
                 }
             }
 
@@ -1042,11 +917,11 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             primMesh.topShearY = pathShearY;
             primMesh.pathCutBegin = pathBegin;
             primMesh.pathCutEnd = pathEnd;
-
+            
             if (primShape.PathCurve == (byte)Extrusion.Straight || primShape.PathCurve == (byte) Extrusion.Flexible)
             {
-                primMesh.twistBegin = (primShape.PathTwistBegin * 18) / 10;
-                primMesh.twistEnd = (primShape.PathTwist * 18) / 10;
+                primMesh.twistBegin = (float)(primShape.PathTwistBegin * (floatPI * 0.01f));
+                primMesh.twistEnd = (float)(primShape.PathTwist * (floatPI * 0.01f));
                 primMesh.taperX = pathScaleX;
                 primMesh.taperY = pathScaleY;
 
@@ -1055,7 +930,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 #endif
                 try
                 {
-                    primMesh.ExtrudeLinear();
+                    primMesh.Extrude(PathType.Linear); ;
                 }
                 catch (Exception ex)
                 {
@@ -1070,8 +945,8 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                 primMesh.radius = 0.01f * primShape.PathRadiusOffset;
                 primMesh.revolutions = 1.0f + 0.015f * primShape.PathRevolutions;
                 primMesh.skew = 0.01f * primShape.PathSkew;
-                primMesh.twistBegin = (primShape.PathTwistBegin * 36) / 10;
-                primMesh.twistEnd = (primShape.PathTwist * 36) / 10;
+                primMesh.twistBegin = (float)(primShape.PathTwistBegin * (floatPI * 0.02f));
+                primMesh.twistEnd = (float)(primShape.PathTwistBegin * (floatPI * 0.02f));
                 primMesh.taperX = primShape.PathTaperX * 0.01f;
                 primMesh.taperY = primShape.PathTaperY * 0.01f;
 
@@ -1088,7 +963,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 #endif
                 try
                 {
-                    primMesh.ExtrudeCircular();
+                    primMesh.Extrude(PathType.Circular);
                 }
                 catch (Exception ex)
                 {
@@ -1413,7 +1288,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             }
         }
 
-        public void FileNames(AMeshKey key, out string dir,out string fullFileName)
+        public void FileNames(AMeshKey key, out string dir, out string fullFileName)
         {
             string id = key.ToString();
             string init = id.Substring(0, 1);
@@ -1516,7 +1391,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                     {
                         File.Delete(filename);
                     }
-                    catch (IOException e)
+                    catch (IOException)
                     {
                          m_log.ErrorFormat(
                         "[MESH CACHE]: Failed to delete file {0}",filename);
@@ -1525,24 +1400,28 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             }
         }
 
+        private static DateTime lastExpireTime = DateTime.MinValue;
         public void ExpireFileCache()
         {
             if (!doCacheExpire)
                 return;
 
-            string controlfile = System.IO.Path.Combine(cachePath, "cntr");
-
             lock (diskLock)
             {
                 try
                 {
+                    DateTime now = DateTime.UtcNow;
+                    if(now.Subtract(lastExpireTime).TotalMinutes < 10.0)
+                        return;
+                    lastExpireTime = now;
+                    string controlfile = System.IO.Path.Combine(cachePath, cacheControlFilename);
                     if (File.Exists(controlfile))
                     {
                         int ndeleted = 0;
                         int totalfiles = 0;
                         int ndirs = 0;
                         DateTime OlderTime = File.GetLastAccessTimeUtc(controlfile) - CacheExpire;
-                        File.SetLastAccessTimeUtc(controlfile, DateTime.UtcNow);
+                        File.SetLastAccessTimeUtc(controlfile, now);
 
                         foreach (string dir in Directory.GetDirectories(cachePath))
                         {
@@ -1582,6 +1461,152 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                 }
                 catch { }
             }
+        }
+
+        public bool checkCache()
+        {
+            string controlfile = System.IO.Path.Combine(cachePath, cacheControlFilename);
+            lock (diskLock)
+            {
+                try
+                {
+                    if (!Directory.Exists(cachePath))
+                    {
+                        Directory.CreateDirectory(cachePath);
+                        Thread.Sleep(100);
+                        FileStream fs = File.Create(controlfile, 4096, FileOptions.WriteThrough);
+                        fs.Close();
+                        return true;
+                    }
+                }
+                catch
+                {
+                    doMeshFileCache = false;
+                    doCacheExpire = false;
+                    return false;
+                }
+                finally {}
+
+                if (File.Exists(controlfile))
+                    return true;
+
+                try
+                {
+                    Directory.Delete(cachePath, true);
+                    while(Directory.Exists(cachePath))
+                        Thread.Sleep(100);
+                }
+                catch(Exception e)
+                {
+                    m_log.Error("[MESH CACHE]: failed to delete old version of the cache: " + e.Message);
+                    doMeshFileCache = false;
+                    doCacheExpire = false;
+                    return false;
+                } 
+                finally {}
+                try
+                {
+                    Directory.CreateDirectory(cachePath);
+                    while(!Directory.Exists(cachePath))
+                        Thread.Sleep(100);
+                }
+                catch(Exception e)
+                {
+                    m_log.Error("[MESH CACHE]: failed to create new cache folder: " + e.Message);
+                    doMeshFileCache = false;
+                    doCacheExpire = false;
+                    return false;
+                } 
+                finally {}
+
+                try
+                {
+                    FileStream fs = File.Create(controlfile, 4096, FileOptions.WriteThrough);
+                    fs.Close();
+                }
+                catch(Exception e)
+                {
+                    m_log.Error("[MESH CACHE]: failed to create new control file: " + e.Message);
+                    doMeshFileCache = false;
+                    doCacheExpire = false;
+                    return false;
+                } 
+                finally {}
+            
+                return true;
+            }
+        }
+
+        public bool CreateBoundingHull(List<Coord> inputVertices, out List<Coord> convexcoords, out List<Face> newfaces)
+        {
+            convexcoords = null;
+            newfaces = null;
+            HullDesc desc = new HullDesc();
+            HullResult result = new HullResult();
+
+            int nInputVerts = inputVertices.Count;
+            int i;
+
+            List<float3> vs = new List<float3>(nInputVerts);
+            float3 f3;
+
+            //useless copy
+            for(i = 0 ; i < nInputVerts; i++)
+            {
+                f3 = new float3(inputVertices[i].X, inputVertices[i].Y, inputVertices[i].Z);
+                vs.Add(f3);
+            }
+
+            desc.Vertices = vs;
+            desc.Flags = HullFlag.QF_TRIANGLES;
+            desc.MaxVertices = 256;
+
+            try
+            {
+                HullError ret = HullUtils.CreateConvexHull(desc, ref result);
+                if (ret != HullError.QE_OK)
+                    return false;
+                int nverts = result.OutputVertices.Count;
+                int nindx = result.Indices.Count;
+                if(nverts < 3 || nindx< 3)
+                    return false;
+                if(nindx % 3 != 0)
+                    return false;
+
+                convexcoords = new List<Coord>(nverts);
+                Coord c;
+                vs = result.OutputVertices;
+
+                for(i = 0 ; i < nverts; i++)
+                {
+                    c = new Coord(vs[i].x, vs[i].y, vs[i].z);
+                    convexcoords.Add(c);
+                }
+
+                newfaces = new List<Face>(nindx / 3);
+                List<int> indxs = result.Indices;
+                int k, l, m;
+                Face f;
+                for(i = 0 ; i < nindx;)
+                {
+                    k = indxs[i++];
+                    l = indxs[i++];
+                    m = indxs[i++];
+                    if(k > nInputVerts)
+                        continue;
+                    if(l > nInputVerts)
+                        continue;
+                    if(m > nInputVerts)
+                        continue;
+                    f = new Face(k,l,m);
+                    newfaces.Add(f);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
         }
     }
 }

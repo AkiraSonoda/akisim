@@ -71,7 +71,7 @@ namespace OpenSim.Services.SimulationService
             }
 
             // We tried, but this doesn't exist. We can't proceed
-            if (dllName == String.Empty)
+            if (dllName.Length == 0)
                 throw new Exception("No StorageProvider configured");
 
             m_database = LoadPlugin<ISimulationDataStore>(dllName, new Object[] { connString });
@@ -152,20 +152,6 @@ namespace OpenSim.Services.SimulationService
         public RegionSettings LoadRegionSettings(UUID regionUUID)
         {
             return m_database.LoadRegionSettings(regionUUID);
-        }
-
-        public RegionLightShareData LoadRegionWindlightSettings(UUID regionUUID)
-        {
-            return m_database.LoadRegionWindlightSettings(regionUUID);
-        }
-
-        public void StoreRegionWindlightSettings(RegionLightShareData wl)
-        {
-            m_database.StoreRegionWindlightSettings(wl);
-        }
-        public void RemoveRegionWindlightSettings(UUID regionID)
-        {
-            m_database.RemoveRegionWindlightSettings(regionID);
         }
 
         public string LoadRegionEnvironmentSettings(UUID regionUUID)

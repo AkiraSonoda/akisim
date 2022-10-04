@@ -52,7 +52,9 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
 
         private void SetupScene(bool reuseTextures)
         {
-            m_scene = new SceneHelpers().SetupScene();
+            
+            TestsAssetCache cache = new TestsAssetCache();
+            m_scene = new SceneHelpers(cache).SetupScene();
 
             m_dtm = new DynamicTextureModule();
             m_dtm.ReuseTextures = reuseTextures;
@@ -77,8 +79,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 "PenColour BLACK; MoveTo 40,220; FontSize 32; Text Hello World;",
-                "",
-                0);
+                "");
 
             Assert.That(originalTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -98,8 +99,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -108,8 +108,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             Assert.That(firstDynamicTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -129,8 +128,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -139,8 +137,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "alpha:250",
-                0);
+                "alpha:250");
 
             Assert.That(firstDynamicTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -161,8 +158,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -171,8 +167,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             Assert.That(firstDynamicTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -191,8 +186,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 "PenColour BLACK; MoveTo 40,220; FontSize 32; Text Hello World;",
-                "",
-                0);
+                "");
 
             Assert.That(originalTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -213,8 +207,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -223,8 +216,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             Assert.That(firstDynamicTextureID, Is.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -253,8 +245,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "1024",
-                0);
+                "1024");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -263,8 +254,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "1024",
-                0);
+                "1024");
 
             Assert.That(firstDynamicTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -284,8 +274,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -294,8 +283,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "alpha:250",
-                0);
+                "alpha:250");
 
             Assert.That(firstDynamicTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }
@@ -316,8 +304,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             UUID firstDynamicTextureID = so.RootPart.Shape.Textures.GetFace(0).TextureID;
 
@@ -326,8 +313,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender.Tests
                 so.UUID,
                 m_vrm.GetContentType(),
                 dtText,
-                "",
-                0);
+                "");
 
             Assert.That(firstDynamicTextureID, Is.Not.EqualTo(so.RootPart.Shape.Textures.GetFace(0).TextureID));
         }

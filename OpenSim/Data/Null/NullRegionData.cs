@@ -68,12 +68,29 @@ namespace OpenSim.Data.Null
 
         private delegate bool Matcher(string value);
 
+        public RegionData GetSpecific(string regionName, UUID scopeID)
+        {
+            if (m_useStaticInstance && Instance != this)
+                return Instance.GetSpecific(regionName, scopeID);
+
+             lock (m_regionData)
+            {
+                foreach (RegionData r in m_regionData.Values)
+                {
+                    if(r.RegionName.Equals(regionName, StringComparison.InvariantCultureIgnoreCase))
+                        return r;
+                }
+            }
+
+            return null;
+        }
+
         public List<RegionData> Get(string regionName, UUID scopeID)
         {
             if (m_useStaticInstance && Instance != this)
                 return Instance.Get(regionName, scopeID);
 
-//            m_log.DebugFormat("[NULL REGION DATA]: Getting region {0}, scope {1}", regionName, scopeID);
+            // m_log.DebugFormat("[NULL REGION DATA]: Getting region {0}, scope {1}", regionName, scopeID);
 
             string cleanName = regionName.ToLower();
 
@@ -246,17 +263,19 @@ namespace OpenSim.Data.Null
             return Get((int)RegionFlags.DefaultHGRegion, scopeID);
         }
 
-        public List<RegionData> GetFallbackRegions(UUID scopeID, int x, int y)
+        public List<RegionData> GetFallbackRegions(UUID scopeID)
         {
-            List<RegionData> regions = Get((int)RegionFlags.FallbackRegion, scopeID);
-            RegionDataDistanceCompare distanceComparer = new RegionDataDistanceCompare(x, y);
-            regions.Sort(distanceComparer);
-            return regions;
+            return Get((int)RegionFlags.FallbackRegion, scopeID);
         }
 
         public List<RegionData> GetHyperlinks(UUID scopeID)
         {
             return Get((int)RegionFlags.Hyperlink, scopeID);
+        }
+
+        public List<RegionData> GetOnlineRegions(UUID scopeID)
+        {
+            return Get((int)RegionFlags.RegionOnline, scopeID);
         }
 
         private List<RegionData> Get(int regionFlags, UUID scopeID)

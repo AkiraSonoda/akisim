@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
@@ -153,10 +154,23 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="remoteClient"></param>
         public void RequestPrim(uint primLocalID, IClientAPI remoteClient)
         {
-            SceneObjectGroup sog = GetGroupByPrim(primLocalID);
+            SceneObjectPart part = GetSceneObjectPart(primLocalID);
+            if (part != null)
+            {
+                SceneObjectGroup sog = part.ParentGroup;
+                if(!sog.IsDeleted)
+                {
+                    PrimUpdateFlags update = PrimUpdateFlags.FullUpdate;
+                    if (sog.RootPart.Shape.MeshFlagEntry)
+                        update = PrimUpdateFlags.FullUpdatewithAnim;
+                    part.SendUpdate(remoteClient, update);
+                }
+            }
 
-            if (sog != null)
-                sog.SendFullUpdateToClient(remoteClient);
+            //SceneObjectGroup sog = GetGroupByPrim(primLocalID);
+
+            //if (sog != null)
+            //sog.SendFullAnimUpdateToClient(remoteClient);
         }
 
         /// <summary>
@@ -210,7 +224,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             // XXX: Might be better to get rid of this special casing and have GetMembershipData return something
             // reasonable for a UUID.Zero group.
-            if (groupID != UUID.Zero)
+            if (!groupID.IsZero())
             {
                 GroupMembershipData gmd = m_groupsModule.GetMembershipData(groupID, remoteClient.AgentId);
 
@@ -247,21 +261,17 @@ namespace OpenSim.Region.Framework.Scenes
                 return;
 
             bool oldgprSelect = part.ParentGroup.IsSelected;
-
-            // This is wrong, wrong, wrong. Selection should not be
-            // handled by group, but by prim. Legacy cruft.
-            // TODO: Make selection flagging per prim!
-            //
-            if (Permissions.CanChangeSelectedState(part, (ScenePresence)remoteClient.SceneAgent))
+            part.IsSelected = false;
+ 
+            if (oldgprSelect != part.ParentGroup.IsSelected)
             {
-                part.IsSelected = false;
-                if (!part.ParentGroup.IsAttachment && oldgprSelect != part.ParentGroup.IsSelected)
+                if (!part.ParentGroup.IsAttachment )
                     EventManager.TriggerParcelPrimCountTainted();
-
-                // restore targetOmega
-                if (part.AngularVelocity != Vector3.Zero)
-                    part.ScheduleTerseUpdate();
             }
+
+            // restore targetOmega
+            if (part.AngularVelocity != Vector3.Zero)
+                part.ScheduleTerseUpdate();
         }
 
         public virtual void ProcessMoneyTransferRequest(UUID source, UUID destination, int amount,
@@ -304,16 +314,22 @@ namespace OpenSim.Region.Framework.Scenes
             // the client handles rez correctly
             obj.ObjectGrabHandler(localID, offsetPos, remoteClient);
 
+            uint partLocalId = part.LocalId;
             // If the touched prim handles touches, deliver it
             if ((part.ScriptEvents & scriptEvents.touch_start) != 0)
-                EventManager.TriggerObjectGrab(part.LocalId, 0, part.OffsetPosition, remoteClient, surfaceArg);
+            {
+                EventManager.TriggerObjectGrab(partLocalId, 0, offsetPos, remoteClient, surfaceArg);
+                if(!part.PassTouches)
+                    return;
+            }
 
             // Deliver to the root prim if the touched prim doesn't handle touches
             // or if we're meant to pass on touches anyway.
-            if (((part.ScriptEvents & scriptEvents.touch_start) == 0) ||
-                (part.PassTouches && (part.LocalId != obj.RootPart.LocalId)))
+
+            uint rootLocalId = obj.RootPart.LocalId;
+            if (partLocalId != rootLocalId &&  (obj.RootPart.ScriptEvents & scriptEvents.touch_start) != 0)
             {
-                EventManager.TriggerObjectGrab(obj.RootPart.LocalId, part.LocalId, part.OffsetPosition, remoteClient, surfaceArg);
+                EventManager.TriggerObjectGrab(rootLocalId, partLocalId, offsetPos, remoteClient, surfaceArg);
             }
         }
 
@@ -328,7 +344,7 @@ namespace OpenSim.Region.Framework.Scenes
             if(group == null || group.IsDeleted)
                 return;
 
-            if (Permissions.CanMoveObject(group, remoteClient))// && PermissionsMngr.)
+            if (Permissions.CanMoveObject(group, remoteClient))
             {
                 group.GrabMovement(objectID, offset, pos, remoteClient);
             }
@@ -343,15 +359,22 @@ namespace OpenSim.Region.Framework.Scenes
             if (surfaceArgs != null && surfaceArgs.Count > 0)
                 surfaceArg = surfaceArgs[0];
 
+            Vector3 grabOffset = pos - part.AbsolutePosition;
             // If the touched prim handles touches, deliver it
+            uint partLocalId = part.LocalId;
             if ((part.ScriptEvents & scriptEvents.touch) != 0)
-                EventManager.TriggerObjectGrabbing(part.LocalId, 0, part.OffsetPosition, remoteClient, surfaceArg);
+            {
+                EventManager.TriggerObjectGrabbing(partLocalId, 0, grabOffset, remoteClient, surfaceArg);
+                if(!part.PassTouches)
+                    return;
+            }
+
+            uint rootLocalId = group.RootPart.LocalId;
             // Deliver to the root prim if the touched prim doesn't handle touches
             // or if we're meant to pass on touches anyway.
-            if (((part.ScriptEvents & scriptEvents.touch) == 0) ||
-                (part.PassTouches && (part.LocalId != group.RootPart.LocalId)))
+            if (partLocalId != rootLocalId && (group.RootPart.ScriptEvents & scriptEvents.touch) != 0)
             {
-                EventManager.TriggerObjectGrabbing(group.RootPart.LocalId, part.LocalId, part.OffsetPosition, remoteClient, surfaceArg);
+                EventManager.TriggerObjectGrabbing(rootLocalId, partLocalId, grabOffset, remoteClient, surfaceArg);
             }
         }
 
@@ -367,14 +390,19 @@ namespace OpenSim.Region.Framework.Scenes
             if (surfaceArgs != null && surfaceArgs.Count > 0)
                 surfaceArg = surfaceArgs[0];
 
+            uint partLocalId = part.LocalId;
             // If the touched prim handles touches, deliver it
             if ((part.ScriptEvents & scriptEvents.touch_end) != 0)
-                EventManager.TriggerObjectDeGrab(part.LocalId, 0, remoteClient, surfaceArg);
-            // if not or PassTouchs, send it also to root.
-            if (((part.ScriptEvents & scriptEvents.touch_end) == 0) ||
-                (part.PassTouches && (part.LocalId != grp.RootPart.LocalId)))
             {
-                EventManager.TriggerObjectDeGrab(grp.RootPart.LocalId, part.LocalId, remoteClient, surfaceArg);
+                EventManager.TriggerObjectDeGrab(partLocalId, 0, remoteClient, surfaceArg);
+                if(!part.PassTouches)
+                    return;
+            }
+
+            uint rootPartLocalId = grp.RootPart.LocalId;
+            if (partLocalId != rootPartLocalId && (grp.RootPart.ScriptEvents & scriptEvents.touch_end) != 0)
+            {
+                EventManager.TriggerObjectDeGrab(rootPartLocalId, partLocalId, remoteClient, surfaceArg);
             }
         }
 
@@ -474,7 +502,7 @@ namespace OpenSim.Region.Framework.Scenes
                     if (sp.ControllingClient.AgentId != remoteClient.AgentId)
                     {
                         if (!discardableEffects ||
-                            (discardableEffects && ShouldSendDiscardableEffect(remoteClient, sp)))
+                           (discardableEffects && ShouldSendDiscardableEffect(remoteClient, sp)))
                         {
                             //m_log.DebugFormat("[YYY]: Sending to {0}", sp.UUID);
                             sp.ControllingClient.SendViewerEffect(effectBlockArray);
@@ -487,22 +515,22 @@ namespace OpenSim.Region.Framework.Scenes
 
         private bool ShouldSendDiscardableEffect(IClientAPI thisClient, ScenePresence other)
         {
-            return Vector3.Distance(other.CameraPosition, thisClient.SceneAgent.AbsolutePosition) < 10;
+            return Vector3.DistanceSquared(other.CameraPosition, thisClient.SceneAgent.AbsolutePosition) < 100;
         }
 
         private class DescendentsRequestData
         {
             public IClientAPI RemoteClient;
             public UUID FolderID;
-            public UUID OwnerID;
+            //public UUID OwnerID;
             public bool FetchFolders;
             public bool FetchItems;
-            public int SortOrder;
+            //public int SortOrder;
         }
 
-        private Queue<DescendentsRequestData> m_descendentsRequestQueue = new Queue<DescendentsRequestData>();
-        private Object m_descendentsRequestLock = new Object();
-        private bool m_descendentsRequestProcessing = false;
+        static private ConcurrentQueue<DescendentsRequestData> m_descendentsRequestQueue = new ConcurrentQueue<DescendentsRequestData>();
+        static private Object m_descendentsRequestLock = new Object();
+        static private bool m_descendentsRequestProcessing = false;
 
         /// <summary>
         /// Tell the client about the various child items and folders contained in the requested folder.
@@ -520,7 +548,7 @@ namespace OpenSim.Region.Framework.Scenes
 //                "[USER INVENTORY]: HandleFetchInventoryDescendents() for {0}, folder={1}, fetchFolders={2}, fetchItems={3}, sortOrder={4}",
 //                remoteClient.Name, folderID, fetchFolders, fetchItems, sortOrder);
 
-            if (folderID == UUID.Zero)
+            if (folderID.IsZero())
                 return;
 
             // FIXME MAYBE: We're not handling sortOrder!
@@ -533,74 +561,54 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 if ((fold = LibraryService.LibraryRootFolder.FindFolder(folderID)) != null)
                 {
+                    List<InventoryItemBase> its = fold.RequestListOfItems();
+                    List<InventoryFolderBase> fds = fold.RequestListOfFolders();
                     remoteClient.SendInventoryFolderDetails(
-                        fold.Owner, folderID, fold.RequestListOfItems(),
-                        fold.RequestListOfFolders(), fold.Version, fetchFolders, fetchItems);
+                        fold.Owner, folderID, its, fds,
+                        fold.Version, its.Count + fds.Count, fetchFolders, fetchItems);
                     return;
                 }
             }
 
-            lock (m_descendentsRequestLock)
+            DescendentsRequestData req = new DescendentsRequestData();
+            req.RemoteClient = remoteClient;
+            req.FolderID = folderID;
+            //req.OwnerID = ownerID;
+            req.FetchFolders = fetchFolders;
+            req.FetchItems = fetchItems;
+            //req.SortOrder = sortOrder;
+
+            m_descendentsRequestQueue.Enqueue(req);
+
+            if (Monitor.TryEnter(m_descendentsRequestLock))
             {
                 if (!m_descendentsRequestProcessing)
                 {
                     m_descendentsRequestProcessing = true;
-
-                    // We're going to send the reply async, because there may be
-                    // an enormous quantity of packets -- basically the entire inventory!
-                    // We don't want to block the client thread while all that is happening.
-                    SendInventoryDelegate d = SendInventoryAsync;
-                    d.BeginInvoke(remoteClient, folderID, ownerID, fetchFolders, fetchItems, sortOrder, SendInventoryComplete, d);
-
-                    return;
+                    Util.FireAndForget(x => SendInventoryAsync());
                 }
-
-                DescendentsRequestData req = new DescendentsRequestData();
-                req.RemoteClient = remoteClient;
-                req.FolderID = folderID;
-                req.OwnerID = ownerID;
-                req.FetchFolders = fetchFolders;
-                req.FetchItems = fetchItems;
-                req.SortOrder = sortOrder;
-
-                m_descendentsRequestQueue.Enqueue(req);
+                Monitor.Exit(m_descendentsRequestLock);
             }
         }
 
-        delegate void SendInventoryDelegate(IClientAPI remoteClient, UUID folderID, UUID ownerID, bool fetchFolders, bool fetchItems, int sortOrder);
-
-        void SendInventoryAsync(IClientAPI remoteClient, UUID folderID, UUID ownerID, bool fetchFolders, bool fetchItems, int sortOrder)
+        void SendInventoryAsync()
         {
-            try
+            lock(m_descendentsRequestLock)
             {
-                SendInventoryUpdate(remoteClient, new InventoryFolderBase(folderID), fetchFolders, fetchItems);
-            }
-            catch (Exception e)
-            {
-                m_log.Error(
-                    string.Format(
-                        "[AGENT INVENTORY]: Error in SendInventoryAsync() for {0} with folder ID {1}.  Exception  ", e, folderID));
-            }
-            Thread.Sleep(20);
-        }
-
-        void SendInventoryComplete(IAsyncResult iar)
-        {
-            SendInventoryDelegate d = (SendInventoryDelegate)iar.AsyncState;
-            d.EndInvoke(iar);
-
-            lock (m_descendentsRequestLock)
-            {
-                if (m_descendentsRequestQueue.Count > 0)
+                try
                 {
-                    DescendentsRequestData req = m_descendentsRequestQueue.Dequeue();
-
-                    d = SendInventoryAsync;
-                    d.BeginInvoke(req.RemoteClient, req.FolderID, req.OwnerID, req.FetchFolders, req.FetchItems, req.SortOrder, SendInventoryComplete, d);
-
-                    return;
+                    while(m_descendentsRequestQueue.TryDequeue(out DescendentsRequestData req))
+                    {
+                        if(!req.RemoteClient.IsActive)
+                            continue;
+                        SendInventoryUpdate(req.RemoteClient, new InventoryFolderBase(req.FolderID), req.FetchFolders, req.FetchItems);
+                        Thread.Sleep(50);
+                    }
                 }
-
+                catch (Exception e)
+                {
+                    m_log.ErrorFormat("[AGENT INVENTORY]: Error in SendInventoryAsync(). Exception {0}", e);
+                }
                 m_descendentsRequestProcessing = false;
             }
         }
@@ -628,10 +636,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Handle a client request to update the inventory folder
         /// </summary>
-        ///
-        /// FIXME: We call add new inventory folder because in the data layer, we happen to use an SQL REPLACE
-        /// so this will work to rename an existing folder.  Needless to say, to rely on this is very confusing,
-        /// and needs to be changed.
         ///
         /// <param name="remoteClient"></param>
         /// <param name="folderID"></param>
@@ -676,8 +680,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        delegate void PurgeFolderDelegate(UUID userID, UUID folder);
-
         /// <summary>
         /// This should delete all the items and folders in the given directory.
         /// </summary>
@@ -685,10 +687,14 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="folderID"></param>
         public void HandlePurgeInventoryDescendents(IClientAPI remoteClient, UUID folderID)
         {
-            PurgeFolderDelegate d = PurgeFolderAsync;
             try
             {
-                d.BeginInvoke(remoteClient.AgentId, folderID, PurgeFolderCompleted, d);
+                UUID agent = remoteClient.AgentId;
+                UUID folder = folderID;
+                Util.FireAndForget(delegate
+                {
+                    PurgeFolderAsync(agent, folder);
+                });
             }
             catch (Exception e)
             {
@@ -700,16 +706,17 @@ namespace OpenSim.Region.Framework.Scenes
         {
             InventoryFolderBase folder = new InventoryFolderBase(folderID, userID);
 
-            if (InventoryService.PurgeFolder(folder))
-                m_log.DebugFormat("[AGENT INVENTORY]: folder {0} purged successfully", folderID);
-            else
-                m_log.WarnFormat("[AGENT INVENTORY]: could not purge folder {0}", folderID);
-        }
-
-        private void PurgeFolderCompleted(IAsyncResult iar)
-        {
-            PurgeFolderDelegate d = (PurgeFolderDelegate)iar.AsyncState;
-            d.EndInvoke(iar);
+           try
+            {
+                if (InventoryService.PurgeFolder(folder))
+                    m_log.DebugFormat("[AGENT INVENTORY]: folder {0} purged successfully", folderID);
+                else
+                    m_log.WarnFormat("[AGENT INVENTORY]: could not purge folder {0}", folderID);
+            }
+            catch (Exception e)
+            {
+                m_log.WarnFormat("[AGENT INVENTORY]: Exception on async purge folder for user {0}: {1}", userID, e.Message);
+            }
         }
     }
 }

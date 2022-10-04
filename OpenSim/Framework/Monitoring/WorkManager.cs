@@ -26,7 +26,7 @@
  */
 
 using System;
-using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using log4net;
 
@@ -46,8 +46,6 @@ namespace OpenSim.Framework.Monitoring
     /// This is an evolving approach to better manage the work that OpenSimulator is asked to do from a very diverse
     /// range of sources (client actions, incoming network, outgoing network calls, etc.).
     ///
-    /// Util.FireAndForget is still available to insert jobs in the threadpool, though this is equivalent to
-    /// WorkManager.RunInThreadPool().
     /// </remarks>
     public static class WorkManager
     {
@@ -57,7 +55,7 @@ namespace OpenSim.Framework.Monitoring
 
         static WorkManager()
         {
-            JobEngine = new JobEngine("Non-blocking non-critical job engine", "JOB ENGINE");
+            JobEngine = new JobEngine("Non-blocking non-critical job engine", "JOB ENGINE", 30000);
 
             StatsManager.RegisterStat(
                 new Stat(
@@ -69,7 +67,7 @@ namespace OpenSim.Framework.Monitoring
                     "jobengine",
                     StatType.Pull,
                     MeasuresOfInterest.None,
-                    stat => stat.Value = JobEngine.JobsWaiting,
+                    stat => stat.Value = JobEngine == null ? 0 : JobEngine.JobsWaiting,
                     StatVerbosity.Debug));
 
             MainConsole.Instance.Commands.AddCommand(
@@ -82,6 +80,18 @@ namespace OpenSim.Framework.Monitoring
                 HandleControlCommand);
         }
 
+        public static void Stop()
+        {
+            JobEngine.Stop();
+            Watchdog.Stop();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Thread StartThread(ThreadStart start, string name, bool alarmIfTimeout = false, bool log = true)
+        {
+            return StartThread(start, name, ThreadPriority.Normal, true, alarmIfTimeout, null, Watchdog.DEFAULT_WATCHDOG_TIMEOUT_MS, log);
+        }
+
         /// <summary>
         /// Start a new long-lived thread.
         /// </summary>
@@ -92,10 +102,11 @@ namespace OpenSim.Framework.Monitoring
         /// <param name="alarmIfTimeout">Trigger an alarm function is we have timed out</param>
         /// <param name="log">If true then creation of thread is logged.</param>
         /// <returns>The newly created Thread object</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Thread StartThread(
-            ThreadStart start, string name, ThreadPriority priority, bool isBackground, bool alarmIfTimeout, bool log = true)
+            ThreadStart start, string name, ThreadPriority priority, bool alarmIfTimeout, bool log = true)
         {
-            return StartThread(start, name, priority, isBackground, alarmIfTimeout, null, Watchdog.DEFAULT_WATCHDOG_TIMEOUT_MS, log);
+            return StartThread(start, name, priority, true, alarmIfTimeout, null, Watchdog.DEFAULT_WATCHDOG_TIMEOUT_MS, log);
         }
 
         /// <summary>
@@ -116,21 +127,73 @@ namespace OpenSim.Framework.Monitoring
         /// <returns>The newly created Thread object</returns>
         public static Thread StartThread(
             ThreadStart start, string name, ThreadPriority priority, bool isBackground,
-            bool alarmIfTimeout, Func<string> alarmMethod, int timeout, bool log = true)
+            bool alarmIfTimeout, Func<string> alarmMethod, int timeout, bool log = true, bool SuspendFlow = true)
         {
-            Thread thread = new Thread(start);
+            Thread thread;
+            if(SuspendFlow)
+            {
+                using (ExecutionContext.SuppressFlow())
+                {
+                    thread = new Thread(start);
+                }
+            }
+            else
+            {
+                thread = new Thread(start);
+            }
+
             thread.Priority = priority;
             thread.IsBackground = isBackground;
             thread.Name = name;
 
-            Watchdog.ThreadWatchdogInfo twi
-                = new Watchdog.ThreadWatchdogInfo(thread, timeout, name)
-            { AlarmIfTimeout = alarmIfTimeout, AlarmMethod = alarmMethod };
+            Watchdog.ThreadWatchdogInfo twi = new Watchdog.ThreadWatchdogInfo(thread, timeout, name)
+            {
+                AlarmIfTimeout = alarmIfTimeout,
+                AlarmMethod = alarmMethod
+            };
 
-            Watchdog.AddThread(twi, name, log:log);
+            Watchdog.AddThread(twi, name, log);
 
             thread.Start();
 
+            return thread;
+        }
+
+        public static Thread StartThread(
+            ThreadStart start, string name, ThreadPriority priority, int stackSize = -1, bool suspendflow = true)
+        {
+            Thread thread;
+            if (suspendflow)
+            {
+                using (ExecutionContext.SuppressFlow())
+                {
+                    if (stackSize > 0)
+                        thread = new Thread(start, stackSize);
+                    else
+                        thread = new Thread(start);
+                }
+            }
+            else
+            {
+                if (stackSize > 0)
+                    thread = new Thread(start, stackSize);
+                else
+                    thread = new Thread(start);
+            }
+
+            thread.Priority = priority;
+            thread.IsBackground = true;
+            thread.Name = name;
+
+            Watchdog.ThreadWatchdogInfo twi = new Watchdog.ThreadWatchdogInfo(thread, Watchdog.DEFAULT_WATCHDOG_TIMEOUT_MS, name)
+            {
+                AlarmIfTimeout = false,
+                AlarmMethod = null
+            };
+
+            Watchdog.AddThread(twi, name, false);
+
+            thread.Start();
 
             return thread;
         }
@@ -157,15 +220,22 @@ namespace OpenSim.Framework.Monitoring
                 {
                     Culture.SetCurrentCulture();
                     callback(obj);
-                    Watchdog.RemoveThread(log:false);
                 }
                 catch (Exception e)
                 {
                     m_log.Error(string.Format("[WATCHDOG]: Exception in thread {0}.", name), e);
                 }
+                finally
+                {
+                    try
+                    {
+                        Watchdog.RemoveThread(log: false);
+                    }
+                    catch { }
+                }
             });
 
-            StartThread(ts, name, ThreadPriority.Normal, true, false, log:log);
+            StartThread(ts, name, false, log);
         }
 
         /// <summary>
@@ -177,59 +247,16 @@ namespace OpenSim.Framework.Monitoring
         /// <param name="callback"></param>
         /// <param name="obj"></param>
         /// <param name="name">The name of the job.  This is used in monitoring and debugging.</param>
-        public static void RunInThreadPool(System.Threading.WaitCallback callback, object obj, string name)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void RunInThreadPool(WaitCallback callback, object obj, string name, bool timeout = true)
         {
-            Util.FireAndForget(callback, obj, name);
+            Util.FireAndForget(callback, obj, name, timeout);
         }
 
-        /// <summary>
-        /// Run a job.
-        /// </summary>
-        /// <remarks>
-        /// This differs from direct scheduling (e.g. Util.FireAndForget) in that a job can be run in the job
-        /// engine if it is running, where all jobs are currently performed in sequence on a single thread.  This is
-        /// to prevent observed overload and server freeze problems when there are hundreds of connections which all attempt to
-        /// perform work at once (e.g. in conference situations).  With lower numbers of connections, the small
-        /// delay in performing jobs in sequence rather than concurrently has not been notiecable in testing, though a future more
-        /// sophisticated implementation could perform jobs concurrently when the server is under low load.
-        ///
-        /// However, be advised that some callers of this function rely on all jobs being performed in sequence if any
-        /// jobs are performed in sequence (i.e. if jobengine is active or not).  Therefore, expanding the jobengine
-        /// beyond a single thread will require considerable thought.
-        ///
-        /// Also, any jobs submitted must be guaranteed to complete within a reasonable timeframe (e.g. they cannot
-        /// incorporate a network delay with a long timeout).  At the moment, work that could suffer such issues
-        /// should still be run directly with RunInThread(), Util.FireAndForget(), etc.  This is another area where
-        /// the job engine could be improved and so CPU utilization improved by better management of concurrency within
-        /// OpenSimulator.
-        /// </remarks>
-        /// <param name="jobType">General classification for the job (e.g. "RezAttachments").</param>
-        /// <param name="callback">Callback for job.</param>
-        /// <param name="obj">Object to pass to callback when run</param>
-        /// <param name="name">Specific name of job (e.g. "RezAttachments for Joe Bloggs"</param>
-        /// <param name="canRunInThisThread">If set to true then the job may be run in ths calling thread.</param>
-        /// <param name="mustNotTimeout">If the true then the job must never timeout.</param>
-        /// <param name="log">If set to true then extra logging is performed.</param>
-        public static void RunJob(
-            string jobType, WaitCallback callback, object obj, string name,
-            bool canRunInThisThread = false, bool mustNotTimeout = false,
-            bool log = false)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void RunInThreadPool(WaitCallback callback, string name, bool timeout = true)
         {
-            if (Util.FireAndForgetMethod == FireAndForgetMethod.RegressionTest)
-            {
-                Culture.SetCurrentCulture();
-                callback(obj);
-                return;
-            }
-
-            if (JobEngine.IsRunning)
-                JobEngine.QueueJob(name, () => callback(obj));
-            else if (canRunInThisThread)
-                callback(obj);
-            else if (mustNotTimeout)
-                RunInThread(callback, obj, name, log);
-            else
-                Util.FireAndForget(callback, obj, name);
+            Util.FireAndForget(callback, null, name, timeout);
         }
 
         private static void HandleControlCommand(string module, string[] args)
@@ -248,23 +275,19 @@ namespace OpenSim.Framework.Monitoring
             if (subCommand == "stop")
             {
                 JobEngine.Stop();
-                MainConsole.Instance.OutputFormat("Stopped job engine.");
+                MainConsole.Instance.Output("Stopped job engine.");
             }
             else if (subCommand == "start")
             {
                 JobEngine.Start();
-                MainConsole.Instance.OutputFormat("Started job engine.");
+                MainConsole.Instance.Output("Started job engine.");
             }
             else if (subCommand == "status")
             {
-                MainConsole.Instance.OutputFormat("Job engine running: {0}", JobEngine.IsRunning);
-
-                JobEngine.Job job = JobEngine.CurrentJob;
-                MainConsole.Instance.OutputFormat("Current job {0}", job != null ? job.Name : "none");
-
-                MainConsole.Instance.OutputFormat(
+                MainConsole.Instance.Output("Job engine running: {0}", JobEngine.IsRunning);
+                MainConsole.Instance.Output(
                     "Jobs waiting: {0}", JobEngine.IsRunning ? JobEngine.JobsWaiting.ToString() : "n/a");
-                MainConsole.Instance.OutputFormat("Log Level: {0}", JobEngine.LogLevel);
+                MainConsole.Instance.Output("Log Level: {0}", JobEngine.LogLevel);
             }
             else if (subCommand == "log")
             {
@@ -279,12 +302,12 @@ namespace OpenSim.Framework.Monitoring
                 //                if (ConsoleUtil.TryParseConsoleInt(MainConsole.Instance, args[4], out logLevel))
                 //                {
                 JobEngine.LogLevel = logLevel;
-                MainConsole.Instance.OutputFormat("Set debug log level to {0}", JobEngine.LogLevel);
+                MainConsole.Instance.Output("Set debug log level to {0}", JobEngine.LogLevel);
                 //                }
             }
             else
             {
-                MainConsole.Instance.OutputFormat("Unrecognized job engine subcommand {0}", subCommand);
+                MainConsole.Instance.Output("Unrecognized job engine subcommand {0}", subCommand);
             }
         }
     }

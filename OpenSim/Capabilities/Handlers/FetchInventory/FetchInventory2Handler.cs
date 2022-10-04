@@ -25,11 +25,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Net;
 using System.Reflection;
+using System.Text;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework;
-using OpenSim.Framework.Capabilities;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Services.Interfaces;
 using OSDArray = OpenMetaverse.StructuredData.OSDArray;
@@ -59,9 +60,6 @@ namespace OpenSim.Capabilities.Handlers
             OSDMap requestmap = (OSDMap)OSDParser.DeserializeLLSDXml(Utils.StringToBytes(request));
             OSDArray itemsRequested = (OSDArray)requestmap["items"];
 
-            string reply;
-            LLSDFetchInventory llsdReply = new LLSDFetchInventory();
-
             UUID[] itemIDs = new UUID[itemsRequested.Count];
             int i = 0;
 
@@ -72,75 +70,97 @@ namespace OpenSim.Capabilities.Handlers
 
             InventoryItemBase[] items = null;
 
-            if (m_agentID != UUID.Zero)
-            {
-                items = m_inventoryService.GetMultipleItems(m_agentID, itemIDs);
-
-                if (items == null)
-                {
-                    // OMG!!! One by one!!! This is fallback code, in case the backend isn't updated
-                    m_log.WarnFormat("[FETCH INVENTORY HANDLER]: GetMultipleItems failed. Falling back to fetching inventory items one by one.");
-                    items = new InventoryItemBase[itemsRequested.Count];
-                    foreach (UUID id in itemIDs)
-                        items[i++] = m_inventoryService.GetItem(m_agentID, id);
-                }
-            }
-            else
+            if (m_agentID.IsZero())
             {
                 items = new InventoryItemBase[itemsRequested.Count];
                 foreach (UUID id in itemIDs)
                     items[i++] = m_inventoryService.GetItem(UUID.Zero, id);
             }
-
-            foreach (InventoryItemBase item in items)
+            else
             {
-                if (item != null)
-                {
-                    // We don't know the agent that this request belongs to so we'll use the agent id of the item
-                    // which will be the same for all items.
-                    llsdReply.agent_id = item.Owner;
-                    llsdReply.items.Array.Add(ConvertInventoryItem(item));
-                }
+                items = m_inventoryService.GetMultipleItems(m_agentID, itemIDs);
             }
 
-            reply = LLSDHelpers.SerialiseLLSDReply(llsdReply);
+            osUTF8 lsl = LLSDxmlEncode2.Start(4096);
+            LLSDxmlEncode2.AddMap(lsl);
 
-            return reply;
+            if(m_agentID.IsZero() && items.Length > 0)
+                LLSDxmlEncode2.AddElem("agent_id", items[0].Owner, lsl);
+            else
+                LLSDxmlEncode2.AddElem("agent_id", m_agentID, lsl);
+
+            if(items == null || items.Length == 0)
+            {
+                LLSDxmlEncode2.AddEmptyArray("items", lsl);
+            }
+            else
+            {
+                LLSDxmlEncode2.AddArray("items", lsl);
+                foreach (InventoryItemBase item in items)
+                {
+                    if (item != null)
+                        item.ToLLSDxml(lsl, 0xff);
+                }
+                LLSDxmlEncode2.AddEndArray(lsl);
+            }            
+
+            LLSDxmlEncode2.AddEndMap(lsl);
+            return LLSDxmlEncode2.End(lsl);
         }
 
-        /// <summary>
-        /// Convert an internal inventory item object into an LLSD object.
-        /// </summary>
-        /// <param name="invItem"></param>
-        /// <returns></returns>
-        private LLSDInventoryItem ConvertInventoryItem(InventoryItemBase invItem)
+        public void FetchInventorySimpleRequest(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, OSDMap requestmap, ExpiringKey<UUID> BadRequests)
         {
-            LLSDInventoryItem llsdItem = new LLSDInventoryItem();
-            llsdItem.asset_id = invItem.AssetID;
-            llsdItem.created_at = invItem.CreationDate;
-            llsdItem.desc = invItem.Description;
-            llsdItem.flags = ((int)invItem.Flags) & 0xff;
-            llsdItem.item_id = invItem.ID;
-            llsdItem.name = invItem.Name;
-            llsdItem.parent_id = invItem.Folder;
-            llsdItem.type = invItem.AssetType;
-            llsdItem.inv_type = invItem.InvType;
+            //m_log.DebugFormat("[FETCH INVENTORY HANDLER]: Received FetchInventory capability request {0}", request);
 
-            llsdItem.permissions = new LLSDPermissions();
-            llsdItem.permissions.creator_id = invItem.CreatorIdAsUuid;
-            llsdItem.permissions.base_mask = (int)invItem.CurrentPermissions;
-            llsdItem.permissions.everyone_mask = (int)invItem.EveryOnePermissions;
-            llsdItem.permissions.group_id = invItem.GroupID;
-            llsdItem.permissions.group_mask = (int)invItem.GroupPermissions;
-            llsdItem.permissions.is_owner_group = invItem.GroupOwned;
-            llsdItem.permissions.next_owner_mask = (int)invItem.NextPermissions;
-            llsdItem.permissions.owner_id = invItem.Owner;
-            llsdItem.permissions.owner_mask = (int)invItem.CurrentPermissions;
-            llsdItem.sale_info = new LLSDSaleInfo();
-            llsdItem.sale_info.sale_price = invItem.SalePrice;
-            llsdItem.sale_info.sale_type = invItem.SaleType;
+            if(BadRequests == null)
+            {
+                httpResponse.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
 
-            return llsdItem;
+            OSDArray itemsRequested = (OSDArray)requestmap["items"];
+
+            UUID[] itemIDs = new UUID[itemsRequested.Count];
+            int i = 0;
+            foreach (OSDMap osdItemId in itemsRequested)
+            {
+                UUID id = osdItemId["item_id"].AsUUID();
+                if(!BadRequests.ContainsKey(id))
+                    itemIDs[i++] = id;
+            }
+
+            InventoryItemBase[] items = null;
+            try
+            {
+                // badrequests still not filled
+                items = m_inventoryService.GetMultipleItems(m_agentID, itemIDs);
+            }
+            catch{ }
+
+            osUTF8 lsl = LLSDxmlEncode2.Start(4096);
+            LLSDxmlEncode2.AddMap(lsl);
+
+            LLSDxmlEncode2.AddElem("agent_id", m_agentID, lsl);
+
+            if (items == null || items.Length == 0)
+            {
+                LLSDxmlEncode2.AddEmptyArray("items", lsl);
+            }
+            else
+            {
+                LLSDxmlEncode2.AddArray("items", lsl);
+                foreach (InventoryItemBase item in items)
+                {
+                    if (item != null)
+                        item.ToLLSDxml(lsl, 0xff);
+                }
+                LLSDxmlEncode2.AddEndArray(lsl);
+            }
+
+            LLSDxmlEncode2.AddEndMap(lsl);
+            httpResponse.RawBuffer = LLSDxmlEncode2.EndToBytes(lsl);
+            httpResponse.StatusCode = (int)HttpStatusCode.OK;
         }
     }
 }
+

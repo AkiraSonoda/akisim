@@ -163,7 +163,7 @@ namespace OpenSim.Region.PhysicsModule.BasicPhysics
         {
 //            Console.WriteLine("Simulating");
 
-            float fps = 0;
+            float fps = 1.0f / timeStep;
             for (int i = 0; i < _actors.Count; ++i)
             {
                 BasicActor actor = _actors[i];
@@ -226,17 +226,7 @@ namespace OpenSim.Region.PhysicsModule.BasicPhysics
                 actor.Velocity = actorVelocity;
             }
 
-            return 1.0f;
-        }
-
-        public override void GetResults()
-        {
-        }
-
-        public override bool IsThreaded
-        {
-            get { return (false); // for now we won't be multithreaded
-            }
+            return fps;
         }
 
         public override void SetTerrain(float[] heightMap)

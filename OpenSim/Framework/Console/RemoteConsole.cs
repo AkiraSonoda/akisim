@@ -46,6 +46,8 @@ namespace OpenSim.Framework.Console
     //
     public class RemoteConsole : CommandConsole
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         // Connection specific data, indexed by a session ID
         // we create when a client connects.
         protected class ConsoleConnection
@@ -153,7 +155,7 @@ namespace OpenSim.Framework.Console
             m_expireTimer.Start();
         }
 
-        public void ReadConfig(IConfigSource config)
+        public override void ReadConfig(IConfigSource config)
         {
             m_Config = config;
 
@@ -188,13 +190,46 @@ namespace OpenSim.Framework.Console
             m_Server.AddHTTPHandler("/SessionCommand/", HandleHttpSessionCommand);
         }
 
-        public override void Output(string text, string level)
+        public override void Output(string format)
         {
+            Output(format, null);
+        }
+
+        public override void Output(string format, params object[] components)
+        {
+            string level = null;
+            if (components != null && components.Length > 0)
+            {
+                if (components[0] == null || components[0] is ConsoleLevel)
+                {
+                    if (components[0] is ConsoleLevel)
+                        level = ((ConsoleLevel)components[0]).ToString();
+
+                    if (components.Length > 1)
+                    {
+                        object[] tmp = new object[components.Length - 1];
+                        Array.Copy(components, 1, tmp, 0, components.Length - 1);
+                        components = tmp;
+                    }
+                    else
+                        components = null;
+                }
+            }
+
+            string text;
+            if (components == null || components.Length == 0)
+                text = format;
+            else
+                text = String.Format(format, components);
+
             Output(text, level, false, false, false);
         }
 
         protected void Output(string text, string level, bool isPrompt, bool isCommand, bool isInput)
         {
+            if (level == null)
+                level = String.Empty;
+
             // Increment the line number. It was 0 and they start at 1
             // so we need to pre-increment.
             m_lineNumber++;
@@ -226,12 +261,6 @@ namespace OpenSim.Framework.Console
 
             // Also display it for debugging.
             System.Console.WriteLine(text.Trim());
-        }
-
-        public override void Output(string text)
-        {
-            // Output plain (non-logging style) text.
-            Output(text, String.Empty, false, false, false);
         }
 
         public override string ReadLine(string p, bool isCommand, bool e)
@@ -373,7 +402,7 @@ namespace OpenSim.Framework.Console
             reply["content_type"] = "text/plain";
 
             // Check user name and password
-            if (m_UserName == String.Empty)
+            if (m_UserName.Length == 0)
                 return reply;
 
             if (post["USER"] == null || post["PASS"] == null)
@@ -400,10 +429,9 @@ namespace OpenSim.Framework.Console
             }
 
             // This call is a CAP. The URL is the authentication.
-            string uri = "/ReadResponses/" + sessionID.ToString() + "/";
+            string uri = "/ReadResponses/" + sessionID.ToString();
 
-            m_Server.AddPollServiceHTTPHandler(
-                uri, new PollServiceEventArgs(null, uri, HasEvents, GetEvents, NoEvents, sessionID,25000)); // 25 secs timeout
+            m_Server.AddPollServiceHTTPHandler(new PollServiceEventArgs(null, uri, HasEvents, GetEvents, NoEvents, null, sessionID,25000)); // 25 secs timeout
 
             // Our reply is an XML document.
             // TODO: Change this to Linq.Xml
@@ -687,7 +715,6 @@ namespace OpenSim.Framework.Console
             result["int_response_code"] = 200;
             result["content_type"] = "application/xml";
             result["keepalive"] = false;
-            result["reusecontext"] = false;
             result = CheckOrigin(result);
 
             return result;
@@ -713,7 +740,6 @@ namespace OpenSim.Framework.Console
             result["int_response_code"] = 200;
             result["content_type"] = "text/xml";
             result["keepalive"] = false;
-            result["reusecontext"] = false;
             result = CheckOrigin(result);
 
             return result;

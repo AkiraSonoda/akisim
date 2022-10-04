@@ -28,8 +28,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Text;
-using System.Web;
 using OpenSim.Framework.Servers.HttpServer;
 
 namespace OpenSim.Tests.Common
@@ -68,6 +68,11 @@ namespace OpenSim.Tests.Common
         /// </summary>
         public long ContentLength64 { get; set; }
 
+        public int Priority { get; set; }
+        public byte[] RawBuffer { get; set; }
+        public int RawBufferStart { get; set; }
+        public int RawBufferLen { get; set; }
+
         /// <summary>
         /// Encoding of the body content.
         /// </summary>
@@ -98,11 +103,6 @@ namespace OpenSim.Tests.Common
         public Stream Body { get; private set; }
 
         /// <summary>
-        /// Set a redirct location.
-        /// </summary>
-        public string RedirectLocation { private get; set; }
-
-        /// <summary>
         /// Chunk transfers.
         /// </summary>
         public bool SendChunked { get; set; }
@@ -117,8 +117,14 @@ namespace OpenSim.Tests.Common
         /// </summary>
         public string StatusDescription { get; set; }
 
-        public bool ReuseContext { get; set; }
+        public double RequestTS { get; }
 
+        /// <summary>
+        /// Set response as a http redirect
+        /// </summary>
+        /// <param name="url">redirection target url</param>
+        /// <param name="redirStatusCode">the response Status, must be Redirect, Moved,MovedPermanently,RedirectKeepVerb, RedirectMethod, TemporaryRedirect. Defaults to Redirect</param>
+        public void Redirect(string url, HttpStatusCode redirStatusCode = HttpStatusCode.Redirect) { throw new NotImplementedException(); }
         /// <summary>
         /// Add a header field and content to the response.
         /// </summary>

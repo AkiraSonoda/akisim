@@ -64,7 +64,7 @@ namespace OpenSim.Server.Handlers.Login
         public XmlRpcResponse HandleXMLRPCLogin(XmlRpcRequest request, IPEndPoint remoteClient)
         {
             Hashtable requestData = (Hashtable)request.Params[0];
-            if (m_Proxy && request.Params[3] != null)
+            if (request.Params[3] != null)
             {
                 IPEndPoint ep = Util.GetClientIPFromXFF((string)request.Params[3]);
                 if (ep != null)
@@ -76,22 +76,22 @@ namespace OpenSim.Server.Handlers.Login
             {
                 // Debug code to show exactly what login parameters the viewer is sending us.
                 // TODO: Extract into a method that can be generally applied if one doesn't already exist.
-//                foreach (string key in requestData.Keys)
-//                {
-//                    object value = requestData[key];
-//                    Console.WriteLine("{0}:{1}", key, value);
-//                    if (value is ArrayList)
-//                    {
-//                        ICollection col = value as ICollection;
-//                        foreach (object item in col)
-//                            Console.WriteLine("  {0}", item);
-//                    }
-//                }
+                // foreach (string key in requestData.Keys)
+                // {
+                //     object value = requestData[key];
+                //     Console.WriteLine("{0}:{1}", key, value);
+                //     if (value is ArrayList)
+                //     {
+                //         ICollection col = value as ICollection;
+                //         foreach (object item in col)
+                //             Console.WriteLine("  {0}", item);
+                //     }
+                // }
 
                 if (requestData.ContainsKey("first") && requestData["first"] != null &&
                     requestData.ContainsKey("last") && requestData["last"] != null && (
                         (requestData.ContainsKey("passwd") && requestData["passwd"] != null) ||
-                        (!requestData.ContainsKey("passwd") && requestData.ContainsKey("web_login_key") && requestData["web_login_key"] != null && requestData["web_login_key"].ToString() != UUID.Zero.ToString())
+                        (!requestData.ContainsKey("passwd") && requestData.ContainsKey("web_login_key") && requestData["web_login_key"] != null && requestData["web_login_key"].ToString() != UUID.ZeroString)
                     ))
                 {
                     string first = requestData["first"].ToString();
@@ -132,13 +132,8 @@ namespace OpenSim.Server.Handlers.Login
 
                     //m_log.InfoFormat("[LOGIN]: XMLRPC Login Requested for {0} {1}, starting in {2}, using {3}", first, last, startLocation, clientVersion);
 
-
-                    bool LibOMVclient = false;
-                    if (request.Params.Count > 4 && (string)request.Params[4] == "gridproxy")
-                        LibOMVclient = true;
-
                     LoginResponse reply = null;
-                    reply = m_LocalService.Login(first, last, passwd, startLocation, scopeID, clientVersion, channel, mac, id0, remoteClient, LibOMVclient);
+                    reply = m_LocalService.Login(first, last, passwd, startLocation, scopeID, clientVersion, channel, mac, id0, remoteClient);
 
                     XmlRpcResponse response = new XmlRpcResponse();
                     response.Value = reply.ToHashtable();
@@ -194,7 +189,6 @@ namespace OpenSim.Server.Handlers.Login
             Hashtable failHash = new Hashtable();
             failHash["success"] = "false";
             failResponse.Value = failHash;
-
             return failResponse;
 
         }
@@ -221,7 +215,7 @@ namespace OpenSim.Server.Handlers.Login
 
                     LoginResponse reply = null;
                     reply = m_LocalService.Login(map["first"].AsString(), map["last"].AsString(), map["passwd"].AsString(), startLocation, scopeID,
-                        map["version"].AsString(), map["channel"].AsString(), map["mac"].AsString(), map["id0"].AsString(), remoteClient,false);
+                        map["version"].AsString(), map["channel"].AsString(), map["mac"].AsString(), map["id0"].AsString(), remoteClient);
                     return reply.ToOSDMap();
 
                 }
@@ -229,7 +223,7 @@ namespace OpenSim.Server.Handlers.Login
 
             return FailedOSDResponse();
         }
-
+        /* not used anywhere we can see
         public void HandleWebSocketLoginEvents(string path, WebSocketHttpServerHandler sock)
         {
             sock.MaxPayloadSize = 16384; //16 kb payload
@@ -264,7 +258,7 @@ namespace OpenSim.Server.Handlers.Login
                                                (sender as WebSocketHttpServerHandler).GetRemoteIPEndpoint();
                                            LoginResponse reply = null;
                                            reply = m_LocalService.Login(first, last, passwd, start, scope, version,
-                                                                        channel, mac, id0, endPoint,false);
+                                                                        channel, mac, id0, endPoint);
                                            sock.SendMessage(OSDParser.SerializeJsonString(reply.ToOSDMap()));
 
                                        }
@@ -283,7 +277,7 @@ namespace OpenSim.Server.Handlers.Login
             sock.HandshakeAndUpgrade();
 
         }
-
+        */
 
         private XmlRpcResponse FailedXMLRPCResponse()
         {

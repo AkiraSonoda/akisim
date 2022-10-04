@@ -49,7 +49,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                 result = this.parseParameters(args, out data);
 
                 // Context-specific validation
-                if (result == String.Empty)
+                if (result.Length == 0)
                 {
                     if (data.bevel == "taper")
                     {
@@ -68,7 +68,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                         result = String.Format("Smoothing strength must be 0.0 to 1.0: {0}", data.elevation);
                     }
 
-                    if (data.shape == String.Empty)
+                    if (data.shape.Length == 0)
                     {
                         data.shape = "rectangle";
                         data.x0 = 0;
@@ -79,7 +79,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
                 }
 
                 // if it's all good, then do the work
-                if (result == String.Empty)
+                if (result.Length == 0)
                 {
                     this.applyModification(map, data);
                 }
@@ -95,22 +95,22 @@ namespace OpenSim.Region.CoreModules.World.Terrain.Modifiers
             return val;
         }
 
-        public override double operate(double[,] map, TerrainModifierData data, int x, int y)
+        public override float operate(float[,] map, TerrainModifierData data, int x, int y)
         {
-            double[] scale = new double[3];
+            float[] scale = new float[3];
             scale[0] = data.elevation;
-            scale[1] = ((1.0 - scale[0]) * data.bevelevation) / 8.0;
-            scale[2] = ((1.0 - scale[0]) * (1.0 - data.bevelevation)) / 16.0;
+            scale[1] = ((1.0f - scale[0]) * data.bevelevation) / 8.0f;
+            scale[2] = ((1.0f - scale[0]) * (1.0f - data.bevelevation)) / 16.0f;
             int xMax = map.GetLength(0);
             int yMax = map.GetLength(1);
-            double result;
+            float result;
             if ((x == 0) || (y == 0) || (x == (xMax - 1)) || (y == (yMax - 1)))
             {
                 result = map[x, y];
             }
             else
             {
-                result = 0.0;
+                result = 0.0f;
                 for(int yPos = (y - 2); yPos < (y + 3); yPos++)
                 {
                     int yVal = (yPos <= 0) ? 0 : ((yPos < yMax) ? yPos : yMax - 1);

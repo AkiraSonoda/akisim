@@ -71,9 +71,9 @@ namespace OpenSim.Server.Handlers.Hypergrid
         protected override byte[] ProcessRequest(string path, Stream requestData,
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
-            StreamReader sr = new StreamReader(requestData);
-            string body = sr.ReadToEnd();
-            sr.Close();
+            string body;
+            using(StreamReader sr = new StreamReader(requestData))
+                body = sr.ReadToEnd();
             body = body.Trim();
 
             //m_log.DebugFormat("[XXX]: query String: {0}", body);
@@ -186,7 +186,7 @@ namespace OpenSim.Server.Handlers.Hypergrid
             if (request.ContainsKey("SECRET"))
                 secret = request["SECRET"].ToString();
 
-            if (secret == string.Empty)
+            if (secret.Length == 0)
                 return BoolResult(false);
 
             bool success = m_TheService.DeleteFriendship(friend, secret);
@@ -303,7 +303,7 @@ namespace OpenSim.Server.Handlers.Hypergrid
             string sessionStr = request["SESSIONID"].ToString();
 
             UUID sessionID;
-            if (!UUID.TryParse(sessionStr, out sessionID) || serviceKey == string.Empty)
+            if (!UUID.TryParse(sessionStr, out sessionID) || serviceKey.Length == 0)
                 return false;
 
             if (!m_UserAgentService.VerifyAgent(sessionID, serviceKey))

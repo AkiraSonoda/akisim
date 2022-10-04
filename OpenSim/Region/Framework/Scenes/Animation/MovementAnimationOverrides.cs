@@ -43,7 +43,6 @@ using OpenSim.Region.Framework.Scenes.Types;
 using OpenSim.Region.PhysicsModules.SharedBase;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OpenSim.Services.Interfaces;
-using TeleportFlags = OpenSim.Framework.Constants.TeleportFlags;
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -56,7 +55,7 @@ namespace OpenSim.Region.Framework.Scenes
         private Dictionary<string, UUID> m_overrides = new Dictionary<string, UUID>();
         public void SetOverride(string state, UUID animID)
         {
-            if (animID == UUID.Zero)
+            if (animID.IsZero())
             {
                 if (state == "ALL")
                     m_overrides.Clear();

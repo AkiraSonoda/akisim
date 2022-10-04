@@ -71,15 +71,22 @@ namespace OpenSim.Services.Connectors
                 throw new Exception("User account connector init error");
             }
 
-            string serviceURI = assetConfig.GetString("UserAccountServerURI",
-                    String.Empty);
+            string serviceURI = assetConfig.GetString("UserAccountServerURI", string.Empty);
 
-            if (serviceURI == String.Empty)
+            if (string.IsNullOrWhiteSpace(serviceURI))
             {
-                m_log.Error("[ACCOUNT CONNECTOR]: No Server URI named in section UserAccountService");
+                m_log.Error("[ACCOUNT CONNECTOR]: UserAccountServerURI not found in section UserAccountService");
                 throw new Exception("User account connector init error");
             }
-            m_ServerURI = serviceURI;
+
+            OSHHTPHost tmp = new OSHHTPHost(serviceURI, true);
+            if (!tmp.IsResolvedHost)
+            {
+                m_log.ErrorFormat("[ACCOUNT CONNECTOR]: {0}", tmp.IsValidHost ? "Could not resolve UserAccountServerURI" : "UserAccountServerURI is a invalid host");
+                throw new Exception("User account connector init error");
+            }
+
+            m_ServerURI = tmp.URI;
 
             base.Initialise(source, "UserAccountService");
         }
@@ -149,7 +156,7 @@ namespace OpenSim.Services.Connectors
                         uri,
                         reqString,
                         m_Auth);
-                if (reply == null || (reply != null && reply == string.Empty))
+                if (string.IsNullOrEmpty(reply))
                 {
                     m_log.DebugFormat("[ACCOUNT CONNECTOR]: GetUserAccounts received null or empty reply");
                     return null;
@@ -204,7 +211,7 @@ namespace OpenSim.Services.Connectors
             UUID uuid = UUID.Zero;
             foreach(string id in IDs)
             {
-                if(UUID.TryParse(id, out uuid) && uuid != UUID.Zero)
+                if(UUID.TryParse(id, out uuid) && !uuid.IsZero())
                     accs.Add(GetUserAccount(scopeID,uuid));
             }
 
@@ -233,7 +240,7 @@ namespace OpenSim.Services.Connectors
                         uri,
                         reqString,
                         m_Auth);
-                if (reply == null || (reply != null && reply == string.Empty))
+                if (string.IsNullOrEmpty(reply))
                 {
                     m_log.DebugFormat("[ACCOUNT CONNECTOR]: GetMultiUserAccounts received null or empty reply");
                     return null;
@@ -357,7 +364,7 @@ namespace OpenSim.Services.Connectors
                         uri,
                         reqString,
                         m_Auth);
-                if (reply == null || (reply != null && reply == string.Empty))
+                if (string.IsNullOrEmpty(reply))
                 {
                     m_log.DebugFormat("[ACCOUNT CONNECTOR]: GetUserAccount received null or empty reply");
                     return null;

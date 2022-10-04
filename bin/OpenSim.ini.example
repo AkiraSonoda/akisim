@@ -1,6 +1,6 @@
 ;; This is the main configuration file for OpenSimulator.
 ;; If it's named OpenSim.ini then it will be loaded by OpenSimulator.
-;; If it's named OpenSim.ini.example then you will need to copy it to 
+;; If it's named OpenSim.ini.example then you will need to copy it to
 ;; OpenSim.ini first (if that file does not already exist)
 ;;
 ;; Once you have copied OpenSim.ini.example to OpenSim.ini you will at least
@@ -10,19 +10,19 @@
 ;; StandaloneCommon.ini or GridCommon.ini which you can copy and modify from the
 ;; available .example files.
 ;;
-;; The settings in this file are in the form "<key> = <value>".  For example, 
+;; The settings in this file are in the form "<key> = <value>".  For example,
 ;; save_crashes = false in the [Startup] section below.
 ;;
-;; All settings are initially commented out and the default value used, as 
-;; found in OpenSimDefaults.ini.  To change a setting, first uncomment it by 
+;; All settings are initially commented out and the default value used, as
+;; found in OpenSimDefaults.ini.  To change a setting, first uncomment it by
 ;; deleting the initial semicolon (;) and then change the value.  This will
 ;; override the value in OpenSimDefaults.ini
-;; 
+;;
 ;; If you want to find out what configuration OpenSimulator has finished with
 ;; once all the configuration files are loaded then type "config show" on the
 ;; region console command line.
 ;;
-;; 
+;;
 ;; NOTES FOR DEVELOPERS REGARDING THE FORMAT OF THIS FILE
 ;;
 ;; All leading white space is ignored, but preserved.
@@ -41,29 +41,36 @@
 ;;    satisfied.
 ;;
 ;; ;  denotes a commented out option.
-;;    Any options added to OpenSim.ini.example should be initially commented 
+;;    Any options added to OpenSim.ini.example should be initially commented
 ;;    out.
 
 
 [Const]
-    ; For a grid these will usually be the externally accessible IP/DNS
-    ; name and use default public port 8002 and default private port 8003
-    ; For a standalone this will usually be the externally accessible IP/DNS
-    ; name and use default public port 9000. The private port is not used
-    ; in the configuration for a standalone.
+    ; this section defines constants for grid services
+    ; to simplify other configuration files default settings
 
-    ;# {BaseURL} {} {BaseURL} {"http://example.com" "http://127.0.0.1"} "http://127.0.0.1"
-    BaseURL = http://127.0.0.1
-    
+    ;# {BaseHostname} {} {BaseHostname} {"example.com" "127.0.0.1"} "127.0.0.1"
+    BaseHostname = "127.0.0.1"
+
+    ;# {BaseURL} {} {BaseURL} {"http://${Const|BaseHostname}} "http://${Const|BaseHostname}"
+    BaseURL = http://${Const|BaseHostname}
+
+    ; If you run a grid, several services should not be availble to world, access to them should be blocked on firewall
+    ; PrivatePort should closed at the firewall.
+
     ;# {PublicPort} {} {PublicPort} {8002 9000} "8002"
     PublicPort = "8002"
 
+    ; you can also have them on a diferent url / IP
+    ;# {PrivURL} {} {PrivURL} {"http://${Const|BaseURL}} "${Const|BaseURL}"
+    PrivURL = ${Const|BaseURL}
+
+    ;grid default private port 8003, not used in standalone
     ;# {PrivatePort} {} {PrivatePort} {8003} "8003"
     ; port to access private grid services.
     ; grids that run all their regions should deny access to this port
     ; from outside their networks, using firewalls
     PrivatePort = "8003"
-
 
 [Startup]
     ;# {ConsolePrompt} {} {ConsolePrompt} {} "Region (\R) "
@@ -87,6 +94,10 @@
     ;; How many lines of command history should we keep? (default is 100)
     ; ConsoleHistoryFileLines = 100
 
+    ;# {ConsoleHistoryTimeStamp} {} {Time stamp commands in history file} {} false
+    ;; Time stamp commands in history file (default false)
+    ; ConsoleHistoryTimeStamp = false
+    
     ;# {save_crashes} {} {Save crashes to disk?} {true false} false
     ;; Set this to true if you want to log crashes to disk
     ;; this can be useful when submitting bug reports.
@@ -108,14 +119,14 @@
     ; PIDFile = "/tmp/OpenSim.exe.pid"
 
     ;# {RegistryLocation} {} {Addins Registry Location} {}
-    ; Set path to directory for addin registry if you want addins outside of bin.  
-    ; Information about the registered repositories and installed plugins will 
+    ; Set path to directory for addin registry if you want addins outside of bin.
+    ; Information about the registered repositories and installed plugins will
     ; be stored here. The OpenSim.exe process must have R/W access to the location.
     ; RegistryLocation = "."
 
     ;# {ConfigDirectory} {} {Set path to directory for modular ini files} {}
     ; Used by region module addins. You can set this to outside bin, so that addin
-    ; configurations will survive updates. The OpenSim.exe process must have R/W access 
+    ; configurations will survive updates. The OpenSim.exe process must have R/W access
     ; to the location.
     ; ConfigDirectory = "."
 
@@ -125,7 +136,7 @@
     ;; Default is "filesystem"
     ; region_info_source = "filesystem"
     ; region_info_source = "web"
-    
+
     ;# {regionload_regionsdir} {region_info_source} {Location of file?} {} Regions
     ;; Determines where the region XML files are stored if you are loading
     ;; these from the filesystem.
@@ -138,7 +149,7 @@
     ;; The XML here has the same format as it does on the filesystem
     ;; (including the <Root> tag), except that everything is also enclosed
     ;; in a <Regions> tag.
-    ; regionload_webserver_url = "http://example.com/regions.xml";
+    ; regionload_webserver_url = "http://example.com/regions.xml"
 
     ;# {allow_regionless} {} {Allow simulator to start up with no regions configured.} {true false} false
     ;; Allow the simulator to start up if there are no region configuration available
@@ -146,14 +157,14 @@
     ; allow_regionless = false
 
     ;# {NonPhysicalPrimMin} {} {Minimum size of nonphysical prims?} {} 0.001
-    ;; Minimum size for non-physical prims.  Affects resizing of existing 
-    ;; prims.  This can be overridden in the region config file (as 
+    ;; Minimum size for non-physical prims.  Affects resizing of existing
+    ;; prims.  This can be overridden in the region config file (as
     ;; NonPhysicalPrimMin!).
     ; NonPhysicalPrimMin = 0.001
 
     ;# {NonPhysicalPrimMax} {} {Maximum size of nonphysical prims?} {} 256
     ;; Maximum size for non-physical prims.  Affects resizing of existing
-    ;; prims. This can be overridden in the region config file (as 
+    ;; prims. This can be overridden in the region config file (as
     ;; NonPhysicalPrimMax!).
     ; NonPhysicalPrimMax = 256
 
@@ -183,7 +194,7 @@
     ;; Allow scripts to keep running when they cross region boundaries, rather
     ;; than being restarted.  State is reloaded on the destination region.
     ;; This only applies when crossing to a region running in a different
-    ;; simulator.  
+    ;; simulator.
     ;; For crossings where the regions are on the same simulator the script is
     ;; always kept running.
     ; AllowScriptCrossing = true
@@ -238,28 +249,36 @@
     ;; Default is Meshmerizer
     ; meshing = Meshmerizer
     ; meshing = ZeroMesher
-	;; select ubODEMeshmerizer only with ubOde physics engine
+    ;; select ubODEMeshmerizer only with ubOde physics engine
     ; meshing = ubODEMeshmerizer
-	
+
     ;; Choose one of the physics engines below
     ;# {physics} {} {Select physics engine} {OpenDynamicsEngine BulletSim basicphysics POS} BulletSim
     ;; BulletSim is the default physics engine.  It provides the best performance and most functionality.
     ;; BulletSim supports varregions.
-    ;; OpenDynamicsEngine was the previous default physics engine in OpenSimulator 0.7.6.1 and before.  
+    ;; OpenDynamicsEngine was the previous default physics engine in OpenSimulator 0.7.6.1 and before.
     ;; It continues to provide a workable physics implementation.  It does not currently support varregions.
-    ;; basicphysics effectively does not model physics at all, making all objects phantom.   
+    ;; basicphysics effectively does not model physics at all, making all objects phantom.
     ;; Default is BulletSim
     ; physics = OpenDynamicsEngine
     ; physics = BulletSim
     ; physics = basicphysics
     ; physics = POS
-	;; alternative OpenDynamicsEngine engine. ubODEMeshmerizer meshing above MUST be selected also
-	; physics = ubODE
+    ;; alternative OpenDynamicsEngine engine. ubODEMeshmerizer meshing above MUST be selected also
+    ; physics = ubODE
+
+    ; ubODE and  OpenDynamicsEngine does allocate a lot of memory on stack. On linux you may need to increase its limit
+    ; script opensim-ode-sh starts opensim setting that limit. You may need to increase it even more on large regions
+    ; edit the line ulimit -s 262144, and change this last value
 
     ;# {DefaultScriptEngine} {} {Default script engine} {XEngine} XEngine
-    ;; Default script engine to use. Currently, we only have XEngine
+    ;; Default script engine to use (Xengine if all commented)
     ; DefaultScriptEngine = "XEngine"
 
+    ;; new alternative engine
+    ;; see section [YEngine] below
+    ; DefaultScriptEngine = "YEngine"
+    
     ;# {HttpProxy} {} {Proxy URL for llHTTPRequest and dynamic texture loading} {} http://proxy.com:8080
     ;; Http proxy setting for llHTTPRequest and dynamic texture loading, if
     ;; required
@@ -282,8 +301,8 @@
     ;; SpawnPointRouting adjusts the landing for incoming avatars.
     ;; "closest" will place the avatar at the SpawnPoint located in the closest
     ;; available spot to the destination (typically map click/landmark).
-    ;; "random" will place the avatar on a randomly selected spawnpoint;
-    ;; "sequence" will place the avatar on the next sequential SpawnPoint
+    ;; "random" will place the avatar on a randomly selected spawnpoint.
+    ;; "sequence" will place the avatar on the next sequential SpawnPoint.
     ; SpawnPointRouting = closest
 
     ;# {TelehubAllowLandmark} {} {Allow users with landmarks to override telehub routing} {true false} false
@@ -293,6 +312,17 @@
     ; TelehubAllowLandmark = false
 
 
+    ;; SSL certificate validation options
+    ;; you can allow selfsigned certificates or no official CA with next option set to true
+    ;# {NoVerifyCertChain} {} {do not verify SSL Cert Chain} {true false} true
+    ; NoVerifyCertChain = true
+
+    ;; you can also bypass the hostname or domain verification
+    ;# {NoVerifyCertHostname} {} {do not verify SSL Cert name versus peer name} {true false} true
+    ; NoVerifyCertHostname = true
+    ;; having both options true does provide encryption but with low security
+    ;; set both true if you don't care to use SSL, they are needed to contact regions or grids that do use it.
+    
 [AccessControl]
     ;# {AllowedClients} {} {Bar (|) separated list of allowed clients} {}
     ;; Bar (|) separated list of viewers which may gain access to the regions.
@@ -312,22 +342,22 @@
     ;; - "Imprudence" has no access
     ;; - "Imprudence 1.3" has no access
     ;; - "Imprudence 1.3.1" has access
-	;;
+    ;;
     ; DeniedClients = ""
 
 
 [Map]
     ;# {GenerateMaptiles} {} {Generate map tiles?} {true false} true
-    ;; Map tile options.  
+    ;; Map tile options.
     ;; If true, then maptiles are generated using the MapImageModule below.
     ;; If false then the texture referenced by MaptileStaticUUID is used instead, which can also be overridden
-    ;; in individual region config file(s).  If you do not want to upload map tiles at all, then you will need 
+    ;; in individual region config file(s).  If you do not want to upload map tiles at all, then you will need
     ;; both to set this to false and comment out the [Modules] MapImageServiceModule setting in config-include/
     ; GenerateMaptiles = true
 
     ;# {MapImageModule} {} {The map image module to use} {MapImageModule Warp3DImageModule} MapImageModule
     ;; The module to use in order to generate map images.
-    ;; MapImageModule is the default.  Warp3DImageModule is an alternative experimental module that can 
+    ;; MapImageModule is the default.  Warp3DImageModule is an alternative experimental module that can
     ;; generate better images.
     ;MapImageModule = "MapImageModule"
 
@@ -360,8 +390,23 @@
     ; TexturePrimSize = 48
 
     ;# {RenderMeshes} {} {Render meshes and sculpties on map tiles?} {true false} false
-    ;; Attempt to render meshes and sculpties on the map
-    ; RenderMeshes = false;
+    ;; Attempt to render meshes and sculpties on the map.
+    ; RenderMeshes = false
+
+    ;# {MapColorWater} {} {Water color for textured and shaded maps} {"#1D475F"}
+    ; MapColorWater = "#3399FF"
+
+    ;# {MapColor1} {} {Terrain color 1 for textured maps} {"#A58976"}
+    ; MapColor1 = "#A58976"
+
+    ;# {MapColor2} {} {Terrain color 2 for textured maps} {"#455931"}
+    ; MapColor2 = "#455931"
+
+    ;# {MapColor3} {} {Terrain color 3 for textured maps} {"#A29A8D"}
+    ; MapColor3 = "#A29A8D"
+
+    ;# {MapColor4} {} {Terrain color 4 for textured maps} {"#C8C8C8"}
+    ; MapColor4 = "#C8C8C8"
 
 
 [Permissions]
@@ -379,10 +424,17 @@
     ;; If set to true, then all permissions checks are carried out
     ; serverside_object_permissions = true
 
-    ;# {allow_grid_gods} {} {Allow grid gods?} {true false} false
+	; if next 2 are false, several admin powers are only active if god powers requested on viewer
+	; this reduces mistakes
+	; set both to true to enable previous behaviour
+    automatic_gods = false
+    implicit_gods = false
+	
+	;# {allow_grid_gods} {} {Allow grid gods?} {true false} false
     ;; This allows users with a UserLevel of 200 or more to assume god
     ;; powers in the regions in this simulator.
-    ; allow_grid_gods = false
+	;; if you don't trust grid admins, what are you doing there?
+    allow_grid_gods = true
 
     ;; This allows some control over permissions
     ;; please note that this still doesn't duplicate SL, and is not intended to
@@ -399,7 +451,7 @@
     ;; This is definitely not SL!
     ;; Provides a simple control for land owners to give build rights to
     ;; specific avatars in publicly accessible parcels that disallow object
-    ;; creation in general. 
+    ;; creation in general.
     ;; Owners specific avatars by adding them to the Access List of the parcel
     ;; without having to use the Groups feature
     ; simple_build_permissions = false
@@ -420,12 +472,12 @@
 
 
     ; ** Standalone Estate Settings **
-    ; The following parameters will only be used on a standalone system to 
+    ; The following parameters will only be used on a standalone system to
     ; create an estate owner that does not already exist
 
     ;# {DefaultEstateOwnerUUID} {} {Default estate owner UUID?} {} 00000000-0000-0000-0000-000000000000
-    ;; If DefaultEstateOwnerUUID is left at UUID.Zero (as below) then a random 
-    ;; UUID will be assigned. This is normally what you want 
+    ;; If DefaultEstateOwnerUUID is left at UUID.Zero (as below) then a random
+    ;; UUID will be assigned. This is normally what you want
     ; DefaultEstateOwnerUUID = 00000000-0000-0000-0000-000000000000
 
     ;# {DefaultEstateOwnerEMail} {} {Default estate owner email?} {}
@@ -435,7 +487,6 @@
     ;# {DefaultEstateOwnerPassword} {} {Default estate owner password} {}
     ;; Password for the default estate owner
     ; DefaultEstateOwnerPassword = password
-
 
 [SMTP]
     ;; The SMTP server enabled the email module to send email to external
@@ -469,7 +520,6 @@
     ;# {SMTP_SERVER_PASSWORD} {[Startup]emailmodule:DefaultEmailModule enabled:true} {SMTP server password} {}
     ; SMTP_SERVER_PASSWORD = ""
 
-
 [Network]
     ;# {ConsoleUser} {} {User name for console account} {}
     ;; Configure the remote console user here. This will not actually be used
@@ -486,19 +536,48 @@
     ;; the region ports use UDP.
     ; http_listener_port = 9000
 
+    ; optional main server secure http (ssl)
+    ; to use ssl you need a ssl certificate in PKCS12 format that validates the ExternalHostnames 
+    ; or their domains
+    ; some viewers by default only accept certificates signed by a oficial CA
+    ; to use others like self signed certificates with those viewers,
+    ; their debug option NoVerifySSLCert needs to be set true, You need to inform users about this
+    ; the main unsecure port will still open for some services. this may change in future.
+    
+    ; set http_listener_ssl to enable main server ssl. it will replace unsecure port on most functions
+    ;# {http_listener_ssl}{} {enable main server ssl port)} {} false
+    ;http_listener_ssl = false
+    
+    ; Set port for main SSL connections
+    ;# {http_listener_sslport}{} {main server ssl port)} {} 9001
+    ;http_listener_sslport = 9001 ;
+    
+    ; currently if using ssl, regions ExternalHostName must the the same and equal to http_listener_cn
+    ; this may be removed in future
+    ;# {http_listener_cn}{} {main server ssl externalHostName)} {} ""
+    ;http_listener_cn = "myRegionsExternalHostName"
+
+    ; the path for the certificate path
+    ;# {http_listener_cert_path}{} {main server ssl certificate file path)} {} ""
+    ;http_listener_cert_path = "mycert.p12"
+    
+    ;# {http_listener_cert_pass}{} {main server ssl certificate password)} {} ""
+    ;http_listener_cert_pass = "mycertpass" ; the cert passwork
+    
     ; By default, OpenSimulator does not allow scripts to make HTTP calls to addresses on the simulator's LAN.
     ; See the OutboundDisallowForUserScripts parameter in OpenSimDefaults.ini for more information on this filter.
     ; If you need to allow scripts to make some LAN calls use the OutboundDisallowForUserScriptsExcept parameter below.
     ; We recommend that you do not override OutboundDisallowForUserScripts directly unless you are very sure about what you're doing.
+    ; this HTTP calls can also use ssl see opensimDefaults.ini
     ;
     ; You can whitelist individual endpoints by IP or FQDN, e.g.
     ;
     ; OutboundDisallowForUserScriptsExcept = 192.168.1.3:8003
-    ; 
+    ;
     ; You can specify multiple addresses by separating them with a bar.  For example,
     ;
     ; OutboundDisallowForUserScriptsExcept = 192.168.1.3:8003|myinternalserver:8000
-    ; 
+    ;
     ; If an address if given without a port number then port 80 is assumed
     ;
     ; You can also specify a network range in CIDR notation to whitelist, e.g.
@@ -515,7 +594,7 @@
     ;# {HttpBodyMaxLenMAX} {} {Maximum bytes allowed for HTTP_BODY_MAXLENGTH} {} 16384
     ;; By default, llHTTPRequest limits the response body to 2048 bytes.
     ;; This limit can be extended using HTTP_BODY_MAXLENGTH to a maximum
-    ;; of HttpBodyMaxLenMAX bytes. 
+    ;; of HttpBodyMaxLenMAX bytes.
     ;; Please be aware that the limit can be set to insanely high values,
     ;; effectively removing any limitation. This will expose your sim to a
     ;; known attack. It is not recommended to set this limit higher than
@@ -525,9 +604,8 @@
 
     ;# {ExternalHostNameForLSL} {} {Hostname to use for HTTP-IN URLs. This should be reachable from the internet.} {}
     ;; Hostname to use in llRequestURL/llRequestSecureURL
-    ;; if not defined - default machine name is being used
-    ;; (on Windows this mean NETBIOS name - useably only inside local network)
-    ; ExternalHostNameForLSL = "127.0.0.1"
+    ;; if not defined - llRequestURL/llRequestSecureURL are disabled
+    ExternalHostNameForLSL = ${Const|BaseHostname}
 
     ;# {shard} {} {Name to use for X-Secondlife-Shard header? (press enter if unsure)} {} OpenSim
     ;; What is reported as the "X-Secondlife-Shard"
@@ -540,11 +618,11 @@
     ;; What is reported as the "User-Agent" when using llHTTPRequest
     ;; Defaults to not sent if not set here. See the notes section in the wiki
     ;; at http://wiki.secondlife.com/wiki/LlHTTPRequest for comments on adding
-    ;; " (Mozilla Compatible)" to the text where there are problems with a 
+    ;; " (Mozilla Compatible)" to the text where there are problems with a
     ;; web server
     ; user_agent = "OpenSim LSL (Mozilla Compatible)"
 
-    ;; The follow 3 variables are for HTTP Basic Authentication for the Robust services.
+    ;; The following 3 variables are for HTTP Basic Authentication for the Robust services.
     ;; Use this if your central services in port 8003 need to be accessible on the Internet
     ;; but you want to protect them from unauthorized access. The username and password
     ;; here need to match the ones in the Robust service configuration.
@@ -557,9 +635,9 @@
 
 [XMLRPC]
     ;# {XmlRpcRouterModule} {} {Module used to route incoming llRemoteData calls} {XmlRpcRouterModule XmlRpcGridRouterModule} XmlRpcRouterModule
-    ;; If enabled and set to XmlRpcRouterModule, this will post an event, 
-    ;; "xmlrpc_uri(string)" to the script concurrently with the first 
-    ;; remote_data event. This will contain the fully qualified URI an 
+    ;; If enabled and set to XmlRpcRouterModule, this will post an event,
+    ;; "xmlrpc_uri(string)" to the script concurrently with the first
+    ;; remote_data event. This will contain the fully qualified URI an
     ;; external site needs to use to send XMLRPC requests to that script
     ;;
     ;; If enabled and set to XmlRpcGridRouterModule, newly created channels
@@ -572,7 +650,7 @@
     ;# {XmlRpcHubURI} {XmlRpcRouterModule} {URI for external service used to register xmlrpc channels created in the simulator. This depends on XmlRpcRouterModule being set to XmlRpcGridRouterModule} {} http://example.com
     ;; If XmlRpcRouterModule is set to XmlRpcGridRouterModule, the simulator
     ;; will use this address to register xmlrpc channels on the external
-    ;; service 
+    ;; service
     ; XmlRpcHubURI = http://example.com
 
 
@@ -609,7 +687,6 @@
 
 
 [SimulatorFeatures]
-
     ;# {SearchServerURI} {} {URL of the search server} {}
     ;; Optional. If given this serves the same purpose as the grid wide
     ;; [LoginServices] SearchURL setting and will override that where
@@ -644,10 +721,10 @@
     ;DisableInterRegionTeleportCancellation = false
 
     ;# {LandingPointBehavior} {} {How to honor landing points and telehubs for gods.} {LandingPointBehavior_OS LandingPointBehavior_SL} LandingPointBehavior_OS
-	;; This option exists to control the behavior of teleporting gods into places that have landing points
-	;; and telehubs. Historically, there has been a difference: OpenSim (OS) has honored landing points and telehubs even for
-	;; avatars with god permissions; SL lets gods land wherever they want.
-	;LandingPointBehavior = LandingPointBehavior_OS
+    ;; This option exists to control the behavior of teleporting gods into places that have landing points
+    ;; and telehubs. Historically, there has been a difference: OpenSim (OS) has honored landing points and telehubs even for
+    ;; avatars with god permissions; SL lets gods land wherever they want.
+    ;LandingPointBehavior = LandingPointBehavior_OS
 
 [Messaging]
     ;# {OfflineMessageModule} {} {Module to use for offline message storage} {OfflineMessageModule "Offline Message Module V2" *}
@@ -660,21 +737,16 @@
     ;# {OfflineMessageURL} {OfflineMessageModule:OfflineMessageModule Offline Message Module V2:Offline Message Module V2} {URL of offline messaging service} {}
     ;; URL of web service for offline message storage. Leave it commented if your service is local to the sim.
     ; OfflineMessageURL = ${Const|BaseURL}/Offline.php
-    ; OfflineMessageURL = ${Const|BaseURL}:${Const|PrivatePort}
+    ; OfflineMessageURL = ${Const|PrivURL}:${Const|PrivatePort}
 
     ;# {StorageProvider} {Offline Message Module V2:Offline Message Module V2} {DLL that provides the storage interface} {OpenSim.Data.MySQL.dll}
     ;; For standalones, this is the storage dll.
     ; StorageProvider = OpenSim.Data.MySQL.dll
 
-    ;# {MuteListModule} {OfflineMessageModule:OfflineMessageModule} {} {} MuteListModule
-    ;; Mute list handler (not yet implemented). MUST BE SET to allow offline
-    ;; messages to work
+    ; Mute list handler
+    ;# {MuteListModule} {MuteListModule:MuteListModule} {} {} None
+    ; Disabled by default
     ; MuteListModule = MuteListModule
-
-    ;# {MuteListURL} {OfflineMessageModule:OfflineMessageModule} {} {} http://yourserver/Mute.php
-    ;; URL of the web service that serves mute lists. Not currently used, but
-    ;; must be set to allow offline messaging to work.
-    ; MuteListURL = http://yourserver/Mute.php
 
     ;; Control whether group invites and notices are stored for offline users.
     ;; Default is true.
@@ -690,7 +762,7 @@
 [ODEPhysicsSettings]
     ;# {mesh_sculpted_prim} {[Startup]physics:OpenDynamicsEngine} {Mesh sculpties so they collide as they look?} {true false} true
     ;; Do we want to mesh sculpted prim to collide like they look?
-    ;; If you are seeing sculpt texture decode problems 
+    ;; If you are seeing sculpt texture decode problems
     ;; (messages such as "Decoded image with unhandled number of components: 0 shortly followed by a physcs exception")
     ;; then you might want to try setting this to false.
     ; mesh_sculpted_prim = true
@@ -784,15 +856,6 @@
     ; strength = 1.0
 
 
-[LightShare]
-    ;# {enable_windlight} {} {Enable LightShare technology?} {true false} false
-    ;; This enables the transmission of Windlight scenes to supporting clients,
-    ;; such as the Meta7 viewer.
-    ;; It has no ill effect on viewers which do not support server-side
-    ;; windlight settings.
-    ; enable_windlight = false
-
-
 [Materials]
     ;# {enable_materials} {} {Enable Materials support?} {true false} true
     ;; This enables the use of Materials.
@@ -840,6 +903,14 @@
     ;DATA_SRV_MISearch = "http://metaverseink.com/cgi-bin/register.py"
 
 [Economy]
+    ; the economy module in use
+    ; To use other modules you need to override this setting
+    ; economymodule = BetaGridLikeMoneyModule
+
+    ; the url of the economy service.
+    ; this must match the grid economy setting (also known as helperURI or CurrencyServer, etc)
+    ; economy = https://the.currency.machine.fdqn:port/folder/folder...
+
     ;# {SellEnabled} {} {Enable selling for 0?} {true false} true
     ; The default economy module only implements just enough to allow free actions (transfer of objects, etc).
     ; There is no intention to implement anything further in core OpenSimulator.
@@ -856,11 +927,47 @@
     ;; Money Unit fee to create groups.  Default is 0.
     ; PriceGroupCreate = 0
 
+[YEngine]
+    ;; implements non preemptive microthreading, so fixing problems like llSleep or long events handlers
+    ;; but those will suffer from timeslicing, so will be slower.
+    ;; warning: scripts state is lost on TP or cross to Xengine regions (cars stop, etc)
+    ;; ignore its extensions (subset of original XMRengine), those are still undefined.
+    ;# {Enabled} {} {Enable the YEngine scripting engine?} {true false} true
+    ; Enabled = true
+
+    ;; llSetTimerEvent minimum value. Default 0.5s, 0.05s whould be more resonable
+    ; MinTimerInterval = 0.5
+
+    ;# {ScriptDelayFactor} {} {Multiplier for scripting delays} {} 1.0
+    ;; Sets the multiplier for the scripting delays
+    ; ScriptDelayFactor = 1.0
+
+    ;# {ScriptDistanceLimitFactor} {} {Multiplier for 10.0m distance limits?} {}
+    ;; The factor the 10 m distances limits are multiplied by
+    ; ScriptDistanceLimitFactor = 1.0
+
+    ;# {NotecardLineReadCharsMax} {} {Maximum length of notecard line?} {} 255
+    ;; Maximum length of notecard line read
+    ;; Increasing this to large values potentially opens
+    ;; up the system to malicious scripters
+    ; NotecardLineReadCharsMax = 255
+
+    ;# {SensorMaxRange} {} {Sensor range} {} 96.0
+    ;; Sensor settings
+    ; SensorMaxRange = 96.0
+    ;# {SensorMaxResults} {} {Max sensor results returned?} {}
+    ; SensorMaxResults = 16
+
+    ;# {ScriptEnginesPath} {} {Path to script assemblies} {} ScriptEngines
+    ;; Path to script engine assemblies
+    ;; Default is ./bin/ScriptEngines
+    ; ScriptEnginesPath = "ScriptEngines"
+
 
 [XEngine]
-    ;# {Enabled} {} {Enable the XEngine scripting engine?} {true false} true
+    ;# {Enabled} {} {Enable the XEngine scripting engine?} {true false} false
     ;; Enable this engine in this OpenSim instance
-    ; Enabled = true
+    ; Enabled = false
 
     ;; How many threads to keep alive even if nothing is happening
     ; MinThreads = 2
@@ -871,9 +978,9 @@
     ;; Time a thread must be idle (in seconds) before it dies
     ; IdleTimeout = 60
 
-	;; llSetTimerEvent minimum value. Default 0.5s, 0.05s whould be more resonable
-	; MinTimerInterval = 0.5
-	
+    ;; llSetTimerEvent minimum value. Default 0.5s, 0.05s whould be more resonable
+    ; MinTimerInterval = 0.5
+
     ;# {Priority} {Enabled:true} {Priority for script engine threads?} {Lowest BelowNormal Normal AboveNormal Highest} BelowNormal
     ;; Thread priority ("Lowest", "BelowNormal", "Normal", "AboveNormal",
     ;; "Highest")
@@ -888,7 +995,7 @@
     ; ThreadStackSize = 262144
 
     ;; Set this to true to load each script into a separate
-    ;; AppDomain. 
+    ;; AppDomain.
     ;;
     ;; Setting this to false will load all script assemblies into the
     ;; current AppDomain, which will significantly improve script loading times.
@@ -899,17 +1006,17 @@
     ;; at this time some mono versions seem to have problems with the true option
     ;; so default is now false until a fix is found, to simply life of less technical skilled users.
     ;; this should only be a issue if regions stay alive for a long time with lots of scripts added or edited.
-    ; AppDomainLoading = false
+    AppDomainLoading = false
 
-    ;; Controls whether scripts are stopped by aborting their threads externally (abort) or by co-operative checks from the compiled script (co-op) 
+    ;; Controls whether scripts are stopped by aborting their threads externally (abort) or by co-operative checks from the compiled script (co-op)
     ;; co-op will be more stable but this option is currently experimental.
     ;; If moving from co-op to abort, existing script DLLs will need to be recompiled.
-    ;; This currently can only be done manually, either by setting DeleteScriptsOnStartup = true for one run  
+    ;; This currently can only be done manually, either by setting DeleteScriptsOnStartup = true for one run
     ;; or by deleting the script DLL* files in bin/ScriptEngines/<region-id>/
     ;; One can move from co-op back to abort without recompilation, but reverting back to co-op again will need script recompile
     ;; Current valid values are "abort" and "co-op"
     ; ScriptStopStrategy = co-op
-    
+
 
     ;# {DeleteScriptsOnStartup} {} {Delete previously compiled script DLLs on startup?} {true false} true
     ;; Controls whether previously compiled scripts DLLs are deleted on sim restart. If you set this to false
@@ -924,17 +1031,6 @@
     ;; But this costs a lot of time, so region load will take a lot longer.
     ;; it is more usefull if there are no previously compiled scripts DLLs (as with DeleteScriptsOnStartup = true)
     ;CompactMemOnLoad = false
-    
-    ;# {DefaultCompileLanguage} {Enabled:true} {Default script language?} {lsl vb cs} lsl
-    ;; Default language for scripts
-    ; DefaultCompileLanguage = "lsl"
-
-    ;# {AllowedCompilers} {Enabled:true} {Languages to allow (comma separated)?} {} lsl
-    ;; List of allowed languages (lsl,vb,cs)
-    ;; AllowedCompilers=lsl,cs,vb
-    ;; *warning*, non lsl languages have access to static methods such as
-    ;; System.IO.File.  Enable at your own risk.
-    ; AllowedCompilers = "lsl"
 
     ;; Compile debug info (line numbers) into the script assemblies
     ; CompileWithDebugInformation = true
@@ -981,34 +1077,9 @@
     ; ScriptEnginesPath = "ScriptEngines"
 
 [OSSL]
-    ;# {Include-osslEnable} {} {Include file for enabling and permissions for OSSL functions} {}
-    ;; Optionally include file to enable OSSL functions and set permissions on who can use which.
+    ;# {Include-osslDefaultEnable} {} {Include file for enabling and permissions for OSSL functions} {}
     ;; If this INI file is not included, the OSSL functions are disabled.
-    Include-osslEnable = "config-include/osslEnable.ini"
-
-
-[MRM]
-    ;; Enables the Mini Region Modules Script Engine.
-    ; Enabled = false
-
-    ;; Runs MRM in a Security Sandbox
-    ;; WARNING: DISABLING IS A SECURITY RISK.
-    ; Sandboxed = true
-
-    ;; The level sandbox to use, adjust at your OWN RISK.
-    ;; Valid values are:
-    ;; *  FullTrust
-    ;; *  SkipVerification
-    ;; *  Execution
-    ;; *  Nothing
-    ;; *  LocalIntranet
-    ;; *  Internet
-    ;; *  Everything
-    ; SandboxLevel = "Internet"
-
-    ;; Only allow Region Owners to run MRMs
-    ;; May represent a security risk if you disable this.
-    ; OwnerOnly = true
+    Include-osslDefaultEnable = "config-include/osslDefaultEnable.ini"
 
 
 [FreeSwitchVoice]
@@ -1035,21 +1106,19 @@
     ;; Minimum user level required to create groups
     ; LevelGroupCreate = 0
 
-    ;# {Module} {Enabled:true} {Groups module to use? (Use GroupsModule to use Flotsam/Simian)} {Default "Groups Module V2"} Default
+    ;# {Module} {Enabled:true} {Groups module to use? (Use GroupsModule to use Flotsam)} {Default "Groups Module V2"} Default
     ;; The default module can use a PHP XmlRpc server from the Flotsam project at
     ;; http://code.google.com/p/flotsam/
-    ;; or from the SimianGrid project at http://code.google.com/p/openmetaverse
     ; Module = Default
     ;; or... use Groups Module V2, which works for standalones and robust grids
     ; Module = "Groups Module V2"
 
-    ;# {StorageProvider} {Module:Groups Module V2} {The DLL that provides the storage for V2} {OpenSim.Data.MySQL.dll} 
+    ;# {StorageProvider} {Module:Groups Module V2} {The DLL that provides the storage for V2} {OpenSim.Data.MySQL.dll}
     ; StorageProvider = OpenSim.Data.MySQL.dll
 
-    ;# {ServicesConnectorModule} {Module:GroupsModule Module:Groups Module V2} {Service connector to use for groups} {XmlRpcGroupsServicesConnector SimianGroupsServicesConnector "Groups Local Service Connector" "Groups Remote Service Connector" "Groups HG Service Connector"} XmlRpcGroupsServicesConnector
+    ;# {ServicesConnectorModule} {Module:GroupsModule Module:Groups Module V2} {Service connector to use for groups} {XmlRpcGroupsServicesConnector "Groups Local Service Connector" "Groups Remote Service Connector" "Groups HG Service Connector"} XmlRpcGroupsServicesConnector
     ;; Service connectors to the Groups Service as used in the GroupsModule.  Select one as follows:
     ;; -- for Flotsam Groups use XmlRpcGroupsServicesConnector
-    ;; -- for Simian Groups use SimianGroupsServicesConnector
     ;; -- for V2 Groups, standalone, non-HG use "Groups Local Service Connector"
     ;; -- for V2 Groups, grided sim, non-HG use "Groups Remote Service Connector"
     ;; -- for V2 Groups, HG, both standalone and grided sim, use "Groups HG Service Connector"
@@ -1061,22 +1130,20 @@
     ; LocalService = local
 
     ;# {SecretKey} {ServicesConnectorModule:Groups Remote Service Connector} {Secret key between sim and remote group service} {} ""
-    ;; Used for V2 in Remote only. 
+    ;; Used for V2 in Remote only.
     ; SecretKey = ""
 
     ;# {GroupsServerURI} {Module:GroupsModule (ServicesConnectorModule:Groups Remote Service Connector or (ServicesConnectorModule:Groups HG Service Connector and LocalService:remote))} {Groups Server URI} {}
     ;; URI for the groups services of this grid
     ;; e.g. http://yourxmlrpcserver.com/xmlrpc.php for Flotsam XmlRpc
-    ;; or http://mygridserver.com:82/Grid/ for SimianGrid
-    ;; or ${Const|BaseURL}:${Const|PrivatePort} for robust, V2
+    ;; or ${Const|PrivURL}:${Const|PrivatePort} for robust, V2
     ;; Leave it commented for standalones, V2
     ; GroupsServerURI = ""
 
-    ;# {HomeURI} {ServicesConnectorModule:Groups HG Service Connector} {What's the home address of this world?} {} 
-    ;; Used for V2 in HG only. For example
+    ;# {HomeURI} {ServicesConnectorModule:Groups HG Service Connector} {What's the home address of this world?} {}
     ;; http://mygridserver.com:9000 or http://mygridserver.com:8002
-    ;; If you have this set under [Startup], no need to set it here, leave it commented
-    ; HomeURI = "" 
+    ;; If you have this set in [Hypergrid] section of GridCommon.ini or StandaloneCommon.ini files in config-include folder, leave it commented
+    ; HomeURI = ""
 
     ;# {MessagingEnabled} {Module:GroupsModule Module:Groups Module V2} {Is groups messaging enabled?} {true false} true
     ; MessagingEnabled = true
@@ -1096,7 +1163,7 @@
     ; Applies Flotsam Group only. V2 has this always on, no other option
     ; MessageOnlineUsersOnly = false
 
-    ;; This makes the Group module very chatty on the console.
+    ;; This makes the Groups module very chatty on the console.
     ; DebugEnabled = false
 
     ; This makes the Group Messaging module very chatty on the console.
@@ -1109,43 +1176,51 @@
 
 
 [InterestManagement]
-     ;# {UpdatePrioritizationScheme} {} {Update prioritization scheme?} {BestAvatarResponsiveness Time Distance SimpleAngularDistance FrontBack} BestAvatarResponsiveness
      ;; This section controls how state updates are prioritized for each client
-     ;; Valid values are BestAvatarResponsiveness, Time, Distance,
-     ;; SimpleAngularDistance, FrontBack
+     
+     ;# {UpdatePrioritizationScheme} {} {Update prioritization scheme?} {BestAvatarResponsiveness SimpleAngularDistance} BestAvatarResponsiveness
+     ;; Valid values are BestAvatarResponsiveness and SimpleAngularDistance
+     ;; SimpleAngularDistance does use more cpu
      ; UpdatePrioritizationScheme = BestAvatarResponsiveness
 
-	; TEST OPTION KEEP AS FALSE
-	; if true, don't send object updates if outside view range
-	; ObjectsCullingByDistance = false	 
+    ;; ObjectsCullingByDistance, if true, don't send object updates if outside view range
+    ;; currently viewers are also told to delete objects that leave view range
+    ;; only avater position is considered, free camera may not see objects
+    ;; does increase cpu load
+    ; ObjectsCullingByDistance = false
 
 [MediaOnAPrim]
     ;# {Enabled} {} {Enable Media-on-a-Prim (MOAP)} {true false} true
     ;; Enable media on a prim facilities
-    ; Enabled = true;
+    ; Enabled = true
 
 
 [NPC]
-    ;# {Enabled} {} {Enable Non Player Character (NPC) facilities} {true false} false
-    ; Enabled = false
-	
-	;; several options to control NPCs creation
-	
+    ;# {Enabled} {} {Enable Non Player Character (NPC) facilities} {true false} true
+    ; Enabled = true
+
+    ;; max number of NPCs per scene default: 40
+    ;; set to a negative value to allow any number
+    ;; note that a NPC is almost as heavy as a normal avatar, so you should limit them
+    ;; MaxNumberNPCsPerScene = 40
+
+    ;; several options to control NPCs creation
+
     ;# {AllowNotOwned} {} {allow NPCs to be created not Owned} {true false} true
-	;; allow NPCs to be created not Owned {true false} default: true
+    ;; allow NPCs to be created not Owned {true false} default: true
     ; AllowNotOwned = true
-	
+
     ;# {AllowSenseAsAvatar} {} {allow NPCs to set to be sensed as Avatars} {true false} true
-	;; allow NPCs to set to be sensed as Avatars {true false} default: true
+    ;; allow NPCs to set to be sensed as Avatars {true false} default: true
     ; AllowSenseAsAvatar = true
-	
+
     ;# {AllowCloneOtherAvatars} {} {allow NPCs to created cloning any avatar in region} {true false} true
-	;; allow NPCs to created cloning any avatar in region {true false} default: true
+    ;; allow NPCs to created cloning any avatar in region {true false} default: true
     ; AllowCloneOtherAvatars = true
-	
+
     ;# {NoNPCGroup} {} {if true NPCs will have no group title, if false display "- NPC -"} {true false} true
-	;; if true NPCs will have no group title, if false display "- NPC -" for easy identification {true false} default: true
-    ; NoNPCGroup = true 
+    ;; if true NPCs will have no group title, if false display "- NPC -" for easy identification {true false} default: true
+    ; NoNPCGroup = true
 
 
 [Terrain]
@@ -1153,15 +1228,15 @@
     ; InitialTerrain = "pinhead-island"
 
 [LandManagement]
-	;; set this to false to not display parcel ban lines
-	;ShowParcelBansLines = true
-	
+    ;; set this to false to not display parcel ban lines
+    ;ShowParcelBansLines = true
+
 [UserProfiles]
   ;# {ProfileServiceURL} {} {Set url to UserProfilesService} {}
   ;; Set the value of the url to your UserProfilesService
   ;; If un-set / "" the module is disabled
   ;; ProfileServiceURL = ${Const|BaseURL}:${Const|PublicPort}
-  
+
   ;# {AllowUserProfileWebURLs} {} {allow user profiles web urls} {true false} true
   ;; set this to false to prevent your users to be sent to unknown
   ;; web sites by other users on their profiles
@@ -1171,32 +1246,30 @@
   ;# {URL} {} {Set URL for Baked texture service} {}
   ;; Sets the URL for the baked texture ROBUST service.
   ;; Disabled when unset.
-  ;; URL = ${Const|BaseURL}:${Const|PrivatePort}
+  ;; URL = ${Const|PrivURL}:${Const|PrivatePort}
 
 ;;
 ;; Optional module to highlight God names in the viewer.
 ;; Uncomment and customize appropriately if you want this behavior.
 ;;
 ;[GodNames]
-;	Enabled = false
-;	FullNames = "Test User, Foo Bar"
-;	Surnames = "Kryztlsk"
+;    Enabled = false
+;    FullNames = "Test User, Foo Bar"
+;    Surnames = "Kryztlsk"
 
 [Architecture]
-    ;# {Include-Architecture} {} {Choose one of the following architectures} {config-include/Standalone.ini config-include/StandaloneHypergrid.ini config-include/Grid.ini config-include/GridHypergrid.ini config-include/SimianGrid.ini config-include/HyperSimianGrid.ini} config-include/Standalone.ini
+    ;# {Include-Architecture} {} {Choose one of the following architectures} {config-include/Standalone.ini config-include/StandaloneHypergrid.ini config-include/Grid.ini config-include/GridHypergrid.ini} config-include/Standalone.ini
     ;; Uncomment one of the following includes as required.  For instance, to create a standalone OpenSim,
     ;; uncomment Include-Architecture = "config-include/Standalone.ini"
-    ;; 
+    ;;
     ;; Then you will need to copy and edit the corresponding *Common.example file in config-include/
     ;; that the referenced .ini file goes on to include.
     ;;
-    ;; For instance, if you chose "config-include/Standalone.ini" then you will need to copy 
+    ;; For instance, if you chose "config-include/Standalone.ini" then you will need to copy
     ;; "config-include/StandaloneCommon.ini.example" to "config-include/StandaloneCommon.ini" before
     ;; editing it to set the database and backend services that OpenSim will use.
     ;;
-    ; Include-Architecture = "config-include/Standalone.ini"
+    Include-Architecture = "config-include/Standalone.ini"
     ; Include-Architecture = "config-include/StandaloneHypergrid.ini"
     ; Include-Architecture = "config-include/Grid.ini"
     ; Include-Architecture = "config-include/GridHypergrid.ini"
-    ; Include-Architecture = "config-include/SimianGrid.ini"
-    ; Include-Architecture = "config-include/HyperSimianGrid.ini"

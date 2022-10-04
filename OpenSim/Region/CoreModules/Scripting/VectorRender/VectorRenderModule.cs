@@ -55,11 +55,12 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 //        private static byte[] s_asset2Data;
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static object thisLock = new object();
+        private static Graphics m_graph = null; // just to get chars sizes
 
         private Scene m_scene;
         private IDynamicTextureManager m_textureManager;
 
-        private Graphics m_graph;
         private string m_fontName = "Arial";
 
         public VectorRenderModule()
@@ -120,19 +121,15 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
         public void GetDrawStringSize(string text, string fontName, int fontSize,
                                       out double xSize, out double ySize)
         {
-            lock (this)
+            lock (thisLock)
             {
                 using (Font myFont = new Font(fontName, fontSize))
                 {
                     SizeF stringSize = new SizeF();
 
-                    // XXX: This lock may be unnecessary.
-                    lock (m_graph)
-                    {
-                        stringSize = m_graph.MeasureString(text, myFont);
-                        xSize = stringSize.Width;
-                        ySize = stringSize.Height;
-                    }
+                    stringSize = m_graph.MeasureString(text, myFont);
+                    xSize = stringSize.Width;
+                    ySize = stringSize.Height;
                 }
             }
         }
@@ -152,8 +149,14 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 
             // We won't dispose of these explicitly since this module is only removed when the entire simulator
             // is shut down.
-            Bitmap bitmap = new Bitmap(1024, 1024, PixelFormat.Format32bppArgb);
-            m_graph = Graphics.FromImage(bitmap);
+            lock(thisLock)
+            {
+                if(m_graph == null)
+                {
+                    Bitmap bitmap = new Bitmap(32, 32, PixelFormat.Format32bppArgb);
+                    m_graph = Graphics.FromImage(bitmap);
+                }
+            }
         }
 
         public void PostInitialise()
@@ -218,6 +221,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 
             string[] nvps = extraParams.Split(paramDelimiter);
 
+            bool lossless = false;
             int temp = -1;
             foreach (string pair in nvps)
             {
@@ -307,10 +311,14 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
                              bgColor = Color.FromName(value);
                          }
                          break;
-                     case "altdatadelim":
-                         altDataDelim = value.ToCharArray()[0];
-                         break;
-                     case "":
+                    case "altdatadelim":
+                        altDataDelim = value.ToCharArray()[0];
+                        break;
+                    case "lossless":
+                        if (value.ToLower() == "true")
+                            lossless = true;
+                        break;
+                    case "":
                          // blank string has been passed do nothing just use defaults
                      break;
                      default: // this is all for backwards compat, all a bit ugly hopfully can be removed in future
@@ -354,34 +362,23 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
                 // under lock.
                 lock (this)
                 {
+
+                    if (alpha == 256 && bgColor.A != 255)
+                        alpha = bgColor.A;
+
                     if (alpha == 256)
+                    {
                         bitmap = new Bitmap(width, height, PixelFormat.Format32bppRgb);
+                        graph = Graphics.FromImage(bitmap);
+                        graph.Clear(bgColor);
+                    }
                     else
+                    {
+                        Color newbg = Color.FromArgb(alpha, bgColor);
                         bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-
-                    graph = Graphics.FromImage(bitmap);
-
-                    // this is really just to save people filling the
-                    // background color in their scripts, only do when fully opaque
-                    if (alpha >= 255)
-                    {
-                        using (SolidBrush bgFillBrush = new SolidBrush(bgColor))
-                        {
-                            graph.FillRectangle(bgFillBrush, 0, 0, width, height);
-                        }
+                        graph = Graphics.FromImage(bitmap);
+                        graph.Clear(newbg);
                     }
-
-                    for (int w = 0; w < bitmap.Width; w++)
-                    {
-                        if (alpha <= 255)
-                        {
-                            for (int h = 0; h < bitmap.Height; h++)
-                            {
-                                bitmap.SetPixel(w, h, Color.FromArgb(alpha, bitmap.GetPixel(w, h)));
-                            }
-                        }
-                    }
-
                     GDIDraw(data, graph, altDataDelim, out reuseable);
                 }
 
@@ -397,7 +394,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 
                 try
                 {
-                    imageJ2000 = OpenJPEG.EncodeFromImage(bitmap, true);
+                    imageJ2000 = OpenJPEG.EncodeFromImage(bitmap, lossless);
                 }
                 catch (Exception e)
                 {
@@ -411,12 +408,7 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
             }
             finally
             {
-                // XXX: In testing, it appears that if multiple threads dispose of separate GDI+ objects simultaneously,
-                // the native malloc heap can become corrupted, possibly due to a double free().  This may be due to
-                // bugs in the underlying libcairo used by mono's libgdiplus.dll on Linux/OSX.  These problems were
-                // seen with both libcario 1.10.2-6.1ubuntu3 and 1.8.10-2ubuntu1.  They go away if disposal is perfomed
-                // under lock.
-                lock (this)
+                lock (thisLock)
                 {
                     if (graph != null)
                         graph.Dispose();
@@ -515,12 +507,50 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 
                 foreach (string line in GetLines(data, dataDelim))
                 {
-                    string nextLine = line.Trim();
+                    string nextLine = line.TrimStart();
 
 //                    m_log.DebugFormat("[VECTOR RENDER MODULE]: Processing line '{0}'", nextLine);
 
+                    if (nextLine.StartsWith("Text") && nextLine.Length > 5)
+                    {
+                        int start = 4;
+                        if (nextLine[4] == ' ')
+                            start++;
+                        if (start < nextLine.Length)
+                        {
+                            nextLine = nextLine.Substring(start);
+                            graph.DrawString(nextLine, myFont, myBrush, startPoint);
+                        }
+                        continue;
+                    }
+
+                    nextLine = nextLine.TrimEnd();
+                    if (nextLine.StartsWith("ResetTransf"))
+                    {
+                        graph.ResetTransform();
+                    }
+                    else if (nextLine.StartsWith("TransTransf"))
+                    {
+                        float x = 0;
+                        float y = 0;
+                        GetParams(partsDelimiter, ref nextLine, 11, ref x, ref y);
+                        graph.TranslateTransform(x, y);
+                    }
+                    else if (nextLine.StartsWith("ScaleTransf"))
+                    {
+                        float x = 0;
+                        float y = 0;
+                        GetParams(partsDelimiter, ref nextLine, 11, ref x, ref y);
+                        graph.ScaleTransform(x, y);
+                    }
+                    else if (nextLine.StartsWith("RotTransf"))
+                    {
+                        float x = 0;
+                        GetParams(partsDelimiter, ref nextLine, 9, ref x);
+                        graph.RotateTransform(x);
+                    }
                     //replace with switch, or even better, do some proper parsing
-                    if (nextLine.StartsWith("MoveTo"))
+                    else if (nextLine.StartsWith("MoveTo"))
                     {
                         float x = 0;
                         float y = 0;
@@ -538,12 +568,6 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
                         graph.DrawLine(drawPen, startPoint, endPoint);
                         startPoint.X = endPoint.X;
                         startPoint.Y = endPoint.Y;
-                    }
-                    else if (nextLine.StartsWith("Text"))
-                    {
-                        nextLine = nextLine.Remove(0, 4);
-                        nextLine = nextLine.Trim();
-                        graph.DrawString(nextLine, myFont, myBrush, startPoint);
                     }
                     else if (nextLine.StartsWith("Image"))
                     {
@@ -625,6 +649,17 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
                         startPoint.X += endPoint.X;
                         startPoint.Y += endPoint.Y;
                     }
+                    else if (nextLine.StartsWith("FillEllipse"))
+                    {
+                        float x = 0;
+                        float y = 0;
+                        GetParams(partsDelimiter, ref nextLine, 11, ref x, ref y);
+                        endPoint.X = (int)x;
+                        endPoint.Y = (int)y;
+                        graph.FillEllipse(myBrush, startPoint.X, startPoint.Y, endPoint.X, endPoint.Y);
+                        startPoint.X += endPoint.X;
+                        startPoint.Y += endPoint.Y;
+                    }
                     else if (nextLine.StartsWith("FontSize"))
                     {
                         nextLine = nextLine.Remove(0, 8);
@@ -636,58 +671,38 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
                     }
                     else if (nextLine.StartsWith("FontProp"))
                     {
+                        FontStyle myFontStyle = myFont.Style;
+
                         nextLine = nextLine.Remove(0, 8);
                         nextLine = nextLine.Trim();
 
                         string[] fprops = nextLine.Split(partsDelimiter);
                         foreach (string prop in fprops)
                         {
-
                             switch (prop)
                             {
                                 case "B":
-                                    if (!(myFont.Bold))
-                                    {
-                                        Font newFont = new Font(myFont, myFont.Style | FontStyle.Bold);
-                                        myFont.Dispose();
-                                        myFont = newFont;
-                                    }
+                                    myFontStyle |= FontStyle.Bold;
                                     break;
                                 case "I":
-                                    if (!(myFont.Italic))
-                                    {
-                                        Font newFont = new Font(myFont, myFont.Style | FontStyle.Italic);
-                                        myFont.Dispose();
-                                        myFont = newFont;
-                                    }
+                                    myFontStyle |= FontStyle.Italic;
                                     break;
                                 case "U":
-                                    if (!(myFont.Underline))
-                                    {
-                                        Font newFont = new Font(myFont, myFont.Style | FontStyle.Underline);
-                                        myFont.Dispose();
-                                        myFont = newFont;
-                                    }
+                                    myFontStyle |= FontStyle.Underline;
                                     break;
                                 case "S":
-                                    if (!(myFont.Strikeout))
-                                    {
-                                        Font newFont = new Font(myFont, myFont.Style | FontStyle.Strikeout);
-                                        myFont.Dispose();
-                                        myFont = newFont;
-                                    }
+                                    myFontStyle |= FontStyle.Strikeout;
                                     break;
-                                case "R":
-                                    // We need to place this newFont inside its own context so that the .NET compiler
-                                    // doesn't complain about a redefinition of an existing newFont, even though there is none
-                                    // The mono compiler doesn't produce this error.
-                                    {
-                                        Font newFont = new Font(myFont, FontStyle.Regular);
-                                        myFont.Dispose();
-                                        myFont = newFont;
-                                    }
+                                case "R":   //This special case resets all font properties
+                                    myFontStyle = FontStyle.Regular;
                                     break;
                             }
+                        }
+                        if (myFontStyle != myFont.Style)
+                        {
+                            Font newFont = new Font(myFont, myFontStyle);
+                            myFont.Dispose();
+                            myFont = newFont;
                         }
                     }
                     else if (nextLine.StartsWith("FontName"))
@@ -787,6 +802,17 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 
                 if (myBrush != null)
                     myBrush.Dispose();
+            }
+        }
+
+        private static void GetParams(char[] partsDelimiter, ref string line, int startLength, ref float x)
+        {
+            line = line.Remove(0, startLength);
+            string[] parts = line.Split(partsDelimiter);
+            if (parts.Length > 0)
+            {
+                string xVal = parts[0].Trim();
+                x = Convert.ToSingle(xVal, CultureInfo.InvariantCulture);
             }
         }
 

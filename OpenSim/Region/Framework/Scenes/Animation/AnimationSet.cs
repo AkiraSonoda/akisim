@@ -115,7 +115,7 @@ namespace OpenSim.Region.Framework.Scenes.Animation
                     else
                         ResetDefaultAnimation();
                 }
-                else if (HasAnimation(animID))
+                else
                 {
                     for (int i = 0; i < m_animations.Count; i++)
                     {
@@ -171,9 +171,9 @@ namespace OpenSim.Region.Framework.Scenes.Animation
 //                "[ANIMATION SET]: Setting default animation {0}, sequence number {1}, object id {2}",
 //                anim, sequenceNum, objectID);
 
-            if (DefaultAvatarAnimations.AnimsUUID.ContainsKey(anim))
+            if (DefaultAvatarAnimations.AnimsUUIDbyName.TryGetValue(anim, out UUID id))
             {
-                return SetDefaultAnimation(DefaultAvatarAnimations.AnimsUUID[anim], sequenceNum, objectID);
+                return SetDefaultAnimation(id, sequenceNum, objectID);
             }
             return false;
         }
@@ -182,50 +182,54 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         {
             lock (m_animations)
             {
-                int defaultSize = 0;
-                if (m_defaultAnimation.AnimID != UUID.Zero)
-                    defaultSize++;
+                int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1;
 
-                animIDs = new UUID[m_animations.Count + defaultSize];
-                sequenceNums = new int[m_animations.Count + defaultSize];
-                objectIDs = new UUID[m_animations.Count + defaultSize];
+                int defaultSize = m_animations.Count + j;
+                animIDs = new UUID[defaultSize];
+                sequenceNums = new int[defaultSize];
+                objectIDs = new UUID[defaultSize];
 
-                if (m_defaultAnimation.AnimID != UUID.Zero)
+                if (!m_defaultAnimation.AnimID.IsZero())
                 {
                     animIDs[0] = m_defaultAnimation.AnimID;
                     sequenceNums[0] = m_defaultAnimation.SequenceNum;
                     objectIDs[0] = m_defaultAnimation.ObjectID;
                 }
 
-                for (int i = 0; i < m_animations.Count; ++i)
+                for (int i = 0; i < m_animations.Count; ++i,++j)
                 {
-                    animIDs[i + defaultSize] = m_animations[i].AnimID;
-                    sequenceNums[i + defaultSize] = m_animations[i].SequenceNum;
-                    objectIDs[i + defaultSize] = m_animations[i].ObjectID;
+                    animIDs[j] = m_animations[i].AnimID;
+                    sequenceNums[j] = m_animations[i].SequenceNum;
+                    objectIDs[j] = m_animations[i].ObjectID;
                 }
             }
         }
 
         public OpenSim.Framework.Animation[] ToArray()
         {
-            OpenSim.Framework.Animation[] theArray = new OpenSim.Framework.Animation[m_animations.Count];
-            uint i = 0;
+            OpenSim.Framework.Animation[] theArray = null;
             try
             {
-                foreach (OpenSim.Framework.Animation anim in m_animations)
-                    theArray[i++] = anim;
+                theArray = m_animations.ToArray();
             }
             catch
             {
-                /* S%^t happens. Ignore. */
+                return new OpenSim.Framework.Animation[0];
             }
+
             return theArray;
         }
 
-        public void FromArray(OpenSim.Framework.Animation[] theArray)
+        public int FromArray(OpenSim.Framework.Animation[] theArray)
         {
+            int ret = 0;
             foreach (OpenSim.Framework.Animation anim in theArray)
+            { 
                 m_animations.Add(anim);
+                if(anim.SequenceNum > ret)
+                    ret = anim.SequenceNum;
+            }
+            return ret;
         }
 
         // Create representation of this AnimationSet as an OSDArray.

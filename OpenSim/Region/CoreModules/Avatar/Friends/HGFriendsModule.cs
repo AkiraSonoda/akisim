@@ -170,21 +170,21 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 // we do this only for the root agent
                 if (m_Friends[agentID].Refcount == 1)
                 {
+                    IUserManagement uMan = m_Scenes[0].RequestModuleInterface<IUserManagement>();
+                    if(uMan == null)
+                        return true;
                     // We need to preload the user management cache with the names
                     // of foreign friends, just like we do with SOPs' creators
                     foreach (FriendInfo finfo in m_Friends[agentID].Friends)
                     {
                         if (finfo.TheirFlags != -1)
                         {
-                            UUID id;
-                            if (!UUID.TryParse(finfo.Friend, out id))
+                            if (!UUID.TryParse(finfo.Friend, out UUID id))
                             {
-                                string url = string.Empty, first = string.Empty, last = string.Empty, tmp = string.Empty;
-                                if (Util.ParseUniversalUserIdentifier(finfo.Friend, out id, out url, out first, out last, out tmp))
+                                if (Util.ParseUniversalUserIdentifier(finfo.Friend, out id, out string url, out string first, out string last, out string tmp))
                                 {
-                                    IUserManagement uMan = m_Scenes[0].RequestModuleInterface<IUserManagement>();
-                                    m_log.DebugFormat("[HGFRIENDS MODULE]: caching {0}", finfo.Friend);
-                                    uMan.AddUser(id, url + ";" + first + " " + last);
+//                                    m_log.DebugFormat("[HGFRIENDS MODULE]: caching {0}", finfo.Friend);
+                                    uMan.AddUser(id,first,last, url);
                                 }
                             }
                         }
@@ -214,7 +214,9 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                         FriendInfo[] friends = GetFriendsFromCache(client.AgentId);
                         foreach (FriendInfo f in friends)
                         {
-                            client.SendChangeUserRights(new UUID(f.Friend), client.AgentId, f.TheirFlags);
+                            int rights = f.TheirFlags;
+                            if(rights != -1 )
+                                client.SendChangeUserRights(new UUID(f.Friend), client.AgentId, rights);
                         }
                     }
                 }
@@ -301,8 +303,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 return true;
 
             // fid is not a UUID...
-            string url = string.Empty, tmp = string.Empty, f = string.Empty, l = string.Empty;
-            if (Util.ParseUniversalUserIdentifier(fid, out agentID, out url, out f, out l, out tmp))
+            if (Util.ParseUniversalUserIdentifier(fid, out agentID, out string url, out string f, out string l, out string tmp))
             {
                 if (!agentID.Equals(UUID.Zero))
                 {
@@ -501,7 +502,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 // We need to look for its information in the friends list itself
                 FriendInfo[] finfos = null;
                 bool confirming = false;
-                if (friendUUI == string.Empty)
+                if (friendUUI.Length == 0)
                 {
                     finfos = GetFriendsFromCache(agentID);
                     foreach (FriendInfo finfo in finfos)
@@ -512,13 +513,10 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                             {
                                 friendUUI = finfo.Friend;
                                 theFriendUUID = friendUUI;
-                                UUID utmp = UUID.Zero;
-                                string url = String.Empty;
-                                string first = String.Empty;
-                                string last = String.Empty;
 
                                 // If it's confirming the friendship, we already have the full UUI with the secret
-                                if (Util.ParseUniversalUserIdentifier(theFriendUUID, out utmp, out url, out first, out last, out secret))
+                                if (Util.ParseUniversalUserIdentifier(theFriendUUID, out UUID utmp, out string url,
+                                            out string first, out string last, out secret))
                                 {
                                     agentUUID = agentUUI + ";" + secret;
                                     m_uMan.AddUser(utmp, first, last, url);
@@ -778,7 +776,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
             if (!m_uMan.IsLocalGridUser(friendID))
             {
                 string friendsURL = m_uMan.GetUserServerURL(friendID, "FriendsServerURI");
-                if (friendsURL != string.Empty)
+                if (!string.IsNullOrEmpty(friendsURL))
                 {
                     m_log.DebugFormat("[HGFRIENDS MODULE]: Forwading friendship from {0} to {1} @ {2}", agentID, friendID, friendsURL);
                     GridRegion region = new GridRegion();

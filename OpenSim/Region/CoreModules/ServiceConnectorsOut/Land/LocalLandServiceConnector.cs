@@ -143,11 +143,15 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
                 {
                     LandData land = s.GetLandData(x, y);
                     regionAccess = s.RegionInfo.AccessLevel;
+                    IDwellModule dwellModule = s.RequestModuleInterface<IDwellModule>();
+                    if (dwellModule != null)
+                        land.Dwell = dwellModule.GetDwell(land);
+
                     return land;
                 }
             }
 
-            m_log.Debug("[LAND CONNECTOR]: didn't find land data locally.");
+            //m_log.Debug("[LAND CONNECTOR]: didn't find land data locally.");
             return null;
 
         }

@@ -43,9 +43,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "LocalGridUserServicesConnector")]
     public class LocalGridUserServicesConnector : ISharedRegionModule, IGridUserService
     {
-        private static readonly ILog m_log =
-                LogManager.GetLogger(
-                MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private IGridUserService m_GridUserService;
 
@@ -82,7 +80,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
 
                     string serviceDll = userConfig.GetString("LocalServiceModule", String.Empty);
 
-                    if (serviceDll == String.Empty)
+                    if (serviceDll.Length == 0)
                     {
                         m_log.Error("[LOCAL GRID USER SERVICE CONNECTOR]: No LocalServiceModule named in section GridUserService");
                         return;

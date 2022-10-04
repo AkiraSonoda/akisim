@@ -54,18 +54,16 @@ namespace OpenSim.Server.Handlers.Asset
             if (serverConfig == null)
                 throw new Exception(String.Format("No section '{0}' in config file", m_ConfigName));
 
-            string assetService = serverConfig.GetString("LocalServiceModule",
-                    String.Empty);
+            string assetService = serverConfig.GetString("LocalServiceModule", string.Empty);
 
-            if (assetService == String.Empty)
+            if (string.IsNullOrEmpty(assetService))
                 throw new Exception("No LocalServiceModule in config file");
 
-            Object[] args = new Object[] { config, m_ConfigName };
-            m_AssetService =
-                    ServerUtils.LoadPlugin<IAssetService>(assetService, args);
+            object[] args = new object[] { config, m_ConfigName };
+            m_AssetService = ServerUtils.LoadPlugin<IAssetService>(assetService, args);
 
             if (m_AssetService == null)
-                throw new Exception(String.Format("Failed to load AssetService from {0}; config is {1}", assetService, m_ConfigName));
+                throw new Exception(string.Format("Failed to load AssetService from {0}; config is {1}", assetService, m_ConfigName));
 
             bool allowDelete = serverConfig.GetBoolean("AllowRemoteDelete", false);
             bool allowDeleteAllTypes = serverConfig.GetBoolean("AllowRemoteDeleteAllTypes", false);
@@ -125,14 +123,14 @@ namespace OpenSim.Server.Handlers.Asset
 
             if (asset == null || asset.Data.Length == 0)
             {
-                MainConsole.Instance.OutputFormat("Could not find asset with ID {0}", args[2]);
+                MainConsole.Instance.Output("Could not find asset with ID {0}", args[2]);
                 return;
             }
 
             if (!m_AssetService.Delete(asset.ID))
-                MainConsole.Instance.OutputFormat("ERROR: Could not delete asset {0} {1}", asset.ID, asset.Name);
+                MainConsole.Instance.Output("ERROR: Could not delete asset {0} {1}", asset.ID, asset.Name);
             else
-                MainConsole.Instance.OutputFormat("Deleted asset {0} {1}", asset.ID, asset.Name);
+                MainConsole.Instance.Output("Deleted asset {0} {1}", asset.ID, asset.Name);
         }
 
         void HandleDumpAsset(string module, string[] args)
@@ -148,14 +146,14 @@ namespace OpenSim.Server.Handlers.Asset
 
             if (!UUID.TryParse(rawAssetId, out assetId))
             {
-                MainConsole.Instance.OutputFormat("ERROR: {0} is not a valid ID format", rawAssetId);
+                MainConsole.Instance.Output("ERROR: {0} is not a valid ID format", rawAssetId);
                 return;
             }
 
             AssetBase asset = m_AssetService.Get(assetId.ToString());
             if (asset == null)
             {
-                MainConsole.Instance.OutputFormat("ERROR: No asset found with ID {0}", assetId);
+                MainConsole.Instance.Output("ERROR: No asset found with ID {0}", assetId);
                 return;
             }
 
@@ -172,7 +170,7 @@ namespace OpenSim.Server.Handlers.Asset
                 }
             }
 
-            MainConsole.Instance.OutputFormat("Asset dumped to file {0}", fileName);
+            MainConsole.Instance.Output("Asset dumped to file {0}", fileName);
         }
 
         void HandleShowAsset(string module, string[] args)
@@ -193,13 +191,13 @@ namespace OpenSim.Server.Handlers.Asset
 
             int i;
 
-            MainConsole.Instance.OutputFormat("Name: {0}", asset.Name);
-            MainConsole.Instance.OutputFormat("Description: {0}", asset.Description);
-            MainConsole.Instance.OutputFormat("Type: {0} (type number = {1})", (AssetType)asset.Type, asset.Type);
-            MainConsole.Instance.OutputFormat("Content-type: {0}", asset.Metadata.ContentType);
-            MainConsole.Instance.OutputFormat("Size: {0} bytes", asset.Data.Length);
-            MainConsole.Instance.OutputFormat("Temporary: {0}", asset.Temporary ? "yes" : "no");
-            MainConsole.Instance.OutputFormat("Flags: {0}", asset.Metadata.Flags);
+            MainConsole.Instance.Output("Name: {0}", asset.Name);
+            MainConsole.Instance.Output("Description: {0}", asset.Description);
+            MainConsole.Instance.Output("Type: {0} (type number = {1})", (AssetType)asset.Type, asset.Type);
+            MainConsole.Instance.Output("Content-type: {0}", asset.Metadata.ContentType);
+            MainConsole.Instance.Output("Size: {0} bytes", asset.Data.Length);
+            MainConsole.Instance.Output("Temporary: {0}", asset.Temporary ? "yes" : "no");
+            MainConsole.Instance.Output("Flags: {0}", asset.Metadata.Flags);
 
             for (i = 0 ; i < 5 ; i++)
             {

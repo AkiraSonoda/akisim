@@ -43,60 +43,63 @@ namespace OpenSim.Groups
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        public const GroupPowers DefaultEveryonePowers = GroupPowers.AllowSetHome |
-                                                         GroupPowers.Accountable |
-                                                         GroupPowers.JoinChat |
-                                                         GroupPowers.AllowVoiceChat |
-                                                         GroupPowers.ReceiveNotices |
-                                                         GroupPowers.StartProposal |
-                                                         GroupPowers.VoteOnProposal;
+        public const GroupPowers DefaultEveryonePowers =
+            GroupPowers.AllowSetHome |
+            GroupPowers.Accountable |
+            GroupPowers.JoinChat |
+            GroupPowers.AllowVoiceChat |
+            GroupPowers.ReceiveNotices |
+            GroupPowers.StartProposal |
+            GroupPowers.VoteOnProposal;
 
-        public const GroupPowers OwnerPowers = GroupPowers.Accountable |
-                                                GroupPowers.AllowEditLand |
-                                                GroupPowers.AllowFly |
-                                                GroupPowers.AllowLandmark |
-                                                GroupPowers.AllowRez |
-                                                GroupPowers.AllowSetHome |
-                                                GroupPowers.AllowVoiceChat |
-                                                GroupPowers.AssignMember |
-                                                GroupPowers.AssignMemberLimited |
-                                                GroupPowers.ChangeActions |
-                                                GroupPowers.ChangeIdentity |
-                                                GroupPowers.ChangeMedia |
-                                                GroupPowers.ChangeOptions |
-                                                GroupPowers.CreateRole |
-                                                GroupPowers.DeedObject |
-                                                GroupPowers.DeleteRole |
-                                                GroupPowers.Eject |
-                                                GroupPowers.FindPlaces |
-                                                GroupPowers.HostEvent |
-                                                GroupPowers.Invite |
-                                                GroupPowers.JoinChat |
-                                                GroupPowers.LandChangeIdentity |
-                                                GroupPowers.LandDeed |
-                                                GroupPowers.LandDivideJoin |
-                                                GroupPowers.LandEdit |
-                                                GroupPowers.LandEjectAndFreeze |
-                                                GroupPowers.LandGardening |
-                                                GroupPowers.LandManageAllowed |
-                                                GroupPowers.LandManageBanned |
-                                                GroupPowers.LandManagePasses |
-                                                GroupPowers.LandOptions |
-                                                GroupPowers.LandRelease |
-                                                GroupPowers.LandSetSale |
-                                                GroupPowers.ModerateChat |
-                                                GroupPowers.ObjectManipulate |
-                                                GroupPowers.ObjectSetForSale |
-                                                GroupPowers.ReceiveNotices |
-                                                GroupPowers.RemoveMember |
-                                                GroupPowers.ReturnGroupOwned |
-                                                GroupPowers.ReturnGroupSet |
-                                                GroupPowers.ReturnNonGroup |
-                                                GroupPowers.RoleProperties |
-                                                GroupPowers.SendNotices |
-                                                GroupPowers.SetLandingPoint |
-                                                GroupPowers.StartProposal |
-                                                GroupPowers.VoteOnProposal;
+        public const GroupPowers OfficersPowers = DefaultEveryonePowers |
+            GroupPowers.AllowFly |
+            GroupPowers.AllowLandmark |
+            GroupPowers.AllowRez |
+            GroupPowers.AssignMemberLimited |
+            GroupPowers.ChangeIdentity |
+            GroupPowers.ChangeMedia |
+            GroupPowers.ChangeOptions |
+            GroupPowers.DeedObject |
+            GroupPowers.Eject |
+            GroupPowers.FindPlaces |
+            GroupPowers.Invite |
+            GroupPowers.LandChangeIdentity |
+            GroupPowers.LandDeed |
+            GroupPowers.LandDivideJoin |
+            GroupPowers.LandEdit |
+            GroupPowers.AllowEnvironment |
+            GroupPowers.LandEjectAndFreeze |
+            GroupPowers.LandGardening |
+            GroupPowers.LandManageAllowed |
+            GroupPowers.LandManageBanned |
+            GroupPowers.LandManagePasses |
+            GroupPowers.LandOptions |
+            GroupPowers.LandRelease |
+            GroupPowers.LandSetSale |
+            GroupPowers.MemberVisible |
+            GroupPowers.ModerateChat |
+            GroupPowers.ObjectManipulate |
+            GroupPowers.ObjectSetForSale |
+            GroupPowers.ReturnGroupOwned |
+            GroupPowers.ReturnGroupSet |
+            GroupPowers.ReturnNonGroup |
+            GroupPowers.RoleProperties |
+            GroupPowers.SendNotices |
+            GroupPowers.SetLandingPoint;
+
+        public const GroupPowers OwnerPowers = OfficersPowers | 
+            GroupPowers.Accountable |
+            GroupPowers.AllowEditLand |
+            GroupPowers.AssignMember |
+            GroupPowers.ChangeActions |
+            GroupPowers.CreateRole |
+            GroupPowers.DeleteRole |
+            GroupPowers.ExperienceAdmin |
+            GroupPowers.ExperienceCreator |
+            GroupPowers.GroupBanAccess |
+            GroupPowers.HostEvent |
+            GroupPowers.RemoveMember;
 
         #region Daily Cleanup
 
@@ -151,20 +154,25 @@ namespace OpenSim.Groups
             data.Data["ShowInList"] = showInList ? "1" : "0";
             data.Data["AllowPublish"] = allowPublish ? "1" : "0";
             data.Data["MaturePublish"] = maturePublish ? "1" : "0";
-            UUID roleID = UUID.Random();
-            data.Data["OwnerRoleID"] = roleID.ToString();
+            UUID ownerRoleID = UUID.Random();
+            data.Data["OwnerRoleID"] = ownerRoleID.ToString();
 
             if (!m_Database.StoreGroup(data))
                 return UUID.Zero;
 
             // Create Everyone role
-            _AddOrUpdateGroupRole(RequestingAgentID, data.GroupID, UUID.Zero, "Everyone", "Everyone in the group", "Member of " + name, (ulong)DefaultEveryonePowers, true);
+            _AddOrUpdateGroupRole(RequestingAgentID, data.GroupID, UUID.Zero, "Everyone", "Everyone in the group is in the everyone role.", "Member of " + name, (ulong)DefaultEveryonePowers, true);
+
+            // Create Officers role
+            UUID officersRoleID = UUID.Random();
+            _AddOrUpdateGroupRole(RequestingAgentID, data.GroupID, officersRoleID, "Officers", "The officers of the group, with more powers than regular members.", "Officer of " + name, (ulong)OfficersPowers, true);
 
             // Create Owner role
-            _AddOrUpdateGroupRole(RequestingAgentID, data.GroupID, roleID, "Owners", "Owners of the group", "Owner of " + name, (ulong)OwnerPowers, true);
+            _AddOrUpdateGroupRole(RequestingAgentID, data.GroupID, ownerRoleID, "Owners", "Owners of the group", "Owner of " + name, (ulong)OwnerPowers, true);
 
             // Add founder to group
-            _AddAgentToGroup(RequestingAgentID, founderID.ToString(), data.GroupID, roleID);
+            _AddAgentToGroup(RequestingAgentID, founderID.ToString(), data.GroupID, ownerRoleID);
+            _AddAgentToGroup(RequestingAgentID, founderID.ToString(), data.GroupID, officersRoleID);
 
             return data.GroupID;
         }
@@ -223,15 +231,22 @@ namespace OpenSim.Groups
                     if (d.Data.ContainsKey("Location") && d.Data["Location"] != string.Empty)
                         continue;
 
+                    int nmembers = m_Database.MemberCount(d.GroupID);
+                    if(nmembers == 0)
+                        continue;
+
                     DirGroupsReplyData g = new DirGroupsReplyData();
-                    g.groupID = d.GroupID;
 
                     if (d.Data.ContainsKey("Name"))
                         g.groupName = d.Data["Name"];
                     else
+                    {
                         m_log.DebugFormat("[Groups]: Key Name not found");
+                        continue;
+                    }
 
-                    g.members = m_Database.MemberCount(d.GroupID);
+                    g.groupID = d.GroupID;
+                    g.members = nmembers;
 
                     groups.Add(g);
                 }
@@ -368,7 +383,7 @@ namespace OpenSim.Groups
             }
 
             // Can't delete Everyone and Owners roles
-            if (roleID == UUID.Zero)
+            if (roleID.IsZero())
             {
                 m_log.DebugFormat("[Groups]: Attempt at deleting Everyone role from group {0} denied", groupID);
                 return;
@@ -485,7 +500,7 @@ namespace OpenSim.Groups
 
             // check permissions
             bool limited = HasPower(RequestingAgentID, GroupID, GroupPowers.AssignMemberLimited);
-            bool unlimited = HasPower(RequestingAgentID, GroupID, GroupPowers.AssignMember) | IsOwner(RequestingAgentID, GroupID);
+            bool unlimited = HasPower(RequestingAgentID, GroupID, GroupPowers.AssignMember) || IsOwner(RequestingAgentID, GroupID);
             if (!limited && !unlimited)
             {
                 m_log.DebugFormat("[Groups]: ({0}) Attempt at assigning {1} to role {2} denied because of lack of permission", RequestingAgentID, AgentID, RoleID);
@@ -512,7 +527,7 @@ namespace OpenSim.Groups
         public bool RemoveAgentFromGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
             // Don't remove from Everyone role!
-            if (RoleID == UUID.Zero)
+            if (RoleID.IsZero())
                 return false;
 
             // check permissions
@@ -549,7 +564,7 @@ namespace OpenSim.Groups
             if (rdata != null)
                 foreach (RoleMembershipData r in rdata)
                 {
-                    if (r.RoleID != UUID.Zero)
+                    if (!r.RoleID.IsZero())
                     {
                         newRoleID = r.RoleID;
                         break;
@@ -822,7 +837,7 @@ namespace OpenSim.Groups
             _AddAgentToGroupRole(RequestingAgentID, AgentID, GroupID, UUID.Zero);
 
             // Add principal to role, if different from everyone role
-            if (RoleID != UUID.Zero)
+            if (!RoleID.IsZero())
                 _AddAgentToGroupRole(RequestingAgentID, AgentID, GroupID, RoleID);
 
             // Make this the active group
@@ -843,7 +858,7 @@ namespace OpenSim.Groups
                 return false;
             }
 
-            if (!add && data == null) // it deosn't exist, can't update
+            if (!add && data == null) // it doesn't exist, can't update
             {
                 m_log.DebugFormat("[Groups]: Group {0} doesn't exist. Can't update it", groupID);
                 return false;

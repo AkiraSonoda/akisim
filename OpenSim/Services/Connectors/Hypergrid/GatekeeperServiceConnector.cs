@@ -189,7 +189,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
                 using (Bitmap bitmap = new Bitmap(filename))
                 {
                     //m_log.Debug("Size: " + m.PhysicalDimension.Height + "-" + m.PhysicalDimension.Width);
-                    imageData = OpenJPEG.EncodeFromImage(bitmap, true);
+                    imageData = OpenJPEG.EncodeFromImage(bitmap, false);
                 }
 
                 AssetBase ass = new AssetBase(UUID.Random(), "region " + name, (sbyte)AssetType.Texture, regionID.ToString());
@@ -215,7 +215,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
         {
             Hashtable hash = new Hashtable();
             hash["region_uuid"] = regionID.ToString();
-            if (agentID != UUID.Zero)
+            if (!agentID.IsZero())
             {
                 hash["agent_id"] = agentID.ToString();
                 if (agentHomeURI != null)

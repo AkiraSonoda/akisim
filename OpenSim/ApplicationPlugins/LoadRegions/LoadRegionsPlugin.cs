@@ -84,16 +84,27 @@ namespace OpenSim.ApplicationPlugins.LoadRegions
         {
             m_log.Info("[LOADREGIONS]: Load Regions addin being initialised");
 
+            IEstateLoader estateLoader = null;
             IRegionLoader regionLoader;
             if (m_openSim.ConfigSource.Source.Configs["Startup"].GetString("region_info_source", "filesystem") == "filesystem")
             {
                 m_log.Info("[LOAD REGIONS PLUGIN]: Loading region configurations from filesystem");
                 regionLoader = new RegionLoaderFileSystem();
+
+                estateLoader = new EstateLoaderFileSystem(m_openSim);
             }
             else
             {
                 m_log.Info("[LOAD REGIONS PLUGIN]: Loading region configurations from web");
                 regionLoader = new RegionLoaderWebServer();
+            }
+
+            // Load Estates Before Regions!
+            if(estateLoader != null)
+            {
+                estateLoader.SetIniConfigSource(m_openSim.ConfigSource.Source);
+
+                estateLoader.LoadEstates();
             }
 
             regionLoader.SetIniConfigSource(m_openSim.ConfigSource.Source);
@@ -164,7 +175,7 @@ namespace OpenSim.ApplicationPlugins.LoadRegions
 
             foreach (RegionInfo region in regions)
             {
-                if (region.RegionID == UUID.Zero)
+                if (region.RegionID.IsZero())
                 {
                     m_log.ErrorFormat(
                         "[LOAD REGIONS PLUGIN]: Region {0} has invalid UUID {1}",

@@ -80,16 +80,16 @@ namespace OpenSim.Services.InventoryService
             IConfig dbConfig = config.Configs["DatabaseService"];
             if (dbConfig != null)
             {
-                if (dllName == String.Empty)
+                if (dllName.Length == 0)
                     dllName = dbConfig.GetString("StorageProvider", String.Empty);
-                if (connString == String.Empty)
+                if (connString.Length == 0)
                     connString = dbConfig.GetString("ConnectionString", String.Empty);
             }
 
             //
             // We tried, but this doesn't exist. We can't proceed.
             //
-            if (dllName == String.Empty)
+            if (dllName.Length == 0)
                 throw new Exception("No StorageProvider configured");
 
             m_Database = LoadPlugin<IXInventoryData>(dllName,
@@ -153,6 +153,8 @@ namespace OpenSim.Services.InventoryService
                 CreateFolder(principalID, rootFolder.ID, (int)FolderType.Texture, "Textures");
             if (!Array.Exists(sysFolders, delegate(XInventoryFolder f) { if (f.type == (int)FolderType.Trash) return true; return false; }))
                 CreateFolder(principalID, rootFolder.ID, (int)FolderType.Trash, "Trash");
+            if (!Array.Exists(sysFolders, delegate (XInventoryFolder f) { if (f.type == (int)FolderType.Settings) return true; return false; }))
+                CreateFolder(principalID, rootFolder.ID, (int)FolderType.Settings, "Settings");
 
             return result;
         }
@@ -454,7 +456,8 @@ namespace OpenSim.Services.InventoryService
             //
             foreach (UUID id in folderIDs)
             {
-                if (onlyIfTrash && !ParentIsTrash(id))
+                //if (onlyIfTrash && !ParentIsTrash(id))
+                if (onlyIfTrash && !ParentIsTrashOrLost(id))
                     continue;
                 //m_log.InfoFormat("[XINVENTORY SERVICE]: Delete folder {0}", id);
                 InventoryFolderBase f = new InventoryFolderBase();
@@ -476,7 +479,8 @@ namespace OpenSim.Services.InventoryService
             if (!m_AllowDelete)
                 return false;
 
-            if (onlyIfTrash && !ParentIsTrash(folder.ID))
+            //if (onlyIfTrash && !ParentIsTrash(folder.ID))
+            if (onlyIfTrash && !ParentIsTrashOrLost(folder.ID))
                 return false;
 
             XInventoryFolder[] subFolders = m_Database.GetFolders(
@@ -764,7 +768,7 @@ namespace OpenSim.Services.InventoryService
 
             UUID parentFolder = folder[0].parentFolderID;
 
-            while (parentFolder != UUID.Zero)
+            while (!parentFolder.IsZero())
             {
                 XInventoryFolder[] parent = m_Database.GetFolders(new string[] {"folderID"}, new string[] {parentFolder.ToString()});
                 if (parent.Length < 1)
@@ -779,5 +783,33 @@ namespace OpenSim.Services.InventoryService
             }
             return false;
         }
+
+        private bool ParentIsTrashOrLost(UUID folderID)
+        {
+            XInventoryFolder[] folder = m_Database.GetFolders(new string[] { "folderID" }, new string[] { folderID.ToString() });
+            if (folder.Length < 1)
+                return false;
+
+            if (folder[0].type == (int)FolderType.Trash || folder[0].type == (int)FolderType.LostAndFound)
+                return true;
+
+            UUID parentFolder = folder[0].parentFolderID;
+
+            while (!parentFolder.IsZero())
+            {
+                XInventoryFolder[] parent = m_Database.GetFolders(new string[] { "folderID" }, new string[] { parentFolder.ToString() });
+                if (parent.Length < 1)
+                    return false;
+
+                if (parent[0].type == (int)FolderType.Trash || folder[0].type == (int)FolderType.LostAndFound)
+                    return true;
+                if (parent[0].type == (int)FolderType.Root)
+                    return false;
+
+                parentFolder = parent[0].parentFolderID;
+            }
+            return false;
+        }
+
     }
 }

@@ -178,7 +178,6 @@ namespace OpenSim.Region.CoreModules.World.Objects.Commands
             dispList.AddRow("Restrict pushing", rs.RestrictPushing);
             dispList.AddRow("Fixed sun", rs.FixedSun);
             dispList.AddRow("Sun position", rs.SunPosition);
-            dispList.AddRow("Sun vector", rs.SunVector);
             dispList.AddRow("Use estate sun", rs.UseEstateSun);
             dispList.AddRow("Telehub UUID", rs.TelehubObject);
             dispList.AddRow("Terrain lower limit", string.Format("{0} m", rs.TerrainLowerLimit));
@@ -202,7 +201,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.Commands
 
             if (args.Length != 4)
             {
-                MainConsole.Instance.OutputFormat("Usage: region set <param> <value>");
+                MainConsole.Instance.Output("Usage: region set <param> <value>");
                 return;
             }
 
@@ -224,7 +223,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.Commands
 
                 if (newValue > ri.AgentCapacity)
                 {
-                    MainConsole.Instance.OutputFormat(
+                    MainConsole.Instance.Output(
                         "Cannot set {0} to {1} in {2} as max-agent-limit is {3}", "agent-limit",
                         newValue, m_scene.Name, ri.AgentCapacity);
                 }
@@ -232,7 +231,7 @@ namespace OpenSim.Region.CoreModules.World.Objects.Commands
                 {
                     rs.AgentLimit = newValue;
 
-                    MainConsole.Instance.OutputFormat(
+                    MainConsole.Instance.Output(
                         "{0} set to {1} in {2}", "agent-limit", newValue, m_scene.Name);
                 }
 
@@ -247,15 +246,15 @@ namespace OpenSim.Region.CoreModules.World.Objects.Commands
 
                 ri.AgentCapacity = newValue;
 
-                MainConsole.Instance.OutputFormat(
-                    "{0} set to {1} in {2}", "max-agent-limit", newValue, m_scene.Name);
+                MainConsole.Instance.Output(
+                    "max-agent-limit set to {0} in {1}", newValue, m_scene.Name);
 
                 if (ri.AgentCapacity < rs.AgentLimit)
                 {
                     rs.AgentLimit = ri.AgentCapacity;
 
-                    MainConsole.Instance.OutputFormat(
-                        "Reducing {0} to {1} in {2}", "agent-limit", rs.AgentLimit, m_scene.Name);
+                    MainConsole.Instance.Output(
+                        "agent-limit set to {0} in {1}", rs.AgentLimit, m_scene.Name);
                 }
 
                 rs.Save();

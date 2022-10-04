@@ -165,7 +165,7 @@ namespace OpenSim.Groups
 
         public ExtendedGroupRecord GetGroupRecord(string RequestingAgentID, UUID GroupID, string GroupName)
         {
-            if (GroupID != UUID.Zero)
+            if (!GroupID.IsZero())
                 return m_GroupsService.GetGroupRecord(RequestingAgentID, GroupID);
             else if (GroupName != null)
                 return m_GroupsService.GetGroupRecord(RequestingAgentID, GroupName);
@@ -173,9 +173,9 @@ namespace OpenSim.Groups
             return null;
         }
 
-        public List<DirGroupsReplyData> FindGroups(string RequestingAgentID, string search)
+        public List<DirGroupsReplyData> FindGroups(string RequestingAgentIDstr, string search)
         {
-            return m_GroupsService.FindGroups(RequestingAgentID, search);
+            return m_GroupsService.FindGroups(RequestingAgentIDstr, search);
         }
 
         public List<GroupMembersData> GetGroupMembers(string RequestingAgentID, UUID GroupID)

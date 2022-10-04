@@ -39,7 +39,7 @@ using OpenMetaverse;
 using Mono.Addins;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework.Servers;
-
+using OpenMetaverse.StructuredData; // LitJson is hidden on this
 
 [assembly:AddinRoot("Robust", OpenSim.VersionInfo.VersionNumber)]
 namespace OpenSim.Server.Base
@@ -204,8 +204,7 @@ namespace OpenSim.Server.Base
                 xw.Flush();
 
                 ms.Seek(0, SeekOrigin.Begin);
-                byte[] ret = ms.GetBuffer();
-                Array.Resize(ref ret, (int)ms.Length);
+                byte[] ret = ms.ToArray();
 
                 return ret;
             }
@@ -220,12 +219,12 @@ namespace OpenSim.Server.Base
         public static T LoadPlugin<T> (string dllName, Object[] args) where T:class
         {
             if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-				m_log.DebugFormat ("Loading: {0}.", dllName);
-			}
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+                m_log.DebugFormat ("Loading: {0}.", dllName);
+            }
 
             // This is good to debug configuration problems
-            //if (dllName == string.Empty)
+            //if (dllName.Length == 0)
             //    Util.PrintCallStack();
 
             string className = String.Empty;
@@ -233,8 +232,9 @@ namespace OpenSim.Server.Base
             // The path for a dynamic plugin will contain ":" on Windows
             string[] parts = dllName.Split (new char[] {':'});
 
-            if (parts [0].Length > 1)
+            if (parts.Length < 3)
             {
+                // Linux. There will be ':' but the one we're looking for
                 dllName = parts [0];
                 if (parts.Length > 1)
                     className = parts[1];
@@ -271,10 +271,9 @@ namespace OpenSim.Server.Base
         /// <returns></returns>
         public static T LoadPlugin<T>(string dllName, string className, Object[] args) where T:class
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             string interfaceName = typeof(T).ToString();
 
@@ -337,53 +336,62 @@ namespace OpenSim.Server.Base
 
         public static Dictionary<string, object> ParseQueryString(string query)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            Dictionary<string, object> result = new Dictionary<string, object>();
             string[] terms = query.Split(new char[] {'&'});
 
-            if (terms.Length == 0)
-                return result;
+            int nterms = terms.Length;
+            if (nterms == 0)
+                return new Dictionary<string, object>();
 
-            foreach (string t in terms)
+            Dictionary<string, object> result = new Dictionary<string, object>(nterms);
+            string name;
+
+            for(int i = 0; i < nterms; ++i)
             {
-                string[] elems = t.Split(new char[] {'='});
+                string[] elems = terms[i].Split(new char[] {'='});
+
                 if (elems.Length == 0)
                     continue;
 
-                string name = System.Web.HttpUtility.UrlDecode(elems[0]);
-                string value = String.Empty;
+                if(String.IsNullOrWhiteSpace(elems[0]))
+                    continue;
 
-                if (elems.Length > 1)
-                    value = System.Web.HttpUtility.UrlDecode(elems[1]);
+                name = System.Web.HttpUtility.UrlDecode(elems[0]);
 
                 if (name.EndsWith("[]"))
                 {
-                    string cleanName = name.Substring(0, name.Length - 2);
-                    if (result.ContainsKey(cleanName))
+                    name = name.Substring(0, name.Length - 2);
+                    if(String.IsNullOrWhiteSpace(name))
+                        continue;
+                    if (result.ContainsKey(name))
                     {
-                        if (!(result[cleanName] is List<string>))
+                        if (!(result[name] is List<string>))
                             continue;
 
-                        List<string> l = (List<string>)result[cleanName];
-
-                        l.Add(value);
+                        List<string> l = (List<string>)result[name];
+                        if (elems.Length > 1 && !String.IsNullOrWhiteSpace(elems[1]))
+                            l.Add(System.Web.HttpUtility.UrlDecode(elems[1]));
+                        else
+                            l.Add(String.Empty);
                     }
                     else
                     {
                         List<string> newList = new List<string>();
-
-                        newList.Add(value);
-
-                        result[cleanName] = newList;
+                        if (elems.Length > 1 && !String.IsNullOrWhiteSpace(elems[1]))
+                            newList.Add(System.Web.HttpUtility.UrlDecode(elems[1]));
+                        else
+                            newList.Add(String.Empty);
+                        result[name] = newList;
                     }
                 }
                 else
                 {
                     if (!result.ContainsKey(name))
-                        result[name] = value;
+                    {
+                        if (elems.Length > 1 && !String.IsNullOrWhiteSpace(elems[1]))
+                            result[name] = System.Web.HttpUtility.UrlDecode(elems[1]);
+                        else
+                            result[name] = String.Empty;
+                    }
                 }
             }
 
@@ -392,59 +400,75 @@ namespace OpenSim.Server.Base
 
         public static string BuildQueryString(Dictionary<string, object> data)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            // this is not conform to html url encoding
+            // can only be used on Body of POST or PUT
+            StringBuilder sb = new StringBuilder(4096);
 
-            string qstring = String.Empty;
-
-            string part;
+            string pvalue;
 
             foreach (KeyValuePair<string, object> kvp in data)
             {
                 if (kvp.Value is List<string>)
                 {
                     List<string> l = (List<String>)kvp.Value;
-
-                    foreach (string s in l)
+                    int llen = l.Count;
+                    string nkey = System.Web.HttpUtility.UrlEncode(kvp.Key);
+                    for(int i = 0; i < llen; ++i)
                     {
-                        part = System.Web.HttpUtility.UrlEncode(kvp.Key) +
-                                "[]=" + System.Web.HttpUtility.UrlEncode(s);
-
-                        if (qstring != String.Empty)
-                            qstring += "&";
-
-                        qstring += part;
+                        if (sb.Length != 0)
+                            sb.Append("&");
+                        sb.Append(nkey);
+                        sb.Append("[]=");
+                        sb.Append(System.Web.HttpUtility.UrlEncode(l[i]));
                     }
+                }
+                else if(kvp.Value is Dictionary<string, object>)
+                {
+                    // encode complex structures as JSON
+                    // needed for estate bans with the encoding used on xml
+                    // encode can be here because object does contain the structure information
+                    // but decode needs to be on estateSettings (or other user)
+                    string js;
+                    try
+                    {
+                        // bypass libovm, we dont need even more useless high level maps
+                        // this should only be called once.. but no problem, i hope
+                        // (other uses may need more..)
+                        LitJson.JsonMapper.RegisterExporter<UUID>((uuid, writer) => writer.Write(uuid.ToString()) );
+                        js = LitJson.JsonMapper.ToJson(kvp.Value);
+                    }
+ //                   catch(Exception e)
+                    catch
+                    {
+                        continue;
+                    }
+                    if (sb.Length != 0)
+                        sb.Append("&");
+                    sb.Append(System.Web.HttpUtility.UrlEncode(kvp.Key));
+                    sb.Append("=");
+                    sb.Append(System.Web.HttpUtility.UrlEncode(js));
                 }
                 else
                 {
-                    if (kvp.Value.ToString() != String.Empty)
+                    if (sb.Length != 0)
+                        sb.Append("&");
+                    sb.Append(System.Web.HttpUtility.UrlEncode(kvp.Key));
+ 
+                    pvalue = kvp.Value.ToString();
+                    if (!String.IsNullOrEmpty(pvalue))
                     {
-                        part = System.Web.HttpUtility.UrlEncode(kvp.Key) +
-                                "=" + System.Web.HttpUtility.UrlEncode(kvp.Value.ToString());
+                        sb.Append("=");
+                        sb.Append(System.Web.HttpUtility.UrlEncode(pvalue));
                     }
-                    else
-                    {
-                        part = System.Web.HttpUtility.UrlEncode(kvp.Key);
-                    }
-
-                    if (qstring != String.Empty)
-                        qstring += "&";
-
-                    qstring += part;
                 }
             }
 
-            return qstring;
+            return sb.ToString();
         }
+
 
         public static string BuildXmlResponse(Dictionary<string, object> data)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             XmlDocument doc = new XmlDocument();
 
             XmlNode xmlnode = doc.CreateNode(XmlNodeType.XmlDeclaration,
@@ -452,8 +476,7 @@ namespace OpenSim.Server.Base
 
             doc.AppendChild(xmlnode);
 
-            XmlElement rootElement = doc.CreateElement("", "ServerResponse",
-                    "");
+            XmlElement rootElement = doc.CreateElement("", "ServerResponse","");
 
             doc.AppendChild(rootElement);
 
@@ -464,10 +487,6 @@ namespace OpenSim.Server.Base
 
         private static void BuildXmlData(XmlElement parent, Dictionary<string, object> data)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             foreach (KeyValuePair<string, object> kvp in data)
             {
                 if (kvp.Value == null)
@@ -496,65 +515,89 @@ namespace OpenSim.Server.Base
             }
         }
 
-        public static Dictionary<string, object> ParseXmlResponse(string data)
+        private static Dictionary<string, object> ScanXmlResponse(XmlReader xr)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-            //m_log.DebugFormat("[XXX]: received xml string: {0}", data);
-
             Dictionary<string, object> ret = new Dictionary<string, object>();
-
-            XmlDocument doc = new XmlDocument();
-
-            doc.LoadXml(data);
-
-            XmlNodeList rootL = doc.GetElementsByTagName("ServerResponse");
-
-            if (rootL.Count != 1)
-                return ret;
-
-            XmlNode rootNode = rootL[0];
-
-            ret = ParseElement(rootNode);
-
+            xr.Read();
+            while (!xr.EOF && xr.NodeType != XmlNodeType.EndElement)
+            {
+                if (xr.IsStartElement())
+                {
+                    string type = xr.GetAttribute("type");
+                    if (type != "List")
+                    {
+                        if (xr.IsEmptyElement)
+                        {
+                            ret[XmlConvert.DecodeName(xr.Name)] = "";
+                            xr.Read();
+                        }
+                        else
+                            ret[XmlConvert.DecodeName(xr.Name)] = xr.ReadElementContentAsString();
+                    }
+                    else
+                    {
+                        string name = XmlConvert.DecodeName(xr.Name);
+                        if (xr.IsEmptyElement)
+                            ret[name] = new Dictionary<string, object>();
+                        else
+                            ret[name] = ScanXmlResponse(xr);
+                        xr.Read();
+                    }
+                }
+                else
+                    xr.Read();
+            }
             return ret;
         }
 
-        private static Dictionary<string, object> ParseElement(XmlNode element)
+        public static Dictionary<string, object> ParseXmlResponse(string data)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            //m_log.DebugFormat("[XXX]: received xml string: {0}", data);
 
-            Dictionary<string, object> ret = new Dictionary<string, object>();
-
-            XmlNodeList partL = element.ChildNodes;
-
-            foreach (XmlNode part in partL)
+            try
             {
-                XmlNode type = part.Attributes.GetNamedItem("type");
-                if (type == null || type.Value != "List")
+                XmlReaderSettings xset = new XmlReaderSettings() { IgnoreWhitespace = true, IgnoreComments = true, ConformanceLevel = ConformanceLevel.Fragment, CloseInput = true };
+                XmlParserContext xpc = new XmlParserContext(null, null, null, XmlSpace.None);
+                xpc.Encoding = Util.UTF8NoBomEncoding;
+                using (XmlReader xr = XmlReader.Create(new StringReader(data), xset, xpc))
                 {
-                    ret[XmlConvert.DecodeName(part.Name)] = part.InnerText;
-                }
-                else
-                {
-                    ret[XmlConvert.DecodeName(part.Name)] = ParseElement(part);
+                     if(!xr.ReadToFollowing("ServerResponse"))
+                            return new Dictionary<string, object>();
+                    return ScanXmlResponse(xr);
                 }
             }
+            catch (Exception e)
+            {
+                m_log.DebugFormat("[serverUtils.ParseXmlResponse]: failed error: {0}\n --string:\n{1}\n", e.Message, data);
+            }
+            return new Dictionary<string, object>();
+        }
 
-            return ret;
+        public static Dictionary<string, object> ParseXmlResponse(Stream src)
+        {
+            //m_log.DebugFormat("[XXX]: received xml string: {0}", data);
+
+            try
+            {
+                XmlReaderSettings xset = new XmlReaderSettings() { IgnoreWhitespace = true, IgnoreComments = true, ConformanceLevel = ConformanceLevel.Fragment, CloseInput = true };
+                XmlParserContext xpc = new XmlParserContext(null, null, null, XmlSpace.None);
+                xpc.Encoding = Util.UTF8NoBomEncoding;
+                using (XmlReader xr = XmlReader.Create(src, xset, xpc))
+                {
+                    if (!xr.ReadToFollowing("ServerResponse"))
+                        return new Dictionary<string, object>();
+                    return ScanXmlResponse(xr);
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.DebugFormat("[serverUtils.ParseXmlResponse]: failed error: {0}", e.Message);
+            }
+            return new Dictionary<string, object>();
         }
 
         public static IConfig GetConfig(string configFile, string configName)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-
             IConfig config;
 
             if (File.Exists(configFile))
@@ -577,9 +620,12 @@ namespace OpenSim.Server.Base
             // Try to read it
             try
             {
-                XmlReader r = XmlReader.Create(url);
-                IConfigSource cs = new XmlConfigSource(r);
-                source.Merge(cs);
+                IConfigSource cs;
+                using( XmlReader r = XmlReader.Create(url))
+                {
+                    cs = new XmlConfigSource(r);
+                    source.Merge(cs);
+                }
             }
             catch (Exception e)
             {

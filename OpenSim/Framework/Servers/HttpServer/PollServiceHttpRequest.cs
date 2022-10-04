@@ -28,9 +28,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
 using System.Reflection;
 using System.Text;
-using HttpServer;
+using OSHttpServer;
 using log4net;
 using OpenMetaverse;
 
@@ -41,104 +42,210 @@ namespace OpenSim.Framework.Servers.HttpServer
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public readonly PollServiceEventArgs PollServiceArgs;
-        public readonly IHttpClientContext HttpContext;
         public readonly IHttpRequest Request;
         public readonly int RequestTime;
         public readonly UUID RequestID;
-        public int  contextHash;
 
-        private void GenContextHash()
-        {
-            Random rnd = new Random();
-            contextHash = 0;
-            if (Request.Headers["remote_addr"] != null)
-                contextHash = (Request.Headers["remote_addr"]).GetHashCode() << 16;
-            else
-                contextHash = rnd.Next() << 16;
-            if (Request.Headers["remote_port"] != null)
-            {
-                string[] strPorts = Request.Headers["remote_port"].Split(new char[] { ',' });
-                contextHash += Int32.Parse(strPorts[0]);
-            }
-            else
-                contextHash += rnd.Next() & 0xffff;
-        }
-
-        public PollServiceHttpRequest(
-            PollServiceEventArgs pPollServiceArgs, IHttpClientContext pHttpContext, IHttpRequest pRequest)
+        public PollServiceHttpRequest(PollServiceEventArgs pPollServiceArgs, IHttpRequest pRequest)
         {
             PollServiceArgs = pPollServiceArgs;
-            HttpContext = pHttpContext;
             Request = pRequest;
             RequestTime = System.Environment.TickCount;
             RequestID = UUID.Random();
-            GenContextHash();
         }
 
-        internal void DoHTTPGruntWork(BaseHttpServer server, Hashtable responsedata)
+        internal void DoHTTPGruntWork(Hashtable responsedata)
         {
-            OSHttpResponse response
-                = new OSHttpResponse(new HttpResponse(HttpContext, Request), HttpContext);
+            if (Request.Body.CanRead)
+                Request.Body.Dispose();
 
-            byte[] buffer = server.DoHTTPGruntWork(responsedata, response);
+            if(responsedata.Contains("h"))
+            {
+                OSHttpResponse r = (OSHttpResponse)responsedata["h"];
+                try
+                {
+                    r.Send();
+                }
+                catch { }
+                PollServiceArgs.RequestsHandled++;
+                return;
+            }
 
-            response.SendChunked = false;
-            response.ContentLength64 = buffer.Length;
-            response.ContentEncoding = Encoding.UTF8;
-            response.ReuseContext = false;
+            OSHttpResponse response = new OSHttpResponse(new HttpResponse(Request));
+
+            if (responsedata == null)
+            {
+                SendNoContentError(response);
+                return;
+            }
+
+            int responsecode = 200;
+            string responseString = String.Empty;
+            string contentType;
+            byte[] buffer = null;
+            int rangeStart = 0;
+            int rangeLen = -1;
 
             try
             {
-                response.OutputStream.Write(buffer, 0, buffer.Length);
-                response.OutputStream.Flush();
+                //m_log.Info("[BASE HTTP SERVER]: Doing HTTP Grunt work with response");
+                if(responsedata["int_response_code"] != null)
+                    responsecode = (int)responsedata["int_response_code"];
+
+                if (responsedata["bin_response_data"] != null)
+                {
+                    buffer = (byte[])responsedata["bin_response_data"];
+                    responsedata["bin_response_data"] = null;
+
+                    if (responsedata["bin_start"] != null)
+                        rangeStart = (int)responsedata["bin_start"];
+
+                    if (responsedata["int_bytes"] != null)
+                        rangeLen = (int)responsedata["int_bytes"];
+                }
+                else
+                    responseString = (string)responsedata["str_response_string"];
+
+                contentType = (string)responsedata["content_type"];
+                if (responseString == null)
+                    responseString = String.Empty;
+            }
+            catch
+            {
+                SendNoContentError(response);
+                return;
+            }
+
+            if (responsecode == (int)HttpStatusCode.Moved)
+            {
+                response.Redirect((string)responsedata["str_redirect_location"], HttpStatusCode.Moved);
+                response.KeepAlive = false;
+                PollServiceArgs.RequestsHandled++;
                 response.Send();
+                return;
+            }
+
+            response.StatusCode = responsecode;
+
+            if (responsedata.ContainsKey("http_protocol_version"))
+                response.ProtocolVersion = (string)responsedata["http_protocol_version"];
+
+            if (responsedata.ContainsKey("keepalive"))
+                response.KeepAlive = (bool)responsedata["keepalive"];
+
+            if (responsedata.ContainsKey("keepaliveTimeout"))
+                response.KeepAliveTimeout = (int)responsedata["keepaliveTimeout"];
+
+            if (responsedata.ContainsKey("error_status_text"))
+                response.StatusDescription = (string)responsedata["error_status_text"];
+
+            // Cross-Origin Resource Sharing with simple requests
+            if (responsedata.ContainsKey("access_control_allow_origin"))
+                response.AddHeader("Access-Control-Allow-Origin", (string)responsedata["access_control_allow_origin"]);
+
+            if (string.IsNullOrEmpty(contentType))
+                response.AddHeader("Content-Type", "text/html");
+            else
+                response.AddHeader("Content-Type", contentType);
+
+            if (responsedata.ContainsKey("headers"))
+            {
+                Hashtable headerdata = (Hashtable)responsedata["headers"];
+
+                foreach (string header in headerdata.Keys)
+                    response.AddHeader(header, headerdata[header].ToString());
+            }
+
+            if(buffer == null)
+            {
+                if (contentType != null && (!(contentType.Contains("image")
+                    || contentType.Contains("x-shockwave-flash")
+                    || contentType.Contains("application/x-oar")
+                    || contentType.Contains("application/vnd.ll.mesh"))))
+                {
+                    // Text
+                    buffer = Encoding.UTF8.GetBytes(responseString);
+                }
+                else
+                {
+                    // Binary!
+                    buffer = Convert.FromBase64String(responseString);
+                }
+                response.ContentEncoding = Encoding.UTF8;
+            }
+
+            if (rangeStart < 0 || rangeStart > buffer.Length)
+                rangeStart = 0;
+
+            if (rangeLen < 0)
+                rangeLen = buffer.Length;
+            else if (rangeLen + rangeStart > buffer.Length)
+                rangeLen = buffer.Length - rangeStart;
+
+            response.ContentLength64 = rangeLen;
+
+            try
+            {
+                if(rangeLen > 0)
+                {
+                    response.RawBufferStart = rangeStart;
+                    response.RawBufferLen = rangeLen;
+                    response.RawBuffer = buffer;
+                    //response.OutputStream.Write(buffer, rangeStart, rangeLen);
+                }
+
                 buffer = null;
+
+                response.Send();
             }
             catch (Exception ex)
             {
-                m_log.Warn("[POLL SERVICE WORKER THREAD]: Error ", ex);
+                if(ex is System.Net.Sockets.SocketException)
+                {
+                    // only mute connection reset by peer so we are not totally blind for now
+                    if(((System.Net.Sockets.SocketException)ex).SocketErrorCode != System.Net.Sockets.SocketError.ConnectionReset)
+                         m_log.Warn("[POLL SERVICE WORKER THREAD]: Error ", ex);
+                }
+                else
+                    m_log.Warn("[POLL SERVICE WORKER THREAD]: Error ", ex);
             }
 
             PollServiceArgs.RequestsHandled++;
         }
 
-        internal void DoHTTPstop(BaseHttpServer server)
+        internal void SendNoContentError(OSHttpResponse response)
         {
-            OSHttpResponse response
-                = new OSHttpResponse(new HttpResponse(HttpContext, Request), HttpContext);
-
-            response.SendChunked = false;
             response.ContentLength64 = 0;
             response.ContentEncoding = Encoding.UTF8;
-            response.ReuseContext = false;
+            response.StatusCode = 500;
+
+            try
+            {
+                response.Send();
+            }
+            catch { }
+            return;
+        }
+
+        internal void DoHTTPstop()
+        {
+            OSHttpResponse response = new OSHttpResponse(new HttpResponse(Request));
+
+            if(Request.Body.CanRead)
+                Request.Body.Dispose();
+
+            response.ContentLength64 = 0;
+            response.ContentEncoding = Encoding.UTF8;
             response.KeepAlive = false;
-            response.SendChunked = false;
             response.StatusCode = 503;
 
             try
             {
-                response.OutputStream.Flush();
                 response.Send();
             }
-            catch (Exception e)
+            catch
             {
             }
-        }
-    }
-
-    class PollServiceHttpRequestComparer : IEqualityComparer<PollServiceHttpRequest>
-    {
-        public bool Equals(PollServiceHttpRequest b1, PollServiceHttpRequest b2)
-        {
-            if (b1.contextHash != b2.contextHash)
-                return false;
-            bool b = Object.ReferenceEquals(b1.HttpContext, b2.HttpContext);
-            return b;
-        }
-
-        public int GetHashCode(PollServiceHttpRequest b2)
-        {
-            return (int)b2.contextHash;
         }
     }
 }

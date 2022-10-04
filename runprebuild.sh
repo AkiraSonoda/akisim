@@ -5,7 +5,6 @@ case "$1" in
   'clean')
 
     mono bin/Prebuild.exe /clean
-
   ;;
 
 
@@ -16,17 +15,13 @@ case "$1" in
   ;;
 
 
-  'vs2010')
-  
-    mono bin/Prebuild.exe /target vs2010
-  
-  ;;
-
   *)
 
     mono bin/Prebuild.exe /target nant
-    mono bin/Prebuild.exe /target vs2010
+    mono bin/Prebuild.exe /target vs2015
 
   ;;
 
 esac
+    rm -fr bin/addin-db-002
+

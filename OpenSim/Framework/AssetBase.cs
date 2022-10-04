@@ -34,12 +34,13 @@ using OpenMetaverse;
 namespace OpenSim.Framework
 {
     [Flags]
+    // this enum is stuck, can not be changed or will break compatibilty with any version older than that change
     public enum AssetFlags : int
     {
         Normal = 0,         // Immutable asset
         Maptile = 1,        // What it says
         Rewritable = 2,     // Content can be rewritten
-        Collectable = 4     // Can be GC'ed after some time
+        Collectable = 4,     // Can be GC'ed after some time
     }
 
     /// <summary>
@@ -48,7 +49,7 @@ namespace OpenSim.Framework
     [Serializable]
     public class AssetBase
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public static readonly int MAX_ASSET_NAME = 64;
         public static readonly int MAX_ASSET_DESC = 64;
@@ -73,17 +74,19 @@ namespace OpenSim.Framework
             m_metadata.FullID = UUID.Zero;
             m_metadata.ID = UUID.Zero.ToString();
             m_metadata.Type = (sbyte)AssetType.Unknown;
-            m_metadata.CreatorID = String.Empty;
+            m_metadata.CreatorID = string.Empty;
         }
 
         public AssetBase(UUID assetID, string name, sbyte assetType, string creatorID)
         {
+            /*
             if (assetType == (sbyte)AssetType.Unknown)
             {
                 System.Diagnostics.StackTrace trace = new System.Diagnostics.StackTrace(true);
                 m_log.ErrorFormat("[ASSETBASE]: Creating asset '{0}' ({1}) with an unknown asset type\n{2}",
                     name, assetID, trace.ToString());
             }
+            */
 
             m_metadata = new AssetMetadata();
             m_metadata.FullID = assetID;
@@ -94,12 +97,14 @@ namespace OpenSim.Framework
 
         public AssetBase(string assetID, string name, sbyte assetType, string creatorID)
         {
+            /*
             if (assetType == (sbyte)AssetType.Unknown)
             {
                 System.Diagnostics.StackTrace trace = new System.Diagnostics.StackTrace(true);
                 m_log.ErrorFormat("[ASSETBASE]: Creating asset '{0}' ({1}) with an unknown asset type\n{2}",
                     name, assetID, trace.ToString());
             }
+            */
 
             m_metadata = new AssetMetadata();
             m_metadata.ID = assetID;
@@ -254,8 +259,8 @@ namespace OpenSim.Framework
     {
         private UUID m_fullid;
         private string m_id;
-        private string m_name = String.Empty;
-        private string m_description = String.Empty;
+        private string m_name = string.Empty;
+        private string m_description = string.Empty;
         private DateTime m_creation_date;
         private sbyte m_type = (sbyte)AssetType.Unknown;
         private string m_content_type;
@@ -277,7 +282,7 @@ namespace OpenSim.Framework
             //set { m_fullid = new UUID(value); }
             get
             {
-                if (String.IsNullOrEmpty(m_id))
+                if (string.IsNullOrEmpty(m_id))
                     m_id = m_fullid.ToString();
 
                 return m_id;
@@ -285,11 +290,10 @@ namespace OpenSim.Framework
 
             set
             {
-                UUID uuid = UUID.Zero;
-                if (UUID.TryParse(value, out uuid))
+                if (UUID.TryParse(value, out UUID uuid))
                 {
                     m_fullid = uuid;
-                    m_id = m_fullid.ToString();
+                    m_id = uuid.ToString();
                 }
                 else
                     m_id = value;
@@ -324,7 +328,7 @@ namespace OpenSim.Framework
         {
             get
             {
-                if (!String.IsNullOrEmpty(m_content_type))
+                if (!string.IsNullOrEmpty(m_content_type))
                     return m_content_type;
                 else
                     return SLUtil.SLAssetTypeToContentType(m_type);
@@ -333,7 +337,7 @@ namespace OpenSim.Framework
             {
                 m_content_type = value;
 
-                sbyte type = (sbyte)SLUtil.ContentTypeToSLAssetType(value);
+                sbyte type = SLUtil.ContentTypeToSLAssetType(value);
                 if (type != -1)
                     m_type = type;
             }

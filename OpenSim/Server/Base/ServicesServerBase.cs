@@ -61,9 +61,6 @@ namespace OpenSim.Server.Base
         //
         private bool m_Running = true;
 
-        private static Mono.Unix.UnixSignal[] signals;
-
-
         // Handle all the automagical stuff
         //
         public ServicesServerBase(string prompt, string[] args) : base()
@@ -146,23 +143,15 @@ namespace OpenSim.Server.Base
                 consoleType = startupConfig.GetString("console", consoleType);
 
             if (consoleType == "basic")
-            {
                 MainConsole.Instance = new CommandConsole(prompt);
-            }
             else if (consoleType == "rest")
-            {
                 MainConsole.Instance = new RemoteConsole(prompt);
-                ((RemoteConsole)MainConsole.Instance).ReadConfig(Config);
-            }
             else if (consoleType == "mock")
-            {
                 MainConsole.Instance = new MockConsole();
-            }
             else if (consoleType == "local")
-            {
                 MainConsole.Instance = new LocalConsole(prompt, startupConfig);
-            }
 
+            MainConsole.Instance.ReadConfig(Config);
             m_console = MainConsole.Instance;
 
             if (logConfig != null)
@@ -175,8 +164,8 @@ namespace OpenSim.Server.Base
                 XmlConfigurator.Configure();
             }
 
-            LogEnvironmentInformation();
             RegisterCommonAppenders(startupConfig);
+            LogEnvironmentInformation();
 
             if (startupConfig.GetString("PIDFile", String.Empty) != String.Empty)
             {
@@ -185,39 +174,6 @@ namespace OpenSim.Server.Base
 
             RegisterCommonCommands();
             RegisterCommonComponents(Config);
-
-            Thread signal_thread = new Thread (delegate ()
-            {
-                while (true)
-                {
-                    // Wait for a signal to be delivered
-                    int index = Mono.Unix.UnixSignal.WaitAny (signals, -1);
-
-                    //Mono.Unix.Native.Signum signal = signals [index].Signum;
-                    ShutdownSpecific();
-                    m_Running = false;
-                    Environment.Exit(0);
-                }
-            });
-
-            if(!Util.IsWindows())
-            {
-                try
-                {
-                    // linux mac os specifics
-                    signals = new Mono.Unix.UnixSignal[]
-                    {
-                        new Mono.Unix.UnixSignal(Mono.Unix.Native.Signum.SIGTERM)
-                    };
-                    signal_thread.Start();
-                }
-                catch (Exception e)
-                {
-                    m_log.Info("Could not set up UNIX signal handlers. SIGTERM will not");
-                    m_log.InfoFormat("shut down gracefully: {0}", e.Message);
-                    m_log.Debug("Exception was: ", e);
-                }
-            }
 
             // Allow derived classes to perform initialization that
             // needs to be done after the console has opened
@@ -228,6 +184,8 @@ namespace OpenSim.Server.Base
         {
             get { return m_Running; }
         }
+
+        private bool DoneShutdown = false;
 
         public virtual int Run()
         {
@@ -246,17 +204,41 @@ namespace OpenSim.Server.Base
                 }
             }
 
-            RemovePIDFile();
+            if (!DoneShutdown)
+            {
+                DoneShutdown = true;
+                MainServer.Stop();
 
+                MemoryWatchdog.Enabled = false;
+                Watchdog.Enabled = false;
+                WorkManager.Stop();
+                RemovePIDFile();
+            }
             return 0;
         }
 
         protected override void ShutdownSpecific()
         {
+            if(!m_Running)
+                return;
             m_Running = false;
             m_log.Info("[CONSOLE] Quitting");
 
             base.ShutdownSpecific();
+
+            if (!DoneShutdown)
+            {
+                DoneShutdown = true;
+                MainServer.Stop();
+
+                MemoryWatchdog.Enabled = false;
+                Watchdog.Enabled = false;
+                WorkManager.Stop();
+                RemovePIDFile();
+                Util.StopThreadPool();
+
+                Environment.Exit(0);
+            }
         }
 
         protected virtual void ReadConfig()

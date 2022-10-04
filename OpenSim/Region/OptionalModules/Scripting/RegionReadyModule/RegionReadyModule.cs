@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime;
 using System.Net;
 using System.IO;
 using System.Text;
@@ -108,7 +109,7 @@ namespace OpenSim.Region.OptionalModules.Scripting.RegionReady
                 // This should always show up to the user but should not trigger warn/errors as these messages are
                 // expected and are not simulator problems.  Ideally, there would be a status level in log4net but
                 // failing that, we will print out to console instead.
-                MainConsole.Instance.OutputFormat("Region {0} - LOGINS DISABLED DURING INITIALIZATION.", m_scene.Name);
+                MainConsole.Instance.Output("Region {0} - LOGINS DISABLED DURING INITIALIZATION.", m_scene.Name);
 
                 if (m_uri != string.Empty)
                 {
@@ -214,9 +215,11 @@ namespace OpenSim.Region.OptionalModules.Scripting.RegionReady
             m_scene.EventManager.OnEmptyScriptCompileQueue -= OnEmptyScriptCompileQueue;
             m_scene.LoginLock = false;
 
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.Default;
 
             if (!m_scene.StartDisabled)
             {
@@ -229,7 +232,7 @@ namespace OpenSim.Region.OptionalModules.Scripting.RegionReady
                 // without info log messages enabled.  Making this a warning is arguably misleading since it isn't a
                 // warning, and monitor scripts looking for warn/error/fatal messages will received false positives.
                 // Arguably, log4net needs a status log level (like Apache).
-                MainConsole.Instance.OutputFormat("INITIALIZATION COMPLETE FOR {0} - LOGINS ENABLED", m_scene.Name);
+                MainConsole.Instance.Output("INITIALIZATION COMPLETE FOR {0} - LOGINS ENABLED", m_scene.Name);
             }
 
             m_scene.SceneGridService.InformNeighborsThatRegionisUp(

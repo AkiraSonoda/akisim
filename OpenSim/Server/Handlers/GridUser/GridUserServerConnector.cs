@@ -50,13 +50,13 @@ namespace OpenSim.Server.Handlers.GridUser
             string service = serverConfig.GetString("LocalServiceModule",
                     String.Empty);
 
-            if (service == String.Empty)
+            if (service.Length == 0)
                 throw new Exception("No LocalServiceModule in config file");
 
             Object[] args = new Object[] { config };
             m_GridUserService = ServerUtils.LoadPlugin<IGridUserService>(service, args);
 
-            IServiceAuth auth = ServiceAuth.Create(config, m_ConfigName); ;
+            IServiceAuth auth = ServiceAuth.Create(config, m_ConfigName);
 
             server.AddStreamHandler(new GridUserServerPostHandler(m_GridUserService, auth));
         }

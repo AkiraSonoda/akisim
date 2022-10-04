@@ -40,68 +40,11 @@ using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Framework
 {
-    [Serializable]
-    public class RegionLightShareData : ICloneable
-    {
-        public bool valid = false;
-        public UUID regionID = UUID.Zero;
-        public Vector3 waterColor = new Vector3(4.0f,38.0f,64.0f);
-        public float waterFogDensityExponent = 4.0f;
-        public float underwaterFogModifier = 0.25f;
-        public Vector3 reflectionWaveletScale = new Vector3(2.0f,2.0f,2.0f);
-        public float fresnelScale = 0.40f;
-        public float fresnelOffset = 0.50f;
-        public float refractScaleAbove = 0.03f;
-        public float refractScaleBelow = 0.20f;
-        public float blurMultiplier = 0.040f;
-        public Vector2 bigWaveDirection = new Vector2(1.05f,-0.42f);
-        public Vector2 littleWaveDirection = new Vector2(1.11f,-1.16f);
-        public UUID normalMapTexture = new UUID("822ded49-9a6c-f61c-cb89-6df54f42cdf4");
-        public Vector4 horizon = new Vector4(0.25f, 0.25f, 0.32f, 0.32f);
-        public float hazeHorizon = 0.19f;
-        public Vector4 blueDensity = new Vector4(0.12f, 0.22f, 0.38f, 0.38f);
-        public float hazeDensity = 0.70f;
-        public float densityMultiplier = 0.18f;
-        public float distanceMultiplier = 0.8f;
-        public UInt16 maxAltitude = 1605;
-        public Vector4 sunMoonColor = new Vector4(0.24f, 0.26f, 0.30f, 0.30f);
-        public float sunMoonPosition = 0.317f;
-        public Vector4 ambient = new Vector4(0.35f,0.35f,0.35f,0.35f);
-        public float eastAngle = 0.0f;
-        public float sunGlowFocus = 0.10f;
-        public float sunGlowSize = 1.75f;
-        public float sceneGamma = 1.0f;
-        public float starBrightness = 0.0f;
-        public Vector4 cloudColor = new Vector4(0.41f, 0.41f, 0.41f, 0.41f);
-        public Vector3 cloudXYDensity = new Vector3(1.00f, 0.53f, 1.00f);
-        public float cloudCoverage = 0.27f;
-        public float cloudScale = 0.42f;
-        public Vector3 cloudDetailXYDensity = new Vector3(1.00f, 0.53f, 0.12f);
-        public float cloudScrollX = 0.20f;
-        public bool cloudScrollXLock = false;
-        public float cloudScrollY = 0.01f;
-        public bool cloudScrollYLock = false;
-        public bool drawClassicClouds = true;
-
-        public delegate void SaveDelegate(RegionLightShareData wl);
-        public event SaveDelegate OnSave;
-        public void Save()
-        {
-            if (OnSave != null)
-                OnSave(this);
-        }
-        public object Clone()
-        {
-            return this.MemberwiseClone();      // call clone method
-        }
-
-    }
 
     public class RegionInfo
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string LogHeader = "[REGION INFO]";
-
 
         public bool commFailTF = false;
         public ConfigurationMember configMember;
@@ -134,7 +77,6 @@ namespace OpenSim.Framework
         private int m_maxPrimsPerUser = -1;
         private int m_linksetCapacity = 0;
         private string m_regionType = String.Empty;
-        private RegionLightShareData m_windlight = new RegionLightShareData();
         protected uint m_httpPort;
         protected string m_serverURI;
         protected string m_regionName = String.Empty;
@@ -196,7 +138,6 @@ namespace OpenSim.Framework
         public RegionInfo(string description, string filename, bool skipConsoleConfig, IConfigSource configSource, string configName)
         {
             // m_configSource = configSource;
-
             if (filename.ToLower().EndsWith(".ini"))
             {
                 if (!File.Exists(filename)) // New region config request
@@ -223,7 +164,6 @@ namespace OpenSim.Framework
                     source.Save(filename);
 
                 RegionFile = filename;
-
                 return;
             }
 
@@ -301,21 +241,6 @@ namespace OpenSim.Framework
             }
 
             set { m_regionSettings = value; }
-        }
-
-        public RegionLightShareData WindlightSettings
-        {
-            get
-            {
-                if (m_windlight == null)
-                {
-                    m_windlight = new RegionLightShareData();
-                }
-
-                return m_windlight;
-            }
-
-            set { m_windlight = value; }
         }
 
         public float NonphysPrimMin
@@ -420,6 +345,7 @@ namespace OpenSim.Framework
             set { m_remotingPort = value; }
         }
 
+        
         /// <value>
         /// This accessor can throw all the exceptions that Dns.GetHostAddresses can throw.
         ///
@@ -427,42 +353,7 @@ namespace OpenSim.Framework
         /// </value>
         public IPEndPoint ExternalEndPoint
         {
-            get
-            {
-                // Old one defaults to IPv6
-                //return new IPEndPoint(Dns.GetHostAddresses(m_externalHostName)[0], m_internalEndPoint.Port);
-
-                IPAddress ia = null;
-                // If it is already an IP, don't resolve it - just return directly
-                if (IPAddress.TryParse(m_externalHostName, out ia))
-                    return new IPEndPoint(ia, m_internalEndPoint.Port);
-
-                // Reset for next check
-                ia = null;
-                try
-                {
-                    foreach (IPAddress Adr in Dns.GetHostAddresses(m_externalHostName))
-                    {
-                        if (ia == null)
-                            ia = Adr;
-
-                        if (Adr.AddressFamily == AddressFamily.InterNetwork)
-                        {
-                            ia = Adr;
-                            break;
-                        }
-                    }
-                }
-                catch (SocketException e)
-                {
-                    throw new Exception(
-                        "Unable to resolve local hostname " + m_externalHostName + " innerException of type '" +
-                        e + "' attached to this exception", e);
-                }
-
-                return new IPEndPoint(ia, m_internalEndPoint.Port);
-            }
-
+            get { return Util.getEndPoint(m_externalHostName, m_internalEndPoint.Port); }
             set { m_externalHostName = value.ToString(); }
         }
 
@@ -553,12 +444,12 @@ namespace OpenSim.Framework
                 MainConsole.Instance.Output("the default is displayed between [ ] brackets.\n");
                 MainConsole.Instance.Output("=====================================\n");
 
-                if (name == String.Empty)
+                if (name.Length == 0)
                 {
-                    while (name.Trim() == string.Empty)
+                    while (name.Trim().Length == 0)
                     {
-                        name = MainConsole.Instance.CmdPrompt("New region name", name);
-                        if (name.Trim() == string.Empty)
+                        name = MainConsole.Instance.Prompt("New region name", name);
+                        if (name.Trim().Length == 0)
                         {
                             MainConsole.Instance.Output("Cannot interactively create region with no name");
                         }
@@ -570,7 +461,7 @@ namespace OpenSim.Framework
                 creatingNew = true;
             }
 
-            if (name == String.Empty)
+            if (name.Length == 0)
                 name = source.Configs[0].Name;
 
             if (source.Configs[name] == null)
@@ -597,9 +488,9 @@ namespace OpenSim.Framework
             if (!UUID.TryParse(regionUUID.Trim(), out RegionID))
             {
                 UUID newID = UUID.Random();
-                while (RegionID == UUID.Zero)
+                while (RegionID.IsZero())
                 {
-                    regionUUID = MainConsole.Instance.CmdPrompt("RegionUUID", newID.ToString());
+                    regionUUID = MainConsole.Instance.Prompt("RegionUUID", newID.ToString());
                     if (!UUID.TryParse(regionUUID.Trim(), out RegionID))
                     {
                         MainConsole.Instance.Output("RegionUUID must be a valid UUID");
@@ -614,9 +505,9 @@ namespace OpenSim.Framework
             //
             allKeys.Remove("Location");
             string location = config.GetString("Location", String.Empty);
-            if (location == String.Empty)
+            if (location.Length == 0)
             {
-                location = MainConsole.Instance.CmdPrompt("Region Location", "1000,1000");
+                location = MainConsole.Instance.Prompt("Region Location", "1000,1000");
                 config.Set("Location", location);
             }
 
@@ -652,7 +543,7 @@ namespace OpenSim.Framework
             }
             else
             {
-                address = IPAddress.Parse(MainConsole.Instance.CmdPrompt("Internal IP address", "0.0.0.0"));
+                address = IPAddress.Parse(MainConsole.Instance.Prompt("Internal IP address", "0.0.0.0"));
                 config.Set("InternalAddress", address.ToString());
             }
 
@@ -666,7 +557,7 @@ namespace OpenSim.Framework
             }
             else
             {
-                port = Convert.ToInt32(MainConsole.Instance.CmdPrompt("Internal port", "9000"));
+                port = Convert.ToInt32(MainConsole.Instance.Prompt("Internal port", "9000"));
                 config.Set("InternalPort", port);
             }
             m_internalEndPoint = new IPEndPoint(address, port);
@@ -681,7 +572,7 @@ namespace OpenSim.Framework
             else
             {
                 if (creatingNew)
-                    m_resolveAddress = Convert.ToBoolean(MainConsole.Instance.CmdPrompt("Resolve hostname to IP on start (for running inside Docker)", "False"));
+                    m_resolveAddress = Convert.ToBoolean(MainConsole.Instance.Prompt("Resolve hostname to IP on start (for running inside Docker)", "False"));
 
                 config.Set("ResolveAddress", m_resolveAddress.ToString());
             }
@@ -696,7 +587,7 @@ namespace OpenSim.Framework
             }
             else
             {
-                externalName = MainConsole.Instance.CmdPrompt("External host name", "SYSTEMIP");
+                externalName = MainConsole.Instance.Prompt("External host name", "SYSTEMIP");
                 config.Set("ExternalHostName", externalName);
             }
             if (externalName == "SYSTEMIP")
@@ -937,13 +828,13 @@ namespace OpenSim.Framework
             if (AgentCapacity > 0)
                 config.Set("MaxAgents", AgentCapacity);
 
-            if (ScopeID != UUID.Zero)
+            if (!ScopeID.IsZero())
                 config.Set("ScopeID", ScopeID.ToString());
 
             if (RegionType != String.Empty)
                 config.Set("RegionType", RegionType);
 
-            if (m_maptileStaticUUID != UUID.Zero)
+            if (!m_maptileStaticUUID.IsZero())
                 config.Set("MaptileStaticUUID", m_maptileStaticUUID.ToString());
 
             if (MaptileStaticFile != null && MaptileStaticFile != String.Empty)

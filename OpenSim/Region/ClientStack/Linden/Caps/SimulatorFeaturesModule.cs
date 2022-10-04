@@ -28,7 +28,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Reflection;
+using System.Text;
 using log4net;
 using Nini.Config;
 using Mono.Addins;
@@ -69,55 +72,32 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </summary>
         private OSDMap m_features = new OSDMap();
 
-        private string m_SearchURL = string.Empty;
-        private string m_DestinationGuideURL = string.Empty;
         private bool m_ExportSupported = false;
-        private string m_GridName = string.Empty;
-        private string m_GridURL = string.Empty;
+
+        private bool m_doScriptSyntax;
+
+        static private object m_scriptSyntaxLock = new object();
+        static private UUID m_scriptSyntaxID = UUID.Zero;
+        static private byte[] m_scriptSyntaxXML = null;
 
         #region ISharedRegionModule Members
 
         public void Initialise(IConfigSource source)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             IConfig config = source.Configs["SimulatorFeatures"];
-
+            m_doScriptSyntax = true;
             if (config != null)
             {
-                //
-                // All this is obsolete since getting these features from the grid service!!
-                // Will be removed after the next release
-                //
-                m_SearchURL = config.GetString("SearchServerURI", m_SearchURL);
-
-                m_DestinationGuideURL = config.GetString ("DestinationGuideURI", m_DestinationGuideURL);
-
-                if (m_DestinationGuideURL == string.Empty) // Make this consistent with the variable in the LoginService config
-                    m_DestinationGuideURL = config.GetString("DestinationGuide", m_DestinationGuideURL);
-
                 m_ExportSupported = config.GetBoolean("ExportSupported", m_ExportSupported);
-
-                m_GridURL = Util.GetConfigVarFromSections<string>(
-                    source, "GatekeeperURI", new string[] { "Startup", "Hypergrid", "SimulatorFeatures" }, String.Empty);
-
-                m_GridName = config.GetString("GridName", string.Empty);
-                if (m_GridName == string.Empty)
-                    m_GridName = Util.GetConfigVarFromSections<string>(
-                        source, "gridname", new string[] { "GridInfo", "SimulatorFeatures" }, String.Empty);
+                m_doScriptSyntax = config.GetBoolean("ScriptSyntax", m_doScriptSyntax);
             }
 
+            ReadScriptSyntax();
             AddDefaultFeatures();
         }
 
         public void AddRegion(Scene s)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             m_scene = s;
             m_scene.EventManager.OnRegisterCaps += RegisterCaps;
 
@@ -126,10 +106,6 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RemoveRegion(Scene s)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             m_scene.EventManager.OnRegisterCaps -= RegisterCaps;
         }
 
@@ -157,23 +133,32 @@ namespace OpenSim.Region.ClientStack.Linden
         /// </remarks>
         private void AddDefaultFeatures()
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             lock (m_features)
             {
                 m_features["MeshRezEnabled"] = true;
                 m_features["MeshUploadEnabled"] = true;
                 m_features["MeshXferEnabled"] = true;
 
-                m_features["PhysicsMaterialsEnabled"] = true;
+                m_features["BakesOnMeshEnabled"] = true;
 
+                m_features["PhysicsMaterialsEnabled"] = true;
                 OSDMap typesMap = new OSDMap();
                 typesMap["convex"] = true;
                 typesMap["none"] = true;
                 typesMap["prim"] = true;
                 m_features["PhysicsShapeTypes"] = typesMap;
+
+                if(m_doScriptSyntax && !m_scriptSyntaxID.IsZero())
+                    m_features["LSLSyntaxId"] = OSD.FromUUID(m_scriptSyntaxID);
+
+                OSDMap meshAnim = new OSDMap();
+                meshAnim["AnimatedObjectMaxTris"] = OSD.FromInteger(150000);
+                meshAnim["MaxAgentAnimatedObjectAttachments"] = OSD.FromInteger(2);
+                m_features["AnimatedObjects"] = meshAnim;
+
+                m_features["MaxAgentAttachments"] = OSD.FromInteger(Constants.MaxAgentAttachments);
+                m_features["MaxAgentGroupsBasic"] = OSD.FromInteger(Constants.MaxAgentGroups);
+                m_features["MaxAgentGroupsPremium"] = OSD.FromInteger(Constants.MaxAgentGroups);
 
                 // Extra information for viewers that want to use it
                 // TODO: Take these out of here into their respective modules, like map-server-url
@@ -188,18 +173,13 @@ namespace OpenSim.Region.ClientStack.Linden
                 extrasMap["AvatarSkeleton"] = true;
                 extrasMap["AnimationSet"] = true;
 
-                // TODO: Take these out of here into their respective modules, like map-server-url
-                if (m_SearchURL != string.Empty)
-                    extrasMap["search-server-url"] = m_SearchURL;
-                if (!string.IsNullOrEmpty(m_DestinationGuideURL))
-                    extrasMap["destination-guide-url"] = m_DestinationGuideURL;
+                extrasMap["MinSimHeight"] = Constants.MinSimulationHeight;
+                extrasMap["MaxSimHeight"] = Constants.MaxSimulationHeight;
+                extrasMap["MinHeightmap"] = Constants.MinTerrainHeightmap;
+                extrasMap["MaxHeightmap"] = Constants.MaxTerrainHeightmap;
+
                 if (m_ExportSupported)
                     extrasMap["ExportSupported"] = true;
-                if (m_GridURL != string.Empty)
-                    extrasMap["GridURL"] = m_GridURL;
-                if (m_GridName != string.Empty)
-                    extrasMap["GridName"] = m_GridName;
-
                 if (extrasMap.Count > 0)
                     m_features["OpenSimExtras"] = extrasMap;
             }
@@ -207,64 +187,75 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterCaps(UUID agentID, Caps caps)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            caps.RegisterSimpleHandler("SimulatorFeatures",
+                new SimpleStreamHandler("/" + UUID.Random(),
+                    delegate (IOSHttpRequest request, IOSHttpResponse response)
+                    {
+                        HandleSimulatorFeaturesRequest(request, response, agentID);
+                    }));
+
+            if (m_doScriptSyntax && !m_scriptSyntaxID.IsZero() && m_scriptSyntaxXML != null)
+            {
+                caps.RegisterSimpleHandler("LSLSyntax",
+                    new SimpleStreamHandler("/" + UUID.Random(), HandleSyntaxRequest));
             }
-
-            IRequestHandler reqHandler
-                = new RestHTTPHandler(
-                    "GET", "/CAPS/" + UUID.Random(),
-                    x => { return HandleSimulatorFeaturesRequest(x, agentID); }, "SimulatorFeatures", agentID.ToString());
-
-            caps.RegisterHandler("SimulatorFeatures", reqHandler);
         }
 
         public void AddFeature(string name, OSD value)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             lock (m_features)
                 m_features[name] = value;
         }
 
+        public void AddOpenSimExtraFeature(string name, OSD value)
+        {
+            lock (m_features)
+            {
+                OSDMap extrasMap;
+                if (m_features.TryGetValue("OpenSimExtras", out OSD extra))
+                    extrasMap = extra as OSDMap;
+                else
+                {
+                    extrasMap = new OSDMap();
+                }
+                extrasMap[name] = value;
+                m_features["OpenSimExtras"] = extrasMap;
+            }
+        }
+
         public bool RemoveFeature(string name)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             lock (m_features)
                 return m_features.Remove(name);
         }
 
         public bool TryGetFeature(string name, out OSD value)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             lock (m_features)
                 return m_features.TryGetValue(name, out value);
         }
 
+        public bool TryGetOpenSimExtraFeature(string name, out OSD value)
+        {
+            value = null;
+            lock (m_features)
+            {
+                if (!m_features.TryGetValue("OpenSimExtras", out OSD extra))
+                    return false;
+                if(!(extra is OSDMap))
+                    return false;
+                return (extra as OSDMap).TryGetValue(name, out value);
+            }
+        }
+
         public OSDMap GetFeatures()
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             lock (m_features)
                 return new OSDMap(m_features);
         }
 
         private OSDMap DeepCopy()
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-            }
-
             // This isn't the cheapest way of doing this but the rate
             // of occurrence is low (on sim entry only) and it's a sure
             // way to get a true deep copy.
@@ -273,10 +264,22 @@ namespace OpenSim.Region.ClientStack.Linden
             return (OSDMap)copy;
         }
 
-        private Hashtable HandleSimulatorFeaturesRequest(Hashtable mDhttpMethod, UUID agentID)
+        private void HandleSimulatorFeaturesRequest(IOSHttpRequest request, IOSHttpResponse response, UUID agentID)
         {
-            if (m_log.IsDebugEnabled) {
-                m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            //            m_log.DebugFormat("[SIMULATOR FEATURES MODULE]: SimulatorFeatures request");
+
+            if (request.HttpMethod != "GET")
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
+            ScenePresence sp = m_scene.GetScenePresence(agentID);
+            if (sp == null)
+            {
+                response.StatusCode = (int)HttpStatusCode.ServiceUnavailable;
+                response.AddHeader("Retry-After", "5");
+                return;
             }
 
             OSDMap copy = DeepCopy();
@@ -285,20 +288,22 @@ namespace OpenSim.Region.ClientStack.Linden
             if (copy.ContainsKey("OpenSimExtras") && ((OSDMap)(copy["OpenSimExtras"])).ContainsKey("destination-guide-url"))
                 ((OSDMap)copy["OpenSimExtras"])["destination-guide-url"] = Replace(((OSDMap)copy["OpenSimExtras"])["destination-guide-url"], "[USERID]", agentID.ToString());
 
-            SimulatorFeaturesRequestDelegate handlerOnSimulatorFeaturesRequest = OnSimulatorFeaturesRequest;
-
-            if (handlerOnSimulatorFeaturesRequest != null)
-                handlerOnSimulatorFeaturesRequest(agentID, ref copy);
+            OnSimulatorFeaturesRequest?.Invoke(agentID, ref copy);
 
             //Send back data
-            Hashtable responsedata = new Hashtable();
-            responsedata["int_response_code"] = 200;
-            responsedata["content_type"] = "text/plain";
-            responsedata["keepalive"] = false;
+            response.RawBuffer = Util.UTF8.GetBytes(OSDParser.SerializeLLSDXmlString(copy));
+            response.StatusCode = (int)HttpStatusCode.OK;
+        }
 
-            responsedata["str_response_string"] = OSDParser.SerializeLLSDXmlString(copy);
-
-            return responsedata;
+        private void HandleSyntaxRequest(IOSHttpRequest request, IOSHttpResponse response)
+        {
+            if (request.HttpMethod != "GET" || m_scriptSyntaxXML == null)
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+            response.RawBuffer = m_scriptSyntaxXML;
+            response.StatusCode = (int)HttpStatusCode.OK;
         }
 
         /// <summary>
@@ -307,6 +312,7 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <param name='featuresURI'>
         /// The URI Robust uses to handle the get_extra_features request
         /// </param>
+
         private void GetGridExtraFeatures(Scene scene)
         {
             Dictionary<string, object> extraFeatures = scene.GridService.GetExtraFeatures();
@@ -316,21 +322,58 @@ namespace OpenSim.Region.ClientStack.Linden
                 return;
             }
 
+            GridInfo ginfo = scene.SceneGridInfo;
             lock (m_features)
             {
-                OSDMap extrasMap = new OSDMap();
-
-                foreach(string key in extraFeatures.Keys)
+                OSDMap extrasMap;
+                if (m_features.TryGetValue("OpenSimExtras", out OSD extra))
+                    extrasMap = extra as OSDMap;
+                else
                 {
-                    extrasMap[key] = (string)extraFeatures[key];
+                    extrasMap = new OSDMap();
+                }
 
-                    if (key == "ExportSupported")
+                foreach (string key in extraFeatures.Keys)
+                {
+                    string val = (string)extraFeatures[key];
+                    switch(key)
                     {
-                        bool.TryParse(extraFeatures[key].ToString(), out m_ExportSupported);
+                        case "GridName":
+                            ginfo.GridName = val;
+                            break;
+                        case "GridNick":
+                            ginfo.GridNick = val;
+                            break;
+                        case "GridURL":
+                            ginfo.GridUrl = val;
+                            break;
+                        case "GridURLAlias":
+                            string[] vals = val.Split(',');
+                            if(vals.Length > 0)
+                                ginfo.GridUrlAlias = vals;
+                            break;
+                        case "search-server-url":
+                            ginfo.SearchURL = val;
+                            break;
+                        case "destination-guide-url":
+                            ginfo.DestinationGuideURL = val;
+                            break;
+                        /* keep this local to avoid issues with diferent modules
+                        case "currency-base-uri":
+                            ginfo.EconomyURL = val;
+                            break;
+                        */
+                        default:
+                            extrasMap[key] = val;
+                            if (key == "ExportSupported")
+                            {
+                                bool.TryParse(val, out m_ExportSupported);
+                            }
+                            break;
                     }
+
                 }
                 m_features["OpenSimExtras"] = extrasMap;
-
             }
         }
 
@@ -340,6 +383,53 @@ namespace OpenSim.Region.ClientStack.Linden
                 return url.Replace(substring, replacement);
 
             return url;
+        }
+
+        private void ReadScriptSyntax()
+        {
+            lock(m_scriptSyntaxLock)
+            {
+                if(!m_doScriptSyntax || !m_scriptSyntaxID.IsZero())
+                    return;
+
+                if(!File.Exists("ScriptSyntax.xml"))
+                    return;
+
+                try
+                {
+                    using (StreamReader sr = File.OpenText("ScriptSyntax.xml"))
+                    {
+                        StringBuilder sb = new StringBuilder(400*1024);
+
+                        string s="";
+                        char[] trimc = new char[] {' ','\t', '\n', '\r'};
+
+                        s = sr.ReadLine();
+                        if(s == null)
+                            return;
+                        s = s.Trim(trimc);
+                        UUID id;
+                        if(!UUID.TryParse(s,out id))
+                            return;
+
+                        while ((s = sr.ReadLine()) != null)
+                        {
+                            s = s.Trim(trimc);
+                            if (String.IsNullOrEmpty(s) || s.StartsWith("<!--"))
+                                continue;
+                            sb.Append(s);
+                        }
+                        m_scriptSyntaxXML = Util.UTF8.GetBytes(sb.ToString());
+                        m_scriptSyntaxID = id;
+                    }
+                }
+                catch
+                {
+                    m_log.Error("[SIMULATOR FEATURES MODULE] fail read ScriptSyntax.xml file");
+                    m_scriptSyntaxID = UUID.Zero;
+                    m_scriptSyntaxXML = null;
+                }
+            }
         }
     }
 }

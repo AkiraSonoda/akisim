@@ -82,9 +82,8 @@ namespace OpenSim.Services.LLLoginService
                 "false");
             AlreadyLoggedInProblem = new LLFailedLoginResponse("presence",
                 "You appear to be already logged in. " +
-                "If this is not the case please wait for your session to timeout. " +
-                "If this takes longer than a few minutes please contact the grid owner. " +
-                "Please wait 5 minutes if you are going to connect to a region nearby to the region you were at previously.",
+                "Please wait a a minute or two and retry. " +
+                "If this takes longer than a few minutes please contact the grid owner. ",
                 "false");
             InternalError = new LLFailedLoginResponse("Internal Error", "Error generating Login Response", "false");
         }
@@ -581,7 +580,10 @@ namespace OpenSim.Services.LLLoginService
 
                 // We need to send an openid_token back in the response too
                 if (openIDURL != String.Empty)
+                {
                     responseData["openid_url"] = openIDURL;
+                    responseData["openid_token"] = AgentID.ToString() + ":" + Util.Md5Hash(SecureSessionID.ToString());
+                }
 
                 if (m_buddyList != null)
                 {
@@ -697,7 +699,10 @@ namespace OpenSim.Services.LLLoginService
                     map["profile-server-url"] = OSD.FromString(profileURL);
 
                 if (openIDURL != String.Empty)
+                {
                     map["openid_url"] = OSD.FromString(openIDURL);
+                    map["openid_token"] = OSD.FromString(AgentID.ToString() + ":" + Util.Md5Hash(SecureSessionID.ToString()));
+                }
 
                 if (searchURL != String.Empty)
                     map["search"] = OSD.FromString(searchURL);
@@ -800,7 +805,7 @@ namespace OpenSim.Services.LLLoginService
             Hashtable TempHash;
             foreach (InventoryFolderBase InvFolder in folders)
             {
-                if (InvFolder.ParentID == UUID.Zero && InvFolder.Name == InventoryFolderBase.ROOT_FOLDER_NAME)
+                if (InvFolder.ParentID.IsZero() && InvFolder.Name == InventoryFolderBase.ROOT_FOLDER_NAME)
                 {
                     rootID = InvFolder.ID;
                 }
@@ -850,7 +855,7 @@ namespace OpenSim.Services.LLLoginService
         {
             //for now create random inventory library owner
             Hashtable TempHash = new Hashtable();
-            TempHash["agent_id"] = "11111111-1111-0000-0000-000100bba000"; // libFolder.Owner
+            TempHash["agent_id"] = Constants.m_MrOpenSimID.ToString(); // libFolder.Owner
             ArrayList inventoryLibOwner = new ArrayList();
             inventoryLibOwner.Add(TempHash);
             return inventoryLibOwner;

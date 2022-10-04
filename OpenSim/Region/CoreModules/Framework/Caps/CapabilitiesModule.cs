@@ -130,21 +130,17 @@ namespace OpenSim.Region.CoreModules.Framework
             if (m_scene.RegionInfo.EstateSettings.IsBanned(agentId, flags))
                 return;
 */
+            string capsObjectPath = GetCapsPath(agentId);
             Caps caps;
-            String capsObjectPath = GetCapsPath(agentId);
-
             lock (m_capsObjects)
             {
-                if (m_capsObjects.ContainsKey(circuitCode))
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps oldCaps))
                 {
-                    Caps oldCaps = m_capsObjects[circuitCode];
-
-
                     if (capsObjectPath == oldCaps.CapsObjectPath)
                     {
-                        m_log.WarnFormat(
-                           "[CAPS]: Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
-                            agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
+//                        m_log.WarnFormat(
+//                           "[CAPS]: Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
+//                            agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
                         return;
                     }
                     else
@@ -183,19 +179,16 @@ namespace OpenSim.Region.CoreModules.Framework
             m_log.DebugFormat("[CAPS]: Remove caps for agent {0} in region {1}", agentId, m_scene.RegionInfo.RegionName);
             lock (m_childrenSeeds)
             {
-                if (m_childrenSeeds.ContainsKey(agentId))
-                {
-                    m_childrenSeeds.Remove(agentId);
-                }
+                m_childrenSeeds.Remove(agentId);
             }
 
             lock (m_capsObjects)
             {
-                if (m_capsObjects.ContainsKey(circuitCode))
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
                 {
-                    m_capsObjects[circuitCode].DeregisterHandlers();
-                    m_scene.EventManager.TriggerOnDeregisterCaps(agentId, m_capsObjects[circuitCode]);
+                    m_scene.EventManager.TriggerOnDeregisterCaps(agentId, cp);
                     m_capsObjects.Remove(circuitCode);
+                    cp.Dispose();
                 }
                 else
                 {
@@ -203,9 +196,9 @@ namespace OpenSim.Region.CoreModules.Framework
                     {
                         if (kvp.Value.AgentID == agentId)
                         {
-                            kvp.Value.DeregisterHandlers();
                             m_scene.EventManager.TriggerOnDeregisterCaps(agentId, kvp.Value);
                             m_capsObjects.Remove(kvp.Key);
+                            kvp.Value.Dispose();
                             return;
                         }
                     }
@@ -220,10 +213,8 @@ namespace OpenSim.Region.CoreModules.Framework
         {
             lock (m_capsObjects)
             {
-                if (m_capsObjects.ContainsKey(circuitCode))
-                {
-                    return m_capsObjects[circuitCode];
-                }
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
+                    return cp;
             }
 
             return null;
@@ -233,10 +224,8 @@ namespace OpenSim.Region.CoreModules.Framework
         {
             lock (m_capsObjects)
             {
-                if (m_capsObjects.ContainsKey(circuitCode))
-                {
-                    m_capsObjects[circuitCode].Activate();
-                }
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
+                    cp.Activate();
             }
         }
 
@@ -254,33 +243,27 @@ namespace OpenSim.Region.CoreModules.Framework
         {
             lock (m_capsPaths)
             {
-                if (m_capsPaths.ContainsKey(agentId))
-                {
-                    return m_capsPaths[agentId];
-                }
+                if (m_capsPaths.TryGetValue(agentId, out string path))
+                    return path;
             }
-
             return null;
         }
 
         public Dictionary<ulong, string> GetChildrenSeeds(UUID agentID)
         {
-            Dictionary<ulong, string> seeds = null;
-
             lock (m_childrenSeeds)
-                if (m_childrenSeeds.TryGetValue(agentID, out seeds))
+            {
+                if (m_childrenSeeds.TryGetValue(agentID, out Dictionary<ulong, string> seeds))
                     return seeds;
-
+            }
             return new Dictionary<ulong, string>();
         }
 
         public void DropChildSeed(UUID agentID, ulong handle)
         {
-            Dictionary<ulong, string> seeds;
-
             lock (m_childrenSeeds)
             {
-                if (m_childrenSeeds.TryGetValue(agentID, out seeds))
+                if (m_childrenSeeds.TryGetValue(agentID, out Dictionary<ulong, string> seeds))
                 {
                     seeds.Remove(handle);
                 }
@@ -289,18 +272,14 @@ namespace OpenSim.Region.CoreModules.Framework
 
         public string GetChildSeed(UUID agentID, ulong handle)
         {
-            Dictionary<ulong, string> seeds;
-            string returnval;
-
             lock (m_childrenSeeds)
             {
-                if (m_childrenSeeds.TryGetValue(agentID, out seeds))
+                if (m_childrenSeeds.TryGetValue(agentID, out Dictionary<ulong, string> seeds))
                 {
-                    if (seeds.TryGetValue(handle, out returnval))
+                    if (seeds.TryGetValue(handle, out string returnval))
                         return returnval;
                 }
             }
-
             return null;
         }
 
@@ -339,8 +318,11 @@ namespace OpenSim.Region.CoreModules.Framework
             {
                 foreach (KeyValuePair<uint, Caps> kvp in m_capsObjects)
                 {
-                    capsReport.AppendFormat("** Circuit {0}:\n", kvp.Key);
                     Caps caps = kvp.Value;
+                    string name = string.Empty;
+                    if(m_scene.TryGetScenePresence(caps.AgentID, out ScenePresence sp) && sp!=null)
+                        name = sp.Name;
+                    capsReport.AppendFormat("** Circuit {0}; {1} {2}:\n", kvp.Key, caps.AgentID,name);
 
                     for (IDictionaryEnumerator kvp2 = caps.CapsHandlers.GetCapsDetails(false, null).GetEnumerator(); kvp2.MoveNext(); )
                     {

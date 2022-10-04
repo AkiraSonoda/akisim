@@ -55,8 +55,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public bool RecyclePackets { get; set; }
 
-        public bool RecycleDataBlocks { get; set; }
-
         /// <summary>
         /// The number of packets pooled
         /// </summary>
@@ -105,7 +103,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             // defaults
             RecyclePackets = true;
-            RecycleDataBlocks = true;
+            //RecyclePackets = false;
         }
 
         /// <summary>
@@ -198,60 +196,53 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name="packet"></param>
         public void ReturnPacket(Packet packet)
         {
-            if (RecycleDataBlocks)
+            if (!RecyclePackets)
+                return;
+
+            bool trypool = false;
+            PacketType type = packet.Type;
+
+            switch (type)
             {
-                switch (packet.Type)
-                {
-                    case PacketType.ObjectUpdate:
-                        ObjectUpdatePacket oup = (ObjectUpdatePacket)packet;
+                case PacketType.ObjectUpdate:
+                    ObjectUpdatePacket oup = (ObjectUpdatePacket)packet;
+                    oup.ObjectData = null;
+                    trypool = true;
+                    break;
 
-                        foreach (ObjectUpdatePacket.ObjectDataBlock oupod in oup.ObjectData)
-                            ReturnDataBlock<ObjectUpdatePacket.ObjectDataBlock>(oupod);
+                case PacketType.ImprovedTerseObjectUpdate:
+                    ImprovedTerseObjectUpdatePacket itoup = (ImprovedTerseObjectUpdatePacket)packet;
+                    itoup.ObjectData = null;
+                    trypool = true;
+                    break;
 
-                        oup.ObjectData = null;
-                        break;
+                case PacketType.PacketAck:
+                    PacketAckPacket ackup = (PacketAckPacket)packet;
+                    ackup.Packets = null;
+                    trypool = true;
+                    break;
 
-                    case PacketType.ImprovedTerseObjectUpdate:
-                        ImprovedTerseObjectUpdatePacket itoup = (ImprovedTerseObjectUpdatePacket)packet;
-
-                        foreach (ImprovedTerseObjectUpdatePacket.ObjectDataBlock itoupod in itoup.ObjectData)
-                            ReturnDataBlock<ImprovedTerseObjectUpdatePacket.ObjectDataBlock>(itoupod);
-
-                        itoup.ObjectData = null;
-                        break;
-                }
+                case PacketType.AgentUpdate:
+                    trypool = true;
+                    break;
+                default:
+                    return;
             }
 
-            if (RecyclePackets)
+            if(!trypool)
+                return;
+
+            lock (pool)
             {
-                switch (packet.Type)
+                if (!pool.ContainsKey(type))
                 {
-                    // List pooling packets here
-                    case PacketType.AgentUpdate:
-                    case PacketType.PacketAck:
-                    case PacketType.ObjectUpdate:
-                    case PacketType.ImprovedTerseObjectUpdate:
-                        lock (pool)
-                        {
-                            PacketType type = packet.Type;
+                    pool[type] = new Stack<Packet>();
+                }
 
-                            if (!pool.ContainsKey(type))
-                            {
-                                pool[type] = new Stack<Packet>();
-                            }
-
-                            if ((pool[type]).Count < 50)
-                            {
-//                                m_log.DebugFormat("[PACKETPOOL]: Pushing {0} packet", type);
-
-                                pool[type].Push(packet);
-                            }
-                        }
-                        break;
-
-                    // Other packets wont pool
-                    default:
-                        return;
+                if ((pool[type]).Count < 50)
+                {
+//                  m_log.DebugFormat("[PACKETPOOL]: Pushing {0} packet", type);
+                    pool[type].Push(packet);
                 }
             }
         }

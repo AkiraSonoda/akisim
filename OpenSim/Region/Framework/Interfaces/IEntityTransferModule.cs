@@ -62,6 +62,8 @@ namespace OpenSim.Region.Framework.Interfaces
         /// <param name='client'></param>
         bool TeleportHome(UUID id, IClientAPI client);
 
+        void RequestTeleportLandmark(IClientAPI remoteClient, AssetLandmark lm, Vector3 lookAt);
+
         /// <summary>
         /// Teleport an agent directly to a given region without checking whether the region should be substituted.
         /// </summary>
@@ -90,6 +92,8 @@ namespace OpenSim.Region.Framework.Interfaces
         void AgentArrivedAtDestination(UUID agent);
 
         void EnableChildAgents(ScenePresence agent);
+        void CheckChildAgents(ScenePresence agent);
+        void CloseOldChildAgents(ScenePresence agent);
 
         void EnableChildAgent(ScenePresence agent, GridRegion region);
 
@@ -101,6 +105,8 @@ namespace OpenSim.Region.Framework.Interfaces
         bool CrossPrimGroupIntoNewRegion(GridRegion destination, Vector3 newPosition, SceneObjectGroup grp, bool silent, bool removeScripts);
 
         ScenePresence CrossAgentToNewRegionAsync(ScenePresence agent, Vector3 pos, GridRegion neighbourRegion, bool isFlying, EntityTransferContext ctx);
+
+        bool CrossAgentCreateFarChild(ScenePresence agent, GridRegion neighbourRegion, Vector3 pos, EntityTransferContext ctx);
 
         bool HandleIncomingSceneObject(SceneObjectGroup so, Vector3 newPosition);
     }

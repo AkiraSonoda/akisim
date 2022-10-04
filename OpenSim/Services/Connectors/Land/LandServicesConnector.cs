@@ -117,7 +117,9 @@ namespace OpenSim.Services.Connectors
                             landData.UserLocation = Vector3.Parse((string)hash["UserLocation"]);
                             if (hash["RegionAccess"] != null)
                                 regionAccess = (byte)Convert.ToInt32((string)hash["RegionAccess"]);
-                            m_log.DebugFormat("[LAND CONNECTOR]: Got land data for parcel {0}", landData.Name);
+                            if(hash["Dwell"] != null)
+                                landData.Dwell = Convert.ToSingle((string)hash["Dwell"]);
+                            //m_log.DebugFormat("[LAND CONNECTOR]: Got land data for parcel {0}", landData.Name);
                         }
                         catch (Exception e)
                         {
@@ -132,8 +134,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat(
-                    "[LAND CONNECTOR]: Couldn't contact region {0}: {1} {2}", regionHandle, e.Message, e.StackTrace);
+                m_log.ErrorFormat("[LAND CONNECTOR]: Couldn't contact region {0}: {1}", regionHandle, e.Message);
             }
 
             return landData;

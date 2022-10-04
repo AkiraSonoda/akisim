@@ -39,26 +39,27 @@ namespace OpenSim.Framework.Monitoring
     /// </summary>
     public class BaseStatsCollector : IStatsCollector
     {
-		
-		private static readonly ILog s_log = LogManager.GetLogger("SimStats");
+        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
 
-		
+        public virtual string Report(IScene scene = null)
+        {
+            return string.Empty;
+        }
+
         public virtual void CompactReport() {
             s_log.DebugFormat (
-                    "[MEMORY] Allocated to OpenSim objects: {0} MB",
-                    Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
+                "[MEMORY] Allocated to OpenSim objects: {0} MB",
+                Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
             s_log.DebugFormat(
-                	"[MEMORY] OpenSim object memory churn : {0} MB/s",
-                	Math.Round((MemoryWatchdog.AverageHeapAllocationRate * 1000) / 1024.0 / 1024, 3));
+                "[MEMORY] OpenSim object memory churn : {0} MB/s",
+                Math.Round((MemoryWatchdog.AverageHeapAllocationRate * 1000) / 1024.0 / 1024, 3));
             s_log.DebugFormat(
-                    "[MEMORY] Process memory              : {0} MB",
-                    Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));
-			
-			
-			s_log.DebugFormat("[GC] Number of Generations: {0}: ", GC.MaxGeneration);
-			for (int i = 0; i< GC.MaxGeneration; i++) {
-				s_log.DebugFormat("[GC] Generation: {0} Number of Collections: {1}", i, GC.CollectionCount(i));				
-			}
+                "[MEMORY] Process memory              : {0} MB",
+                Math.Round(Process.GetCurrentProcess().WorkingSet64 / 1024.0 / 1024.0));
+            s_log.DebugFormat("[GC] Number of Generations: {0}: ", GC.MaxGeneration);
+                for (int i = 0; i< GC.MaxGeneration; i++) {
+                    s_log.DebugFormat("[GC] Generation: {0} Number of Collections: {1}", i, GC.CollectionCount(i));				
+                }
         }
 
         public virtual string Report()
@@ -71,28 +72,26 @@ namespace OpenSim.Framework.Monitoring
                 Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0));
 
             sb.AppendFormat(
-                "Last heap allocation rate   : {0} MB/s\n",
-                Math.Round((MemoryWatchdog.LastHeapAllocationRate * 1000) / 1024.0 / 1024, 3));
+                "Heap allocation rate (last/avg): {0}/{1}MB/s\n",
+                Math.Round((MemoryWatchdog.LastHeapAllocationRate * 1000) / 1048576.0, 3),
+                Math.Round((MemoryWatchdog.AverageHeapAllocationRate * 1000) / 1048576.0, 3));
 
-            sb.AppendFormat(
-                "Average heap allocation rate: {0} MB/s\n",
-                Math.Round((MemoryWatchdog.AverageHeapAllocationRate * 1000) / 1024.0 / 1024, 3));
-
-            Process myprocess = Process.GetCurrentProcess();
-//            if (!myprocess.HasExited)
             try
             {
-                myprocess.Refresh();
-                sb.AppendFormat(
-                        "Process memory:      Physical {0} MB \t Paged {1} MB \t Virtual {2} MB\n",
-                        Math.Round(myprocess.WorkingSet64 / 1024.0 / 1024.0),
-                        Math.Round(myprocess.PagedMemorySize64 / 1024.0 / 1024.0),
-                        Math.Round(myprocess.VirtualMemorySize64 / 1024.0 / 1024.0));
-                sb.AppendFormat(
-                        "Peak process memory: Physical {0} MB \t Paged {1} MB \t Virtual {2} MB\n",
-                        Math.Round(myprocess.PeakWorkingSet64 / 1024.0 / 1024.0),
-                        Math.Round(myprocess.PeakPagedMemorySize64 / 1024.0 / 1024.0),
-                        Math.Round(myprocess.PeakVirtualMemorySize64 / 1024.0 / 1024.0));
+                using (Process myprocess = Process.GetCurrentProcess())
+                {
+                    sb.AppendFormat(
+                            "Process memory:      Physical {0} MB \t Paged {1} MB \t Virtual {2} MB\n",
+                            Math.Round(myprocess.WorkingSet64 / 1024.0 / 1024.0),
+                            Math.Round(myprocess.PagedMemorySize64 / 1024.0 / 1024.0),
+                            Math.Round(myprocess.VirtualMemorySize64 / 1024.0 / 1024.0));
+                    sb.AppendFormat(
+                            "Peak process memory: Physical {0} MB \t Paged {1} MB \t Virtual {2} MB\n",
+                            Math.Round(myprocess.PeakWorkingSet64 / 1024.0 / 1024.0),
+                            Math.Round(myprocess.PeakPagedMemorySize64 / 1024.0 / 1024.0),
+                            Math.Round(myprocess.PeakVirtualMemorySize64 / 1024.0 / 1024.0));
+                    sb.AppendFormat("\nTotal process Threads {0}\n", myprocess.Threads.Count);
+                }
             }
             catch
             { }
@@ -104,10 +103,22 @@ namespace OpenSim.Framework.Monitoring
 
         public virtual string XReport(string uptime, string version)
         {
-            return (string) Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0).ToString() ;
+            return (string)Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0).ToString();
         }
 
         public virtual OSDMap OReport(string uptime, string version)
+        {
+            OSDMap ret = new OSDMap();
+            ret.Add("TotalMemory", new OSDReal(Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0)));
+            return ret;
+        }
+
+        public virtual string XReport(string uptime, string version, string scene)
+        {
+            return (string)Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0).ToString();
+        }
+
+        public virtual OSDMap OReport(string uptime, string version, string scene)
         {
             OSDMap ret = new OSDMap();
             ret.Add("TotalMemory", new OSDReal(Math.Round(GC.GetTotalMemory(false) / 1024.0 / 1024.0)));

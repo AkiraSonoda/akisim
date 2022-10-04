@@ -78,7 +78,7 @@ namespace OpenSim.Services.Connectors
             string serviceURI = config.GetString("MapImageServerURI",
                     String.Empty);
 
-            if (serviceURI == String.Empty)
+            if (serviceURI.Length == 0)
             {
                 m_log.Error("[MAP IMAGE CONNECTOR]: No Server URI named in section MapImageService");
                 throw new Exception("MapImage connector init error");
@@ -229,6 +229,7 @@ namespace OpenSim.Services.Connectors
                 string reply = SynchronousRestFormsRequester.MakeRequest("POST",
                         uri,
                         reqString,
+                        30,
                         m_Auth);
                 if (reply != string.Empty)
                 {
@@ -271,7 +272,7 @@ namespace OpenSim.Services.Connectors
             {
                 // This just dumps a warning for any operation that takes more than 100 ms
                 int tickdiff = Util.EnvironmentTickCountSubtract(tickstart);
-                m_log.DebugFormat("[MAP IMAGE CONNECTOR]: map tile uploaded in {0}ms", tickdiff);
+                m_log.DebugFormat("[MAP IMAGE CONNECTOR]: map tile upload time {0}ms", tickdiff);
             }
 
             return false;

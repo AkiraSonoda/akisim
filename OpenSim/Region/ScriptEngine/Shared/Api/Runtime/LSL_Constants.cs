@@ -34,9 +34,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
 {
     public partial class ScriptBaseClass
     {
-        // LSL CONSTANTS
-        public static readonly LSLInteger TRUE = new LSLInteger(1);
-        public static readonly LSLInteger FALSE = new LSLInteger(0);
+        // SCRIPTS CONSTANTS
+        public static readonly LSLInteger OS_APIVERSION = 20;
+
+        public static readonly LSLInteger TRUE = 1;
+        public static readonly LSLInteger FALSE = 0;
 
         public const int STATUS_PHYSICS = 1;
         public const int STATUS_ROTATE_X = 2;
@@ -54,6 +56,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int AGENT_BY_LEGACY_NAME = 1;
         public const int AGENT_BY_USERNAME = 0x10;
         public const int NPC = 0x20;
+        //ApiDesc Objects running a script or physically moving
         public const int ACTIVE = 2;
         public const int PASSIVE = 4;
         public const int SCRIPTED = 8;
@@ -70,34 +73,39 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int CONTROL_ML_LBUTTON = 1073741824;
 
         //Permissions
-        public const int PERMISSION_DEBIT = 2;
-        public const int PERMISSION_TAKE_CONTROLS = 4;
-        public const int PERMISSION_REMAP_CONTROLS = 8;
-        public const int PERMISSION_TRIGGER_ANIMATION = 16;
-        public const int PERMISSION_ATTACH = 32;
-        public const int PERMISSION_RELEASE_OWNERSHIP = 64;
-        public const int PERMISSION_CHANGE_LINKS = 128;
-        public const int PERMISSION_CHANGE_JOINTS = 256;
-        public const int PERMISSION_CHANGE_PERMISSIONS = 512;
-        public const int PERMISSION_TRACK_CAMERA = 1024;
-        public const int PERMISSION_CONTROL_CAMERA = 2048;
-        public const int PERMISSION_TELEPORT = 4096;
+        public const int PERMISSION_DEBIT = 0x02;
+        public const int PERMISSION_TAKE_CONTROLS = 0x04;
+        public const int PERMISSION_REMAP_CONTROLS = 0x08;
+        public const int PERMISSION_TRIGGER_ANIMATION = 0x010;
+        public const int PERMISSION_ATTACH = 0x20;
+        public const int PERMISSION_RELEASE_OWNERSHIP = 0x40;
+        public const int PERMISSION_CHANGE_LINKS = 0x80;
+        public const int PERMISSION_CHANGE_JOINTS = 0x100;
+        public const int PERMISSION_CHANGE_PERMISSIONS = 0x200;
+        public const int PERMISSION_TRACK_CAMERA = 0x400;
+        public const int PERMISSION_CONTROL_CAMERA = 0x800;
+        public const int PERMISSION_TELEPORT = 0x1000;
+        public const int PERMISSION_SILENT_ESTATE_MANAGEMENT = 0x4000;
         public const int PERMISSION_OVERRIDE_ANIMATIONS = 0x8000;
+        public const int PERMISSION_RETURN_OBJECTS = 0x10000;
 
-        public const int AGENT_FLYING = 1;
-        public const int AGENT_ATTACHMENTS = 2;
-        public const int AGENT_SCRIPTED = 4;
-        public const int AGENT_MOUSELOOK = 8;
-        public const int AGENT_SITTING = 16;
-        public const int AGENT_ON_OBJECT = 32;
-        public const int AGENT_AWAY = 64;
-        public const int AGENT_WALKING = 128;
-        public const int AGENT_IN_AIR = 256;
-        public const int AGENT_TYPING = 512;
-        public const int AGENT_CROUCHING = 1024;
-        public const int AGENT_BUSY = 2048;
-        public const int AGENT_ALWAYS_RUN = 4096;
-        public const int AGENT_MALE = 8192;
+        public const int AGENT_FLYING = 0x1;
+        //ApiDesc The agent has attachments
+        public const int AGENT_ATTACHMENTS = 0x2;
+        //ApiDesc The agent has scripted attachments
+        public const int AGENT_SCRIPTED = 0x4;
+        public const int AGENT_MOUSELOOK = 0x8;
+        public const int AGENT_SITTING = 0x10;
+        public const int AGENT_ON_OBJECT = 0x20;
+        public const int AGENT_AWAY = 0x40;
+        public const int AGENT_WALKING = 0x80;
+        public const int AGENT_IN_AIR = 0x100;
+        public const int AGENT_TYPING = 0x200;
+        public const int AGENT_CROUCHING = 0x400;
+        public const int AGENT_BUSY = 0x800;
+        public const int AGENT_ALWAYS_RUN = 0x1000;
+        public const int AGENT_AUTOPILOT = 0x2000;
+        public const int AGENT_MALE = 0x40000000;
 
         //Particle Systems
         public const int PSYS_PART_INTERP_COLOR_MASK = 1;
@@ -183,6 +191,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int VEHICLE_RANGE_BLOCK = 45;
         public const int VEHICLE_ROLL_FRAME = 46;
         public const int VEHICLE_FLAG_NO_DEFLECTION_UP = 1;
+        public const int VEHICLE_FLAG_NO_FLY_UP = 1;  //legacy
         public const int VEHICLE_FLAG_LIMIT_ROLL_ONLY = 2;
         public const int VEHICLE_FLAG_HOVER_WATER_ONLY = 4;
         public const int VEHICLE_FLAG_HOVER_TERRAIN_ONLY = 8;
@@ -211,6 +220,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int INVENTORY_BODYPART = 13;
         public const int INVENTORY_ANIMATION = 20;
         public const int INVENTORY_GESTURE = 21;
+        public const int INVENTORY_SETTING = 56;
 
         public const int ATTACH_CHEST = 1;
         public const int ATTACH_HEAD = 2;
@@ -275,12 +285,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         /// <summary>
         /// Instructs osMessageAttachements to send the message to attachments
         ///     on every point.
+        /// Note that is to be present on selected attachment points list, not options
         /// </summary>
         /// <remarks>
-        /// One might expect this to be named OS_ATTACH_ALL, but then one might
-        ///     also expect functions designed to attach or detach or get
-        ///     attachments to work with it too. Attaching a no-copy item to
-        ///     many attachments could be dangerous.
         /// when combined with OS_ATTACH_MSG_INVERT_POINTS, will prevent the
         ///     message from being sent.
         /// if combined with OS_ATTACH_MSG_OBJECT_CREATOR or
@@ -372,7 +379,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int CHANGED_REGION_RESTART = 1024;
         public const int CHANGED_REGION_START = 1024; //LL Changed the constant from CHANGED_REGION_RESTART
         public const int CHANGED_MEDIA = 2048;
+        //ApiDesc opensim specific
         public const int CHANGED_ANIMATION = 16384;
+        //ApiDesc opensim specific
         public const int CHANGED_POSITION = 32768;
 
         public const int TYPE_INVALID = 0;
@@ -425,6 +434,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int PRIM_FLEXIBLE = 21;
         public const int PRIM_TEXGEN = 22;
         public const int PRIM_POINT_LIGHT = 23; // Huh?
+        //ApiDesc not supported
         public const int PRIM_CAST_SHADOWS = 24; // Not implemented, here for completeness sake
         public const int PRIM_GLOW = 25;
         public const int PRIM_TEXT = 26;
@@ -440,12 +450,20 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int PRIM_SPECULAR = 36;
         public const int PRIM_NORMAL = 37;
         public const int PRIM_ALPHA_MODE = 38;
+        //ApiDesc not supported
         public const int PRIM_ALLOW_UNSIT = 39; // experiences related. unsupported
+        //ApiDesc not supported
         public const int PRIM_SCRIPTED_SIT_ONLY = 40; // experiences related. unsupported
         public const int PRIM_SIT_TARGET = 41;
 
 
         // parameters
+
+        public const int PRIM_ALPHA_MODE_NONE = 0;
+        public const int PRIM_ALPHA_MODE_BLEND = 1;
+        public const int PRIM_ALPHA_MODE_MASK = 2;
+        public const int PRIM_ALPHA_MODE_EMISSIVE = 3;
+
         public const int PRIM_TEXGEN_DEFAULT = 0;
         public const int PRIM_TEXGEN_PLANAR = 1;
 
@@ -499,8 +517,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int PRIM_SCULPT_TYPE_TORUS = 2;
         public const int PRIM_SCULPT_TYPE_PLANE = 3;
         public const int PRIM_SCULPT_TYPE_CYLINDER = 4;
-        public const int PRIM_SCULPT_FLAG_INVERT = 64;
-        public const int PRIM_SCULPT_FLAG_MIRROR = 128;
+        public const int PRIM_SCULPT_FLAG_INVERT = 0x40;
+        public const int PRIM_SCULPT_FLAG_MIRROR = 0x80;
+        //ApiDesc Auxiliar to clear flags keeping scultp type
+        public const int PRIM_SCULPT_TYPE_MASK = 0x07;  // auxiliar mask
 
         public const int PRIM_PHYSICS_SHAPE_PRIM = 0;
         public const int PRIM_PHYSICS_SHAPE_NONE = 1;
@@ -515,11 +535,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int MASK_EVERYONE = 3;
         public const int MASK_NEXT = 4;
 
-        public const int PERM_TRANSFER = 8192;
-        public const int PERM_MODIFY = 16384;
-        public const int PERM_COPY = 32768;
-        public const int PERM_MOVE = 524288;
-        public const int PERM_ALL = 2147483647;
+        public const int PERM_TRANSFER = 0x2000;
+        public const int PERM_MODIFY = 0x4000;
+        public const int PERM_COPY = 0x8000;
+        public const int PERM_MOVE = 0x80000;
+        public const int PERM_ALL = 0x7fffffff;
 
         public const int PARCEL_MEDIA_COMMAND_STOP = 0;
         public const int PARCEL_MEDIA_COMMAND_PAUSE = 1;
@@ -570,8 +590,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int ESTATE_ACCESS_BANNED_AGENT_ADD = 4;
         public const int ESTATE_ACCESS_BANNED_AGENT_REMOVE = 5;
 
-        public static readonly LSLInteger PAY_HIDE = new LSLInteger(-1);
-        public static readonly LSLInteger PAY_DEFAULT = new LSLInteger(-2);
+        public static readonly LSLInteger PAY_HIDE = -1;
+        public static readonly LSLInteger PAY_DEFAULT = -2;
 
         public const string NULL_KEY = "00000000-0000-0000-0000-000000000000";
         public const string EOF = "\n\n\n";
@@ -644,21 +664,36 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int OBJECT_GROUP_TAG = 33;
         public const int OBJECT_TEMP_ATTACHED = 34;
         public const int OBJECT_ATTACHED_SLOTS_AVAILABLE = 35;
+        public const int OBJECT_CREATION_TIME = 36;
+        public const int OBJECT_SELECT_COUNT = 37;
+        public const int OBJECT_SIT_COUNT = 38;
+        public const int OBJECT_ANIMATED_COUNT = 39;
+        public const int OBJECT_ANIMATED_SLOTS_AVAILABLE = 40;
+
 
         // Pathfinding types
+        //ApiDesc not supported
         public const int OPT_OTHER = -1;
+        //ApiDesc not supported
         public const int OPT_LEGACY_LINKSET = 0;
+        //ApiDesc not supported
         public const int OPT_AVATAR = 1;
+        //ApiDesc not supported
         public const int OPT_CHARACTER = 2;
+        //ApiDesc not supported
         public const int OPT_WALKABLE = 3;
+        //ApiDesc not supported
         public const int OPT_STATIC_OBSTACLE = 4;
+        //ApiDesc not supported
         public const int OPT_MATERIAL_VOLUME = 5;
+        //ApiDesc not supported
         public const int OPT_EXCLUSION_VOLUME = 6;
 
         // for llGetAgentList
-        public const int AGENT_LIST_PARCEL = 1;
+        public const int AGENT_LIST_PARCEL = 0x1;
         public const int AGENT_LIST_PARCEL_OWNER = 2;
         public const int AGENT_LIST_REGION = 4;
+        public const int AGENT_LIST_EXCLUDENPC = 0x4000000;
 
         // Can not be public const?
         public static readonly vector ZERO_VECTOR = new vector(0.0, 0.0, 0.0);
@@ -696,7 +731,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int PARCEL_DETAILS_GROUP = 3;
         public const int PARCEL_DETAILS_AREA = 4;
         public const int PARCEL_DETAILS_ID = 5;
-        public const int PARCEL_DETAILS_SEE_AVATARS = 6; // not implemented
+        public const int PARCEL_DETAILS_SEE_AVATARS = 6;
+        public const int PARCEL_DETAILS_ANY_AVATAR_SOUNDS = 7;
+        public const int PARCEL_DETAILS_GROUP_SOUNDS = 8;
+        // constants for llGetParcelDetails os specific
+        public const int PARCEL_DETAILS_DWELL = 64;
 
         //osSetParcelDetails
         public const int PARCEL_DETAILS_CLAIMDATE = 10;
@@ -748,14 +787,14 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int GRAVITY_MULTIPLIER = 8;
 
         // extra constants for llSetPrimMediaParams
-        public static readonly LSLInteger LSL_STATUS_OK = new LSLInteger(0);
-        public static readonly LSLInteger LSL_STATUS_MALFORMED_PARAMS = new LSLInteger(1000);
-        public static readonly LSLInteger LSL_STATUS_TYPE_MISMATCH = new LSLInteger(1001);
-        public static readonly LSLInteger LSL_STATUS_BOUNDS_ERROR = new LSLInteger(1002);
-        public static readonly LSLInteger LSL_STATUS_NOT_FOUND = new LSLInteger(1003);
-        public static readonly LSLInteger LSL_STATUS_NOT_SUPPORTED = new LSLInteger(1004);
-        public static readonly LSLInteger LSL_STATUS_INTERNAL_ERROR = new LSLInteger(1999);
-        public static readonly LSLInteger LSL_STATUS_WHITELIST_FAILED = new LSLInteger(2001);
+        public static readonly LSLInteger LSL_STATUS_OK = 0;
+        public static readonly LSLInteger LSL_STATUS_MALFORMED_PARAMS = 1000;
+        public static readonly LSLInteger LSL_STATUS_TYPE_MISMATCH = 1001;
+        public static readonly LSLInteger LSL_STATUS_BOUNDS_ERROR = 1002;
+        public static readonly LSLInteger LSL_STATUS_NOT_FOUND = 1003;
+        public static readonly LSLInteger LSL_STATUS_NOT_SUPPORTED = 1004;
+        public static readonly LSLInteger LSL_STATUS_INTERNAL_ERROR = 1999;
+        public static readonly LSLInteger LSL_STATUS_WHITELIST_FAILED = 2001;
 
         // Constants for default textures
         public const string TEXTURE_BLANK = "5748decc-f629-461c-9a36-a35a221fe21f";
@@ -764,7 +803,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const string TEXTURE_TRANSPARENT = "8dcd4a48-2d37-4909-9f78-f7a9eb4ef903";
         public const string TEXTURE_MEDIA = "8b5fec65-8d8d-9dc5-cda8-8fdf2716e361";
 
-        // Constants for osGetRegionStats
+        // Constants for osGetRegionStats this must match StatsIndex in SimStats.cs
         public const int STATS_TIME_DILATION = 0;
         public const int STATS_SIM_FPS = 1;
         public const int STATS_PHYSICS_FPS = 2;
@@ -785,7 +824,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int STATS_PENDING_DOWNLOADS = 17;
         public const int STATS_PENDING_UPLOADS = 18;
         public const int STATS_ACTIVE_SCRIPTS = 19;
-        public const int STATS_SCRIPT_LPS = 20;
+
+        public const int STATS_SIM_SLEEP = 20;
+        public const int STATS_SCRIPT_EPS = 28;
+        public const int STATS_SCRIPT_TIME = 37;
+        public const int STATS_SCRIPT_LPS = 38;
+        public const int STATS_SCRIPT_NPCS = 47;
 
         // Constants for osNpc* functions
         public const int OS_NPC_FLY = 0;
@@ -812,6 +856,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public static readonly LSLInteger RC_REJECT_PHYSICAL = 2;
         public static readonly LSLInteger RC_REJECT_NONPHYSICAL = 4;
         public static readonly LSLInteger RC_REJECT_LAND = 8;
+        public static readonly LSLInteger RC_REJECT_HOST = 0x20000000;
+        public static readonly LSLInteger RC_REJECT_HOSTGROUP = 0x40000000;
 
         public static readonly LSLInteger RC_GET_NORMAL = 1;
         public static readonly LSLInteger RC_GET_ROOT_KEY = 2;
@@ -834,15 +880,16 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int KFM_CMD_STOP = 1;
         public const int KFM_CMD_PAUSE = 2;
 
-        public const string JSON_ARRAY = "JSON_ARRAY";
-        public const string JSON_OBJECT = "JSON_OBJECT";
-        public const string JSON_INVALID = "JSON_INVALID";
-        public const string JSON_NUMBER = "JSON_NUMBER";
-        public const string JSON_STRING = "JSON_STRING";
-        public const string JSON_TRUE = "JSON_TRUE";
-        public const string JSON_FALSE = "JSON_FALSE";
-        public const string JSON_NULL = "JSON_NULL";
-        public const string JSON_APPEND = "JSON_APPEND";
+        public const string JSON_INVALID = "\uFDD0";
+        public const string JSON_OBJECT = "\uFDD1";
+        public const string JSON_ARRAY = "\uFDD2";
+        public const string JSON_NUMBER = "\uFDD3";
+        public const string JSON_STRING = "\uFDD4";
+        public const string JSON_NULL = "\uFDD5";
+        public const string JSON_TRUE = "\uFDD6";
+        public const string JSON_FALSE = "\uFDD7";
+        public const string JSON_DELETE = "\uFDD8";
+        public const string JSON_APPEND = "-1";
 
         /// <summary>
         /// process name parameter as regex
@@ -853,5 +900,96 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         /// process message parameter as regex
         /// </summary>
         public const int OS_LISTEN_REGEX_MESSAGE = 0x2;
+
+        // Constants for osTeleportObject
+
+        //ApiDesc osTeleportObject no flags
+        public const int OSTPOBJ_NONE           = 0x0;
+        //ApiDesc osTeleportObject flag: stop at destination
+        public const int OSTPOBJ_STOPATTARGET   = 0x1;
+        //ApiDesc osTeleportObject flag: stop at jump point if tp fails
+        public const int OSTPOBJ_STOPONFAIL     = 0x2;
+        //ApiDesc osTeleportObject flag: the rotation is the final rotation, otherwise is a added rotation
+        public const int OSTPOBJ_SETROT         = 0x4;
+
+        //ApiDesc osLocalTeleportAgent no flags
+        public const int OS_LTPAG_NONE          = 0x0;
+        //ApiDesc osLocalTeleportAgent use velocity
+        public const int OS_LTPAG_USEVEL        = 0x1;
+        //ApiDesc osLocalTeleportAgent use lookat
+        public const int OS_LTPAG_USELOOKAT     = 0x2;
+        //ApiDesc osLocalTeleportAgent align lookat to velocity
+        public const int OS_LTPAG_ALGNLV        = 0x4;
+        //ApiDesc osLocalTeleportAgent force fly
+        public const int OS_LTPAG_FORCEFLY      = 0x8;
+        //ApiDesc osLocalTeleportAgent force no fly
+        public const int OS_LTPAG_FORCENOFLY    = 0x16;
+
+        // Constants for Windlight
+        public const int WL_WATER_COLOR = 0;
+        public const int WL_WATER_FOG_DENSITY_EXPONENT = 1;
+        public const int WL_UNDERWATER_FOG_MODIFIER = 2;
+        public const int WL_REFLECTION_WAVELET_SCALE = 3;
+        public const int WL_FRESNEL_SCALE = 4;
+        public const int WL_FRESNEL_OFFSET = 5;
+        public const int WL_REFRACT_SCALE_ABOVE = 6;
+        public const int WL_REFRACT_SCALE_BELOW = 7;
+        public const int WL_BLUR_MULTIPLIER = 8;
+        public const int WL_BIG_WAVE_DIRECTION = 9;
+        public const int WL_LITTLE_WAVE_DIRECTION = 10;
+        public const int WL_NORMAL_MAP_TEXTURE = 11;
+        public const int WL_HORIZON = 12;
+        public const int WL_HAZE_HORIZON = 13;
+        public const int WL_BLUE_DENSITY = 14;
+        public const int WL_HAZE_DENSITY = 15;
+        public const int WL_DENSITY_MULTIPLIER = 16;
+        public const int WL_DISTANCE_MULTIPLIER = 17;
+        public const int WL_MAX_ALTITUDE = 18;
+        public const int WL_SUN_MOON_COLOR = 19;
+        public const int WL_AMBIENT = 20;
+        public const int WL_EAST_ANGLE = 21;
+        public const int WL_SUN_GLOW_FOCUS = 22;
+        public const int WL_SUN_GLOW_SIZE = 23;
+        public const int WL_SCENE_GAMMA = 24;
+        public const int WL_STAR_BRIGHTNESS = 25;
+        public const int WL_CLOUD_COLOR = 26;
+        public const int WL_CLOUD_XY_DENSITY = 27;
+        public const int WL_CLOUD_COVERAGE = 28;
+        public const int WL_CLOUD_SCALE = 29;
+        public const int WL_CLOUD_DETAIL_XY_DENSITY = 30;
+        public const int WL_CLOUD_SCROLL_X = 31;
+        public const int WL_CLOUD_SCROLL_Y = 32;
+        public const int WL_CLOUD_SCROLL_Y_LOCK = 33;
+        public const int WL_CLOUD_SCROLL_X_LOCK = 34;
+        public const int WL_DRAW_CLASSIC_CLOUDS = 35;
+        public const int WL_SUN_MOON_POSITION = 36;
+
+        public const string IMG_USE_BAKED_HEAD    = "5a9f4a74-30f2-821c-b88d-70499d3e7183";
+        public const string IMG_USE_BAKED_UPPER   = "ae2de45c-d252-50b8-5c6e-19f39ce79317";
+        public const string IMG_USE_BAKED_LOWER   = "24daea5f-0539-cfcf-047f-fbc40b2786ba";
+        public const string IMG_USE_BAKED_EYES    = "52cc6bb6-2ee5-e632-d3ad-50197b1dcb8a";
+        public const string IMG_USE_BAKED_SKIRT   = "43529ce8-7faa-ad92-165a-bc4078371687";
+        public const string IMG_USE_BAKED_HAIR    = "09aac1fb-6bce-0bee-7d44-caac6dbb6c63";
+        public const string IMG_USE_BAKED_LEFTARM = "ff62763f-d60a-9855-890b-0c96f8f8cd98";
+        public const string IMG_USE_BAKED_LEFTLEG = "8e915e25-31d1-cc95-ae08-d58a47488251";
+        public const string IMG_USE_BAKED_AUX1    = "9742065b-19b5-297c-858a-29711d539043";
+        public const string IMG_USE_BAKED_AUX2    = "03642e83-2bd1-4eb9-34b4-4c47ed586d2d";
+        public const string IMG_USE_BAKED_AUX3    = "edd51b77-fc10-ce7a-4b3d-011dfc349e4f";
+
+        // llTargetedEmail
+        public const int TARGETED_EMAIL_ROOT_CREATOR = 1;
+        public const int TARGETED_EMAIL_OBJECT_OWNER = 2;
+
+        public const int NPCLOOKAT_NONE = 0;
+        public const int NPCLOOKAT_IDLE = 1;
+        public const int NPCLOOKAT_LISTEN = 2;
+        public const int NPCLOOKAT_FREELOOK = 3;
+        public const int NPCLOOKAT_RESPOND = 4;
+        public const int NPCLOOKAT_HOVER = 5;
+        public const int NPCLOOKAT_CONVERSATION = 6;
+        public const int NPCLOOKAT_SELECT = 7;
+        public const int NPCLOOKAT_FOCUS = 8;
+        public const int NPCLOOKAT_MOUSELOOK = 9;
+        public const int NPCLOOKAT_CLEAR = 10;
     }
 }
