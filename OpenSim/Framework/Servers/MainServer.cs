@@ -39,11 +39,37 @@ namespace OpenSim.Framework.Servers
 {
     public class MainServer
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private static BaseHttpServer instance = null;
         private static BaseHttpServer unsecureinstance = null;
         private static Dictionary<uint, BaseHttpServer> m_Servers = new Dictionary<uint, BaseHttpServer>();
+
+        /// <summary>
+        /// Control the printing of certain debug messages.
+        /// </summary>
+        /// <remarks>
+        /// If DebugLevel >= 1 then short warnings are logged when receiving bad input data.
+        /// If DebugLevel >= 2 then long warnings are logged when receiving bad input data.
+        /// If DebugLevel >= 3 then short notices about all incoming non-poll HTTP requests are logged.
+        /// If DebugLevel >= 4 then the time taken to fulfill the request is logged.
+        /// If DebugLevel >= 5 then the start of the body of incoming non-poll HTTP requests will be logged.
+        /// If DebugLevel >= 6 then the entire body of incoming non-poll HTTP requests will be logged.
+        /// </remarks>
+        public static int DebugLevel
+        {
+            get { return s_debugLevel; }
+            set
+            {
+                s_debugLevel = value;
+
+                lock (m_Servers)
+                    foreach (BaseHttpServer server in m_Servers.Values)
+                        server.DebugLevel = s_debugLevel;
+            }
+        }
+
+        private static int s_debugLevel;
 
         /// <summary>
         /// Set the main HTTP server instance.

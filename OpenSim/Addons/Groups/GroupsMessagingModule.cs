@@ -56,7 +56,8 @@ namespace OpenSim.Groups
         private IGroupsServicesConnector m_groupData = null;
 
         // Config Options
-        private bool m_groupMessagingEnabled = false;
+        private bool m_groupMessagingEnabled;
+        private bool m_debugEnabled;
 
         /// <summary>
         /// If enabled, module only tries to send group IMs to online users by querying cached presence information.
@@ -86,9 +87,9 @@ namespace OpenSim.Groups
 
         public void Initialise(IConfigSource config)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.InfoFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+           if (m_log.IsDebugEnabled) {
+               m_log.InfoFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+           }
 
             IConfig groupsConfig = config.Configs["Groups"];
 
@@ -123,7 +124,11 @@ namespace OpenSim.Groups
                 return;
             }
 
-            m_log.InfoFormat("[GroupsMessagingModule]: GroupsMessagingModule enabled with MessageOnlineOnly = {0}",m_messageOnlineAgentsOnly);
+            m_debugEnabled = groupsConfig.GetBoolean("MessagingDebugEnabled", m_debugEnabled);
+
+            m_log.InfoFormat(
+                "[Groups.Messaging]: GroupsMessagingModule enabled with MessageOnlineOnly = {0}, DebugEnabled = {1}",
+                m_messageOnlineAgentsOnly, m_debugEnabled);
         }
 
         public void AddRegion(Scene scene)
@@ -131,9 +136,9 @@ namespace OpenSim.Groups
             if (!m_groupMessagingEnabled)
                 return;
 
-			if (m_log.IsDebugEnabled) {
-				m_log.InfoFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            if (m_log.IsDebugEnabled) {
+                m_log.InfoFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             scene.RegisterModuleInterface<IGroupsMessagingModule>(this);
             m_sceneList.Add(scene);
@@ -158,9 +163,9 @@ namespace OpenSim.Groups
             if (!m_groupMessagingEnabled)
                 return;
 
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+            }
 
             m_groupData = scene.RequestModuleInterface<IGroupsServicesConnector>();
 
@@ -177,7 +182,7 @@ namespace OpenSim.Groups
             // No message transfer module, no groups messaging
             if (m_msgTransferModule == null)
             {
-                m_log.Error("[GroupsMessagingModule]: Could not get MessageTransferModule");
+                m_log.Error("[Groups.Messaging]: Could not get MessageTransferModule");
                 RemoveRegion(scene);
                 return;
             }
@@ -187,7 +192,7 @@ namespace OpenSim.Groups
             // No groups module, no groups messaging
             if (m_UserManagement == null)
             {
-                m_log.Error("[GroupsMessagingModule]: Could not get IUserManagement, GroupsMessagingModule is now disabled.");
+                m_log.Error("[Groups.Messaging]: Could not get IUserManagement, GroupsMessagingModule is now disabled.");
                 RemoveRegion(scene);
                 return;
             }
@@ -201,9 +206,7 @@ namespace OpenSim.Groups
             if (!m_groupMessagingEnabled)
                 return;
 
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("[GroupsMessagingModule]: {0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+            if (m_debugEnabled) m_log.DebugFormat("[Groups.Messaging]: {0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
 
             m_sceneList.Remove(scene);
             scene.EventManager.OnNewClient -= OnNewClient;
@@ -217,9 +220,7 @@ namespace OpenSim.Groups
             if (!m_groupMessagingEnabled)
                 return;
 
-            if (m_log.IsDebugEnabled) {
-				m_log.Debug("[GroupsMessagingModule]: Shutting down GroupsMessagingModule module.");
-			}
+            if (m_debugEnabled) m_log.Debug("[Groups.Messaging]: Shutting down GroupsMessagingModule module.");
 
             m_sceneList.Clear();
 

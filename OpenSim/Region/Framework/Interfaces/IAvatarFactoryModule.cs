@@ -25,6 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// AKIDO modified
+
 using System.Collections.Generic;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -67,8 +69,7 @@ namespace OpenSim.Region.Framework.Interfaces
         /// <summary>
         /// Validate that OpenSim can find the baked textures need to display a given avatar
         /// </summary>
-        /// <param name="client"></param>
-        /// <param name="checkonly"></param>
+        /// <param name="sp">Avatar to validate.</param>
         /// <returns>
         /// true if all the baked textures referenced by the texture IDs exist or the appearance is only using default textures.  false otherwise.
         /// </returns>
@@ -93,13 +94,11 @@ namespace OpenSim.Region.Framework.Interfaces
         void QueueAppearanceSend(UUID agentid);
         void QueueAppearanceSave(UUID agentid);
 
-        // AKIDO removed reportOutputAction 
-
         /// <summary>
         /// Get a report about the current state of a scene presence's baked appearance textures.
         /// </summary>
         /// <param name="sp"></param>
         /// <returns></returns>
-        void WriteBakedTexturesReport(IScenePresence sp);
+        void WriteBakedTexturesReport(IScenePresence sp); // AKIDO
     }
 }

@@ -269,7 +269,7 @@ namespace OpenSim.Framework.Capabilities
         /// capabilities and their handler details.
         /// </summary>
         /// <param name="excludeSeed">If true, then exclude the seed cap.</param>
-        public Hashtable GetCapsDetails(bool excludeSeed, List<string> requestedCaps, string inventory_server_name, string inventory_server_port)
+        public Hashtable GetCapsDetails(bool excludeSeed, List<string> requestedCaps)
         {
             Hashtable caps = CapsHandlers.GetCapsDetails(excludeSeed, requestedCaps);
 
@@ -299,13 +299,8 @@ namespace OpenSim.Framework.Capabilities
             {
                 if (!requestedCaps.Contains(kvp.Key))
                     continue;
-                if (kvp.Key.Equals("FetchInventory2")) {
-                    caps[kvp.Key] = kvp.Value + inventory_server_name + "/" + inventory_server_port;
-                } else if (kvp.Key.Equals("FetchInventoryDescendents2")) {
-                    caps[kvp.Key] = kvp.Value + inventory_server_name + "/" + inventory_server_port;
-                } else {
-                    caps[kvp.Key] = kvp.Value;
-                }
+
+                caps[kvp.Key] = kvp.Value;
             }
 
 

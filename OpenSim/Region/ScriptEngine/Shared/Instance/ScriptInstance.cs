@@ -561,11 +561,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
 
         public bool Stop(int timeout, bool clearEventQueue = false)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat (
+            if (DebugLevel >= 1)
+                m_log.DebugFormat(
                     "[SCRIPT INSTANCE]: Stopping script {0} {1} in {2} {3} with timeout {4} {5} {6}",
                     ScriptName, ItemID, PrimName, ObjectID, timeout, m_InSelfDelete, DateTime.Now.Ticks);
-			}
 
             IScriptWorkItem workItem;
 
@@ -607,7 +606,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 }
                 else
                 {
-                    if (m_log.IsDebugEnabled)
+                    if (DebugLevel >= 1)
                         m_log.DebugFormat(
                             "[SCRIPT INSTANCE]: Co-operatively stopping script {0} {1} in {2} {3}",
                             ScriptName, ItemID, PrimName, ObjectID);
@@ -619,7 +618,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                     // checking is implemented.  May want to allow a shorter timeout option later.
                     if (workItem.Wait(Timeout.Infinite))
                     {
-                        if (m_log.IsDebugEnabled)
+                        if (DebugLevel >= 1)
                             m_log.DebugFormat(
                                 "[SCRIPT INSTANCE]: Co-operatively stopped script {0} {1} in {2} {3}",
                                 ScriptName, ItemID, PrimName, ObjectID);
@@ -940,8 +939,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 if (Engine.World.PipeEventsForScript(LocalID) ||
                     data.EventName == "control") // Don't freeze avies!
                 {
-                    //                        m_log.DebugFormat("[Script] Delivered event {2} in state {3} to {0}.{1}",
-                    //                                PrimName, ScriptName, data.EventName, State);
+                    //m_log.DebugFormat("[Script] Delivered event {2} in state {3} to {0}.{1}",
+                    //          PrimName, ScriptName, data.EventName, State);
 
                     try
                     {

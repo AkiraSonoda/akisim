@@ -25,19 +25,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// AKIDO Modified
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text;
-using log4net;
 using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
-using OpenSim.Framework.Monitoring;
-using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
@@ -49,7 +47,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AppearanceInfoModule")]
     public class AppearanceInfoModule : ISharedRegionModule
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private List<Scene> m_scenes = new List<Scene>();
 
@@ -61,43 +59,28 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         public void Initialise(IConfigSource source)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
+//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: INITIALIZED MODULE");
         }
 
         public void PostInitialise()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
+//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: POST INITIALIZED MODULE");
         }
 
         public void Close()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
+//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: CLOSED MODULE");
         }
 
         public void AddRegion(Scene scene)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
+//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
-            
             lock (m_scenes)
                 m_scenes.Remove(scene);
         }
@@ -219,10 +202,6 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         private void HandleShowAppearanceCommand(string module, string[] cmd)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             if (cmd.Length != 2 && cmd.Length < 4)
             {
                 MainConsole.Instance.Output("Usage: appearance show [<first-name> <last-name>]");
@@ -247,9 +226,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     if (targetNameSupplied)
                     {
                         ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
-                        // AKIDO removed reportOutputAction from WriteBakedTextureReport
                         if (sp != null && !sp.IsChildAgent)
-                            scene.AvatarFactory.WriteBakedTexturesReport(sp);
+                            scene.AvatarFactory.WriteBakedTexturesReport(sp); // AKIDO
                     }
                     else
                     {
@@ -284,9 +262,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                     ScenePresence sp = scene.GetScenePresence(firstname, lastname);
                     if (sp != null && !sp.IsChildAgent)
                     {
-                        // AKIDO set this to TRUE in AKI-13.13
-                        // AKIDO but because of the recent problems after the Melanie Christmas "Present" I have to investigate nn that.
-                        int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, true);
+                        int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, false);
 
                         if (rebakesRequested > 0)
                             MainConsole.Instance.Output(

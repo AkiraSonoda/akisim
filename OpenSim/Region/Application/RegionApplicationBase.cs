@@ -65,10 +65,6 @@ namespace OpenSim
 
         protected override void StartupSpecific()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             SceneManager = SceneManager.Instance;
 
             Initialize();

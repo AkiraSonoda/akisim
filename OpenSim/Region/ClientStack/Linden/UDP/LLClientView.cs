@@ -369,7 +369,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// This does mean that agent updates must be processed synchronously, at least for each client, and called methods
         /// cannot retain a reference to it outside of that method.
         /// </remarks>
-        private AgentUpdateArgs m_thisAgentUpdateArgs = new AgentUpdateArgs();
+        private readonly AgentUpdateArgs m_thisAgentUpdateArgs = new AgentUpdateArgs();
 
         protected Dictionary<PacketType, PacketProcessor> m_packetHandlers = new Dictionary<PacketType, PacketProcessor>();
         protected Dictionary<string, GenericMessage> m_genericPacketHandlers = new Dictionary<string, GenericMessage>(); //PauPaw:Local Generic Message handlers
@@ -980,7 +980,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 0xff, 0xff, 0, 250 // ID 250 (low frequency bigendian)
                 };
 
-        public void MoveAgentIntoRegion(RegionInfo regInfo, Vector3 pos, Vector3 look)
+        public unsafe void MoveAgentIntoRegion(RegionInfo regInfo, Vector3 pos, Vector3 look)
         {
             // reset agent update args
             m_thisAgentUpdateArgs.CameraAtAxis.X = float.MinValue;
@@ -988,39 +988,43 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             m_thisAgentUpdateArgs.ControlFlags = 0;
 
             UDPPacketBuffer buf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
-            byte[] data = buf.Data;
+            byte[] bdata = buf.Data;
 
             //setup header
-            Buffer.BlockCopy(AgentMovementCompleteHeader, 0, data, 0, 10);
+            Buffer.BlockCopy(AgentMovementCompleteHeader, 0, bdata, 0, 10);
 
-            //AgentData block
-            m_agentId.ToBytes(data, 10); // 26
-            m_sessionId.ToBytes(data, 26); // 42
+            fixed(byte* data = bdata)
+            {            
+                //AgentData block
+                m_agentId.ToBytes(data + 10); // 26
+                m_sessionId.ToBytes(data + 26); // 42
 
-            //Data block
-            if ((pos.X == 0) && (pos.Y == 0) && (pos.Z == 0))
-                m_startpos.ToBytes(data, 42); //54
-            else
-                pos.ToBytes(data, 42); //54
-            look.ToBytes(data, 54); // 66
-            Utils.UInt64ToBytesSafepos(regInfo.RegionHandle, data, 66); // 74
-            Utils.UIntToBytesSafepos((uint)Util.UnixTimeSinceEpoch(), data, 74); //78
+                //Data block
+                if ((pos.X == 0) && (pos.Y == 0) && (pos.Z == 0))
+                    m_startpos.ToBytes(data + 42); //54
+                else
+                    pos.ToBytes(data + 42); //54
+                look.ToBytes(data + 54); // 66
+                    //Utils.UInt64ToBytesSafepos(regInfo.RegionHandle, data + 66); // 74
+                    //Utils.UIntToBytesSafepos((uint)Util.UnixTimeSinceEpoch(), data + 74); //78
+                    Utils.UInt64ToBytes(regInfo.RegionHandle, data + 66); // 74
+                    Utils.IntToBytes((int)Util.UnixTimeSinceEpoch(), data + 74); //78
 
-            //SimData
-            int len = m_regionChannelVersion.Length;
-            if(len == 0)
-            {
-                data[78] = 0;
-                data[79] = 0;
+                    //SimData
+                    int len = m_regionChannelVersion.Length;
+                if(len == 0)
+                {
+                    data[78] = 0;
+                    data[79] = 0;
+                }
+                else
+                {
+                    data[78] = (byte)len;
+                    data[79] = (byte)(len >> 8);
+                    Buffer.BlockCopy(m_regionChannelVersion, 0, bdata, 80, len);
+                }
+                    buf.DataLength = 80 + len;
             }
-            else
-            {
-                data[78] = (byte)len;
-                data[79] = (byte)(len >> 8);
-                Buffer.BlockCopy(m_regionChannelVersion, 0, data, 80, len);
-            }
-
-            buf.DataLength = 80 + len;
             m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Unknown);
         }
 
@@ -1769,65 +1773,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     OutPacket(pkt, ThrottleOutPacketType.Wind);
         }
 
-        // cloud caching
-        private static Dictionary<ulong,int> lastCloudVersion = new Dictionary<ulong,int>();
-        private static Dictionary<ulong,List<LayerDataPacket>> lastCloudPackets =
-                 new Dictionary<ulong,List<LayerDataPacket>>();
-
-        /// <summary>
-        ///  Send the cloud matrix to the client
-        /// </summary>
-        /// <param name="windSpeeds">16x16 array of cloud densities</param>
-        public virtual void SendCloudData(int version, float[] cloudDensity)
-        {
-            ulong handle = this.Scene.RegionInfo.RegionHandle;
-            bool isNewData;
-            lock(lastWindPackets)
-            {
-                if(!lastCloudVersion.ContainsKey(handle) ||
-                    !lastCloudPackets.ContainsKey(handle))
-                {
-                    lastCloudVersion[handle] = 0;
-                    lastCloudPackets[handle] = new List<LayerDataPacket>();
-                    isNewData = true;
-                }
-                else
-                    isNewData = lastCloudVersion[handle] != version;
-            }
-
-            if(isNewData)
-            {
-                TerrainPatch[] patches = new TerrainPatch[1];
-                patches[0] = new TerrainPatch();
-                patches[0].Data = new float[16 * 16];
-
-                for (int y = 0; y < 16; y++)
-                {
-                    for (int x = 0; x < 16; x++)
-                    {
-                        patches[0].Data[y * 16 + x] = cloudDensity[y * 16 + x];
-                    }
-                }
-                // neither we or viewers have extended clouds
-                byte layerType = (byte)TerrainPatch.LayerType.Cloud;
-
-                LayerDataPacket layerpack =
-                    OpenSimTerrainCompressor.CreateLayerDataPacketStandardSize(
-                        patches, layerType);
-                layerpack.Header.Zerocoded = true;
-                lock(lastCloudPackets)
-                {
-                    lastCloudPackets[handle].Clear();
-                    lastCloudPackets[handle].Add(layerpack);
-                    lastCloudVersion[handle] = version;
-                }
-            }
-
-            lock(lastCloudPackets)
-                foreach(LayerDataPacket pkt in lastCloudPackets[handle])
-                    OutPacket(pkt, ThrottleOutPacketType.Cloud);
-        }
-
         /// <summary>
         /// Tell the client that the given neighbour region is ready to receive a child agent.
         /// </summary>
@@ -2117,8 +2062,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void SendLocalTeleport(Vector3 position, Vector3 lookAt, uint flags)
         {
-			m_log.DebugFormat("[LLClientView]: SendLocalTeleport()");
-
             TeleportLocalPacket tpLocal = (TeleportLocalPacket)PacketPool.Instance.GetPacket(PacketType.TeleportLocal);
             tpLocal.Info.AgentID = m_agentId;
             tpLocal.Info.TeleportFlags = flags;
@@ -2133,7 +2076,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public virtual void SendRegionTeleport(ulong regionHandle, byte simAccess, IPEndPoint newRegionEndPoint, uint locationID,
                                        uint flags, string capsURL)
         {
-			m_log.DebugFormat("[LLClientView]: SendRegionTeleport( ..., capsURL: {0} )", capsURL);
             //TeleportFinishPacket teleport = (TeleportFinishPacket)PacketPool.Instance.GetPacket(PacketType.TeleportFinish);
 
             TeleportFinishPacket teleport = new TeleportFinishPacket();
@@ -2164,7 +2106,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// </summary>
         public void SendTeleportFailed(string reason)
         {
-			m_log.DebugFormat("[LLClientView]: SendTeleportFailed( reason: {0} )", reason);
             TeleportFailedPacket tpFailed = (TeleportFailedPacket)PacketPool.Instance.GetPacket(PacketType.TeleportFailed);
             tpFailed.Info.AgentID = m_agentId;
             tpFailed.Info.Reason = Util.StringToBytes256(reason);
@@ -2179,8 +2120,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// </summary>
         public void SendTeleportStart(uint flags)
         {
-			m_log.DebugFormat("[LLClientView]: SendTeleportStart( ... )");
-			TeleportStartPacket tpStart = (TeleportStartPacket)PacketPool.Instance.GetPacket(PacketType.TeleportStart);
+            TeleportStartPacket tpStart = (TeleportStartPacket)PacketPool.Instance.GetPacket(PacketType.TeleportStart);
             //TeleportStartPacket tpStart = new TeleportStartPacket();
             tpStart.Info.TeleportFlags = flags; //16; // Teleport via location
 
@@ -2350,8 +2290,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     currentPacket.ItemData[itemsSent % MAX_ITEMS_PER_PACKET] = CreateItemDataBlock(items[itemsSent++]);
                 else
                 {
-//                    m_log.DebugFormat(
-					//                        "[LLClientView]: Sending inventory folder details packet to {0} for folder {1}", Name, folderID);
+                    //m_log.DebugFormat(
+                    //    "[LLCLIENTVIEW]: Sending inventory folder details packet to {0} for folder {1}", Name, folderID);
                     OutPacket(currentPacket, ThrottleOutPacketType.Asset, false);
                     currentPacket = null;
                 }
@@ -2359,8 +2299,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             if (currentPacket != null)
             {
-//                m_log.DebugFormat(
-				//                    "[LLClientView]: Sending inventory folder details packet to {0} for folder {1}", Name, folderID);
+                //m_log.DebugFormat(
+                //    "[LLCLIENTVIEW]: Sending inventory folder details packet to {0} for folder {1}", Name, folderID);
                 OutPacket(currentPacket, ThrottleOutPacketType.Asset, false);
             }
         }
@@ -2424,7 +2364,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             packet.FolderData[0].FolderID = UUID.Zero;
             packet.FolderData[0].ParentID = UUID.Zero;
             packet.FolderData[0].Type = -1;
-            packet.FolderData[0].Name = new byte[0];
+            packet.FolderData[0].Name = Array.Empty<byte>();
         }
 
         private void AddNullItemBlockToDescendentsPacket(ref InventoryDescendentsPacket packet)
@@ -2435,12 +2375,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             packet.ItemData[0].AssetID = UUID.Zero;
             packet.ItemData[0].CreatorID = UUID.Zero;
             packet.ItemData[0].BaseMask = 0;
-            packet.ItemData[0].Description = new byte[0];
+            packet.ItemData[0].Description = Array.Empty<byte>();
             packet.ItemData[0].EveryoneMask = 0;
             packet.ItemData[0].OwnerMask = 0;
             packet.ItemData[0].FolderID = UUID.Zero;
             packet.ItemData[0].InvType = (sbyte)0;
-            packet.ItemData[0].Name = new byte[0];
+            packet.ItemData[0].Name = Array.Empty<byte>();
             packet.ItemData[0].NextOwnerMask = 0;
             packet.ItemData[0].OwnerID = UUID.Zero;
             packet.ItemData[0].Type = -1;
@@ -2706,9 +2646,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             else if (node is InventoryFolderBase)
                 SendBulkUpdateInventoryFolder((InventoryFolderBase)node, transationID);
             else if (node != null)
-				m_log.ErrorFormat("[LLClientView]: {0} sent unknown inventory node named {1}", Name, node.Name);
+                m_log.ErrorFormat("[CLIENT]: {0} sent unknown inventory node named {1}", Name, node.Name);
             else
-				m_log.ErrorFormat("[LLClientView]: {0} sent null inventory node", Name);
+                m_log.ErrorFormat("[CLIENT]: {0} sent null inventory node", Name);
         }
 
         protected void SendBulkUpdateInventoryItem(InventoryItemBase item, UUID? transationID = null)
@@ -2733,7 +2673,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             bulkUpdate.FolderData[0].FolderID = UUID.Zero;
             bulkUpdate.FolderData[0].ParentID = UUID.Zero;
             bulkUpdate.FolderData[0].Type = -1;
-            bulkUpdate.FolderData[0].Name = new byte[0];
+            bulkUpdate.FolderData[0].Name = Array.Empty<byte>();
 
             bulkUpdate.ItemData = new BulkUpdateInventoryPacket.ItemDataBlock[1];
             bulkUpdate.ItemData[0] = new BulkUpdateInventoryPacket.ItemDataBlock();
@@ -3111,7 +3051,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             alertPack.AlertInfo = new AlertMessagePacket.AlertInfoBlock[1];
             alertPack.AlertInfo[0] = new AlertMessagePacket.AlertInfoBlock();
             alertPack.AlertInfo[0].Message = Util.StringToBytes256(info);
-            alertPack.AlertInfo[0].ExtraParams = new Byte[0];
+            alertPack.AlertInfo[0].ExtraParams = Array.Empty<byte>();
             OutPacket(alertPack, ThrottleOutPacketType.Task);
         }
 
@@ -3722,7 +3662,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (land.Description != null && land.Description != String.Empty)
                 reply.Data.Desc = Utils.StringToBytes(land.Description.Substring(0, land.Description.Length > 254 ? 254: land.Description.Length));
             else
-                reply.Data.Desc = new Byte[0];
+                reply.Data.Desc = Array.Empty<byte>();
             reply.Data.ActualArea = land.Area;
             reply.Data.BillableArea = land.Area; // TODO: what is this?
 
@@ -4378,7 +4318,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             gmp.MethodData.Method = Util.StringToBytes256("emptymutelist");
             gmp.ParamList = new GenericMessagePacket.ParamListBlock[1];
             gmp.ParamList[0] = new GenericMessagePacket.ParamListBlock();
-            gmp.ParamList[0].Parameter = new byte[0];
+            gmp.ParamList[0].Parameter = Array.Empty<byte>();
 
             OutPacket(gmp, ThrottleOutPacketType.Task);
         }
@@ -4628,7 +4568,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             zc.Position = 7;
 
             zc.AddUInt64(m_scene.RegionInfo.RegionHandle);
-            zc.AddUInt16(Utils.FloatToUInt16(m_scene.TimeDilation, 0.0f, 1.0f));
+            zc.AddUInt16(Utils.FloatZeroOneToushort(m_scene.TimeDilation));
 
             zc.AddByte(1); // block count
 
@@ -4641,7 +4581,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task);
         }
 
-        public void SendEntityTerseUpdateImmediate(ISceneEntity ent)
+        public unsafe void SendEntityTerseUpdateImmediate(ISceneEntity ent)
         {
             if (ent == null)
                 return;
@@ -4650,18 +4590,24 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             //setup header and regioninfo block
             Buffer.BlockCopy(terseUpdateHeader, 0, buf.Data, 0, 7);
-            if (ent is ScenePresence)
-                Utils.UInt64ToBytesSafepos(((ScenePresence)ent).RegionHandle, buf.Data, 7);
-            else
-                Utils.UInt64ToBytesSafepos(m_scene.RegionInfo.RegionHandle, buf.Data, 7);
+            fixed(byte* bdata = &buf.Data[0])
+            {
+                Utils.UInt16ToBytes(Utils.FloatZeroOneToushort(m_scene.TimeDilation), bdata + 15);
+                bdata[17] = 1;
 
-            Utils.UInt16ToBytes(Utils.FloatToUInt16(m_scene.TimeDilation, 0.0f, 1.0f), buf.Data, 15);
-            buf.Data[17] = 1;
-
-            int pos = 18;
-            CreateImprovedTerseBlock(ent, buf.Data, ref pos, false);
-
-            buf.DataLength = pos;
+                byte* data = bdata + 18;
+                if (ent is ScenePresence)
+                {
+                    Utils.UInt64ToBytes(((ScenePresence)ent).RegionHandle, bdata + 7);
+                    CreateAvatartImprovedTerseBlock((ScenePresence)ent, ref data);
+                }
+                else
+                {
+                    Utils.UInt64ToBytes(m_scene.RegionInfo.RegionHandle, bdata + 7);
+                    CreatePartImprovedTerseBlock((SceneObjectPart)ent, ref data, false);
+                }
+                buf.DataLength = (int)(data - bdata);
+            }
             m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task, null, true);
         }
 
@@ -4788,7 +4734,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// </summary>
         private void ResendPrimUpdates(List<EntityUpdate> updates, OutgoingPacket oPacket)
         {
-			// m_log.WarnFormat("[LLClientView] resending prim updates {0}, packet sequence number {1}", updates[0].UpdateTime, oPacket.SequenceNumber);
+            // m_log.WarnFormat("[CLIENT] resending prim updates {0}, packet sequence number {1}", updates[0].UpdateTime, oPacket.SequenceNumber);
 
             // Remove the update packet from the list of packets waiting for acknowledgement
             // because we are requeuing the list of updates. They will be resent in new packets
@@ -5034,7 +4980,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     {
                         if (objectUpdateProbes == null)
                         {
-                            objectUpdateProbes = new List<EntityUpdate>(32);
+                            objectUpdateProbes = new List<EntityUpdate>(64);
                             maxUpdatesBytes -= 18;
                         }
                         objectUpdateProbes.Add(update);
@@ -5182,7 +5128,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (!IsActive)
                 return;
 
-            timeDilation = Utils.FloatToUInt16(m_scene.TimeDilation, 0.0f, 1.0f);
+            timeDilation = Utils.FloatZeroOneToushort(m_scene.TimeDilation);
 
             if(objectUpdates != null)
             {
@@ -5439,61 +5385,74 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 UDPPacketBuffer buf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
                 byte[] data = buf.Data;
-
                 Buffer.BlockCopy(ObjectUpdateCachedHeader, 0, data, 0, 7);
 
                 Utils.UInt64ToBytesSafepos(m_scene.RegionInfo.RegionHandle, data, 7); // 15
                 Utils.UInt16ToBytes(timeDilation, data, 15); // 17
 
-                int countposition = 17; // blocks count position
-                int pos = 18;
+                const int countposition = 17; // blocks count index
+                int pos = countposition + 1;
 
                 int count = 0;
                 EntityUpdate eu;
-                for (int indx = 0; indx < objectUpdateProbes.Count; ++indx)
+
+                int indx = 0;
+                while (indx < objectUpdateProbes.Count)
                 {
-                    eu = objectUpdateProbes[indx];
-                    SceneObjectPart sop = (SceneObjectPart)eu.Entity;
-                    if (sop.ParentGroup == null || sop.ParentGroup.IsDeleted)
-                        continue;
-                    uint primflags = m_scene.Permissions.GenerateClientFlags(sop, mysp);
-                    if (mysp.UUID != sop.OwnerID)
-                        primflags &= ~(uint)PrimFlags.CreateSelected;
-                    else
+                    unsafe
                     {
-                        if (sop.CreateSelected)
-                            primflags |= (uint)PrimFlags.CreateSelected;
-                        else
-                            primflags &= ~(uint)PrimFlags.CreateSelected;
+                        fixed(byte* bdata = &data[countposition + 1])
+                        {
+                            byte* ptr = bdata;
+                            while (indx < objectUpdateProbes.Count)
+                            {
+                                eu = objectUpdateProbes[indx++];
+                                SceneObjectPart sop = (SceneObjectPart)eu.Entity;
+                                if (sop.ParentGroup == null || sop.ParentGroup.IsDeleted)
+                                    continue;
+                                uint primflags = m_scene.Permissions.GenerateClientFlags(sop, mysp);
+                                if (mysp.UUID.NotEqual(sop.OwnerID))
+                                    primflags &= ~(uint)PrimFlags.CreateSelected;
+                                else
+                                {
+                                    if (sop.CreateSelected)
+                                        primflags |= (uint)PrimFlags.CreateSelected;
+                                    else
+                                        primflags &= ~(uint)PrimFlags.CreateSelected;
+                                }
+
+                                Utils.UIntToBytes(sop.LocalId, ptr); ptr += 4;
+                                Utils.UIntToBytes((uint)sop.PseudoCRC, ptr); ptr += 4; //WRONG
+                                Utils.UIntToBytes(primflags, ptr); ptr += 4;
+                                eu.Free();
+
+                                ++count;
+                                pos += 12;
+
+                                if (pos > (LLUDPServer.MAXPAYLOAD - 13))
+                                {
+                                    // we need more packets
+                                    UDPPacketBuffer newbuf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
+                                    Buffer.BlockCopy(data, 0, newbuf.Data, 0, countposition); // start is the same
+
+                                    data[countposition] = (byte)count;
+                                    buf.DataLength = pos;
+                                    m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task, null, false);
+
+                                    buf = newbuf;
+                                    data = buf.Data;
+                                    count = 0;
+                                    pos = countposition + 1;
+                                    break;
+                                }
+                            }
+                        }
                     }
-
-                    Utils.UIntToBytes(sop.LocalId, data, pos); pos += 4;
-                    Utils.UIntToBytes((uint)sop.PseudoCRC, data, pos); pos += 4; //WRONG
-                    Utils.UIntToBytes(primflags, data, pos); pos += 4;
-
-                    ++count;
-                    if (pos > (LLUDPServer.MAXPAYLOAD - 13))
-                    {
-                        // we need more packets
-                        UDPPacketBuffer newbuf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
-                        Buffer.BlockCopy(buf.Data, 0, newbuf.Data, 0, countposition); // start is the same
-
-                        buf.Data[countposition] = (byte)count;
-                        buf.DataLength = pos;
-                        m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task, null, false);
-
-                        buf = newbuf;
-                        data = buf.Data;
-                        pos = 18;
-
-                        count = 0;
-                    }
-                    eu.Free();
                 }
 
                 if (count > 0)
                 {
-                    buf.Data[countposition] = (byte)count;
+                    data[countposition] = (byte)count;
                     buf.DataLength = pos;
                     m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task, null, false);
                 }
@@ -5510,53 +5469,68 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 Buffer.BlockCopy(terseUpdateHeader, 0, buf.Data, 0, 7);
                 Utils.UInt64ToBytesSafepos(m_scene.RegionInfo.RegionHandle, buf.Data, 7);
                 Utils.UInt16ToBytes(timeDilation, buf.Data, 15);
-                int pos = 18;
+                const int COUNTINDEX = 17;
+                int pos = COUNTINDEX + 1;
                 int lastpos = 0;
-
                 int count = 0;
                 EntityUpdate eu;
-                for (int indx = 0; indx < terseUpdates.Count; ++indx)
+                int indx = 0;
+                while (indx < terseUpdates.Count)
                 {
-                    eu = terseUpdates[indx];
-                    lastpos = pos;
-                    CreateImprovedTerseBlock(eu.Entity, buf.Data, ref pos,  (eu.Flags & PrimUpdateFlags.Textures) != 0);
-                    if (pos < LLUDPServer.MAXPAYLOAD)
+                    unsafe
                     {
-                        //tau.Add(eu);
-                        ++count;
-                        --blocks;
+                        fixed(byte* bdata = &buf.Data[0])
+                        {
+                            byte* data = bdata + pos;
+                            while (indx < terseUpdates.Count)
+                            {
+                                eu = terseUpdates[indx++];
+                                lastpos = pos;
+                                if(eu.Entity is ScenePresence sp)
+                                    CreateAvatartImprovedTerseBlock(sp, ref data);
+                                else
+                                    CreatePartImprovedTerseBlock((SceneObjectPart)eu.Entity, ref data, (eu.Flags & PrimUpdateFlags.Textures) != 0);
+                                eu.Free();
+                                pos = (int)(data - bdata);
+                                --blocks;
+                                if (pos < LLUDPServer.MAXPAYLOAD)
+                                {
+                                    //tau.Add(eu);
+                                    ++count;
+                                }
+                                else if (blocks > 0)
+                                {
+                                    // we need more packets
+                                    UDPPacketBuffer newbuf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
+                                    Buffer.BlockCopy(buf.Data, 0, newbuf.Data, 0, COUNTINDEX); // start is the same
+                                    // copy what we done in excess
+                                    int extralen = pos - lastpos;
+                                    if(extralen > 0)
+                                        Buffer.BlockCopy(buf.Data, lastpos, newbuf.Data, 18, extralen);
+
+                                    pos = COUNTINDEX + 1 + extralen;
+
+                                    buf.Data[COUNTINDEX] = (byte)count;
+                                    buf.DataLength = lastpos;
+                                    // zero encode is not as spec
+                                    m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task,
+                                        //delegate (OutgoingPacket oPacket) { ResendPrimUpdates(tau, oPacket); }, true);
+                                        null, true);
+
+                                    //tau = new List<EntityUpdate>(30);
+                                    //tau.Add(eu);
+                                    count = 1;
+                                    buf = newbuf;
+                                    break;
+                                }
+                            }
+                        }
                     }
-                    else if (blocks > 0)
-                    {
-                        // we need more packets
-                        UDPPacketBuffer newbuf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
-                        Buffer.BlockCopy(buf.Data, 0, newbuf.Data, 0, 17); // start is the same
-                        // copy what we done in excess
-                        int extralen = pos - lastpos;
-                        if(extralen > 0)
-                            Buffer.BlockCopy(buf.Data, lastpos, newbuf.Data, 18, extralen);
-
-                        pos = 18 + extralen;
-
-                        buf.Data[17] = (byte)count;
-                        buf.DataLength = lastpos;
-                        // zero encode is not as spec
-                        m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task,
-                            //delegate (OutgoingPacket oPacket) { ResendPrimUpdates(tau, oPacket); }, true);
-                            null, true);
-
-                        //tau = new List<EntityUpdate>(30);
-                        //tau.Add(eu);
-                        count = 1;
-                        --blocks;
-                        buf = newbuf;
-                    }
-                    eu.Free(); //remove if using resend
                 }
 
                 if (count > 0)
                 {
-                    buf.Data[17] = (byte)count;
+                    buf.Data[COUNTINDEX] = (byte)count;
                     buf.DataLength = pos;
                     m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task,
                         //delegate (OutgoingPacket oPacket) { ResendPrimUpdates(tau, oPacket); }, true);
@@ -5807,7 +5781,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void FlushPrimUpdates()
         {
-			m_log.WarnFormat("[LLClientView]: Flushing prim updates to " + m_firstName + " " + m_lastName);
+            m_log.WarnFormat("[CLIENT]: Flushing prim updates to " + m_firstName + " " + m_lastName);
 
             while (m_entityUpdates.Count > 0)
                 ProcessEntityUpdates(-1);
@@ -6006,7 +5980,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         private void ResendPropertyUpdates(List<EntityUpdate> updates, OutgoingPacket oPacket)
         {
-			// m_log.WarnFormat("[LLClientView] resending object property {0}",updates[0].UpdateTime);
+            // m_log.WarnFormat("[CLIENT] resending object property {0}",updates[0].UpdateTime);
 
             // Remove the update packet from the list of packets waiting for acknowledgement
             // because we are requeuing the list of updates. They will be resent in new packets
@@ -6493,7 +6467,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             returnblock[9].Parameter = Utils.StringToBytes(abuseEmail);
 
             packet.ParamList = returnblock;
-			//m_log.Debug("[LLClientView]: SIM--->" + packet.ToString());
+            //m_log.Debug("[ESTATE]: SIM--->" + packet.ToString());
             OutPacket(packet, ThrottleOutPacketType.Task);
         }
 
@@ -6781,14 +6755,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         #region Helper Methods
         private void ClampVectorForUint(ref Vector3 v, float max)
         {
-            float a,b;
+            float a, b;
 
             a = Math.Abs(v.X);
             b = Math.Abs(v.Y);
-            if(b > a)
+            if (b > a)
                 a = b;
-            b= Math.Abs(v.Z);
-            if(b > a)
+            b = Math.Abs(v.Z);
+            if (b > a)
                 a = b;
 
             if (a > max)
@@ -6805,7 +6779,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             #region ScenePresence/SOP Handling
 
             bool avatar = (entity is ScenePresence);
-            uint localID = entity.LocalId;
             uint attachPoint;
             Vector4 collisionPlane;
             Vector3 position, velocity, acceleration, angularVelocity;
@@ -6830,8 +6803,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 rotation.Normalize();
                 angularVelocity = presence.AngularVelocity;
 
-                //                m_log.DebugFormat(
-                //                    "[LLCLIENTVIEW]: Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+                //m_log.DebugFormat(
+                //    "[LLCLIENTVIEW]: Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
 
                 attachPoint = presence.State;
                 collisionPlane = presence.CollisionPlane;
@@ -6844,9 +6817,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
                 attachPoint = part.ParentGroup.AttachmentPoint;
                 attachPoint = ((attachPoint % 16) * 16 + (attachPoint / 16));
-                //                m_log.DebugFormat(
-                //                    "[LLCLIENTVIEW]: Sending attachPoint {0} for {1} {2} to {3}",
-                //                    attachPoint, part.Name, part.LocalId, Name);
+                //m_log.DebugFormat(
+                //    "[LLCLIENTVIEW]: Sending attachPoint {0} for {1} {2} to {3}",
+                //    attachPoint, part.Name, part.LocalId, Name);
 
                 collisionPlane = Vector4.Zero;
                 position = part.RelativePosition;
@@ -6856,7 +6829,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 rotation = part.RotationOffset;
 
                 datasize = 44;
-                if(includeTexture)
+                if (includeTexture)
                     te = part.Shape.TextureEntry;
             }
 
@@ -6865,7 +6838,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             data[pos++] = datasize;
 
             // LocalID
-            Utils.UIntToBytes(localID, data, pos);
+            Utils.UIntToBytes(entity.LocalId, data, pos);
             pos += 4;
 
             data[pos++] = (byte)attachPoint;
@@ -6875,10 +6848,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 data[pos++] = 1;
 
-                if (collisionPlane == Vector4.Zero)
-                    collisionPlane = Vector4.UnitW;
                 //m_log.DebugFormat("CollisionPlane: {0}",collisionPlane);
-                collisionPlane.ToBytes(data, pos);
+                if (collisionPlane == Vector4.Zero)
+                    Vector4.UnitW.ToBytes(data, pos);
+                else
+                    collisionPlane.ToBytes(data, pos);
                 pos += 16;
             }
             else
@@ -6903,6 +6877,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             Utils.FloatToUInt16Bytes(acceleration.Z, 64.0f, data, pos); pos += 2;
 
             // Rotation
+
             Utils.FloatToUInt16Bytes(rotation.X, 1.0f, data, pos); pos += 2;
             Utils.FloatToUInt16Bytes(rotation.Y, 1.0f, data, pos); pos += 2;
             Utils.FloatToUInt16Bytes(rotation.Z, 1.0f, data, pos); pos += 2;
@@ -6915,7 +6890,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             Utils.FloatToUInt16Bytes(angularVelocity.Z, 64.0f, data, pos); pos += 2;
 
             // texture entry block size
-            if(te == null)
+            if (te == null)
             {
                 data[pos++] = 0;
                 data[pos++] = 0;
@@ -6935,22 +6910,255 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
             // total size 63 or 47 + (texture size + 4)
         }
+        protected void CreatePartImprovedTerseBlock(SceneObjectPart part, byte[] data, ref int pos, bool includeTexture)
+        {
+            //object block size
+            data[pos++] = 44;
+
+            // LocalID
+            Utils.UIntToBytesSafepos(part.LocalId, data, pos);
+            pos += 4;
+
+            if (part.ParentGroup.AttachmentPoint == 0)
+                data[pos++] = 0;
+            else
+            {
+                uint attachPoint = 0xff & part.ParentGroup.AttachmentPoint;
+                data[pos++] = (byte)(attachPoint << 4 | attachPoint >> 4);
+            }
+
+            // no Avatar/CollisionPlane
+            data[pos++] = 0;
+
+            // Position
+            part.RelativePosition.ToBytes(data, pos);
+            pos += 12;
+
+            // Velocity
+            part.Velocity.ClampedToShortsBytes(128f, data, pos); pos += 6;
+
+            // Acceleration
+            part.Acceleration.ClampedToShortsBytes(64f, data, pos); pos += 6;
+
+            // Rotation
+            part.RotationOffset.ToShortsBytes(data, pos); pos += 8;
+
+            // Angular Velocity
+            part.AngularVelocity.ClampedToShortsBytes(64f, data, pos); pos += 6;
+
+            // texture entry block size
+            if (includeTexture && part.Shape.TextureEntry != null)
+            {
+                byte[] te = part.Shape.TextureEntry;
+                int len = te.Length & 0x7fff;
+                int totlen = len + 4;
+                data[pos++] = (byte)totlen;
+                data[pos++] = (byte)(totlen >> 8);
+                data[pos++] = (byte)len; // wtf ???
+                data[pos++] = (byte)(len >> 8);
+                data[pos++] = 0;
+                data[pos++] = 0;
+                Buffer.BlockCopy(te, 0, data, pos, len);
+                pos += len;
+            }
+            else
+            {
+                data[pos++] = 0;
+                data[pos++] = 0;
+            }
+            // total size 47 + (texture size + 4)
+        }
+
+        protected unsafe void CreatePartImprovedTerseBlock(SceneObjectPart part, ref byte* data, bool includeTexture)
+        {
+            //object block size
+            *data++ = 44;
+
+            // LocalID
+            Utils.UIntToBytes(part.LocalId, data); data += 4;
+
+            if (part.ParentGroup.AttachmentPoint == 0)
+                *data++ = 0;
+            else
+            {
+                uint attachPoint = 0xff & part.ParentGroup.AttachmentPoint;
+                *data++ = (byte)(attachPoint << 4 | attachPoint >> 4);
+            }
+
+            // no Avatar/CollisionPlane
+            *data++ = 0;
+
+            // Position
+            part.RelativePosition.ToBytes(data); data += 12;
+
+            // Velocity
+            part.Velocity.ClampedToShortsBytes(128f, data); data += 6;
+
+            // Acceleration
+            part.Acceleration.ClampedToShortsBytes(64f, data); data += 6;
+
+            // Rotation
+            part.RotationOffset.ToShortsBytes(data); data += 8;
+
+            // Angular Velocity
+            part.AngularVelocity.ClampedToShortsBytes(64f, data); data += 6;
+
+            // texture entry block size
+            if (includeTexture && part.Shape.TextureEntry != null)
+            {
+                byte[] te = part.Shape.TextureEntry;
+                uint len = (uint)te.Length & 0x7fff;
+                ushort totlen = (ushort)(len + 4);
+                Utils.UInt16ToBytes(totlen, data); data += 2;
+                Utils.UIntToBytes(len, data); data += 4;
+                fixed(byte* t = &te[0])
+                    Buffer.MemoryCopy(t, data, 4096, (long)len);
+                data += len;
+            }
+            else
+            {
+                *data++ = 0;
+                *data++ = 0;
+            }
+            // total size 47 + (texture size + 4)
+        }
+
+        protected void CreateAvatartImprovedTerseBlock(ScenePresence presence, byte[] data, ref int pos)
+        {
+            //m_log.DebugFormat(
+            //    "[LLCLIENTVIEW]: Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+
+            //object block size
+            data[pos++] = 60;
+
+            // LocalID
+            Utils.UIntToBytesSafepos(presence.LocalId, data, pos);
+            pos += 4;
+
+            data[pos++] = presence.State;
+
+            // Avatar/CollisionPlane
+            data[pos++] = 1;
+
+            //m_log.DebugFormat("CollisionPlane: {0}",collisionPlane);
+            if (presence.CollisionPlane.IsZero())
+                Vector4.UnitW.ToBytes(data, pos);
+            else
+                presence.CollisionPlane.ToBytes(data, pos);
+            pos += 16;
+
+            // Position
+            presence.OffsetPosition.ToBytes(data, pos);
+            pos += 12;
+
+            // Velocity
+            presence.Velocity.ClampedToShortsBytes(128f, data, pos); pos += 6;
+
+            // Acceleration is zero
+            Utils.UIntToBytesSafepos(0x7fff7fff, data, pos); pos += 4;
+            Utils.UInt16ToBytes(0x7fff, data, pos); pos += 2;
+
+            // Rotation
+            // tpvs can only see rotations around Z in some cases
+            Quaternion rotation = presence.Rotation;
+            if (!presence.Flying && !presence.IsSatOnObject)
+            {
+                Utils.UIntToBytesSafepos(0x7fff7fff, data, pos); pos += 4;
+                float rz = rotation.Z;
+                float rw = rotation.W;
+                float a = rz * rz + rw * rw;
+                if (a > -1e-6f && a < 1e-6f)
+                {
+                    Utils.UIntToBytesSafepos(0xffff7fff, data, pos); pos += 4;
+                }
+                else
+                {
+                    a = 1.0f / (float)Math.Sqrt(a);
+                    Utils.FloatToUInt16Bytes(rz * a, 1.0f, data, pos); pos += 2;
+                    Utils.FloatToUInt16Bytes(rw * a, 1.0f, data, pos); pos += 2;
+                }
+            }
+            else
+            {
+                rotation.ToShortsBytes(data, pos); pos += 8;
+            }
+
+            // Angular Velocity
+            presence.AngularVelocity.ClampedToShortsBytes(64f, data, pos); pos += 6;
+
+            //texture
+            data[pos++] = 0;
+            data[pos++] = 0;
+            // total size 63
+        }
+
+        protected unsafe void CreateAvatartImprovedTerseBlock(ScenePresence presence, ref byte* data)
+        {
+            //m_log.DebugFormat(
+            //    "[LLCLIENTVIEW]: Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+
+            //object block size
+            *data++ = 60;
+            // LocalID
+            Utils.UIntToBytes(presence.LocalId, data); data += 4;
+
+            *data++ = presence.State;
+
+            // Avatar/CollisionPlane
+            *data++ = 1;
+            //m_log.DebugFormat("CollisionPlane: {0}",collisionPlane);
+            if (presence.CollisionPlane.IsZero())
+                Vector4.UnitW.ToBytes(data);
+            else
+                presence.CollisionPlane.ToBytes(data);
+            data += 16;
+
+            // Position
+            presence.OffsetPosition.ToBytes(data); data += 12;
+
+            // Velocity
+            presence.Velocity.ClampedToShortsBytes(128f, data); data += 6;
+
+            // Acceleration is zero
+            Utils.UIntToBytes(0x7fff7fff, data); data += 4;
+            Utils.UInt16ToBytes(0x7fff, data); data += 2;
+
+            // Rotation
+            // tpvs can only see rotations around Z in some cases
+            Quaternion rotation = presence.Rotation;
+            if (!presence.Flying && !presence.IsSatOnObject)
+            {
+                Utils.UIntToBytes(0x7fff7fff, data); data += 4;
+                float rz = rotation.Z;
+                float rw = rotation.W;
+                float a = rz * rz + rw * rw;
+                if (a > -1e-6f && a < 1e-6f)
+                {
+                    Utils.UIntToBytes(0xffff7fff, data); data += 4;
+                }
+                else
+                {
+                    a = 1.0f / (float)Math.Sqrt(a);
+                    Utils.UInt16ToBytes(Utils.FloatToUnitUInt16(rz * a), data); data += 2;
+                    Utils.UInt16ToBytes(Utils.FloatToUnitUInt16(rw * a), data); data += 2;
+                }
+            }
+            else
+            {
+                rotation.ToShortsBytes(data); data += 8;
+            }
+
+            // Angular Velocity
+            presence.AngularVelocity.ClampedToShortsBytes(64f, data); data += 6;
+
+            //texture
+            *data++ = 0;
+            *data++ = 0;
+            // total size 63
+        }
 
         protected void CreateAvatarUpdateBlock(ScenePresence data, byte[] dest, ref int pos)
         {
-            Quaternion rotation = data.Rotation;
-            // tpvs can only see rotations around Z in some cases
-            if (!data.Flying && !data.IsSatOnObject)
-            {
-                rotation.X = 0f;
-                rotation.Y = 0f;
-            }
-            rotation.Normalize();
-
-            //Vector3 velocity = Vector3.Zero;
-            //Vector3 acceleration = Vector3.Zero;
-            //Vector3 angularvelocity = Vector3.Zero;
-
             Utils.UIntToBytesSafepos(data.LocalId, dest, pos); pos += 4;
             dest[pos++] = 0; // state
             data.UUID.ToBytes(dest, pos); pos += 16;
@@ -6969,6 +7177,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             //acceleration.ToBytes(dest, pos); pos += 12;
             Array.Clear(dest, pos, 12); pos += 12;
 
+            Quaternion rotation = data.Rotation;
+            // tpvs can only see rotations around Z in some cases
+            if (!data.Flying && !data.IsSatOnObject)
+            {
+                rotation.X = 0f;
+                rotation.Y = 0f;
+            }
             rotation.ToBytes(dest, pos); pos += 12;
 
             //angularvelocity.ToBytes(dest, pos); pos += 12;
@@ -6982,8 +7197,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
             else
             {
-//                Utils.UIntToBytesSafepos(0, dest, pos);
-//                pos += 4;
+                //Utils.UIntToBytesSafepos(0, dest, pos);
+                //pos += 4;
                 dest[pos++] = 0;
                 dest[pos++] = 0;
                 dest[pos++] = 0;
@@ -7014,8 +7229,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             Array.Clear(dest, pos, pbszeros); pos += pbszeros;
 
             //NameValue
-            byte[] nv = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
-                data.Lastname + "\nTitle STRING RW SV " + data.Grouptitle);
+            byte[] nv;
+            if (data.HideTitle)
+                nv = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
+                    data.Lastname + "\nTitle STRING RW SV ");
+            else
+                nv = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
+                    data.Lastname + "\nTitle STRING RW SV " + data.Grouptitle);
             int len = nv.Length;
             dest[pos++] = (byte)len;
             dest[pos++] = (byte)(len >> 8);
@@ -7037,7 +7257,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 rotation.X = 0f;
                 rotation.Y = 0f;
             }
-            rotation.Normalize();
 
             zc.AddUInt(data.LocalId);
             zc.AddByte(0);
@@ -7074,8 +7293,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             zc.AddZeros(pbszeros);
 
             //NameValue
-            byte[] nv = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
-                data.Lastname + "\nTitle STRING RW SV " + data.Grouptitle);
+            byte[] nv;
+            if (data.HideTitle)
+                nv = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
+                    data.Lastname + "\nTitle STRING RW SV ");
+            else
+                nv = Utils.StringToBytes("FirstName STRING RW SV " + data.Firstname + "\nLastName STRING RW SV " +
+                    data.Lastname + "\nTitle STRING RW SV " + data.Grouptitle);
             int len = nv.Length;
             zc.AddByte((byte)len);
             zc.AddByte((byte)(len >> 8));
@@ -7134,9 +7358,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 else
                 {
                     zc.AddZeros(24);
-                    Quaternion rot = part.RotationOffset;
-                    rot.Normalize();
-                    zc.AddNormQuat(rot);
+                    zc.AddNormQuat(part.RotationOffset);
                     zc.AddZeros(12);
                 }
 
@@ -7203,14 +7425,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 if (part.IsRoot)
                 {
-                    UUID fromID = part.ParentGroup.FromItemID;
-                    if(fromID.IsZero())
-                        fromID = part.UUID;
-                    nv = Util.StringToBytes256("AttachItemID STRING RW SV " + fromID.ToString());
+                    if (part.ParentGroup.FromItemID.IsZero())
+                        nv = Util.StringToBytes256("AttachItemID STRING RW SV " + part.UUID.ToString());
+                    else
+                        nv = Util.StringToBytes256("AttachItemID STRING RW SV " + part.ParentGroup.FromItemID.ToString());
                 }
 
-                int st = (int)part.ParentGroup.AttachmentPoint;
-                state = (byte)(((st & 0xf0) >> 4) + ((st & 0x0f) << 4)); ;
+                int st = 0xff & (int)part.ParentGroup.AttachmentPoint;
+                state = (byte)((st >> 4) | (st << 4));
             }
 
             // filter out mesh faces hack
@@ -7247,9 +7469,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             zc.AddVector3(part.RelativePosition);
             zc.AddVector3(part.Velocity);
             zc.AddVector3(part.Acceleration);
-            Quaternion rotation = part.RotationOffset;
-            rotation.Normalize();
-            zc.AddNormQuat(rotation);
+            zc.AddNormQuat(part.RotationOffset);
             zc.AddVector3(part.AngularVelocity);
 
             zc.AddUInt(part.ParentID);
@@ -7360,7 +7580,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 zc.AddBytes(ep, len);
             }
 
-            bool hassound = !part.Sound.IsZero() || part.SoundFlags != 0;
+            bool hassound = part.Sound.IsNotZero() || part.SoundFlags != 0;
             if (hassound)
                 zc.AddUUID(part.Sound);
             else
@@ -7455,8 +7675,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     nv = Util.StringToBytes256("AttachItemID STRING RW SV " + fromID.ToString());
                 }
 
-                int st = (int)part.ParentGroup.AttachmentPoint;
-                state = (byte)(((st & 0xf0) >> 4) + ((st & 0x0f) << 4)); ;
+                int st = 0xff & (int)part.ParentGroup.AttachmentPoint;
+                state = (byte)((st & >> 4) | (st << 4));
             }
 
             bool hastext = part.Text != null && part.Text.Length > 0;
@@ -7665,7 +7885,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             PrimFlags primflags = (PrimFlags)m_scene.Permissions.GenerateClientFlags(part, sp);
             // Don't send the CreateSelected flag to everyone
             primflags &= ~PrimFlags.CreateSelected;
-            if (sp.UUID == part.OwnerID)
+            if (sp.UUID.Equals(part.OwnerID))
             {
                 if (part.CreateSelected)
                 {
@@ -7703,11 +7923,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 if (pcode == PCode.Grass)
                     zc.AddZeros(12);
                 else
-                {
-                    Quaternion rotation = part.RotationOffset;
-                    rotation.Normalize();
-                    zc.AddNormQuat(rotation);
-                }
+                    zc.AddNormQuat(part.RotationOffset);
 
                 zc.AddUInt((uint)CompressedFlags.Tree); // cflags
 
@@ -7726,13 +7942,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 if (part.IsRoot)
                 {
-                    UUID fromID = part.ParentGroup.FromItemID;
-                    if (fromID.IsZero())
-                        fromID = part.UUID;
-                nv = Util.StringToBytes256("AttachItemID STRING RW SV " + fromID.ToString());
+                    if (part.ParentGroup.FromItemID.IsZero())
+                        nv = Util.StringToBytes256("AttachItemID STRING RW SV " + part.UUID.ToString());
+                    else
+                        nv = Util.StringToBytes256("AttachItemID STRING RW SV " + part.ParentGroup.FromItemID.ToString());
                 }
-                int st = (int)part.ParentGroup.AttachmentPoint;
-                state = (byte)(((st & 0xf0) >> 4) + ((st & 0x0f) << 4)); ;
+                int st = 0xff & (int)part.ParentGroup.AttachmentPoint;
+                state = (byte)((st >> 4) | (st << 4));
             }
 
             bool hastext = false;
@@ -7783,7 +7999,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 }
             }
 
-            if (!part.Sound.IsZero() || part.SoundFlags != 0)
+            if (part.Sound.IsNotZero() || part.SoundFlags != 0)
             {
                 BlockLengh += 25;
                 cflags |= CompressedFlags.HasSound;
@@ -7869,14 +8085,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             zc.AddByte(part.ClickAction);
             zc.AddVector3(part.Shape.Scale);
             zc.AddVector3(part.RelativePosition);
-            if (pcode == PCode.Grass)
-                zc.AddZeros(12);
-            else
-            {
-                Quaternion rotation = part.RotationOffset;
-                rotation.Normalize();
-                zc.AddNormQuat(rotation);
-            }
+            zc.AddNormQuat(part.RotationOffset);
 
             zc.AddUInt((uint)cflags);
 
@@ -8288,20 +8497,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             if(
                 (x.ControlFlags != m_thisAgentUpdateArgs.ControlFlags)   // significant if control flags changed
-//                || ((x.ControlFlags & (uint)AgentManager.ControlFlags.AGENT_CONTROL_FLY) != 0 &&
-//                    (x.ControlFlags & 0x3f8dfff) != 0) // we need to rotate the av on fly
-                || x.ControlFlags != (byte)AgentManager.ControlFlags.NONE// actually all movement controls need to pass
+                || (x.ControlFlags & ~(uint)AgentManager.ControlFlags.AGENT_CONTROL_FINISH_ANIM) != (uint)AgentManager.ControlFlags.NONE
                 || (x.Flags != m_thisAgentUpdateArgs.Flags)                 // significant if Flags changed
                 || (x.State != m_thisAgentUpdateArgs.State)                 // significant if Stats changed
                 || (Math.Abs(x.Far - m_thisAgentUpdateArgs.Far) >= 32)      // significant if far distance changed
                 )
                 return true;
 
-           float qdelta = Math.Abs(Quaternion.Dot(x.BodyRotation, m_thisAgentUpdateArgs.BodyRotation));
-           if(qdelta < QDELTABody) // significant if body rotation above(below cos) threshold
-                return true;
-            
-            return false;
+            float qdelta = Math.Abs(x.BodyRotation.Dot(m_thisAgentUpdateArgs.BodyRotation));
+            return qdelta < QDELTABody; // significant if body rotation above(below cos) threshold
         }
 
         /// <summary>
@@ -8312,26 +8516,17 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name='x'></param>
         private bool CheckAgentCameraUpdateSignificance(AgentUpdatePacket.AgentDataBlock x)
         {
-            if(Math.Abs(x.CameraCenter.X - m_thisAgentUpdateArgs.CameraCenter.X) > VDELTA ||
-               Math.Abs(x.CameraCenter.Y - m_thisAgentUpdateArgs.CameraCenter.Y) > VDELTA ||
-               Math.Abs(x.CameraCenter.Z - m_thisAgentUpdateArgs.CameraCenter.Z) > VDELTA ||
+             return (Math.Abs(x.CameraCenter.X - m_thisAgentUpdateArgs.CameraCenter.X) > VDELTA ||
+                     Math.Abs(x.CameraCenter.Y - m_thisAgentUpdateArgs.CameraCenter.Y) > VDELTA ||
+                     Math.Abs(x.CameraCenter.Z - m_thisAgentUpdateArgs.CameraCenter.Z) > VDELTA ||
 
-               Math.Abs(x.CameraAtAxis.X - m_thisAgentUpdateArgs.CameraAtAxis.X) > VDELTA ||
-               Math.Abs(x.CameraAtAxis.Y - m_thisAgentUpdateArgs.CameraAtAxis.Y) > VDELTA ||
-//               Math.Abs(x.CameraAtAxis.Z - m_thisAgentUpdateArgs.CameraAtAxis.Z) > VDELTA ||
+                     Math.Abs(x.CameraAtAxis.X - m_thisAgentUpdateArgs.CameraAtAxis.X) > VDELTA ||
+                     Math.Abs(x.CameraAtAxis.Y - m_thisAgentUpdateArgs.CameraAtAxis.Y) > VDELTA ||
 
-               Math.Abs(x.CameraLeftAxis.X - m_thisAgentUpdateArgs.CameraLeftAxis.X) > VDELTA ||
-               Math.Abs(x.CameraLeftAxis.Y - m_thisAgentUpdateArgs.CameraLeftAxis.Y) > VDELTA ||
-//               Math.Abs(x.CameraLeftAxis.Z - m_thisAgentUpdateArgs.CameraLeftAxis.Z) > VDELTA ||
-
-               Math.Abs(x.CameraUpAxis.X - m_thisAgentUpdateArgs.CameraUpAxis.X) > VDELTA ||
-               Math.Abs(x.CameraUpAxis.Y - m_thisAgentUpdateArgs.CameraUpAxis.Y) > VDELTA
-//               Math.Abs(x.CameraLeftAxis.Z - m_thisAgentUpdateArgs.CameraLeftAxis.Z) > VDELTA ||
-            )
-                return true;
-
-            return false;
-        }
+                     Math.Abs(x.CameraUpAxis.X - m_thisAgentUpdateArgs.CameraUpAxis.X) > VDELTA ||
+                     Math.Abs(x.CameraUpAxis.Y - m_thisAgentUpdateArgs.CameraUpAxis.Y) > VDELTA
+            );
+         }
 
         private void HandleAgentUpdate(Packet packet)
         {
@@ -8625,25 +8820,17 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (inchatpack.AgentData.SessionID.NotEqual(m_sessionId) || inchatpack.AgentData.AgentID.NotEqual(m_agentId))
                 return;
 
-            string fromName = String.Empty; //ClientAvatar.firstname + " " + ClientAvatar.lastname;
-            byte[] message = inchatpack.ChatData.Message;
-            byte type = inchatpack.ChatData.Type;
-            Vector3 fromPos = new Vector3(); // ClientAvatar.Pos;
-            // UUID fromAgentID = AgentId;
+            ChatFromViewerPacket.ChatDataBlock packdata = inchatpack.ChatData;
+            OSChatMessage args = new OSChatMessage()
+            {
+                Channel = packdata.Channel,
+                Message = Utils.BytesToString(packdata.Message),
+                Type = (ChatTypeEnum)packdata.Type,
+                Position = SceneAgent.AbsolutePosition,
 
-            int channel = inchatpack.ChatData.Channel;
-
-            OSChatMessage args = new OSChatMessage();
-            args.Channel = channel;
-            args.From = fromName;
-            args.Message = Utils.BytesToString(message);
-            args.Type = (ChatTypeEnum)type;
-            args.Position = fromPos;
-
-            args.Scene = Scene;
-            args.Sender = this;
-            args.SenderUUID = m_agentId;
-
+                Scene = Scene,
+                Sender = this
+            };
             OnChatFromClient?.Invoke(this, args);
         }
 
@@ -8658,17 +8845,17 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                return;
 
             AvatarPropertiesUpdatePacket.PropertiesDataBlock Properties = avatarProps.PropertiesData;
-            UserProfileData UserProfile = new UserProfileData();
-            UserProfile.ID = m_agentId;
-            UserProfile.AboutText = Utils.BytesToString(Properties.AboutText);
-            UserProfile.FirstLifeAboutText = Utils.BytesToString(Properties.FLAboutText);
-            UserProfile.FirstLifeImage = Properties.FLImageID;
-            UserProfile.Image = Properties.ImageID;
-            UserProfile.ProfileUrl = Utils.BytesToString(Properties.ProfileURL);
-            UserProfile.UserFlags &= ~3;
-            UserProfile.UserFlags |= Properties.AllowPublish ? 1 : 0;
-            UserProfile.UserFlags |= Properties.MaturePublish ? 2 : 0;
-
+            UserProfileProperties UserProfile = new UserProfileProperties
+            {
+                UserId = AgentId,
+                WebUrl = Utils.BytesToString(Properties.ProfileURL),
+                ImageId = Properties.ImageID,
+                FirstLifeImageId = Properties.FLImageID,
+                AboutText = Utils.BytesToString(Properties.AboutText),
+                FirstLifeText = Utils.BytesToString(Properties.FLAboutText),
+                PublishProfile = Properties.AllowPublish,
+                PublishMature = Properties.MaturePublish
+            };
             OnUpdateAvatarProperties?.Invoke(this, UserProfile);
         }
 
@@ -8682,18 +8869,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (rdialog.AgentData.SessionID.NotEqual(m_sessionId) || rdialog.AgentData.AgentID.NotEqual(m_agentId))
                 return;
 
-            int ch = rdialog.Data.ChatChannel;
-            byte[] msg = rdialog.Data.ButtonLabel;
-
-            OSChatMessage args = new OSChatMessage();
-            args.Channel = ch;
-            args.From = String.Empty;
-            args.Message = Utils.BytesToString(msg);
-            args.Type = ChatTypeEnum.Region; //Behaviour in SL is that the response can be heard from any distance
-            args.Position = new Vector3();
-            args.Scene = Scene;
-            args.Sender = this;
-
+            ScriptDialogReplyPacket.DataBlock rdialogData = rdialog.Data;
+            OSChatMessage args = new OSChatMessage()
+            {
+                Channel = rdialogData.ChatChannel,
+                Message = Utils.BytesToString(rdialogData.ButtonLabel),
+                Type = ChatTypeEnum.Region, //Behaviour in SL is that the response can be heard from any distance
+                Scene = Scene,
+                Sender = this
+            };
             OnChatFromClient?.Invoke(this, args);
         }
 
@@ -10403,29 +10587,31 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (updatetask.AgentData.SessionID.NotEqual(m_sessionId) || updatetask.AgentData.AgentID.NotEqual(m_agentId))
             return;
 
-            TaskInventoryItem newTaskItem = new TaskInventoryItem();
-            newTaskItem.ItemID = updatetask.InventoryData.ItemID;
-            newTaskItem.ParentID = updatetask.InventoryData.FolderID;
-            newTaskItem.CreatorID = updatetask.InventoryData.CreatorID;
-            newTaskItem.OwnerID = updatetask.InventoryData.OwnerID;
-            newTaskItem.GroupID = updatetask.InventoryData.GroupID;
-            newTaskItem.BasePermissions = updatetask.InventoryData.BaseMask;
-            newTaskItem.CurrentPermissions = updatetask.InventoryData.OwnerMask;
-            newTaskItem.GroupPermissions = updatetask.InventoryData.GroupMask;
-            newTaskItem.EveryonePermissions = updatetask.InventoryData.EveryoneMask;
-            newTaskItem.NextPermissions = updatetask.InventoryData.NextOwnerMask;
+            TaskInventoryItem newTaskItem = new TaskInventoryItem
+            {
+                ItemID = updatetask.InventoryData.ItemID,
+                ParentID = updatetask.InventoryData.FolderID,
+                CreatorID = updatetask.InventoryData.CreatorID,
+                OwnerID = updatetask.InventoryData.OwnerID,
+                GroupID = updatetask.InventoryData.GroupID,
+                BasePermissions = updatetask.InventoryData.BaseMask,
+                CurrentPermissions = updatetask.InventoryData.OwnerMask,
+                GroupPermissions = updatetask.InventoryData.GroupMask,
+                EveryonePermissions = updatetask.InventoryData.EveryoneMask,
+                NextPermissions = updatetask.InventoryData.NextOwnerMask,
 
-            // Unused?  Clicking share with group sets GroupPermissions instead, so perhaps this is something
-            // different
-            //newTaskItem.GroupOwned=updatetask.InventoryData.GroupOwned;
-            newTaskItem.Type = updatetask.InventoryData.Type;
-            newTaskItem.InvType = updatetask.InventoryData.InvType;
-            newTaskItem.Flags = updatetask.InventoryData.Flags;
-            //newTaskItem.SaleType=updatetask.InventoryData.SaleType;
-            //newTaskItem.SalePrice=updatetask.InventoryData.SalePrice;
-            newTaskItem.Name = Util.FieldToString(updatetask.InventoryData.Name);
-            newTaskItem.Description = Util.FieldToString(updatetask.InventoryData.Description);
-            newTaskItem.CreationDate = (uint)updatetask.InventoryData.CreationDate;
+                // Unused?  Clicking share with group sets GroupPermissions instead, so perhaps this is something
+                // different
+                //newTaskItem.GroupOwned=updatetask.InventoryData.GroupOwned,
+                Type = updatetask.InventoryData.Type,
+                InvType = updatetask.InventoryData.InvType,
+                Flags = updatetask.InventoryData.Flags,
+                //newTaskItem.SaleType=updatetask.InventoryData.SaleType,
+                //newTaskItem.SalePrice=updatetask.InventoryData.SalePrice,
+                Name = Util.FieldToString(updatetask.InventoryData.Name),
+                Description = Util.FieldToString(updatetask.InventoryData.Description),
+                CreationDate = (uint)updatetask.InventoryData.CreationDate
+            };
 
             OnUpdateTaskInventory?.Invoke(this, updatetask.InventoryData.TransactionID,
                                             newTaskItem, updatetask.UpdateData.LocalID);
@@ -10462,26 +10648,28 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (rezScriptx.AgentData.SessionID.NotEqual(m_sessionId) || rezScriptx.AgentData.AgentID.NotEqual(m_agentId))
                 return;
 
-            InventoryItemBase item = new InventoryItemBase();
-            item.ID = rezScriptx.InventoryBlock.ItemID;
-            item.Folder = rezScriptx.InventoryBlock.FolderID;
-            item.CreatorId = rezScriptx.InventoryBlock.CreatorID.ToString();
-            item.Owner = rezScriptx.InventoryBlock.OwnerID;
-            item.BasePermissions = rezScriptx.InventoryBlock.BaseMask;
-            item.CurrentPermissions = rezScriptx.InventoryBlock.OwnerMask;
-            item.EveryOnePermissions = rezScriptx.InventoryBlock.EveryoneMask;
-            item.NextPermissions = rezScriptx.InventoryBlock.NextOwnerMask;
-            item.GroupPermissions = rezScriptx.InventoryBlock.GroupMask;
-            item.GroupOwned = rezScriptx.InventoryBlock.GroupOwned;
-            item.GroupID = rezScriptx.InventoryBlock.GroupID;
-            item.AssetType = rezScriptx.InventoryBlock.Type;
-            item.InvType = rezScriptx.InventoryBlock.InvType;
-            item.Flags = rezScriptx.InventoryBlock.Flags;
-            item.SaleType = rezScriptx.InventoryBlock.SaleType;
-            item.SalePrice = rezScriptx.InventoryBlock.SalePrice;
-            item.Name = Util.FieldToString(rezScriptx.InventoryBlock.Name);
-            item.Description = Util.FieldToString(rezScriptx.InventoryBlock.Description);
-            item.CreationDate = rezScriptx.InventoryBlock.CreationDate;
+            InventoryItemBase item = new InventoryItemBase
+            {
+                ID = rezScriptx.InventoryBlock.ItemID,
+                Folder = rezScriptx.InventoryBlock.FolderID,
+                CreatorId = rezScriptx.InventoryBlock.CreatorID.ToString(),
+                Owner = rezScriptx.InventoryBlock.OwnerID,
+                BasePermissions = rezScriptx.InventoryBlock.BaseMask,
+                CurrentPermissions = rezScriptx.InventoryBlock.OwnerMask,
+                EveryOnePermissions = rezScriptx.InventoryBlock.EveryoneMask,
+                NextPermissions = rezScriptx.InventoryBlock.NextOwnerMask,
+                GroupPermissions = rezScriptx.InventoryBlock.GroupMask,
+                GroupOwned = rezScriptx.InventoryBlock.GroupOwned,
+                GroupID = rezScriptx.InventoryBlock.GroupID,
+                AssetType = rezScriptx.InventoryBlock.Type,
+                InvType = rezScriptx.InventoryBlock.InvType,
+                Flags = rezScriptx.InventoryBlock.Flags,
+                SaleType = rezScriptx.InventoryBlock.SaleType,
+                SalePrice = rezScriptx.InventoryBlock.SalePrice,
+                Name = Util.FieldToString(rezScriptx.InventoryBlock.Name),
+                Description = Util.FieldToString(rezScriptx.InventoryBlock.Description),
+                CreationDate = rezScriptx.InventoryBlock.CreationDate
+            };
 
             OnRezScript?.Invoke(this, item, rezScriptx.InventoryBlock.TransactionID, rezScriptx.UpdateBlock.ObjectLocalID);
         }
@@ -12600,12 +12788,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if (cachedtex.AgentData.SessionID.NotEqual(m_sessionId) || cachedtex.AgentData.AgentID.NotEqual(m_agentId))
                 return;
 
-            // TODO: don't create new blocks if recycling an old packet
             cachedresp.AgentData.AgentID = m_agentId;
             cachedresp.AgentData.SessionID = m_sessionId;
             cachedresp.AgentData.SerialNum = cachedtex.AgentData.SerialNum;
-            cachedresp.WearableData =
-                new AgentCachedTextureResponsePacket.WearableDataBlock[cachedtex.WearableData.Length];
+            cachedresp.WearableData = new AgentCachedTextureResponsePacket.WearableDataBlock[cachedtex.WearableData.Length];
 
             int cacheHits = 0;
 
@@ -12628,29 +12814,36 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     maxWearablesLoop = cacheItems.Length;
                 for (int i = 0; i < maxWearablesLoop; i++)
                 {
-                    int idx = cachedtex.WearableData[i].TextureIndex;
-                    cachedresp.WearableData[i] = new AgentCachedTextureResponsePacket.WearableDataBlock();
-                    cachedresp.WearableData[i].TextureIndex = cachedtex.WearableData[i].TextureIndex;
-                    cachedresp.WearableData[i].HostName = new byte[0];
-                    if (cachedtex.WearableData[i].ID == cacheItems[idx].CacheId)
+                    var checkdWear = cachedtex.WearableData[i];
+                    int idx = checkdWear.TextureIndex;
+                    var respWear = new AgentCachedTextureResponsePacket.WearableDataBlock()
                     {
-                        cachedresp.WearableData[i].TextureID = cacheItems[idx].TextureID;
+                        TextureIndex = (byte)idx,
+                        HostName = Array.Empty<byte>()
+                    };
+                    if (checkdWear.ID.Equals(cacheItems[idx].CacheId))
+                    {
+                        respWear.TextureID = cacheItems[idx].TextureID;
                         cacheHits++;
                     }
                     else
                     {
-                        cachedresp.WearableData[i].TextureID = UUID.Zero;
+                        respWear.TextureID = UUID.Zero;
                     }
+                    cachedresp.WearableData[i] = respWear;
                 }
             }
             else
             {
                 for (int i = 0; i < maxWearablesLoop; i++)
                 {
-                    cachedresp.WearableData[i] = new AgentCachedTextureResponsePacket.WearableDataBlock();
-                    cachedresp.WearableData[i].TextureIndex = cachedtex.WearableData[i].TextureIndex;
-                    cachedresp.WearableData[i].TextureID = UUID.Zero;
-                    cachedresp.WearableData[i].HostName = new byte[0];
+                    var newWear = new AgentCachedTextureResponsePacket.WearableDataBlock()
+                    {
+                        TextureIndex = cachedtex.WearableData[i].TextureIndex,
+                        TextureID = UUID.Zero,
+                        HostName = Array.Empty<byte>()
+                    };
+                    cachedresp.WearableData[i] = newWear;
                 }
             }
 
@@ -12687,7 +12880,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 cachedresp.WearableData[i] = new AgentCachedTextureResponsePacket.WearableDataBlock();
                 cachedresp.WearableData[i].TextureIndex = (byte)cachedTextures[i].BakedTextureIndex;
                 cachedresp.WearableData[i].TextureID = cachedTextures[i].BakedTextureID;
-                cachedresp.WearableData[i].HostName = new byte[0];
+                cachedresp.WearableData[i].HostName = Array.Empty<byte>();
             }
 
             cachedresp.Header.Zerocoded = true;
@@ -13381,26 +13574,26 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name="taskID"></param>
         protected void MakeAssetRequest(TransferRequestPacket transferRequest, UUID taskID)
         {
-            UUID requestID = UUID.Zero;
+            UUID requestID;
             int sourceType = transferRequest.TransferInfo.SourceType;
-
-            if (sourceType == (int)SourceType.Asset)
+            switch(sourceType)
             {
-                requestID = new UUID(transferRequest.TransferInfo.Params, 0);
+                case (int)SourceType.Asset:
+                    requestID = new UUID(transferRequest.TransferInfo.Params, 0);
+                    break;
+                case (int)SourceType.SimInventoryItem:
+                    requestID = new UUID(transferRequest.TransferInfo.Params, 80);
+                    break;
+                case (int)SourceType.SimEstate:
+                    requestID = taskID;
+                    break;
+                default:
+                    requestID = UUID.Zero;
+                    break;
             }
-            else if (sourceType == (int)SourceType.SimInventoryItem)
-            {
-                requestID = new UUID(transferRequest.TransferInfo.Params, 80);
-            }
-            else if (sourceType == (int)SourceType.SimEstate)
-            {
-                requestID = taskID;
-            }
-
-//            m_log.DebugFormat(
-//                "[LLCLIENTVIEW]: Received transfer request for {0} in {1} type {2} by {3}",
-//                requestID, taskID, (SourceType)sourceType, Name);
-
+            //m_log.DebugFormat(
+            //    "[LLCLIENTVIEW]: Received transfer request for {0} in {1} type {2} by {3}",
+            //    requestID, taskID, (SourceType)sourceType, Name);
 
             //Note, the bool returned from the below function is useless since it is always false.
             m_assetService.Get(requestID.ToString(), transferRequest, AssetReceived);
@@ -13464,7 +13657,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
 
             // Scripts cannot be retrieved by direct request
-            if (transferRequest.TransferInfo.SourceType == (int)SourceType.Asset && asset.Type == 10)
+            if (transferRequest.TransferInfo.SourceType == (int)SourceType.Asset && asset.Type == (sbyte)AssetType.LSLText)
                 return;
 
             // The asset is known to exist and is in our cache, so add it to the AssetRequests list
@@ -13592,12 +13785,18 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
                 //setup header and regioninfo block
                 Buffer.BlockCopy(terseUpdateHeader, 0, buf.Data, 0, 7);
-                Utils.UInt64ToBytesSafepos(m_scene.RegionInfo.RegionHandle, buf.Data, 7);
-                Utils.UInt16ToBytes(Utils.FloatToUInt16(m_scene.TimeDilation, 0.0f, 1.0f), buf.Data, 15);
-                buf.Data[17] = 1;
-                int pos = 18;
-                CreateImprovedTerseBlock(p, buf.Data, ref pos, false);
-                buf.DataLength = pos;
+                unsafe
+                {
+                    fixed(byte* bdata = &buf.Data[0])
+                    {
+                        Utils.UInt64ToBytes(m_scene.RegionInfo.RegionHandle, bdata + 7);
+                        Utils.UInt16ToBytes(Utils.FloatZeroOneToushort(m_scene.TimeDilation), bdata + 15);
+                        bdata[17] = 1;
+                        byte* data = bdata + 18;
+                        CreateAvatartImprovedTerseBlock((ScenePresence)p, ref data);
+                        buf.DataLength = (int)(data - bdata);
+                    }
+                }
                 m_udpServer.SendUDPPacket(m_udpClient, buf, ThrottleOutPacketType.Task, null, true);
             }
         }

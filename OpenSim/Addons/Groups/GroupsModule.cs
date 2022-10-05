@@ -401,7 +401,7 @@ namespace OpenSim.Groups
                             msg.ParentEstateID = 0;
                             msg.Position = Vector3.Zero;
                             msg.RegionID = UUID.Zero.Guid;
-                            msg.binaryBucket = new byte[0];
+                            msg.binaryBucket = Array.Empty<byte>();
 
                             OutgoingInstantMessage(msg, invitee);
                             IClientAPI inviteeClient = GetActiveRootClient(invitee);
@@ -597,8 +597,7 @@ namespace OpenSim.Groups
                 string giver = notice.noticeData.AttachmentOwnerID;
                 UUID attachmentUUID = notice.noticeData.AttachmentItemID;
 
-                if (attachmentUUID == null || attachmentUUID.IsZero() ||
-                        giver == null || giver == UUID.ZeroString )
+                if (attachmentUUID.IsZero() || giver == null || giver == UUID.ZeroString )
                     return;
 
                 if (m_debugEnabled)
@@ -800,7 +799,7 @@ namespace OpenSim.Groups
 
             List<GroupRoleMembersData> data = m_groupData.GetGroupRoleMembers(GetRequestingAgentIDStr(remoteClient), groupID);
 
-            if (m_log.IsDebugEnabled)
+            if (m_debugEnabled)
             {
                 foreach (GroupRoleMembersData member in data)
                 {
@@ -1050,7 +1049,7 @@ namespace OpenSim.Groups
 
                     break;
                 default:
-                    m_log.ErrorFormat("[GroupsModule]: {0} does not understand changes == {1}", System.Reflection.MethodBase.GetCurrentMethod().Name, changes);
+                    m_log.ErrorFormat("[Groups]: {0} does not understand changes == {1}", System.Reflection.MethodBase.GetCurrentMethod().Name, changes);
                     break;
             }
 
@@ -1117,7 +1116,7 @@ namespace OpenSim.Groups
                 msg.timestamp = (uint)Util.UnixTimeSinceEpoch(); ;
                 msg.fromAgentName = string.Empty;
                 msg.message = string.Empty;
-                msg.binaryBucket = new byte[0];
+                msg.binaryBucket = Array.Empty<byte>(); ;
             }
 
             return msg;
@@ -1276,7 +1275,7 @@ namespace OpenSim.Groups
                 msg.ParentEstateID = 0;
                 msg.Position = Vector3.Zero;
                 msg.RegionID = regionInfo.RegionID.Guid;
-                msg.binaryBucket = new byte[0];
+                msg.binaryBucket = Array.Empty<byte>(); ;
                 OutgoingInstantMessage(msg, ejecteeID);
             }
 
@@ -1294,7 +1293,7 @@ namespace OpenSim.Groups
             msg.ParentEstateID = 0;
             msg.Position = Vector3.Zero;
             msg.RegionID = regionInfo.RegionID.Guid;
-            msg.binaryBucket = new byte[0];
+            msg.binaryBucket = Array.Empty<byte>(); ;
             OutgoingInstantMessage(msg, agentID);
         }
 

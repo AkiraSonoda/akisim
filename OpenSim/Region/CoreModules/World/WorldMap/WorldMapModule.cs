@@ -101,6 +101,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         protected bool m_exportPrintRegionName = false; // prints the region name exported map
         protected bool m_localV1MapAssets = false; // keep V1 map assets only on  local cache
 
+        private readonly object m_sceneLock = new object();
         public WorldMapModule()
         {
         }
@@ -146,7 +147,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             string[] configSections = new string[] { "Map", "Startup" };
 
             if (Util.GetConfigVarFromSections<string>(
-                config, "WorldMapModule", configSections, "WorldMap") == "WorldMap")
+                    config, "WorldMapModule", configSections, "WorldMap") == "WorldMap")
                 m_Enabled = true;
 
             expireBlackListTime = (int)Util.GetConfigVarFromSections<int>(config, "BlacklistTimeout", configSections, 10 * 60);
@@ -164,7 +165,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             if (!m_Enabled)
                 return;
 
-            lock (scene)
+            lock (m_sceneLock)
             {
                 m_scene = scene;
                 m_regionHandle = scene.RegionInfo.RegionHandle;
@@ -195,7 +196,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             if (!m_Enabled)
                 return;
 
-            lock (m_scene)
+            lock (m_sceneLock)
             {
                 m_Enabled = false;
                 RemoveHandlers();
@@ -232,7 +233,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         // this has to be called with a lock on m_scene
         protected virtual void AddHandlers()
         {
-            myMapImageJPEG = new byte[0];
+            myMapImageJPEG = Array.Empty<byte>();
 
             string regionimage = "regionImage" + m_scene.RegionInfo.RegionID.ToString();
             regionimage = regionimage.Replace("-", "");
@@ -1321,7 +1322,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.None;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
 
             SolidBrush sea = new SolidBrush(Color.DarkBlue);
             g.FillRectangle(sea, 0, 0, spanX, spanY);
@@ -1421,8 +1422,10 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         public void HandleGenerateMapConsoleCommand(string module, string[] cmdparams)
         {
-            Scene consoleScene = m_scene.ConsoleScene();
+            if(m_scene == null)
+                return;
 
+            Scene consoleScene = m_scene.ConsoleScene();
             if (consoleScene != null && consoleScene != m_scene)
                 return;
 
@@ -1576,7 +1579,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             {
                 m_scene.AssetService.Delete(lastID.ToString());
                 m_scene.RegionInfo.RegionSettings.TerrainImageID = UUID.Zero;
-                myMapImageJPEG = new byte[0];
+                myMapImageJPEG = Array.Empty<byte>();
                 needRegionSave = true;
             }
 
@@ -1709,7 +1712,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         private Byte[] GenerateOverlay()
         {
-            int landTileSize = LandManagementModule.LandUnit;
+            const  int landTileSize = Constants.LandUnit;
 
             // These need to be ints for bitmap generation
             int regionSizeX = (int)m_scene.RegionInfo.RegionSizeX;

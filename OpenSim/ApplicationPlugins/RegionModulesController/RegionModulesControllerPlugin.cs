@@ -259,11 +259,6 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
         /// <returns>true if the module is enabled, false if it is disabled</returns>
         protected bool CheckModuleEnabled(TypeExtensionNode node, IConfig modulesConfig)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
-
             // Get the config string
             string moduleString = modulesConfig.GetString("Setup_" + node.Id, string.Empty);
 

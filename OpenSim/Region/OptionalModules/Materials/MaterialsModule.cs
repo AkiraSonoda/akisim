@@ -125,7 +125,10 @@ namespace OpenSim.Region.OptionalModules.Materials
             m_cache = scene.RequestModuleInterface<IAssetCache>();
             ISimulatorFeaturesModule featuresModule = scene.RequestModuleInterface<ISimulatorFeaturesModule>();
             if (featuresModule != null)
-                featuresModule.OnSimulatorFeaturesRequest += OnSimulatorFeaturesRequest;
+            {
+                featuresModule.AddOpenSimExtraFeature("MaxMaterialsPerTransaction", m_maxMaterialsPerTransaction);
+                featuresModule.AddOpenSimExtraFeature("RenderMaterialsCapability", 3.0f);
+            }
         }
 
         private void EventManager_OnBackup(ISimulationDataService datastore, bool forcedBackup)
@@ -254,12 +257,6 @@ namespace OpenSim.Region.OptionalModules.Materials
                     return;
             }
             response.StatusCode = (int)HttpStatusCode.OK;
-        }
-
-        private void OnSimulatorFeaturesRequest(UUID agentID, ref OSDMap features)
-        {
-            features["MaxMaterialsPerTransaction"] = m_maxMaterialsPerTransaction;
-            features["RenderMaterialsCapability"] = OSD.FromReal(3);
         }
 
         /// <summary>
@@ -756,33 +753,44 @@ namespace OpenSim.Region.OptionalModules.Materials
             return asset;
         }
 
+        private byte[] CacheGet = null;
+        private object CacheGetLock = new object();
+        private double CacheGetTime = 0;
+
         public void RenderMaterialsGetCap(IOSHttpRequest request, IOSHttpResponse response)
         {
-            //OSDMap resp = new OSDMap();
-            //OSDArray allOsd = new OSDArray();
-            /*
-            // this violates all idea of caching and geting things only if needed, so disabled
-
-            int matsCount = 0;
-            lock (m_Materials)
+            lock(CacheGetLock)
             {
-                foreach (KeyValuePair<UUID, FaceMaterial> kvp in m_Materials)
+                OSDArray allOsd = new OSDArray();
+                double now = Util.GetTimeStamp();
+                if(CacheGet == null || now - CacheGetTime > 30)
                 {
-                    OSDMap matMap = new OSDMap();
-                    matMap["ID"] = OSD.FromBinary(kvp.Key.GetBytes());
-                    matMap["Material"] = kvp.Value.toOSD();
-                    allOsd.Add(matMap);
-                    matsCount++;
+                    CacheGetTime = now;
+
+                    lock (m_Materials)
+                    {
+                        foreach (KeyValuePair<UUID, FaceMaterial> kvp in m_Materials)
+                        {
+                            OSDMap matMap = new OSDMap
+                            {
+                                ["ID"] = OSD.FromBinary(kvp.Key.GetBytes()),
+                                ["Material"] = kvp.Value.toOSD()
+                            };
+                            allOsd.Add(matMap);
+                        }
+                    }
+
+                    OSDMap resp = new OSDMap
+                    {
+                        ["Zipped"] = ZCompressOSD(allOsd, false)
+                    };
+
+                    CacheGet = OSDParser.SerializeLLSDXmlToBytes(resp);
                 }
+                response.RawBuffer = CacheGet ?? GetPutEmptyResponseBytes;
             }
-            */
-            //resp["Zipped"] = ZCompressOSD(allOsd, false);
-            //string tmp = OSDParser.SerializeLLSDXmlString(resp);
-            //response.RawBuffer = Encoding.UTF8.GetBytes(tmp);
-            response.RawBuffer = GetPutEmptyResponseBytes;
         }
 
-        
         private static string ZippedOsdBytesToString(byte[] bytes)
         {
             try

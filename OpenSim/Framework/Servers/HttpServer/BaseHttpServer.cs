@@ -1615,7 +1615,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                 return null;
             }
 
-            byte[] buffer = new byte[0];
+            byte[] buffer = Array.Empty<byte>();
             if (llsdResponse.ToString() == "shutdown404!")
             {
                 response.ContentType = "text/plain";
@@ -2156,7 +2156,7 @@ namespace OpenSim.Framework.Servers.HttpServer
 
                 // We want this exception to halt the entire server since in current configurations we aren't too
                 // useful without inbound HTTP.
-                throw e;
+                throw;
             }
 
             m_requestsProcessedStat = new Stat(

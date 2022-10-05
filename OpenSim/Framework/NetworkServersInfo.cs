@@ -26,16 +26,13 @@
  */
 
 using System;
-using System.Reflection;
-using log4net;
 using Nini.Config;
 
 namespace OpenSim.Framework
 {
     public class NetworkServersInfo
     {
-		private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-		public uint HttpListenerPort = ConfigSettings.DefaultRegionHttpPort;
+        public uint HttpListenerPort = ConfigSettings.DefaultRegionHttpPort;
         public bool secureInventoryServer = false;
         public bool isSandbox;
         public bool HttpUsesSSL = false;
@@ -51,24 +48,16 @@ namespace OpenSim.Framework
         public string cert_path = String.Empty;
         public string cert_pass = String.Empty;
 
-        public NetworkServersInfo() {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-		}
+        public NetworkServersInfo()
+        {
+        }
 
-        public NetworkServersInfo(uint defaultHomeLocX, uint defaultHomeLocY) {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
+        public NetworkServersInfo(uint defaultHomeLocX, uint defaultHomeLocY)
+        {
         }
 
         public void loadFromConfiguration(IConfigSource config)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             HttpListenerPort =
                 (uint) config.Configs["Network"].GetInt("http_listener_port", (int) ConfigSettings.DefaultRegionHttpPort);
             httpSSLPort =

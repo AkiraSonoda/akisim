@@ -25,25 +25,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Diagnostics;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Text;
-using System.Threading;
-using System.Reflection;
+using log4net;
+using Nini.Config;
+using OpenMetaverse;
 using OpenSim.Data;
 using OpenSim.Framework;
 using OpenSim.Framework.Serialization.External;
-using OpenSim.Framework.Console;
-using OpenSim.Server.Base;
 using OpenSim.Services.Base;
 using OpenSim.Services.Interfaces;
-using Nini.Config;
-using log4net;
-using OpenMetaverse;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Reflection;
 using System.Security.Cryptography;
+using System.Threading;
 
 namespace OpenSim.Services.FSAssetService
 {
@@ -78,8 +74,10 @@ namespace OpenSim.Services.FSAssetService
         protected bool m_useOsgridFormat = false;
         protected bool m_showStats = true;
 
-        private static bool m_Initialized;
-        private bool m_MainInstance;
+        private static bool m_mainInitialized;
+        private static object m_initLock = new object();
+
+        private bool m_isMainInstance;
 
         public FSAssetConnector(IConfigSource config)
             : this(config, "AssetService")
@@ -88,35 +86,41 @@ namespace OpenSim.Services.FSAssetService
 
         public FSAssetConnector(IConfigSource config, string configName) : base(config)
         {
-            if (!m_Initialized)
-            {
-                m_Initialized = true;
-                m_MainInstance = true;
-
-                MainConsole.Instance.Commands.AddCommand("fs", false,
-                        "show assets", "show assets", "Show asset stats",
-                        HandleShowAssets);
-                MainConsole.Instance.Commands.AddCommand("fs", false,
-                        "show digest", "show digest <ID>", "Show asset digest",
-                        HandleShowDigest);
-                MainConsole.Instance.Commands.AddCommand("fs", false,
-                        "delete asset", "delete asset <ID>",
-                        "Delete asset from database",
-                        HandleDeleteAsset);
-                MainConsole.Instance.Commands.AddCommand("fs", false,
-                        "import", "import <conn> <table> [<start> <count>]",
-                        "Import legacy assets",
-                        HandleImportAssets);
-                MainConsole.Instance.Commands.AddCommand("fs", false,
-                        "force import", "force import <conn> <table> [<start> <count>]",
-                        "Import legacy assets, overwriting current content",
-                        HandleImportAssets);
-            }
-
             IConfig assetConfig = config.Configs[configName];
-
             if (assetConfig == null)
                 throw new Exception("No AssetService configuration");
+
+            lock (m_initLock)
+            {
+                if (!m_mainInitialized)
+                {
+                    m_mainInitialized = true;
+                    m_isMainInstance = !assetConfig.GetBoolean("SecondaryInstance", false);
+
+                    MainConsole.Instance.Commands.AddCommand("fs", false,
+                            "show assets", "show assets", "Show asset stats",
+                            HandleShowAssets);
+                    MainConsole.Instance.Commands.AddCommand("fs", false,
+                            "show digest", "show digest <ID>", "Show asset digest",
+                            HandleShowDigest);
+                    MainConsole.Instance.Commands.AddCommand("fs", false,
+                            "delete asset", "delete asset <ID>",
+                            "Delete asset from database",
+                            HandleDeleteAsset);
+                    MainConsole.Instance.Commands.AddCommand("fs", false,
+                            "import", "import <conn> <table> [<start> <count>]",
+                            "Import legacy assets",
+                            HandleImportAssets);
+                    MainConsole.Instance.Commands.AddCommand("fs", false,
+                            "force import", "force import <conn> <table> [<start> <count>]",
+                            "Import legacy assets, overwriting current content",
+                            HandleImportAssets);
+                }
+                else
+                {
+                    m_isMainInstance = false; // yes redundant...
+                }
+            }
 
             // Get Database Connector from Asset Config (If present)
             string dllName = assetConfig.GetString("StorageProvider", string.Empty);
@@ -138,10 +142,10 @@ namespace OpenSim.Services.FSAssetService
             }
 
             // No databse connection found in either config
-            if (dllName.Equals(String.Empty))
+            if (string.IsNullOrEmpty(dllName))
                 throw new Exception("No StorageProvider configured");
 
-            if (connectionString.Equals(String.Empty))
+            if (string.IsNullOrEmpty(connectionString))
                 throw new Exception("Missing database connection string");
 
             // Create Storage Provider
@@ -156,7 +160,7 @@ namespace OpenSim.Services.FSAssetService
             // Setup Fallback Service
             string str = assetConfig.GetString("FallbackService", string.Empty);
 
-            if (str != string.Empty)
+            if (str.Length > 0)
             {
                 object[] args = new object[] { config };
                 m_FallbackService = LoadPlugin<IAssetService>(str, args);
@@ -189,10 +193,10 @@ namespace OpenSim.Services.FSAssetService
             // Default is to show stats to retain original behaviour
             m_showStats = assetConfig.GetBoolean("ShowConsoleStats", m_showStats);
 
-            if (m_MainInstance)
+            if (m_isMainInstance)
             {
                 string loader = assetConfig.GetString("DefaultAssetLoader", string.Empty);
-                if (loader != string.Empty)
+                if (loader.Length > 0)
                 {
                     m_AssetLoader = LoadPlugin<IAssetLoader>(loader);
                     string loaderArgs = assetConfig.GetString("AssetLoaderArgs", string.Empty);
@@ -204,10 +208,13 @@ namespace OpenSim.Services.FSAssetService
                             });
                 }
 
-                m_WriterThread = new Thread(Writer);
-                m_WriterThread.Start();
+                if(m_WriterThread == null)
+                {
+                    m_WriterThread = new Thread(Writer);
+                    m_WriterThread.Start();
+                }
 
-                if (m_showStats)
+                if (m_showStats && m_StatsThread == null)
                 {
                     m_StatsThread = new Thread(Stats);
                     m_StatsThread.Start();
@@ -242,7 +249,7 @@ namespace OpenSim.Services.FSAssetService
 
         private void Writer()
         {
-            m_log.Info("[ASSET]: Writer started");
+            m_log.InfoFormat("[FSASSETS]: Writer started with spooldir {0} and basedir {1}", m_SpoolDirectory, m_FSBase);
 
             while (true)
             {
@@ -315,7 +322,7 @@ namespace OpenSim.Services.FSAssetService
                                 }
                             }
                             // Could not resolve, skipping
-                            m_log.ErrorFormat("[ASSET]: Could not resolve path creation error for {0}", diskFile);
+                            m_log.ErrorFormat("[FSASSETS]: Could not resolve path creation error for {0}", diskFile);
                             break;
                         }
 
@@ -346,7 +353,7 @@ namespace OpenSim.Services.FSAssetService
                     int totalTicks = System.Environment.TickCount - tickCount;
                     if (totalTicks > 0) // Wrap?
                     {
-                        m_log.InfoFormat("[ASSET]: Write cycle complete, {0} files, {1} ticks, avg {2:F2}", files.Length, totalTicks, (double)totalTicks / (double)files.Length);
+                        m_log.InfoFormat("[FSASSETS]: Write cycle complete, {0} files, {1} ticks, avg {2:F2}", files.Length, totalTicks, (double)totalTicks / (double)files.Length);
                     }
                 }
 
@@ -357,8 +364,8 @@ namespace OpenSim.Services.FSAssetService
         string GetSHA256Hash(byte[] data)
         {
             byte[] hash;
-            using (SHA256CryptoServiceProvider SHA256 = new SHA256CryptoServiceProvider())
-                hash = SHA256.ComputeHash(data);
+            using (SHA256 sha = SHA256.Create())
+                hash = sha.ComputeHash(data);
 
             return BitConverter.ToString(hash).Replace("-", String.Empty);
         }
@@ -596,7 +603,7 @@ namespace OpenSim.Services.FSAssetService
                 }
                 catch (Exception)
                 {
-                    return new Byte[0];
+                    return Array.Empty<byte>();
                 }
             }
             else if (File.Exists(diskFile))
@@ -611,7 +618,7 @@ namespace OpenSim.Services.FSAssetService
                 {
                 }
             }
-            return new Byte[0];
+            return Array.Empty<byte>();
 
         }
 

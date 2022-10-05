@@ -63,7 +63,7 @@ namespace OpenSim.Region.ScriptEngine.Tests
             config.Configs["Modules"].Set("InventoryAccessModule", "BasicInventoryAccessModule");
 
             AttachmentsModule attMod = new AttachmentsModule();
-            // attMod.DebugLevel = 1;
+            attMod.DebugLevel = 1;
             modules.Add(attMod);
             modules.Add(new BasicInventoryAccessModule());
         }

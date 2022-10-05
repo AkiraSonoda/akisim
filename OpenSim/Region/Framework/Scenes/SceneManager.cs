@@ -93,10 +93,6 @@ namespace OpenSim.Region.Framework.Scenes
         public static SceneManager Instance
         {
             get {
-				if (m_log.IsDebugEnabled) {
-					m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-				}
-
                 if (m_instance == null)
                     m_instance = new SceneManager();
                 return m_instance;
@@ -138,11 +134,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public SceneManager()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-
             m_instance = this;
             m_localScenes = new DoubleDictionary<UUID, string, Scene>();
         }
@@ -165,8 +156,8 @@ namespace OpenSim.Region.Framework.Scenes
         public void Close(Scene cscene)
         {
             if (!m_localScenes.ContainsKey(cscene.RegionInfo.RegionID))
-            cscene.Close();
                 return;
+            cscene.Close();
         }
 
         public void Add(Scene scene)

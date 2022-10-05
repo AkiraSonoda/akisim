@@ -34,17 +34,11 @@ using System.IO;
 using System.Reflection;
 using System.Timers;
 using Nini.Config;
-using OpenSim.Server.Base;
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.ServiceAuth;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-using System.Xml.Serialization;
-
-// AKIDO change the function entry debug logging statements to the guarded ones
-
 
 namespace OpenSim.Services.Connectors
 {
@@ -59,9 +53,6 @@ namespace OpenSim.Services.Connectors
         private string m_ServerURI = string.Empty;
 
         private delegate void AssetRetrievedEx(AssetBase asset);
-
-		private string surabayaServerURI = String.Empty;
-		private bool surabayaServerEnabled = true;
 
         // Keeps track of concurrent requests for the same asset, so that it's only loaded once.
         // Maps: Asset ID -> Handlers which will be called when the asset has been loaded
@@ -142,7 +133,6 @@ namespace OpenSim.Services.Connectors
 
         public virtual AssetBase Get(string id)
         {
-            m_log.DebugFormat("[AssetServicesConnector]: Synchronous get request for {0}", id);
             AssetBase asset = null;
             if (m_Cache != null)
             {
@@ -356,76 +346,27 @@ namespace OpenSim.Services.Connectors
                     asset.ID = asset.FullID.ToString();
                 }
             }
-            if (asset.Local) {
 
-               if (m_Cache != null) {
-                    m_Cache.Cache(asset);
-               }
+            if (asset.Temporary || asset.Local)
+            {
+                m_Cache?.Cache(asset);
+                return asset.ID;
+            }
 
-               try {
-                   // it is also possible to disable Surabaya. I'd favor to configure 
-                   // Surabaya in the CAPS Section of the OpenSim.ini but right now with still some 
-                   // old Viwers which do not support http getTexture() I stick to this hack.
-                   if(surabayaServerEnabled) {
-                       // Create an XML of the Texture in order to transport the Asset to Surabaya.
-                       if (asset.Type == (sbyte) AssetType.Texture) {
-                           XmlSerializer xs = new XmlSerializer(typeof(AssetBase));
-                           byte[] result = ServerUtils.SerializeResult(xs, asset);
-                           string resultString = Util.UTF8.GetString(result);
-                           // AKIDO: remove commented code
-                           //m_log.DebugFormat("Dump of XML: {0}", resultString);
-                           OSDMap serializedAssetCaps = new OSDMap();
-                           serializedAssetCaps.Add("assetID", asset.ID);
-                           if(asset.Temporary) {
-                               serializedAssetCaps.Add("temporary", "true");
-                           } else {
-                               serializedAssetCaps.Add("temporary", "false");
-                           }
-                           serializedAssetCaps.Add("serializedAsset", resultString);
-                           int tickstart = Util.EnvironmentTickCount();
-                           OSDMap surabayaAnswer = WebUtil.PostToServiceCompressed(surabayaServerURI+"/cachetexture", serializedAssetCaps, 3000);
-                           if(surabayaAnswer != null) {
-                               // m_log.InfoFormat("Caching baked Texture: {0}",surabayaAnswer.ToString());
-                               OSDBoolean isSuccess = (OSDBoolean) surabayaAnswer["Success"];
-                               if(isSuccess) {
-                                   OSDMap answer = (OSDMap) surabayaAnswer["_Result"];
-                                   string surabayaResult = answer["result"];
-                                   if(!surabayaResult.Equals("ok")) {
-                                       m_log.ErrorFormat("Error PostingAgent Data: {0}", surabayaAnswer["reason"]);
-                                   } else {
-                                       m_log.InfoFormat("Caching baked Texture {0} was successful in {1}ms", asset.ID, Util.EnvironmentTickCountSubtract(tickstart));
-                                   }
-                               } else {
-                                  m_log.InfoFormat("Caching baked Texture {0} was not successful: {1}", asset.ID, surabayaAnswer["Message"]);
-                               }
-                           } else {
-                               m_log.ErrorFormat("Caching baked texture {0} to Surabaya returned NULL after {1}ms", asset.ID ,Util.EnvironmentTickCountSubtract(tickstart));
-                           }
-                       }
-                   }
-               } catch (Exception ex) {
-                  m_log.Error("Exception while caching baked texture to Surabaya: ", ex);
-               }
-               if (asset.Temporary || asset.Local)
-               {
-                   m_Cache?.Cache(asset);
-                   return asset.ID;
-               }
+            if (m_ServerURI == null)
+                return null;
 
-                if (m_ServerURI == null)
-                    return null;
+            string uri = m_ServerURI + "/assets/";
 
-                string uri = m_ServerURI + "/assets/";
-
-                string newID = null;
-                try
-                {
-                    newID = SynchronousRestObjectRequester.MakeRequest<AssetBase, string>("POST", uri, asset, 10000, m_Auth);
-                }
-                catch
-                {
-                    newID = null;
-                }
+            string newID = null;
+            try
+            {
+                newID = SynchronousRestObjectRequester.MakeRequest<AssetBase, string>("POST", uri, asset, 10000, m_Auth);
+            }
+            catch
+            {
+                newID = null;
+            }
 
             if (string.IsNullOrEmpty(newID) || newID == stringUUIDZero)
             {
@@ -485,10 +426,10 @@ namespace OpenSim.Services.Connectors
             string uri = m_ServerURI + "/assets/" + id;
             return SynchronousRestObjectRequester.MakeRequest<int, bool>("DELETE", uri, 0, m_Auth);
         }
-        
         public void Get(string id, string ForeignAssetService, bool StoreOnLocalGrid, SimpleAssetRetrieved callBack)
         {
             return;
         }
+
     }
 }

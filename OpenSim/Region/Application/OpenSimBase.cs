@@ -145,10 +145,6 @@ namespace OpenSim
         /// <param name="configSource"></param>
         public OpenSimBase(IConfigSource configSource) : base()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             EnableInitialPluginLoad = true;
             LoadEstateDataService = true;
             LoadConfigSettings(configSource);
@@ -156,10 +152,6 @@ namespace OpenSim
 
         protected virtual void LoadConfigSettings(IConfigSource configSource)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             m_configLoader = new ConfigurationLoader();
             ConfigSource = m_configLoader.LoadConfigSettings(configSource, envConfigSource, out m_configSettings, out m_networkServersInfo);
             Config = ConfigSource.Source;
@@ -168,10 +160,6 @@ namespace OpenSim
 
         protected virtual void ReadExtraConfigSettings()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             IConfig networkConfig = Config.Configs["Network"];
             if (networkConfig != null)
             {
@@ -228,10 +216,6 @@ namespace OpenSim
         /// </summary>
         protected override void StartupSpecific()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             IConfig startupConfig = Config.Configs["Startup"];
             if (startupConfig != null)
             {
@@ -306,11 +290,6 @@ namespace OpenSim
 
         protected virtual void AddPluginCommands(ICommandConsole console)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
-
             List<string> topics = GetHelpTopics();
 
             foreach (string topic in topics)
@@ -353,10 +332,6 @@ namespace OpenSim
 
         private void HandleCommanderCommand(string module, string[] cmd)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             SceneManager.SendCommandToPluginModules(cmd);
         }
 
@@ -373,9 +348,6 @@ namespace OpenSim
         protected override void Initialize()
         {
             // Called from base.StartUp()
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
 
             IConfig startupConfig = Config.Configs["Startup"];
             if (startupConfig == null || startupConfig.GetBoolean("JobEngineEnabled", true))
@@ -411,10 +383,6 @@ namespace OpenSim
         /// <returns></returns>
         public void CreateRegion(RegionInfo regionInfo, bool portadd_flag, out IScene scene)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             CreateRegion(regionInfo, portadd_flag, false, out scene);
         }
 
@@ -425,10 +393,6 @@ namespace OpenSim
         /// <returns></returns>
         public void CreateRegion(RegionInfo regionInfo, out IScene scene)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
             CreateRegion(regionInfo, false, true, out scene);
         }
 
@@ -952,7 +916,6 @@ namespace OpenSim
                 httpResponse.KeepAlive = false;
                 httpResponse.RawBuffer = binmsg;
                 httpResponse.StatusCode = (int)HttpStatusCode.OK;
-                return;
             }
         }
 
@@ -1066,7 +1029,7 @@ namespace OpenSim
                 regInfo.EstateSettings = EstateDataService.LoadEstateSettings(regInfo.RegionID, false);
 
             if (regInfo.EstateSettings.EstateID != 0)
-                return false;	// estate info in the database did not change
+                return false;    // estate info in the database did not change
 
             m_log.WarnFormat("[ESTATE] Region {0} is not part of an estate.", regInfo.RegionName);
 
@@ -1199,7 +1162,7 @@ namespace OpenSim
                 }
             }
 
-            return true;	// need to update the database
+            return true;    // need to update the database
         }
     }
 

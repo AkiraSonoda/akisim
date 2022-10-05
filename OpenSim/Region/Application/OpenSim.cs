@@ -59,7 +59,7 @@ namespace OpenSim
     public class OpenSim : OpenSimBase
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly ILog s_log = LogManager.GetLogger ("SimStats");
+
         protected string m_startupCommandsFile;
         protected string m_shutdownCommandsFile;
         protected bool m_gui = false;
@@ -82,17 +82,10 @@ namespace OpenSim
 
         public OpenSim(IConfigSource configSource) : base(configSource)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
         }
 
         protected override void ReadExtraConfigSettings()
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
-			}
-
             base.ReadExtraConfigSettings();
 
             IConfig startupConfig = Config.Configs["Startup"];
@@ -366,12 +359,6 @@ namespace OpenSim
                                           + "Only use this option if you are sure the avatar is inactive and a normal kick user operation does not removed them",
                                           KickUserCommand);
 
-            m_console.Commands.AddCommand ("Users", false, "akick",
-                                          "akick <first> <last>",
-                                          "Kick a user off the simulator",
-                                          "Kick a user off the simulator",
-                                          AkickCommand);
-
             m_console.Commands.AddCommand("Users", false, "show users",
                                           "show users [full]",
                                           "Show user data for users currently on the region",
@@ -463,11 +450,6 @@ namespace OpenSim
                                           "estate link region <estate ID> <region ID>",
                                           "Attaches the specified region to the specified estate.",
                                           EstateLinkRegionCommand);
-
-            m_console.Commands.AddCommand ("General", false, "show kpi",
-                                           "show kpi",
-                                           "prints all simulator KPI into separate OpenSimStats log. Useful for automatic monitoring", 
-                                           HandleShowKPI);
         }
 
         protected override void ShutdownSpecific()
@@ -511,38 +493,6 @@ namespace OpenSim
         }
 
         #region Console Commands
-
-        /// <summary>
-        /// Kicks users off the region
-        /// </summary>
-        /// <param name="module"></param>
-        /// <param name="cmdparams">name of avatar to kick</param>
-        private void AkickCommand (string module, string[] cmdparams)
-        {
-            
-            IList agents = SceneManager.GetCurrentSceneAvatars ();
-
-            foreach (ScenePresence presence in agents) {
-                RegionInfo regionInfo = presence.Scene.RegionInfo;
-
-                if (presence.Firstname.ToLower ().Contains (cmdparams [1].ToLower ()) &&
-                    presence.Lastname.ToLower ().Contains (cmdparams [2].ToLower ())) {
-                    MainConsole.Instance.Output (
-                        String.Format (
-                            "Akick: {0,-16} {1,-16} {2,-37} in region: {3,-16}",
-                            presence.Firstname, presence.Lastname, presence.UUID, regionInfo.RegionName)
-                    );
-
-                    // kick client...
-                    presence.ControllingClient.Kick ("Simulator logged you out due to connection timeout");
-
-                    presence.Scene.CloseAgent(presence.UUID, false);
-                }
-            }
-
-            MainConsole.Instance.Output ("");
-        }
-
 
         /// <summary>
         /// Kicks users off the region
@@ -883,11 +833,6 @@ namespace OpenSim
         /// <param name="cmdParams"></param>
         protected void ChangeSelectedRegion(string module, string[] cmdparams)
         {
-			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
-			}
-
-
             if (cmdparams.Length > 2)
             {
                 string newRegionName = CombineParams(cmdparams, 2);
@@ -939,48 +884,6 @@ namespace OpenSim
                 SceneManager.TrySetCurrentScene(whichRegion.RegionName);
 
             RefreshPrompt();
-        }
-
-        /// <summary>
-        /// Prints Base Simulator KPI into the log
-        /// </summary>
-        public override void HandleShowKPI (string mod, string[] cmd)
-        {
-
-            // Prints info from BaseOpenSimServer
-            base.HandleShowKPI (mod, cmd);
-
-            // Printing AgentInfo 
-            
-            IList agents;
-            agents = SceneManager.GetCurrentScenePresences ();
-            s_log.DebugFormat ("[AGENTS] Agents connected: {0}", agents.Count);
-
-            foreach (ScenePresence presence in agents) {
-                RegionInfo regionInfo = presence.Scene.RegionInfo;
-                string regionName;
-
-                if (regionInfo == null) {
-                    regionName = "Unresolvable";
-                } else {
-                    regionName = regionInfo.RegionName;
-                }
-
-                s_log.DebugFormat (
-                                "[AGENTS] Firstname:{0} Lastname:{1} AgentID:{2} Root/Child:{3} Region:{4} Position:{5}",
-                                presence.Firstname,
-                                presence.Lastname,
-                                presence.UUID,
-                                presence.IsChildAgent ? "Child" : "Root",
-                                regionName,
-                                presence.AbsolutePosition.ToString ());
-            }
-            
-            // Print Connection Info
-            PrintConnections ();
-            // Print Circuit Info
-            PrintCircuits ();
-
         }
 
         // see BaseOpenSimServer
@@ -1162,25 +1065,6 @@ namespace OpenSim
             }
         }
 
-        private void PrintCircuits ()
-        {
-
-            SceneManager.ForEachScene (
-                s => {
-                foreach (AgentCircuitData aCircuit in s.AuthenticateHandler.GetAgentCircuits().Values)
-                    s_log.DebugFormat (
-                            "[CIRCUITS] Region:{0} AvatarName:{1} Type:{2} Code:{3} IP:{4} ViewerName:{5}",
-                            s.Name,
-                            aCircuit.Name,
-                            aCircuit.child ? "child" : "root",
-                            aCircuit.circuitcode.ToString (),
-                            aCircuit.IPAddress.ToString (),
-                            aCircuit.Viewer);
-            }
-            );
-
-        }
-        
         private void HandleShowCircuits()
         {
             SceneManager.ForEachScene(
@@ -1214,22 +1098,6 @@ namespace OpenSim
                 });
         }
 
-        private void PrintConnections ()
-        {
-
-            SceneManager.ForEachScene (
-                s => s.ForEachClient (
-                    c => s_log.DebugFormat (
-                        "[CONNECTIONS] Region:{0} AvatarName:{1} CirquitCode:{2} Endpoint:{3} Active:{4}",
-                        s.Name,
-                        c.Name,
-                        c.CircuitCode.ToString (),
-                        c.RemoteEndPoint.ToString (),                
-                        c.IsActive.ToString ())
-            )
-            );
-        }
-        
         private void HandleShowConnections()
         {
             ConsoleDisplayTable cdt = new ConsoleDisplayTable();

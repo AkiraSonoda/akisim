@@ -58,8 +58,6 @@ namespace OpenSim.Framework.Servers
     public abstract class BaseOpenSimServer : ServerBase
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly ILog s_log = LogManager.GetLogger("SimStats");
-
 
         /// <summary>
         /// Used by tests to suppress Environment.Exit(0) so that post-run operations are possible.
