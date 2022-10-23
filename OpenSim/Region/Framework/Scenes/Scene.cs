@@ -4425,7 +4425,7 @@ namespace OpenSim.Region.Framework.Scenes
                 return false;
             }
 
-            if(pinfo.UserID != agent.AgentID.ToString())
+            if(pinfo.UserID.Substring(0,36) != agent.AgentID.ToString()) // AKIDO Php Gridserver PresenceInfo.UserID is different to agent.AgentID 
             {
                 reason = String.Format("Failed to verify user presence in the grid for {0} {1}, access denied to region {2}.", agent.firstname, agent.lastname, RegionInfo.RegionName);
                 return false;
