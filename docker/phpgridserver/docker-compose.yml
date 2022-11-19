@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+    php-apache:
+        container_name: phpgridserver
+        image: phpgridserver:0.1
+        hostname: phpgridserver
+        networks:
+            - test-net
+        depends_on:
+            - db
+        volumes:
+            - ./php/src:/var/www
+        environment:
+            SERVER_NAME: akitest.dyndns.info
+        ports:
+            - 8020:80
+    db:
+        container_name: db
+        image: mysql
+        restart: always
+        hostname: db
+        networks:
+            - test-net
+        volumes:
+            - ./mysql:/var/lib/mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: mvnrw07
+            MYSQL_DATABASE: phpgridserver
+            MYSQL_USER: phpgridserver
+            MYSQL_PASSWORD: phpgridserver
+        ports:
+            - "9306:3306"
+networks:
+    test-net:
