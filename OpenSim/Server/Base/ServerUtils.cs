@@ -34,6 +34,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using System.Text;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using log4net;
 using Nini.Config;
 using OpenSim.Framework;
@@ -558,6 +559,10 @@ namespace OpenSim.Server.Base
 
             try
             {
+                if (data.Contains("<griduser0>")) // AKIDO workaround because of old griduser xml
+                {
+                    data = xmlGridUserListWorkaround(data);
+                }
                 XmlReaderSettings xset = new XmlReaderSettings() { IgnoreWhitespace = true, IgnoreComments = true, ConformanceLevel = ConformanceLevel.Fragment, CloseInput = true };
                 XmlParserContext xpc = new XmlParserContext(null, null, null, XmlSpace.None);
                 xpc.Encoding = Util.UTF8NoBomEncoding;
@@ -637,5 +642,33 @@ namespace OpenSim.Server.Base
 
             return source;
         }
+
+        // AKIDO Workaround for new xml structure with <griduser0 type="List"> 
+        // AKIDO Actually this would be a job of the Server but at the moment I hesitate to fiddle around with PHP
+        private static String xmlGridUserListWorkaround(String xmlString)
+        {
+            int count = countGridUserInXml(xmlString);
+            StringBuilder builder = new StringBuilder(xmlString);
+            for (int i = 0; i < count; i++)
+            {
+                builder.Replace("<griduser"+i+">", "<griduser"+i+" type=\"List\">");
+            }
+            return builder.ToString();
+        }
+        
+        // AKIDO Workaround for new xml structure with <griduser0 type="List"> 
+        // Counts all occurrences of <griduser> 
+        public static int countGridUserInXml(String xmlString)
+        {
+            String pattern = @"<griduser\d+>";
+            Regex rg = new Regex(pattern);
+            MatchCollection matchedGridUsers = rg.Matches(xmlString);
+            int count = matchedGridUsers.Count;
+            // int count = new Regex(Regex.Escape(xmlString)).Matches(@"<griduser\d+>").Count;
+            return count;
+        }
+
+
+
     }
 }
