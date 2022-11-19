@@ -3411,9 +3411,7 @@
       <Reference name="OpenSim.Data"/>
       <Reference name="OpenSim.Services.Interfaces"/>
       <Reference name="OpenSim.Tests.Common"/>
-      <Reference name="OpenSim.Framework"/>
-      <Reference name="OpenSim.Framework.Servers"/>
-      <Reference name="OpenSim.Framework.Servers.HttpServer"/>
+      <Reference name="OpenSim.Server.Base"/>
       <Reference name="log4net" path="../../../../bin/"/>
       <Reference name="nunit.framework" path="../../../../bin/"/>
 
