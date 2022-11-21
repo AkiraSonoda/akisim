@@ -1,0 +1,11 @@
+__pycache__
+*~
+*.bak
+*.o
+*.a
+config.php
+RemoteSystemsTempFiles
+.metadata
+simulator/bin
+
+/lib/js/leaflet-plugins/fullscreen/*.db
