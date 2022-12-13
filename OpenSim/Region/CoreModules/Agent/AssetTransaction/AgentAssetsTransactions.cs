@@ -25,15 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
-using System.Reflection;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
-
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Services.Interfaces;
 using OpenSim.Region.Framework.Interfaces;
+using System.Reflection;
+using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 {
@@ -47,7 +45,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         // Fields
         private bool m_dumpAssetsToFile;
         private Scene m_Scene;
-        private Dictionary<UUID, AssetXferUploader> XferUploaders = new Dictionary<UUID, AssetXferUploader>();
+        // private Dictionary<UUID, AssetXferUploader> XferUploaders = new Dictionary<UUID, AssetXferUploader>();
+        private RwLockedDictionary<UUID, AssetXferUploader> XferUploaders = new RwLockedDictionary<UUID, AssetXferUploader>();
 
         // Methods
         public AgentAssetTransactions(UUID agentID, Scene scene,
@@ -68,53 +67,39 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <returns>The asset xfer uploader</returns>
         public AssetXferUploader RequestXferUploader(UUID transactionID)
         {
-            AssetXferUploader uploader;
-
-            lock (XferUploaders)
-            {
-                if (!XferUploaders.ContainsKey(transactionID))
-                {
-                    uploader = new AssetXferUploader(this, m_Scene, transactionID, m_dumpAssetsToFile);
-
-//                    m_log.DebugFormat(
-//                        "[AGENT ASSETS TRANSACTIONS]: Adding asset xfer uploader {0} since it didn't previously exist", transactionID);
-
-                    XferUploaders.Add(transactionID, uploader);
-                }
-                else
-                {
-                    uploader = XferUploaders[transactionID];
-                }
-            }
-
-            return uploader;
+            return XferUploaders.GetOrAddIfNotExists(transactionID, delegate()
+            { 
+                return new AssetXferUploader(this, m_Scene, transactionID, m_dumpAssetsToFile); 
+            });        
         }
 
         public void HandleXfer(ulong xferID, uint packetID, byte[] data)
         {
             AssetXferUploader foundUploader = null;
 
-            lock (XferUploaders)
+            try
             {
-                foreach (AssetXferUploader uploader in XferUploaders.Values)
+                XferUploaders.ForEach(delegate(AssetXferUploader uploader) // AKIDO
                 {
-//                    m_log.DebugFormat(
-//                        "[AGENT ASSETS TRANSACTIONS]: In HandleXfer, inspect xfer upload with xfer id {0}",
-//                        uploader.XferID);
+                    m_log.DebugFormat("In HandleXfer, inspect xfer upload with xfer id {0}", uploader.XferID);
 
                     if (uploader.XferID == xferID)
                     {
-                        foundUploader = uploader;
-                        break;
+                        throw new ReturnValueException<AssetXferUploader>(uploader);
                     }
-                }
+                });
+                foundUploader = null;
+                
+            }
+            catch(ReturnValueException<AssetXferUploader> e) // AKIDO
+            {
+                foundUploader = e.Value;
             }
 
             if (foundUploader != null)
             {
-//                m_log.DebugFormat(
-//                    "[AGENT ASSETS TRANSACTIONS]: Found xfer uploader for xfer id {0}, packet id {1}, data length {2}",
-//                    xferID, packetID, data.Length);
+                m_log.DebugFormat("Found xfer uploader for xfer id {0}, packet id {1}, data length {2}", 
+                    xferID, packetID, data.Length);
 
                 foundUploader.HandleXferPacket(xferID, packetID, data);
             }
@@ -129,27 +114,23 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 }
 
                 m_log.ErrorFormat(
-                    "[AGENT ASSET TRANSACTIONS]: Could not find uploader for xfer id {0}, packet id {1}, data length {2}",
+                    "Could not find uploader for xfer id {0}, packet id {1}, data length {2}",
                     xferID, packetID, data.Length);
             }
         }
 
-        public bool RemoveXferUploader(UUID transactionID)
+        public bool RemoveXferUploader(UUID transactionID) // AKIDO
         {
-            lock (XferUploaders)
+            bool removed = XferUploaders.Remove(transactionID);
+
+            if (!removed)
             {
-                bool removed = XferUploaders.Remove(transactionID);
-
-                if (!removed)
-                    m_log.WarnFormat(
-                        "[AGENT ASSET TRANSACTIONS]: Received request to remove xfer uploader with transaction ID {0} but none found",
-                        transactionID);
-//                else
-//                    m_log.DebugFormat(
-//                        "[AGENT ASSET TRANSACTIONS]: Removed xfer uploader with transaction ID {0}", transactionID);
-
-                return removed;
+                m_log.WarnFormat(
+                    "Received request to remove xfer uploader with transaction ID {0} but none found",
+                    transactionID);
             }
+
+            return removed;
         }
 
         public bool RequestCreateInventoryItem(IClientAPI remoteClient,
