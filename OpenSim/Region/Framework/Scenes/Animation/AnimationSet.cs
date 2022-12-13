@@ -26,16 +26,10 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Text;
-using log4net;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-
-using OpenSim.Framework;
-
-using Animation = OpenSim.Framework.Animation;
+using ThreadedClasses;
 
 namespace OpenSim.Region.Framework.Scenes.Animation
 {
@@ -46,7 +40,7 @@ namespace OpenSim.Region.Framework.Scenes.Animation
 
         private OpenSim.Framework.Animation m_implicitDefaultAnimation = new OpenSim.Framework.Animation();
         private OpenSim.Framework.Animation m_defaultAnimation = new OpenSim.Framework.Animation();
-        private readonly List<OpenSim.Framework.Animation> m_animations = new List<OpenSim.Framework.Animation>();
+        private readonly RwLockedList<OpenSim.Framework.Animation> m_animations = new RwLockedList<OpenSim.Framework.Animation>(); // AKIDO
 
         public OpenSim.Framework.Animation DefaultAnimation
         {
@@ -85,13 +79,10 @@ namespace OpenSim.Region.Framework.Scenes.Animation
 
         public bool Add(UUID animID, int sequenceNum, UUID objectID)
         {
-            lock (m_animations)
+            if (!HasAnimation(animID)) // AKIDO
             {
-                if (!HasAnimation(animID))
-                {
-                    m_animations.Add(new OpenSim.Framework.Animation(animID, sequenceNum, objectID));
-                    return true;
-                }
+                m_animations.Add(new OpenSim.Framework.Animation(animID, sequenceNum, objectID));
+                return true;
             }
             return false;
         }
@@ -106,24 +97,21 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// </param>
         public bool Remove(UUID animID, bool allowNoDefault)
         {
-            lock (m_animations)
+            if (m_defaultAnimation.AnimID.Equals(animID)) // AKIDO
             {
-                if (m_defaultAnimation.AnimID.Equals(animID))
-                {
-                    if (allowNoDefault)
-                        m_defaultAnimation = new OpenSim.Framework.Animation(UUID.Zero, 1, UUID.Zero);
-                    else
-                        ResetDefaultAnimation();
-                }
+                if (allowNoDefault)
+                    m_defaultAnimation = new OpenSim.Framework.Animation(UUID.Zero, 1, UUID.Zero);
                 else
+                    ResetDefaultAnimation();
+            }
+            else
+            {
+                for (int i = 0; i < m_animations.Count; i++)
                 {
-                    for (int i = 0; i < m_animations.Count; i++)
+                    if (m_animations[i].AnimID.Equals(animID))
                     {
-                        if (m_animations[i].AnimID.Equals(animID))
-                        {
-                            m_animations.RemoveAt(i);
-                            return true;
-                        }
+                        m_animations.RemoveAt(i);
+                        return true;
                     }
                 }
             }
@@ -181,49 +169,43 @@ namespace OpenSim.Region.Framework.Scenes.Animation
 
         public void GetAnimationIDsArray(out UUID[] animIDs)
         {
-            lock (m_animations)
+            int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1; // AKIDO
+
+            int defaultSize = m_animations.Count + j;
+            animIDs = new UUID[defaultSize];
+
+            if (j > 0)
             {
-                int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1;
+                animIDs[0] = m_defaultAnimation.AnimID;
+            }
 
-                int defaultSize = m_animations.Count + j;
-                animIDs = new UUID[defaultSize];
-
-                if (j > 0)
-                {
-                    animIDs[0] = m_defaultAnimation.AnimID;
-                }
-
-                for (int i = 0; i < m_animations.Count; ++i, ++j)
-                {
-                    animIDs[j] = m_animations[i].AnimID;
-                }
+            for (int i = 0; i < m_animations.Count; ++i, ++j)
+            {
+                animIDs[j] = m_animations[i].AnimID;
             }
         }
 
         public void GetArrays(out UUID[] animIDs, out int[] sequenceNums, out UUID[] objectIDs)
         {
-            lock (m_animations)
+            int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1; // AKIDO
+
+            int defaultSize = m_animations.Count + j;
+            animIDs = new UUID[defaultSize];
+            sequenceNums = new int[defaultSize];
+            objectIDs = new UUID[defaultSize];
+
+            if (j > 0)
             {
-                int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1;
+                animIDs[0] = m_defaultAnimation.AnimID;
+                sequenceNums[0] = m_defaultAnimation.SequenceNum;
+                objectIDs[0] = m_defaultAnimation.ObjectID;
+            }
 
-                int defaultSize = m_animations.Count + j;
-                animIDs = new UUID[defaultSize];
-                sequenceNums = new int[defaultSize];
-                objectIDs = new UUID[defaultSize];
-
-                if (j > 0)
-                {
-                    animIDs[0] = m_defaultAnimation.AnimID;
-                    sequenceNums[0] = m_defaultAnimation.SequenceNum;
-                    objectIDs[0] = m_defaultAnimation.ObjectID;
-                }
-
-                for (int i = 0; i < m_animations.Count; ++i,++j)
-                {
-                    animIDs[j] = m_animations[i].AnimID;
-                    sequenceNums[j] = m_animations[i].SequenceNum;
-                    objectIDs[j] = m_animations[i].ObjectID;
-                }
+            for (int i = 0; i < m_animations.Count; ++i, ++j)
+            {
+                animIDs[j] = m_animations[i].AnimID;
+                sequenceNums[j] = m_animations[i].SequenceNum;
+                objectIDs[j] = m_animations[i].ObjectID;
             }
         }
 
