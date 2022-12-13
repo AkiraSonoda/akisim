@@ -26,10 +26,7 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.IO;
 using System.Reflection;
-using System.Threading;
 
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
@@ -42,7 +39,7 @@ using OpenMetaverse;
 using log4net;
 using Nini.Config;
 using Mono.Addins;
-
+using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement
 {
@@ -59,7 +56,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected bool m_Enabled;
-        protected List<Scene> m_Scenes = new List<Scene>();
+        protected RwLockedList<Scene> m_Scenes = new RwLockedList<Scene>();
 
         protected IServiceThrottleModule m_ServiceThrottle;
         protected IUserAccountService m_userAccountService = null;
@@ -128,10 +125,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         {
             if (m_Enabled)
             {
-                lock (m_Scenes)
-                {
-                    m_Scenes.Add(scene);
-                }
+                m_Scenes.Add(scene);
                 if(m_thisGridInfo == null)
                     m_thisGridInfo = scene.SceneGridInfo;
                 scene.RegisterModuleInterface<IUserManagement>(this);
@@ -146,10 +140,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             if (m_Enabled)
             {
                 scene.UnregisterModuleInterface<IUserManagement>(this);
-                lock (m_Scenes)
-                {
-                    m_Scenes.Remove(scene);
-                }
+                m_Scenes.Remove(scene);
             }
         }
 
@@ -174,10 +165,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         public virtual void Close()
         {
             m_Enabled = false;
-            lock (m_Scenes)
-            {
-                m_Scenes.Clear();
-            }
+            m_Scenes.Clear();
             m_thisGridInfo = null;
             Dispose(false);
         }
@@ -851,13 +839,13 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch(System.Net.WebException e)
                     {
-                        m_log.DebugFormat("[USER MANAGEMENT MODULE]: GetServerURLs call failed {0}", e.Message);
+                        m_log.WarnFormat("GetServerURLs call failed {0}", e.Message);
                         WebUtil.GlobalExpiringBadURLs.Add(homeuri, BADURLEXPIRE * 1000);
                         userdata.ServerURLs = new Dictionary<string, object>();
                     }
                     catch (Exception e)
                     {
-                        m_log.Debug("[USER MANAGEMENT MODULE]: GetServerURLs call failed ", e);
+                        m_log.Warn("GetServerURLs call failed ", e);
                         userdata.ServerURLs = new Dictionary<string, object>();
                     }
 

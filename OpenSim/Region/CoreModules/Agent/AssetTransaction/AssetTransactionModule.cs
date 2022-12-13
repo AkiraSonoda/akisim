@@ -126,12 +126,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <param name="userID"></param>
         public void RemoveAgentAssetTransactions(UUID userID)
         {
-            // m_log.DebugFormat("Removing agent asset transactions structure for agent {0}", userID);
-
-            lock (AgentTransactions)
-            {
-                AgentTransactions.Remove(userID);
-            }
+            m_log.DebugFormat("Removing agent asset transactions structure for agent {0}", userID);
+            AgentTransactions.Remove(userID);
         }
 
         /// <summary>
@@ -225,9 +221,9 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 UUID assetID, UUID transactionID, sbyte type, byte[] data,
                 bool storeLocal, bool tempFile)
         {
-//            m_log.DebugFormat(
-//                "[ASSET TRANSACTION MODULE]: HandleUDPUploadRequest - assetID: {0}, transaction {1}, type {2}, storeLocal {3}, tempFile {4}, data.Length {5}",
-//                assetID, transactionID, type, storeLocal, tempFile, data.Length);
+            m_log.DebugFormat(
+                "HandleUDPUploadRequest - assetID: {0}, transaction {1}, type {2}, storeLocal {3}, tempFile {4}, data.Length {5}",
+                assetID, transactionID, type, storeLocal, tempFile, data.Length);
 
             if (((AssetType)type == AssetType.Texture ||
                 (AssetType)type == AssetType.Sound ||
