@@ -2423,9 +2423,11 @@
       <Reference name="OpenSim.Region.ScriptEngine.Shared.Api.Runtime"/>
       <Reference name="OpenSim.Region.ScriptEngine.XEngine.Api.Runtime"/>
       <Reference name="SmartThreadPool"/>
+      <Reference name="ThreadedClasses"/>
       <Reference name="Nini" path="../../../../bin/"/>
       <Reference name="log4net" path="../../../../bin/"/>
       <Reference name="Mono.Addins" path="../../../../bin/"/>
+	  
 
       <Files>
         <Match buildAction="EmbeddedResource" path="Resources" pattern="*.addin.xml" recurse="true"/>
