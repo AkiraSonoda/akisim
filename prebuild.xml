@@ -140,6 +140,8 @@
       <Reference name="Mono.Addins.Setup" path="../../bin/"/>
       <Reference name="LukeSkywalker.IPNetwork" path="../../bin/"/>
       <Reference name="SmartThreadPool"/>
+      <Reference name="ThreadedClasses"/>
+	  
       <Files>
         <Match pattern="*.cs" recurse="false"/>
         <Match path="Client" pattern="*.cs" recurse="true">

@@ -135,7 +135,7 @@ namespace ThreadedClasses
                 m_RwLock.ReleaseReaderLock();
             }
         }
-
+        
         public void RemoveAt(int index)
         {
             m_RwLock.AcquireWriterLock(-1);
@@ -172,6 +172,20 @@ namespace ThreadedClasses
             return default(T);
         }
 
+        public void RemoveRange(int from, int to)
+        {
+            m_RwLock.AcquireWriterLock(-1);
+            try
+            {
+                m_List.RemoveRange(from, to);
+            }
+            finally
+            {
+                m_RwLock.ReleaseWriterLock();
+            }
+        }
+
+        
         public T this[int index]
         {
             get
@@ -239,6 +253,18 @@ namespace ThreadedClasses
             }
         }
 
+        public void Sort(IComparer<T> comparer)
+        {
+            m_RwLock.AcquireWriterLock(-1);
+            try
+            {
+                m_List.Sort(comparer);
+            }
+            finally
+            {
+                m_RwLock.ReleaseWriterLock();
+            }
+        }
         public IEnumerator<T> GetEnumerator()
         {
             m_RwLock.AcquireReaderLock(-1);
@@ -257,6 +283,20 @@ namespace ThreadedClasses
             return GetEnumerator();
         }
 
+        public List<T> GetRange(int from, int to)
+        {
+            m_RwLock.AcquireReaderLock(-1);
+            try
+            {
+                return (new List<T>(m_List)).GetRange(from, to);
+            }
+            finally
+            {
+                m_RwLock.ReleaseReaderLock();
+            }
+        }
+
+        
         /* support for non-copy enumeration */
         public void ForEach(Action<T> action)
         {
