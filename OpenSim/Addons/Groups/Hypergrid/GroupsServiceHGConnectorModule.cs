@@ -27,9 +27,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
@@ -42,6 +40,7 @@ using OpenMetaverse;
 using Mono.Addins;
 using log4net;
 using Nini.Config;
+using ThreadedClasses;
 
 namespace OpenSim.Groups
 {
@@ -61,7 +60,7 @@ namespace OpenSim.Groups
         private string m_ServiceLocation;
         private IConfigSource m_Config;
 
-        private Dictionary<string, GroupsServiceHGConnector> m_NetworkConnectors = new Dictionary<string, GroupsServiceHGConnector>();
+        private RwLockedDictionary<string, GroupsServiceHGConnector> m_NetworkConnectors = new RwLockedDictionary<string, GroupsServiceHGConnector>();
         private RemoteConnectorCacheWrapper m_CacheWrapper; // for caching info of external group services
 
         #region ISharedRegionModule
@@ -834,14 +833,11 @@ namespace OpenSim.Groups
 				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
 			}
 
-            lock (m_NetworkConnectors)
-            {
-                if (m_NetworkConnectors.ContainsKey(url))
-                    return m_NetworkConnectors[url];
+            if (m_NetworkConnectors.ContainsKey(url))
+                return m_NetworkConnectors[url];
 
-                GroupsServiceHGConnector c = new GroupsServiceHGConnector(url);
-                m_NetworkConnectors[url] = c;
-            }
+            GroupsServiceHGConnector c = new GroupsServiceHGConnector(url);
+            m_NetworkConnectors[url] = c;
 
             return m_NetworkConnectors[url];
         }

@@ -321,7 +321,7 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
         /// </summary>
         public void RegisterConstant(string cname, object value)
         {
-            m_log.DebugFormat("RegisterConstant - cname <{0}> with value {1}",cname,value.ToString());
+            // m_log.DebugFormat("RegisterConstant - cname <{0}> with value {1}",cname,value.ToString());
             m_constants.Add(cname,value); // AKIDO
         }
 
@@ -344,7 +344,7 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
         /// </summary>
         public object LookupModConstant(string cname)
         {
-            m_log.DebugFormat("LookupModConstant - cname <{0}>",cname);
+            // m_log.DebugFormat("LookupModConstant - cname <{0}>",cname);
 
             object value = null; // AKIDO
             if (m_constants.TryGetValue(cname, out value))
