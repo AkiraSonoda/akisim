@@ -26,9 +26,8 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Text;
-using log4net;
-using OpenMetaverse;
+using ThreadedClasses;
+
 
 namespace OpenSim.Region.PhysicsModule.BulletS
 {
@@ -39,13 +38,13 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         delegate bool ConstraintAction(BSConstraint constrain);
 
-        private List<BSConstraint> m_constraints;
+        private RwLockedList<BSConstraint> m_constraints; // AKIDO
         private BulletWorld m_world;
 
         public BSConstraintCollection(BulletWorld world)
         {
             m_world = world;
-            m_constraints = new List<BSConstraint>();
+            m_constraints = new RwLockedList<BSConstraint>(); // AKIDO
         }
 
         public void Dispose()
@@ -55,25 +54,20 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         public void Clear()
         {
-            lock (m_constraints)
+            foreach (BSConstraint cons in m_constraints) // AKIDO
             {
-                foreach (BSConstraint cons in m_constraints)
-                {
-                    cons.Dispose();
-                }
-                m_constraints.Clear();
+                cons.Dispose();
             }
+
+            m_constraints.Clear();
         }
 
         public bool AddConstraint(BSConstraint cons)
         {
-            lock (m_constraints)
-            {
-                // There is only one constraint between any bodies. Remove any old just to make sure.
-                RemoveAndDestroyConstraint(cons.Body1, cons.Body2);
+            // There is only one constraint between any bodies. Remove any old just to make sure.
+            RemoveAndDestroyConstraint(cons.Body1, cons.Body2); // AKIDO
 
-                m_constraints.Add(cons);
-            }
+            m_constraints.Add(cons);
 
             return true;
         }
@@ -87,17 +81,14 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             uint lookingID1 = body1.ID;
             uint lookingID2 = body2.ID;
-            lock (m_constraints)
+            foreach (BSConstraint constrain in m_constraints) // AKIDO
             {
-                foreach (BSConstraint constrain in m_constraints)
+                if ((constrain.Body1.ID == lookingID1 && constrain.Body2.ID == lookingID2)
+                    || (constrain.Body1.ID == lookingID2 && constrain.Body2.ID == lookingID1))
                 {
-                    if ((constrain.Body1.ID == lookingID1 && constrain.Body2.ID == lookingID2)
-                        || (constrain.Body1.ID == lookingID2 && constrain.Body2.ID == lookingID1))
-                    {
-                        foundConstraint = constrain;
-                        found = true;
-                        break;
-                    }
+                    foundConstraint = constrain;
+                    found = true;
+                    break;
                 }
             }
             returnConstraint = foundConstraint;
@@ -110,14 +101,11 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public bool RemoveAndDestroyConstraint(BulletBody body1, BulletBody body2)
         {
             bool ret = false;
-            lock (m_constraints)
+            BSConstraint constrain; // AKIDO
+            if (this.TryGetConstraint(body1, body2, out constrain))
             {
-                BSConstraint constrain;
-                if (this.TryGetConstraint(body1, body2, out constrain))
-                {
-                    // remove the constraint from our collection
-                    ret = RemoveAndDestroyConstraint(constrain);
-                }
+                // remove the constraint from our collection
+                ret = RemoveAndDestroyConstraint(constrain);
             }
 
             return ret;
@@ -129,11 +117,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public bool RemoveAndDestroyConstraint(BSConstraint constrain)
         {
             bool removed = false;
-            lock (m_constraints)
-            {
-                // remove the constraint from our collection
-                removed = m_constraints.Remove(constrain);
-            }
+            // remove the constraint from our collection 
+            removed = m_constraints.Remove(constrain); // AKIDO
             // Dispose() is safe to call multiple times
             constrain.Dispose();
             return removed;
@@ -145,20 +130,18 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         {
             List<BSConstraint> toRemove = new List<BSConstraint>();
             uint lookingID = body1.ID;
-            lock (m_constraints)
+            foreach (BSConstraint constrain in m_constraints) // AKIDO
             {
-                foreach (BSConstraint constrain in m_constraints)
+                if (constrain.Body1.ID == lookingID || constrain.Body2.ID == lookingID)
                 {
-                    if (constrain.Body1.ID == lookingID || constrain.Body2.ID == lookingID)
-                    {
-                        toRemove.Add(constrain);
-                    }
+                    toRemove.Add(constrain);
                 }
-                foreach (BSConstraint constrain in toRemove)
-                {
-                    m_constraints.Remove(constrain);
-                    constrain.Dispose();
-                }
+            }
+
+            foreach (BSConstraint constrain in toRemove)
+            {
+                m_constraints.Remove(constrain);
+                constrain.Dispose();
             }
             return (toRemove.Count > 0);
         }
@@ -166,13 +149,10 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public bool RecalculateAllConstraints()
         {
             bool ret = false;
-            lock (m_constraints)
+            foreach (BSConstraint constrain in m_constraints) // AKIDO
             {
-                foreach (BSConstraint constrain in m_constraints)
-                {
-                    constrain.CalculateTransforms();
-                    ret = true;
-                }
+                constrain.CalculateTransforms();
+                ret = true;
             }
             return ret;
         }

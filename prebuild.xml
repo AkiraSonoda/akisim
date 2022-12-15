@@ -2002,18 +2002,20 @@
       <Reference name="System"/>
       <Reference name="System.Core"/>
       <Reference name="System.Xml"/>
-      <Reference name="OpenMetaverseTypes" path="../../../../bin/"/>
-      <Reference name="Nini.dll"  path="../../../../bin/"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="Nini"/>
       <Reference name="OpenSim.Framework"/>
       <Reference name="OpenSim.Framework.Monitoring"/>
       <Reference name="OpenSim.Region.Framework"/>
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="OpenSim.Region.PhysicsModules.SharedBase"/>
-      <Reference name="OpenSim.Region.PhysicsModule.Meshing" path="../../../../bin/"/>
+      <Reference name="OpenSim.Region.PhysicsModule.Meshing"/>
       <Reference name="OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet"/>
-      <Reference name="Mono.Addins" path="../../../../bin/"/>
-      <Reference name="BulletXNA.dll" path="../../../../bin/"/>
-      <Reference name="log4net.dll" path="../../../../bin/"/>
+      <Reference name="Mono.Addins"/>
+      <Reference name="BulletXNA"/>
+      <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="true">
