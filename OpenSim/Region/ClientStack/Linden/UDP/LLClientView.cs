@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Reflection;
 using System.Runtime;
@@ -371,8 +372,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// </remarks>
         private readonly AgentUpdateArgs m_thisAgentUpdateArgs = new AgentUpdateArgs();
 
-        protected Dictionary<PacketType, PacketProcessor> m_packetHandlers = new Dictionary<PacketType, PacketProcessor>();
-        protected Dictionary<string, GenericMessage> m_genericPacketHandlers = new Dictionary<string, GenericMessage>(); //PauPaw:Local Generic Message handlers
+        protected ConcurrentDictionary<PacketType, PacketProcessor> m_packetHandlers = new ConcurrentDictionary<PacketType, PacketProcessor>();
+        protected ConcurrentDictionary<string, GenericMessage> m_genericPacketHandlers = new ConcurrentDictionary<string, GenericMessage>(); //PauPaw:Local Generic Message handlers
         protected Scene m_scene;
         protected string m_firstName;
         protected string m_lastName;
@@ -380,7 +381,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         protected UUID m_activeGroupID;
         protected string m_activeGroupName = String.Empty;
         protected ulong m_activeGroupPowers;
-        protected Dictionary<UUID, ulong> m_groupPowers = new Dictionary<UUID, ulong>();
+        protected ConcurrentDictionary<UUID, ulong> m_groupPowers = new ConcurrentDictionary<UUID, ulong>();
         protected int m_terrainCheckerCount;
         protected uint m_agentFOVCounter;
 
@@ -705,13 +706,11 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <returns>true if the handler was added.  This is currently always the case.</returns>
         public bool AddLocalPacketHandler(PacketType packetType, PacketMethod handler, bool doAsync)
         {
-             lock (m_packetHandlers)
+            // AKIDO 
+            if (!m_packetHandlers.ContainsKey(packetType))
             {
-                if (!m_packetHandlers.ContainsKey(packetType))
-                {
-                    m_packetHandlers.Add(packetType, new PacketProcessor() { method = handler, Async = doAsync});
-                    return true;
-                }
+                m_packetHandlers.Add(packetType, new PacketProcessor() { method = handler, Async = doAsync });
+                return true;
             }
             return false;
         }
@@ -721,13 +720,10 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             MethodName = MethodName.ToLower().Trim();
 
             bool result = false;
-            lock (m_genericPacketHandlers)
+            if (!m_genericPacketHandlers.ContainsKey(MethodName))
             {
-                if (!m_genericPacketHandlers.ContainsKey(MethodName))
-                {
-                    m_genericPacketHandlers.Add(MethodName, handler);
-                    result = true;
-                }
+                m_genericPacketHandlers.Add(MethodName, handler);
+                result = true;
             }
             return result;
         }
@@ -1713,9 +1709,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         }
 
         // wind caching
-        private static Dictionary<ulong,int> lastWindVersion = new Dictionary<ulong,int>();
-        private static Dictionary<ulong,List<LayerDataPacket>> lastWindPackets =
-                 new Dictionary<ulong,List<LayerDataPacket>>();
+        private static ConcurrentDictionary<ulong,int> lastWindVersion = new ConcurrentDictionary<ulong,int>(); // AKIDO
+        private static ConcurrentDictionary<ulong,List<LayerDataPacket>> lastWindPackets = 
+                 new ConcurrentDictionary<ulong,List<LayerDataPacket>>(); // AKIDO
 
 
         /// <summary>
@@ -1728,18 +1724,16 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             ulong handle = this.Scene.RegionInfo.RegionHandle;
             bool isNewData;
-            lock(lastWindPackets)
+            // AKIDO
+            if (!lastWindVersion.ContainsKey(handle) ||
+                !lastWindPackets.ContainsKey(handle))
             {
-                if(!lastWindVersion.ContainsKey(handle) ||
-                    !lastWindPackets.ContainsKey(handle))
-                {
-                    lastWindVersion[handle] = 0;
-                    lastWindPackets[handle] = new List<LayerDataPacket>();
-                    isNewData = true;
-                }
-                else
-                    isNewData = lastWindVersion[handle] != version;
+                lastWindVersion[handle] = 0;
+                lastWindPackets[handle] = new List<LayerDataPacket>();
+                isNewData = true;
             }
+            else
+                isNewData = lastWindVersion[handle] != version;
 
             if(isNewData)
             {
@@ -1760,17 +1754,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                      OpenSimTerrainCompressor.CreateLayerDataPacketStandardSize(
                         patches, layerType);
                 layerpack.Header.Zerocoded = true;
-                lock(lastWindPackets)
-                {
-                    lastWindPackets[handle].Clear();
-                    lastWindPackets[handle].Add(layerpack);
-                    lastWindVersion[handle] = version;
-                }
+                // AKIDO
+                lastWindPackets[handle].Clear();
+                lastWindPackets[handle].Add(layerpack);
+                lastWindVersion[handle] = version;
             }
 
-            lock(lastWindPackets)
-                foreach(LayerDataPacket pkt in lastWindPackets[handle])
-                    OutPacket(pkt, ThrottleOutPacketType.Wind);
+            foreach (LayerDataPacket pkt in lastWindPackets[handle])
+                OutPacket(pkt, ThrottleOutPacketType.Wind);
         }
 
         /// <summary>
@@ -8209,20 +8200,16 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void SetGroupPowers(Dictionary<UUID, ulong> powers)
         {
-            lock(m_groupPowers)
-            {
-                m_groupPowers.Clear();
-                m_groupPowers = powers;
-            }
+            // AKIDO
+            m_groupPowers.Clear();
+            m_groupPowers = powers;
         }
 
         public ulong GetGroupPowers(UUID groupID)
         {
-            lock(m_groupPowers)
-            {
-                if (m_groupPowers.ContainsKey(groupID))
-                    return m_groupPowers[groupID];
-            }
+            // AKIDO
+            if (m_groupPowers.ContainsKey(groupID))
+                return m_groupPowers[groupID];
             return 0;
         }
 
@@ -13523,33 +13510,27 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void UpdateGroupMembership(GroupMembershipData[] data)
         {
-            lock(m_groupPowers)
-            {
-                m_groupPowers.Clear();
+            // AKIDO
+            m_groupPowers.Clear();
 
-                if (data != null)
-                {
-                    for (int i = 0; i < data.Length; i++)
-                        m_groupPowers[data[i].GroupID] = data[i].GroupPowers;
-                }
+            if (data != null)
+            {
+                for (int i = 0; i < data.Length; i++)
+                    m_groupPowers[data[i].GroupID] = data[i].GroupPowers;
             }
         }
 
         public void GroupMembershipRemove(UUID GroupID)
         {
-            lock(m_groupPowers)
-            {
-                if(m_groupPowers.ContainsKey(GroupID))
-                    m_groupPowers.Remove(GroupID);
-            }
+            // AKIDO
+            if (m_groupPowers.ContainsKey(GroupID))
+                m_groupPowers.Remove(GroupID);
         }
 
         public void GroupMembershipAddReplace(UUID GroupID,ulong GroupPowers)
         {
-            lock(m_groupPowers)
-            {
-                m_groupPowers[GroupID] = GroupPowers;
-            }
+            // AKIDO
+            m_groupPowers[GroupID] = GroupPowers;
         }
 
         public string Report()
