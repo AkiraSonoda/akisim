@@ -2214,7 +2214,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             else
             {
-                m_log.WarnFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "RemoveStreamHandler m_streamHandlers.TryRemove() unexpectedly failed when removing path: {0}",
                     path);
                
@@ -2225,7 +2225,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             m_log.DebugFormat("Removing handler key {0}", handlerKey);
 
             if(!m_streamHandlers.TryRemove(handlerKey, out requestHandler)) { // AKIDO
-                m_log.WarnFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "RemoveStreamHandler m_streamHandlers.TryRemove() unexpectedly failed when removing handlerKey: {0}",
                     handlerKey);
             }
@@ -2234,7 +2234,7 @@ namespace OpenSim.Framework.Servers.HttpServer
         public void RemoveStreamHandler(string path)
         {
             if(!m_streamHandlers.TryRemove(path, out IRequestHandler requestHandler)) { // AKIDO
-                m_log.WarnFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "RemoveStreamHandler m_streamHandlers.TryRemove() unexpectedly failed when removing path: {0}",
                     path);
             }
@@ -2246,13 +2246,13 @@ namespace OpenSim.Framework.Servers.HttpServer
             if (m_simpleStreamHandlers.TryRemove(path, out ISimpleStreamHandler simpleStreamHandler)) {
                 return;
             } else { // AKIDO
-                m_log.WarnFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "RemoveSimpleStreamHandler m_simpleStreamVarPath.TryRemove() unexpectedly failed when removing path: {0}",
                     path);
             }
 
             if(!m_simpleStreamVarPath.TryRemove(path, out ISimpleStreamHandler simpleStreamHandlerr)) {
-                m_log.WarnFormat( // AKIDO
+                if(m_log.IsDebugEnabled) m_log.DebugFormat( // AKIDO
                     "RemoveSimpleStreamHandler m_simpleStreamVarPath.TryRemove() unexpectedly failed when removing path: {0}",
                     path);
             }
