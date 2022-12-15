@@ -26,50 +26,50 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Collections.Concurrent;
+using System.Reflection;
+using log4net;
 
 namespace OpenSim.Region.PhysicsModule.BulletS
 {
     public class BSActorCollection
     {
-        private Dictionary<string, BSActor> m_actors;
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+        private ConcurrentDictionary<string, BSActor> m_actors;
 
         public BSActorCollection()
         {
-            m_actors = new Dictionary<string, BSActor>();
+            m_actors = new ConcurrentDictionary<string, BSActor>();
         }
         public void Add(string name, BSActor actor)
         {
-            lock (m_actors)
+            if (!m_actors.ContainsKey(name)) // AKIDO
             {
-                if (!m_actors.ContainsKey(name))
-                {
-                    m_actors[name] = actor;
-                }
+                m_actors[name] = actor;
             }
         }
         public bool RemoveAndRelease(string name)
         {
             bool ret = false;
-            lock (m_actors)
+            if (m_actors.ContainsKey(name))
             {
-                if (m_actors.ContainsKey(name))
+                BSActor beingRemoved = m_actors[name];
+                if (!m_actors.TryRemove(name, out BSActor bsActor))
                 {
-                    BSActor beingRemoved = m_actors[name];
-                    m_actors.Remove(name);
-                    beingRemoved.Dispose();
-                    ret = true;
+                    // AKIDO
+                    m_log.WarnFormat("RemoveAndRelease m_actors.TryRemove() unexpectedly failed on name: {0}", name);
                 }
+
+                beingRemoved.Dispose();
+                ret = true;
             }
             return ret;
         }
         public void Clear()
         {
-            lock (m_actors)
-            {
-                ForEachActor(a => a.Dispose());
-                m_actors.Clear();
-            }
+            ForEachActor(a => a.Dispose()); // AKIDO
+            m_actors.Clear();
         }
         public void Dispose()
         {
@@ -85,11 +85,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         }
         public void ForEachActor(Action<BSActor> act)
         {
-            lock (m_actors)
-            {
-                foreach (KeyValuePair<string, BSActor> kvp in m_actors)
-                    act(kvp.Value);
-            }
+            foreach (KeyValuePair<string, BSActor> kvp in m_actors) // AKIDO
+                act(kvp.Value);
         }
 
         public void Enable(bool enabl)
