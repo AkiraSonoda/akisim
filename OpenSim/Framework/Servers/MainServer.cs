@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Net;
 using System.Text;
@@ -34,16 +35,17 @@ using log4net;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers.HttpServer;
+using ThreadedClasses;
 
 namespace OpenSim.Framework.Servers
 {
     public class MainServer
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private static BaseHttpServer instance = null;
         private static BaseHttpServer unsecureinstance = null;
-        private static Dictionary<uint, BaseHttpServer> m_Servers = new Dictionary<uint, BaseHttpServer>();
+        private static RwLockedDictionary<uint, BaseHttpServer> m_Servers = new RwLockedDictionary<uint, BaseHttpServer>(); // AKIDO
 
         /// <summary>
         /// Control the printing of certain debug messages.
@@ -63,9 +65,8 @@ namespace OpenSim.Framework.Servers
             {
                 s_debugLevel = value;
 
-                lock (m_Servers)
-                    foreach (BaseHttpServer server in m_Servers.Values)
-                        server.DebugLevel = s_debugLevel;
+                foreach (BaseHttpServer server in m_Servers.Values) // AKIDO
+                    server.DebugLevel = s_debugLevel;
             }
         }
 
@@ -86,13 +87,10 @@ namespace OpenSim.Framework.Servers
 
             set
             {
-                lock (m_Servers)
-                {
-                    if (!m_Servers.ContainsValue(value))
-                        throw new Exception("HTTP server must already have been registered to be set as the main instance");
+                if (!m_Servers.ContainsValue(value)) // AKIDO
+                    throw new Exception("HTTP server must already have been registered to be set as the main instance");
 
-                    instance = value;
-                }
+                instance = value;
             }
         }
 
@@ -102,9 +100,8 @@ namespace OpenSim.Framework.Servers
 
             set
             {
-                lock (m_Servers)
-                    if (!m_Servers.ContainsValue(value))
-                        throw new Exception("HTTP server must already have been registered to be set as the main instance");
+                if (!m_Servers.ContainsValue(value)) // AKIDO
+                    throw new Exception("HTTP server must already have been registered to be set as the main instance");
 
                 unsecureinstance = value;
             }
@@ -234,87 +231,84 @@ namespace OpenSim.Framework.Servers
 
             StringBuilder handlers = new StringBuilder();
 
-            lock (m_Servers)
+            foreach (BaseHttpServer httpServer in m_Servers.Values)
             {
-                foreach (BaseHttpServer httpServer in m_Servers.Values)
+                handlers.AppendFormat(
+                    "Registered HTTP Handlers for server at {0}:{1}\n", httpServer.ListenIPAddress, httpServer.Port);
+
+                List<string> lst = httpServer.GetGLobalMethodsKeys();
+                if (lst.Count > 0)
                 {
-                    handlers.AppendFormat(
-                        "Registered HTTP Handlers for server at {0}:{1}\n", httpServer.ListenIPAddress, httpServer.Port);
-
-                    List<string> lst = httpServer.GetGLobalMethodsKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* Global query methods ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t***:{0}\n", s);
-                    }
-
-                    lst = httpServer.GetXmlRpcHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* XMLRPC methods ({0}):\n",lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetJsonRpcHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* JSONRPC methods ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetIndexPHPHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* index.php methods ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetHTTPHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* HTTP ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetPollServiceHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* HTTP poll ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetLLSDHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* LLSD ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetStreamHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* StreamHandlers ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t{0}\n", s);
-                    }
-
-                    lst = httpServer.GetSimpleStreamHandlerKeys();
-                    if (lst.Count > 0)
-                    {
-                        handlers.AppendFormat("* SimpleStreamHandlers ({0}):\n", lst.Count);
-                        foreach (string s in lst)
-                            handlers.AppendFormat("\t***:{0}\n", s);
-                    }
-
-                    handlers.Append("\n");
+                    handlers.AppendFormat("* Global query methods ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t***:{0}\n", s);
                 }
+
+                lst = httpServer.GetXmlRpcHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* XMLRPC methods ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetJsonRpcHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* JSONRPC methods ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetIndexPHPHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* index.php methods ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetHTTPHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* HTTP ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetPollServiceHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* HTTP poll ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetLLSDHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* LLSD ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetStreamHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* StreamHandlers ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t{0}\n", s);
+                }
+
+                lst = httpServer.GetSimpleStreamHandlerKeys();
+                if (lst.Count > 0)
+                {
+                    handlers.AppendFormat("* SimpleStreamHandlers ({0}):\n", lst.Count);
+                    foreach (string s in lst)
+                        handlers.AppendFormat("\t***:{0}\n", s);
+                }
+
+                handlers.Append("\n");
             }
 
             MainConsole.Instance.Output(handlers.ToString());
@@ -326,13 +320,10 @@ namespace OpenSim.Framework.Servers
         /// <param name='server'></param>
         public static void AddHttpServer(BaseHttpServer server)
         {
-            lock (m_Servers)
-            {
-                if (m_Servers.ContainsKey(server.Port))
-                    throw new Exception(string.Format("HTTP server for port {0} already exists.", server.Port));
+            if (m_Servers.ContainsKey(server.Port)) // AKIDO
+                throw new Exception(string.Format("HTTP server for port {0} already exists.", server.Port));
 
-                m_Servers.Add(server.Port, server);
-            }
+            m_Servers.Add(server.Port, server);
         }
 
         /// <summary>
@@ -345,13 +336,10 @@ namespace OpenSim.Framework.Servers
         /// <returns></returns>
         public static bool RemoveHttpServer(uint port)
         {
-            lock (m_Servers)
-            {
-                if (instance != null && instance.Port == port)
-                    instance = null;
+            if (instance != null && instance.Port == port) // AKIDO
+                instance = null;
 
-                return m_Servers.Remove(port);
-            }
+            return m_Servers.Remove(port);
         }
 
         /// <summary>
@@ -364,8 +352,7 @@ namespace OpenSim.Framework.Servers
         /// <returns>true if a server with the given port is registered, false otherwise.</returns>
         public static bool ContainsHttpServer(uint port)
         {
-            lock (m_Servers)
-                return m_Servers.ContainsKey(port);
+            return m_Servers.ContainsKey(port); // AKIDO
         }
 
         /// <summary>
@@ -399,30 +386,24 @@ namespace OpenSim.Framework.Servers
             if (instance != null && port == Instance.Port)
                 return Instance;
 
-            lock (m_Servers)
-            {
-                if (m_Servers.ContainsKey(port))
-                    return m_Servers[port];
-
-                m_Servers[port] = new BaseHttpServer(port);
-
-                if (ipaddr != null)
-                    m_Servers[port].ListenIPAddress = ipaddr;
-
-                m_Servers[port].Start();
-
+            if (m_Servers.ContainsKey(port))
                 return m_Servers[port];
-            }
+
+            m_Servers[port] = new BaseHttpServer(port);
+
+            if (ipaddr != null)
+                m_Servers[port].ListenIPAddress = ipaddr;
+
+            m_Servers[port].Start();
+
+            return m_Servers[port];
         }
 
         public static void Stop()
         {
-            lock (m_Servers)
+            foreach (BaseHttpServer httpServer in m_Servers.Values)
             {
-                foreach (BaseHttpServer httpServer in m_Servers.Values)
-                {
-                    httpServer.Stop(true);
-                }
+                httpServer.Stop(true);
             }
         }
     }

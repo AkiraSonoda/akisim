@@ -385,11 +385,13 @@
       <Reference name="OpenSim.Framework.Servers.HttpServer"/>
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="OpenSim.Framework.Monitoring"/>
-      <Reference name="OpenMetaverse.StructuredData" path="../../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../../bin/"/>
-      <Reference name="XMLRPC" path="../../../bin/"/>
-      <Reference name="log4net" path="../../../bin/"/>
-      <Reference name="Nini" path="../../../bin/"/>
+      <Reference name="OpenMetaverse.StructuredData"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="XMLRPC"/>
+      <Reference name="log4net"/>
+      <Reference name="Nini"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="false"/>
