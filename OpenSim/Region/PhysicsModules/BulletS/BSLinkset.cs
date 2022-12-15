@@ -98,7 +98,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         // We lock the diddling of linkset classes to prevent any badness.
         // This locks the modification of the instances of this class. Changes
         //    to the physical representation is done via the tainting mechenism.
-        protected ReaderWriterLock m_linksetActivityLok = new ReaderWriterLock(); // AKIDO
+        protected ReaderWriterLock m_linksetActivityLock = new ReaderWriterLock(); // AKIDO
 
         // We keep the prim's mass in the linkset structure since it could be dependent on other prims
         public float LinksetMass { get; protected set; }
@@ -138,7 +138,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         // Called at runtime.
         public BSLinkset AddMeToLinkset(BSPrimLinkable child)
         {
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 // Don't add the root to its own linkset
@@ -148,7 +148,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
             return this;
         }
@@ -159,7 +159,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         // Called at runtime.
         public BSLinkset RemoveMeFromLinkset(BSPrimLinkable child, bool inTaintTime)
         {
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 if (IsRoot(child))
@@ -172,7 +172,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
 
 
@@ -195,14 +195,14 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public bool HasChild(BSPrimLinkable child)
         {
             bool ret = false;
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 ret = m_children.ContainsKey(child);
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
 
             return ret;
@@ -214,7 +214,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public virtual bool ForEachMember(ForEachMemberAction action)
         {
             bool ret = false;
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 action(LinksetRoot);
@@ -226,7 +226,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
 
             return ret;
@@ -236,14 +236,14 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         {
             bool ret = false;
             BSLinkInfo found = null;
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 ret = m_children.TryGetValue(child, out found);
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
 
             foundInfo = found;
@@ -255,7 +255,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public virtual bool ForEachLinkInfo(ForEachLinkInfoAction action)
         {
             bool ret = false;
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 foreach (BSLinkInfo po in m_children.Values)
@@ -266,7 +266,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
             return ret;
         }
@@ -470,7 +470,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             float mass = LinksetRoot.RawMass;
             if (HasAnyChildren)
             {
-                m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+                m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
                 try
                 {
                     foreach (BSPrimLinkable bp in m_children.Keys)
@@ -480,7 +480,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 }
                 finally
                 {
-                    m_linksetActivityLok.ReleaseWriterLock();
+                    m_linksetActivityLock.ReleaseWriterLock();
                 }
 
             }
@@ -491,7 +491,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         protected virtual OMV.Vector3 ComputeLinksetCenterOfMass()
         {
             OMV.Vector3 com;
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 com = LinksetRoot.Position * LinksetRoot.RawMass;
@@ -507,7 +507,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
 
             return com;
@@ -516,7 +516,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         protected virtual OMV.Vector3 ComputeLinksetGeometricCenter()
         {
             OMV.Vector3 com;
-            m_linksetActivityLok.AcquireWriterLock(-1); // AKIDO
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
             try
             {
                 com = LinksetRoot.Position;
@@ -529,7 +529,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
             finally
             {
-                m_linksetActivityLok.ReleaseWriterLock();
+                m_linksetActivityLock.ReleaseWriterLock();
             }
 
             return com;
