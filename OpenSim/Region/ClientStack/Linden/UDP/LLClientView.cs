@@ -709,8 +709,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // AKIDO 
             if (!m_packetHandlers.ContainsKey(packetType))
             {
-                m_packetHandlers.Add(packetType, new PacketProcessor() { method = handler, Async = doAsync });
-                return true;
+                if (m_packetHandlers.TryAdd(packetType, new PacketProcessor() { method = handler, Async = doAsync }))
+                {
+                    return true;
+                } else {
+                    m_log.WarnFormat("AddLocalPacketHandler - m_packetHandlers.TryAdd " + // AKIDO
+                                     "unexpectly returned fals when Adding packetType: {0} and PacketProcessor", packetType);
+                }
             }
             return false;
         }
@@ -722,8 +727,16 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             bool result = false;
             if (!m_genericPacketHandlers.ContainsKey(MethodName))
             {
-                m_genericPacketHandlers.Add(MethodName, handler);
-                result = true;
+                if (m_genericPacketHandlers.TryAdd(MethodName, handler))
+                {
+                    result = true;
+                }
+                else
+                {
+                    m_log.WarnFormat("AddLocalPacketHandler - m_packetHandlers.TryAdd " + // AKIDO
+                                     "unexpectly returned fals when Adding MethodName: {0} and GenericMessage: {1}",
+                        MethodName, handler);
+                }
             }
             return result;
         }
@@ -8202,7 +8215,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             // AKIDO
             m_groupPowers.Clear();
-            m_groupPowers = powers;
+            m_groupPowers = new ConcurrentDictionary<UUID, ulong>(powers);
         }
 
         public ulong GetGroupPowers(UUID groupID)
@@ -13524,7 +13537,12 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         {
             // AKIDO
             if (m_groupPowers.ContainsKey(GroupID))
-                m_groupPowers.Remove(GroupID);
+                if (!m_groupPowers.TryRemove(GroupID, out ulong dummy))
+                {
+                    m_log.WarnFormat("GroupMembershipRemove - m_groupPowers.TryRemove() unexpectedly failed when trying to remove GroupID: {0}", GroupID);
+                }
+
+            ;
         }
 
         public void GroupMembershipAddReplace(UUID GroupID,ulong GroupPowers)
