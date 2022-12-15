@@ -46,7 +46,7 @@ using log4net;
 using Nwc.XmlRpc;
 using OpenSim.Framework.Monitoring;
 using OpenMetaverse.StructuredData;
-
+using ThreadedClasses;
 
 namespace OpenSim.Framework.Servers.HttpServer
 {
@@ -94,12 +94,12 @@ namespace OpenSim.Framework.Servers.HttpServer
         public volatile bool HTTPDRunning = false;
 
         protected tinyHTTPListener m_httpListener;
-        protected Dictionary<string, XmlRpcMethod> m_rpcHandlers        = new Dictionary<string, XmlRpcMethod>();
-        protected Dictionary<string, JsonRPCMethod> jsonRpcHandlers     = new Dictionary<string, JsonRPCMethod>();
-        protected Dictionary<string, bool> m_rpcHandlersKeepAlive       = new Dictionary<string, bool>();
+        protected ConcurrentDictionary<string, XmlRpcMethod> m_rpcHandlers = new ConcurrentDictionary<string, XmlRpcMethod>(); // AKIDO
+        protected ConcurrentDictionary<string, JsonRPCMethod> jsonRpcHandlers = new ConcurrentDictionary<string, JsonRPCMethod>(); // AKIDO
+        protected ConcurrentDictionary<string, bool> m_rpcHandlersKeepAlive = new ConcurrentDictionary<string, bool>(); // AKIDO
         protected DefaultLLSDMethod m_defaultLlsdHandler = null; // <--   Moving away from the monolithic..  and going to /registered/
-        protected Dictionary<string, LLSDMethod> m_llsdHandlers         = new Dictionary<string, LLSDMethod>();
-        protected Dictionary<string, GenericHTTPMethod> m_HTTPHandlers  = new Dictionary<string, GenericHTTPMethod>();
+        protected ConcurrentDictionary<string, LLSDMethod> m_llsdHandlers = new ConcurrentDictionary<string, LLSDMethod>(); // AKIDO
+        protected ConcurrentDictionary<string, GenericHTTPMethod> m_HTTPHandlers = new ConcurrentDictionary<string, GenericHTTPMethod>(); // AKIDO
         //protected Dictionary<string, IHttpAgentHandler> m_agentHandlers = new Dictionary<string, IHttpAgentHandler>();
         protected ConcurrentDictionary<string, PollServiceEventArgs> m_pollHandlers = new ConcurrentDictionary<string, PollServiceEventArgs>();
         protected ConcurrentDictionary<string, PollServiceEventArgs> m_pollHandlersVarPath = new ConcurrentDictionary<string, PollServiceEventArgs>();
@@ -117,8 +117,8 @@ namespace OpenSim.Framework.Servers.HttpServer
         protected bool m_ssl;
         private X509Certificate2 m_cert;
         protected string m_SSLCommonName = "";
-        protected List<string> m_certNames = new List<string>();
-        protected List<string> m_certIPs = new List<string>();
+        protected RwLockedList<string> m_certNames = new RwLockedList<string>(); // AKIDO
+        protected RwLockedList<string> m_certIPs = new RwLockedList<string>(); // AKIDO
         protected string m_certCN= "";
         protected RemoteCertificateValidationCallback m_certificateValidationCallback = null;
 
@@ -377,7 +377,11 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public void RemoveWebSocketHandler(string servicepath)
         {
-            m_WebSocketHandlers.TryRemove(servicepath, out WebSocketRequestDelegate dummy);
+            if (!m_WebSocketHandlers.TryRemove(servicepath, out WebSocketRequestDelegate dummy))
+            {
+                m_log.WarnFormat("RemoveWebSocketHandler m_WebSocketHandlers.TryRemove failed unexpectely with servicepath: {0}", servicepath);
+            }
+
         }
 
         public List<string> GetStreamHandlerKeys()
@@ -414,72 +418,62 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public bool AddXmlRPCHandler(string method, XmlRpcMethod handler, bool keepAlive)
         {
-            lock (m_rpcHandlers)
-            {
-                m_rpcHandlers[method] = handler;
-                m_rpcHandlersKeepAlive[method] = keepAlive; // default
-            }
+            m_rpcHandlers[method] = handler; // AKIDO
+            m_rpcHandlersKeepAlive[method] = keepAlive; // default
 
             return true;
         }
 
         public XmlRpcMethod GetXmlRPCHandler(string method)
         {
-            lock (m_rpcHandlers)
-            {
-                return (m_rpcHandlers.TryGetValue(method, out XmlRpcMethod xm)) ? xm : null;
-            }
+            return (m_rpcHandlers.TryGetValue(method, out XmlRpcMethod xm)) ? xm : null; // AKIDO
         }
 
         public bool TryGetXmlRPCHandler(string method, out XmlRpcMethod handler)
         {
-            lock (m_rpcHandlers)
-            {
-                return (m_rpcHandlers.TryGetValue(method, out handler));
-            }
+            return (m_rpcHandlers.TryGetValue(method, out handler)); // AKIDO
         }
 
         public List<string> GetXmlRpcHandlerKeys()
         {
-            lock (m_rpcHandlers)
-                return new List<string>(m_rpcHandlers.Keys);
+            return new List<string>(m_rpcHandlers.Keys);
         }
 
         // JsonRPC
         public bool AddJsonRPCHandler(string method, JsonRPCMethod handler)
         {
-            lock(jsonRpcHandlers)
+            bool success = jsonRpcHandlers.TryAdd(method, handler); // AKIDO
+            if (!success)
             {
-                jsonRpcHandlers.Add(method, handler);
+                m_log.WarnFormat("AddJsonRPCHandler jsonRpcHandlers.TryAdd failed unexpecdedly when adding method: {0} handler: {1}",
+                    method, handler);
             }
             return true;
         }
 
         public JsonRPCMethod GetJsonRPCHandler(string method)
         {
-            lock (jsonRpcHandlers)
-            {
-                return jsonRpcHandlers.TryGetValue(method, out JsonRPCMethod jm) ? jm : null;
-            }
+            return jsonRpcHandlers.TryGetValue(method, out JsonRPCMethod jm) ? jm : null; // AKIDO
         }
 
         public List<string> GetJsonRpcHandlerKeys()
         {
-            lock (jsonRpcHandlers)
-                return new List<string>(jsonRpcHandlers.Keys);
+            return new List<string>(jsonRpcHandlers.Keys); // AKIDO
         }
 
         public bool AddHTTPHandler(string methodName, GenericHTTPMethod handler)
         {
             //m_log.DebugFormat("[BASE HTTP SERVER]: Registering {0}", methodName);
 
-            lock (m_HTTPHandlers)
+            if (!m_HTTPHandlers.ContainsKey(methodName))
             {
-                if (!m_HTTPHandlers.ContainsKey(methodName))
+                bool success = m_HTTPHandlers.TryAdd(methodName, handler); // AKIDO
+                if (!success) // AKIDO
                 {
-                    m_HTTPHandlers.Add(methodName, handler);
-                    return true;
+                    m_log.WarnFormat("AddHTTPHandler m_HTTPHandlers.TryAdd failed unexpecdedly when adding methodName: {0} handler: {1}",
+                        methodName, handler);
                 }
+                return true;
             }
 
             //must already have a handler for that path so return false
@@ -488,8 +482,7 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public List<string> GetHTTPHandlerKeys()
         {
-            lock (m_HTTPHandlers)
-                return new List<string>(m_HTTPHandlers.Keys);
+            return new List<string>(m_HTTPHandlers.Keys); // AKIDO
         }
 
         public bool AddPollServiceHTTPHandler(string url, PollServiceEventArgs args)
@@ -516,21 +509,23 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public bool AddLLSDHandler(string path, LLSDMethod handler)
         {
-            lock (m_llsdHandlers)
+            if (!m_llsdHandlers.ContainsKey(path))
             {
-                if (!m_llsdHandlers.ContainsKey(path))
+                bool success = m_llsdHandlers.TryAdd(path, handler); // AKIDO
+                if (!success) // AKIDO
                 {
-                    m_llsdHandlers.Add(path, handler);
-                    return true;
+                    m_log.WarnFormat("AddLLSDHandler m_llsdHandlers.TryAdd failed unexpecdedly when adding path: {0} handler: {1}",
+                        path, handler);
                 }
+
+                return true;
             }
             return false;
         }
 
         public List<string> GetLLSDHandlerKeys()
         {
-            lock (m_llsdHandlers)
-                return new List<string>(m_llsdHandlers.Keys);
+            return new List<string>(m_llsdHandlers.Keys);
         }
 
         public bool SetDefaultLLSDHandler(DefaultLLSDMethod handler)
@@ -539,14 +534,22 @@ namespace OpenSim.Framework.Servers.HttpServer
             return true;
         }
 
-        public void AddIndexPHPMethodHandler(string key, SimpleStreamMethod sh)
+        public void AddIndexPHPMethodHandler(string key, SimpleStreamMethod simpleStreamMethod)
         {
-            m_indexPHPmethods.TryAdd(key, sh);
+
+            if (!m_indexPHPmethods.TryAdd(key, simpleStreamMethod)) { // AKIDO
+                m_log.WarnFormat("AddIndexPHPMethodHandler m_indexPHPmethods.TryAdd failed unexpecdedly when adding key: {0} simpleStreamMethod: {1}",
+                    key, simpleStreamMethod); 
+            }
+
         }
 
         public void RemoveIndexPHPMethodHandler(string key)
         {
-            m_indexPHPmethods.TryRemove(key, out SimpleStreamMethod sh);
+            if (!m_indexPHPmethods.TryRemove(key, out SimpleStreamMethod simpleStreamMethod)) { // AKIDO
+                m_log.WarnFormat("RemoveIndexPHPMethodHandler m_indexPHPmethods.TryRemove failed unexpecdedly when adding key: {0}", key);
+            }
+            
         }
 
         public SimpleStreamMethod TryGetIndexPHPMethodHandler(string key)
@@ -556,14 +559,20 @@ namespace OpenSim.Framework.Servers.HttpServer
             return null;
         }
 
-        public void AddGloblaMethodHandler(string key, SimpleStreamMethod sh)
+        public void AddGloblaMethodHandler(string key, SimpleStreamMethod simpleStreamMethod)
         {
-            m_globalMethods.TryAdd(key, sh);
+            if (! m_globalMethods.TryAdd(key, simpleStreamMethod)) { // AKIDO
+                m_log.WarnFormat("AddGloblaMethodHandler m_globalMethods.TryAdd failed unexpecdedly when adding key: {0} simpleStreamMethod: {1}",
+                    key, simpleStreamMethod);
+            }
         }
 
         public void RemoveGlobalPMethodHandler(string key)
         {
-            m_globalMethods.TryRemove(key, out SimpleStreamMethod sh);
+            if (!m_globalMethods.TryRemove(key, out SimpleStreamMethod simpleStreamMethod)) { // AKIDO
+                m_log.WarnFormat("RemoveGlobalPMethodHandler m_globalMethods.TryRemove failed unexpecdedly when adding key: {0}", key);
+            }
+
         }
 
         public bool TryGetGlobalMethodHandler(string key, out SimpleStreamMethod sh)
@@ -613,7 +622,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             catch (Exception e)
             {
-                m_log.Error(string.Format("[BASE HTTP SERVER]: OnRequest() failed: {0} ", e.Message), e);
+                m_log.Error(string.Format("OnRequest() failed: {0} ", e.Message), e);
             }
         }
 
@@ -903,15 +912,15 @@ namespace OpenSim.Framework.Servers.HttpServer
                 //
                 // An alternative may be to turn off all response write exceptions on the HttpListener, but let's go
                 // with the minimum first
-                m_log.Warn(String.Format("[BASE HTTP SERVER]: HandleRequest threw {0}.\nNOTE: this may be spurious on Linux ", e.Message), e);
+                m_log.Warn(String.Format("HandleRequest threw {0}.\nNOTE: this may be spurious on Linux ", e.Message), e);
             }
             catch (IOException e)
             {
-                m_log.Error("[BASE HTTP SERVER]: HandleRequest() threw exception ", e);
+                m_log.Error("HandleRequest() threw exception ", e);
             }
             catch (Exception e)
             {
-                m_log.Error("[BASE HTTP SERVER]: HandleRequest() threw exception ", e);
+                m_log.Error("HandleRequest() threw exception ", e);
                 try
                 {
                     response.StatusCode =(int)HttpStatusCode.InternalServerError;
@@ -1073,17 +1082,14 @@ namespace OpenSim.Framework.Servers.HttpServer
             string bestMatch = null;
             bool hasbest=false;
 
-            lock (m_streamHandlers)
+            foreach (string pattern in m_streamHandlers.Keys)
             {
-                foreach (string pattern in m_streamHandlers.Keys)
+                if (handlerKey.StartsWith(pattern))
                 {
-                    if (handlerKey.StartsWith(pattern))
+                    if (!hasbest || pattern.Length > bestMatch.Length)
                     {
-                        if (!hasbest || pattern.Length > bestMatch.Length)
-                        {
-                            bestMatch = pattern;
-                            hasbest = true;
-                        }
+                        bestMatch = pattern;
+                        hasbest = true;
                     }
                 }
             }
@@ -1128,17 +1134,14 @@ namespace OpenSim.Framework.Servers.HttpServer
             string bestMatch = null;
             bool hasmatch = false;
 
-            lock (m_HTTPHandlers)
+            foreach (string pattern in m_HTTPHandlers.Keys)
             {
-                foreach (string pattern in m_HTTPHandlers.Keys)
+                if (handlerKey.StartsWith(pattern))
                 {
-                    if (handlerKey.StartsWith(pattern))
+                    if (!hasmatch || pattern.Length > bestMatch.Length)
                     {
-                        if (!hasmatch || pattern.Length > bestMatch.Length)
-                        {
-                            bestMatch = pattern;
-                            hasmatch = true;
-                        }
+                        bestMatch = pattern;
+                        hasmatch = true;
                     }
                 }
             }
@@ -1228,7 +1231,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             catch (Exception e)
             {
                 m_log.WarnFormat(
-                    "[BASE HTTP SERVER]: Fail to decode XMLRPC request {0}: {1}",
+                    "Fail to decode XMLRPC request {0}: {1}",
                         request.RemoteIPEndPoint, e.Message);
             }
             finally
@@ -1250,12 +1253,9 @@ namespace OpenSim.Framework.Servers.HttpServer
             bool methodWasFound;
             bool keepAlive = false;
 
-            lock (m_rpcHandlers)
-            {
-                methodWasFound = m_rpcHandlers.TryGetValue(methodName, out method);
-                if (methodWasFound)
-                    keepAlive = m_rpcHandlersKeepAlive[methodName];
-            }
+            methodWasFound = m_rpcHandlers.TryGetValue(methodName, out method);
+            if (methodWasFound)
+                keepAlive = m_rpcHandlersKeepAlive[methodName];
 
             XmlRpcResponse xmlRpcResponse;
             if (methodWasFound)
@@ -1296,7 +1296,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                             "Requested method [{0}] from {1} threw exception: {2} {3}",
                             methodName, request.RemoteIPEndPoint.Address, e.Message, e.StackTrace);
 
-                    m_log.ErrorFormat("[BASE HTTP SERVER]: {0}", errorMessage);
+                    m_log.ErrorFormat("{0}", errorMessage);
 
                     // if the registered XmlRpc method threw an exception, we pass a fault-code along
                     xmlRpcResponse = new XmlRpcResponse();
@@ -1369,7 +1369,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             catch (Exception e)
             {
                 m_log.WarnFormat(
-                    "[BASE HTTP SERVER]: Fail to decode XMLRPC request {0}: {1}",
+                    "Fail to decode XMLRPC request {0}: {1}",
                         request.RemoteIPEndPoint, e.Message);
             }
             finally
@@ -1438,7 +1438,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                             "Requested method [{0}] from {1} threw exception: {2} {3}",
                             methodName, request.RemoteIPEndPoint.Address, e.Message, e.StackTrace);
 
-                    m_log.ErrorFormat("[BASE HTTP SERVER]: {0}", errorMessage);
+                    m_log.ErrorFormat("{0}", errorMessage);
 
                     // if the registered XmlRpc method threw an exception, we pass a fault-code along
                     xmlRpcResponse = new XmlRpcResponse();
@@ -1521,7 +1521,7 @@ namespace OpenSim.Framework.Servers.HttpServer
                         }
                         catch (Exception e)
                         {
-                            string ErrorMessage = string.Format("[BASE HTTP SERVER]: Json-Rpc Handler Error method {0} - {1}", methodname, e.Message);
+                            string ErrorMessage = string.Format("Json-Rpc Handler Error method {0} - {1}", methodname, e.Message);
                             m_log.Error(ErrorMessage);
                             jsonRpcResponse.Error.Code = ErrorCode.InternalError;
                             jsonRpcResponse.Error.Message = ErrorMessage;
@@ -1590,7 +1590,7 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             catch (Exception ex)
             {
-                m_log.Warn("[BASE HTTP SERVER]: Error - " + ex.Message);
+                m_log.Warn("Error - " + ex.Message);
             }
 
             if (llsdRequest == null)
@@ -1699,13 +1699,10 @@ namespace OpenSim.Framework.Servers.HttpServer
 
             string bestMatch = null;
 
-            lock (m_llsdHandlers)
+            foreach (string pattern in m_llsdHandlers.Keys)
             {
-                foreach (string pattern in m_llsdHandlers.Keys)
-                {
-                    if (searchquery.StartsWith(pattern) && searchquery.Length >= pattern.Length)
-                        bestMatch = pattern;
-                }
+                if (searchquery.StartsWith(pattern) && searchquery.Length >= pattern.Length)
+                    bestMatch = pattern;
             }
 
             if (String.IsNullOrEmpty(bestMatch))
@@ -1742,24 +1739,21 @@ namespace OpenSim.Framework.Servers.HttpServer
 
             //m_log.DebugFormat("[BASE HTTP HANDLER]: Checking if we have an HTTP handler for {0}", searchquery);
 
-            lock (m_HTTPHandlers)
+            foreach (string pattern in m_HTTPHandlers.Keys)
             {
-                foreach (string pattern in m_HTTPHandlers.Keys)
+                if (searchquery.StartsWith(pattern) && searchquery.Length >= pattern.Length)
                 {
-                    if (searchquery.StartsWith(pattern) && searchquery.Length >= pattern.Length)
-                    {
-                        bestMatch = pattern;
-                    }
+                    bestMatch = pattern;
                 }
+            }
 
-                if (String.IsNullOrEmpty(bestMatch))
-                {
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
+            if (String.IsNullOrEmpty(bestMatch))
+            {
+                return false;
+            }
+            else
+            {
+                return true;
             }
         }
 
@@ -1793,33 +1787,29 @@ namespace OpenSim.Framework.Servers.HttpServer
             // at least for OGP, registered path would probably only consist of the /resource/
 
             string bestMatch = null;
-
-            lock (m_llsdHandlers)
+            foreach (string pattern in m_llsdHandlers.Keys)
             {
-                foreach (string pattern in m_llsdHandlers.Keys)
+                if (searchquery.ToLower().StartsWith(pattern.ToLower()))
                 {
-                    if (searchquery.ToLower().StartsWith(pattern.ToLower()))
+                    if (String.IsNullOrEmpty(bestMatch) || searchquery.Length > bestMatch.Length)
                     {
-                        if (String.IsNullOrEmpty(bestMatch) || searchquery.Length > bestMatch.Length)
-                        {
-                            // You have to specifically register for '/' and to get it, you must specificaly request it
-                            //
-                            if (pattern == "/" && searchquery == "/" || pattern != "/")
-                                bestMatch = pattern;
-                        }
+                        // You have to specifically register for '/' and to get it, you must specificaly request it
+                        //
+                        if (pattern == "/" && searchquery == "/" || pattern != "/")
+                            bestMatch = pattern;
                     }
                 }
+            }
 
-                if (String.IsNullOrEmpty(bestMatch))
-                {
-                    llsdHandler = null;
-                    return false;
-                }
-                else
-                {
-                    llsdHandler = m_llsdHandlers[bestMatch];
-                    return true;
-                }
+            if (String.IsNullOrEmpty(bestMatch))
+            {
+                llsdHandler = null;
+                return false;
+            }
+            else
+            {
+                llsdHandler = m_llsdHandlers[bestMatch];
+                return true;
             }
         }
 
@@ -1930,34 +1920,31 @@ namespace OpenSim.Framework.Servers.HttpServer
 //            m_log.DebugFormat(
 //                "[BASE HTTP HANDLER]: TryGetHTTPHandlerPathBased() looking for HTTP handler to match {0}", searchquery);
 
-            lock (m_HTTPHandlers)
+            foreach (string pattern in m_HTTPHandlers.Keys)
             {
-                foreach (string pattern in m_HTTPHandlers.Keys)
+                if (searchquery.ToLower().StartsWith(pattern.ToLower()))
                 {
-                    if (searchquery.ToLower().StartsWith(pattern.ToLower()))
+                    if (String.IsNullOrEmpty(bestMatch) || searchquery.Length > bestMatch.Length)
                     {
-                        if (String.IsNullOrEmpty(bestMatch) || searchquery.Length > bestMatch.Length)
-                        {
-                            // You have to specifically register for '/' and to get it, you must specifically request it
-                            if (pattern == "/" && searchquery == "/" || pattern != "/")
-                                bestMatch = pattern;
-                        }
+                        // You have to specifically register for '/' and to get it, you must specifically request it
+                        if (pattern == "/" && searchquery == "/" || pattern != "/")
+                            bestMatch = pattern;
                     }
                 }
+            }
 
-                if (string.IsNullOrEmpty(bestMatch))
-                {
-                    httpHandler = null;
+            if (string.IsNullOrEmpty(bestMatch))
+            {
+                httpHandler = null;
+                return false;
+            }
+            else
+            {
+                if (bestMatch == "/" && searchquery != "/")
                     return false;
-                }
-                else
-                {
-                    if (bestMatch == "/" && searchquery != "/")
-                        return false;
 
-                    httpHandler =  m_HTTPHandlers[bestMatch];
-                    return true;
-                }
+                httpHandler = m_HTTPHandlers[bestMatch];
+                return true;
             }
         }
 
@@ -2101,7 +2088,7 @@ namespace OpenSim.Framework.Servers.HttpServer
         public void Start(bool performPollResponsesAsync, bool runPool)
         {
             m_log.InfoFormat(
-                "[BASE HTTP SERVER]: Starting {0} server on port {1}", UseSSL ? "HTTPS" : "HTTP", Port);
+                "Starting {0} server on port {1}", UseSSL ? "HTTPS" : "HTTP", Port);
 
             try
             {
@@ -2151,8 +2138,8 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             catch (Exception e)
             {
-                m_log.Error("[BASE HTTP SERVER]: Error - " + e.Message);
-                m_log.Error("[BASE HTTP SERVER]: Tip: Do you have permission to listen on port " + m_port + "?");
+                m_log.Error("Error - " + e.Message);
+                m_log.Error("Tip: Do you have permission to listen on port " + m_port + "?");
 
                 // We want this exception to halt the entire server since in current configurations we aren't too
                 // useful without inbound HTTP.
@@ -2189,7 +2176,7 @@ namespace OpenSim.Framework.Servers.HttpServer
         {
             if (source.ToString() == "HttpServer.HttpListener" && exception.ToString().StartsWith("Mono.Security.Protocol.Tls.TlsException"))
                 return;
-            m_log.ErrorFormat("[BASE HTTP SERVER]: {0} had an exception {1}", source.ToString(), exception.ToString());
+            m_log.ErrorFormat("{0} had an exception {1}", source.ToString(), exception.ToString());
         }
 
         public void Stop(bool stopPool = false)
@@ -2215,47 +2202,84 @@ namespace OpenSim.Framework.Servers.HttpServer
             }
             catch (NullReferenceException)
             {
-                m_log.Warn("[BASE HTTP SERVER]: Null Reference when stopping HttpServer.");
+                m_log.Warn("Null Reference when stopping HttpServer.");
             }
         }
 
         public void RemoveStreamHandler(string httpMethod, string path)
         {
-            if (m_streamHandlers.TryRemove(path, out IRequestHandler dummy))
+            if (m_streamHandlers.TryRemove(path, out IRequestHandler requestHandler))
+            {
                 return;
+            }
+            else
+            {
+                m_log.WarnFormat(
+                    "RemoveStreamHandler m_streamHandlers.TryRemove() unexpectedly failed when removing path: {0}",
+                    path);
+               
+            }
 
             string handlerKey = GetHandlerKey(httpMethod, path);
 
-            //m_log.DebugFormat("[BASE HTTP SERVER]: Removing handler key {0}", handlerKey);
+            m_log.DebugFormat("Removing handler key {0}", handlerKey);
 
-            m_streamHandlers.TryRemove(handlerKey, out dummy);
+            if(!m_streamHandlers.TryRemove(handlerKey, out requestHandler)) { // AKIDO
+                m_log.WarnFormat(
+                    "RemoveStreamHandler m_streamHandlers.TryRemove() unexpectedly failed when removing handlerKey: {0}",
+                    handlerKey);
+            }
         }
 
         public void RemoveStreamHandler(string path)
         {
-            m_streamHandlers.TryRemove(path, out IRequestHandler dummy);
+            if(!m_streamHandlers.TryRemove(path, out IRequestHandler requestHandler)) { // AKIDO
+                m_log.WarnFormat(
+                    "RemoveStreamHandler m_streamHandlers.TryRemove() unexpectedly failed when removing path: {0}",
+                    path);
+            }
+            
         }
 
         public void RemoveSimpleStreamHandler(string path)
         {
-            if(m_simpleStreamHandlers.TryRemove(path, out ISimpleStreamHandler dummy))
+            if (m_simpleStreamHandlers.TryRemove(path, out ISimpleStreamHandler simpleStreamHandler)) {
                 return;
-            m_simpleStreamVarPath.TryRemove(path, out ISimpleStreamHandler dummy2);
+            } else { // AKIDO
+                m_log.WarnFormat(
+                    "RemoveSimpleStreamHandler m_simpleStreamVarPath.TryRemove() unexpectedly failed when removing path: {0}",
+                    path);
+            }
+
+            if(!m_simpleStreamVarPath.TryRemove(path, out ISimpleStreamHandler simpleStreamHandlerr)) {
+                m_log.WarnFormat( // AKIDO
+                    "RemoveSimpleStreamHandler m_simpleStreamVarPath.TryRemove() unexpectedly failed when removing path: {0}",
+                    path);
+            }
         }
 
         public void RemoveHTTPHandler(string httpMethod, string path)
         {
             if (path == null) return; // Caps module isn't loaded, tries to remove handler where path = null
-            lock (m_HTTPHandlers)
+
+            if (httpMethod != null && httpMethod.Length == 0)
             {
-                if (httpMethod != null && httpMethod.Length == 0)
-                {
-                    m_HTTPHandlers.Remove(path);
-                    return;
+                if (!m_HTTPHandlers.TryRemove(path, out GenericHTTPMethod genericHttpMethod)) { 
+                    m_log.WarnFormat( // AKIDO
+                        "RemoveHTTPHandler m_HTTPHandlers,TryRemove() unexpectedly failed when removing path: {0}",
+                        path);
                 }
 
-                m_HTTPHandlers.Remove(GetHandlerKey(httpMethod, path));
+                return;
             }
+
+            if (!m_HTTPHandlers.TryRemove(GetHandlerKey(httpMethod, path),
+                    out GenericHTTPMethod genericHttpMethodd)) {
+                m_log.WarnFormat( // AKIDO
+                    "RemoveHTTPHandler m_HTTPHandlers,TryRemove() unexpectedly failed when removing path: {0}",
+                    GetHandlerKey(httpMethod, path));
+            }
+                
         }
 
         public void RemovePollServiceHTTPHandler(string httpMethod, string path)
@@ -2287,27 +2311,38 @@ namespace OpenSim.Framework.Servers.HttpServer
 
         public void RemoveXmlRPCHandler(string method)
         {
-            lock (m_rpcHandlers)
-                m_rpcHandlers.Remove(method);
+            if (!m_rpcHandlers.TryRemove(method, out XmlRpcMethod xmlRpcMethod)) { // AKIDO
+                m_log.WarnFormat( // AKIDO
+                    "RemoveXmlRPCHandler m_rpcHandlers,TryRemove() unexpectedly failed when removing method: {0}",
+                    method);
+            }
+
         }
 
         public void RemoveJsonRPCHandler(string method)
         {
-            lock(jsonRpcHandlers)
-                jsonRpcHandlers.Remove(method);
+
+            if (!jsonRpcHandlers.TryRemove(method, out JsonRPCMethod jsonRpcMethod)) { // AKIDO
+                m_log.WarnFormat(
+                    "RemoveJsonRPCHandler jsonRpcHandlers,TryRemove() unexpectedly failed when removing method: {0}",
+                    method);
+            }
+            
         }
 
         public bool RemoveLLSDHandler(string path, LLSDMethod handler)
         {
-            lock (m_llsdHandlers)
-            {
-                LLSDMethod foundHandler;
+            LLSDMethod foundHandler;
 
-                if (m_llsdHandlers.TryGetValue(path, out foundHandler) && foundHandler == handler)
-                {
-                    m_llsdHandlers.Remove(path);
-                    return true;
+            if (m_llsdHandlers.TryGetValue(path, out foundHandler) && foundHandler == handler)
+            {
+                if (!m_llsdHandlers.TryRemove(path, out LLSDMethod llsdMethod)) { // AKIDO
+                    m_log.WarnFormat(
+                        "RemoveLLSDHandler m_llsdHandlers,TryRemove() unexpectedly failed when removing path: {0}",
+                        path);
                 }
+
+                return true;
             }
 
             return false;
