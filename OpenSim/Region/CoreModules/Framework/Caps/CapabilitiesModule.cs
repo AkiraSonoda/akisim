@@ -148,7 +148,7 @@ namespace OpenSim.Region.CoreModules.Framework
                     oldCaps.DeregisterHandlers();
 
                     // AKIDO
-                    if (m_capsObjects.TryRemove(circuitCode, out Caps capss)) {
+                    if (!m_capsObjects.TryRemove(circuitCode, out Caps capss)) {
                         m_log.WarnFormat("CreateCaps - m_capsObjects.TryRemove unexpectedly failed" +
                                          "when removing circuitCode: {0}", circuitCode);
                     }
@@ -177,7 +177,7 @@ namespace OpenSim.Region.CoreModules.Framework
             m_log.DebugFormat("Remove caps for agent {0} in region {1}", agentId, m_scene.RegionInfo.RegionName);
 
             // AKIDO
-            if (m_childrenSeeds.TryRemove(agentId, out ConcurrentDictionary<ulong, string> dummy)) {
+            if (!m_childrenSeeds.TryRemove(agentId, out ConcurrentDictionary<ulong, string> dummy)) {
                 m_log.WarnFormat("RemoveCaps - m_childrenSeeds.TryRemove unexpectedly failed" +
                                  "when removing agentId: {0}", agentId);
             }
@@ -188,8 +188,7 @@ namespace OpenSim.Region.CoreModules.Framework
                 m_scene.EventManager.TriggerOnDeregisterCaps(agentId, cp);
 
                 // AKIDO
-                if (m_capsObjects.TryRemove(circuitCode, out Caps caps))
-                {
+                if (!m_capsObjects.TryRemove(circuitCode, out Caps caps)) {
                     m_log.WarnFormat("RemoveCaps - m_capsObjects.TryRemove unexpectedly failed" +
                                      "when removing circuitCode: {0}", circuitCode);
                 }
@@ -205,8 +204,7 @@ namespace OpenSim.Region.CoreModules.Framework
                         m_scene.EventManager.TriggerOnDeregisterCaps(agentId, kvp.Value);
 
                         // AKIDO
-                        if (m_capsObjects.TryRemove(kvp.Key, out Caps caps))
-                        {
+                        if (!m_capsObjects.TryRemove(kvp.Key, out Caps caps)) {
                             m_log.WarnFormat("RemoveCaps - m_capsObjects.TryRemove unexpectedly failed" +
                                              "when removing kvp.Key: {0}", kvp.Key);
                         }
@@ -273,7 +271,7 @@ namespace OpenSim.Region.CoreModules.Framework
             if (m_childrenSeeds.TryGetValue(agentID, out ConcurrentDictionary<ulong, string> seeds))
             {
                 // AKIDO
-                if (seeds.TryRemove(handle, out string dummy)) {
+                if (!seeds.TryRemove(handle, out string dummy)) {
                     m_log.WarnFormat("DropChildSeed - seeds.TryRemove unexpectedly failed" +
                                      "when removing handle: {0}", handle);
                 }
