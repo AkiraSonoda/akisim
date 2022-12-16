@@ -269,7 +269,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             if (m_landList.TryGetValue(local_id, out land))
             {
                 // AKIDO
-                if (m_landGlobalIDs.TryRemove(land.LandData.GlobalID, out int dummy)) {
+                if (!m_landGlobalIDs.TryRemove(land.LandData.GlobalID, out int dummy)) {
                     m_log.WarnFormat("UpdateLandObject - m_capsObjects.TryRemove unexpectedly failed" +
                                      "when removing land.LandData.GlobalID: {0}", land.LandData.GlobalID);
                 }
@@ -277,7 +277,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 if (!land.LandData.FakeID.IsZero())
                 {
                     // AKIDO
-                    if (m_landFakeIDs.TryRemove(land.LandData.GlobalID, out int dummyy)) {
+                    if (!m_landFakeIDs.TryRemove(land.LandData.GlobalID, out int dummyy)) {
                         m_log.WarnFormat("UpdateLandObject - m_landFakeIDs.TryRemove unexpectedly failed" +
                                          "when removing land.LandData.GlobalID: {0}", land.LandData.GlobalID);
                     }
@@ -693,7 +693,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             ILandObject land;
             // AKIDO
-                m_landList.TryGetValue(landLocalID, out land);
+            m_landList.TryGetValue(landLocalID, out land);
             // AKIDO
 
             if (land != null)
@@ -815,7 +815,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             }
 
             // AKIDO
-            if (m_landList.TryAdd(newLandLocalID, new_land)) {
+            if(!m_landList.TryAdd(newLandLocalID, new_land)) {
                 m_log.WarnFormat("AddLandObject - m_landList.TryAdd unexpectedly failed" +
                                  "when adding newLandLocalID: {0} new_land: {1}", newLandLocalID, new_land);
             }
@@ -857,7 +857,7 @@ namespace OpenSim.Region.CoreModules.World.Land
 
             land = m_landList[local_id];
             // AKIDO
-            if (m_landList.TryRemove(local_id, out ILandObject iLandObject)) {
+            if (!m_landList.TryRemove(local_id, out ILandObject iLandObject)) {
                 m_log.WarnFormat("removeLandObject - m_landList.TryRemove unexpectedly failed" +
                                  "when removing local_id: {0}", local_id);
             }
@@ -866,13 +866,13 @@ namespace OpenSim.Region.CoreModules.World.Land
             {
                 landGlobalID = land.LandData.GlobalID;
                 // AKIDO
-                if (m_landGlobalIDs.TryRemove(landGlobalID, out int dummy)) {
+                if (!m_landGlobalIDs.TryRemove(landGlobalID, out int dummy)) {
                     m_log.WarnFormat("removeLandObject - m_landGlobalIDs.TryRemove unexpectedly failed" +
                                      "when removing landGlobalID: {0}", landGlobalID);
                 }
 
                 // AKIDO
-                if (m_landFakeIDs.TryRemove(land.LandData.FakeID, out int dummyy)) {
+                if (!m_landFakeIDs.TryRemove(land.LandData.FakeID, out int dummyy)) {
                     m_log.WarnFormat("removeLandObject - m_landFakeIDs.TryRemove unexpectedly failed" +
                                      "when removing land.LandData.FakeID: {0}", land.LandData.FakeID);
                 }
@@ -946,7 +946,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 else
                 {
                     // AKIDO
-                    if (m_landGlobalIDs.TryRemove(globalID, out int dummy)) {
+                    if (!m_landGlobalIDs.TryRemove(globalID, out int dummy)) {
                         m_log.WarnFormat("GetLandObject - m_landGlobalIDs.TryRemove unexpectedly failed" +
                                          "when removing globalID: {0}", globalID);
                     }
@@ -969,7 +969,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 else 
                     // AKIDO
-                    if (m_landFakeIDs.TryRemove(fakeID, out int dummy)) {
+                    if (!m_landFakeIDs.TryRemove(fakeID, out int dummy)) {
                         m_log.WarnFormat("GetLandObjectByfakeID - m_landFakeIDs.TryRemove unexpectedly failed" +
                                          "when removing fakeID: {0}", fakeID);
                     }
