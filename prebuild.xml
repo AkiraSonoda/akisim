@@ -82,6 +82,27 @@
       </Files>
     </Project>
 	
+	<Project name="C5" path="ThirdParty/C5" type="Library">
+      <Configuration name="Release">
+        <Options>
+          <OutputPath>../../bin/</OutputPath>
+        </Options>
+      </Configuration>
+      <Configuration name="Debug">
+        <Options>
+          <OutputPath>../../bin/</OutputPath>
+        </Options>
+      </Configuration>
+
+      <ReferencePath>../../bin/</ReferencePath>
+      <Reference name="System"/>
+      <Reference name="System.Core"/>
+      <Reference name="System.Xml"/>
+      <Files>
+        <Match pattern="*.cs" recurse="true"/>
+      </Files>
+    </Project>
+
 	<Project name="ThreadedClasses" path="ThirdParty/ThreadedClasses" type="Library">
       <Configuration name="Release">
         <Options>
@@ -100,10 +121,9 @@
       <Reference name="System.Drawing"/>
       <Reference name="System.Web"/>
       <Reference name="System.Xml"/>
+      <Reference name="C5"/>
       <Files>
-        <Match pattern="*.cs" recurse="true">
-         <Exclude name="obj" pattern="obj"/>
-        </Match>
+        <Match pattern="*.cs" recurse="true"/>
       </Files>
     </Project>
 
@@ -495,12 +515,20 @@
       <Reference name="OpenSim.Region.PhysicsModules.SharedBase"/>
 
       <!-- For scripting in funny languages by default -->
+<<<<<<< HEAD
       <Reference name="XMLRPC"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
       <Reference name="Mono.Addins"/>
       <Reference name="ThreadedClasses"/>
 	  
+=======
+      <Reference name="XMLRPC" path="../../../bin/"/>
+      <Reference name="Nini" path="../../../bin/"/>
+      <Reference name="log4net" path="../../../bin/"/>
+      <Reference name="Mono.Addins" path="../../../bin/"/>
+
+>>>>>>> parent of a6ad66317a ([ARRIBA] a1c4bc3 AnimationSet.cs refactored to ThreadingClasses)
       <Files>
         <Match pattern="*.cs" recurse="true">
           <Exclude name="obj" pattern="obj"/>

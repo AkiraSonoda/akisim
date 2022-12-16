@@ -110,19 +110,6 @@ namespace ThreadedClasses
             }
         }
 
-        public T[] ToArray()
-        {
-            m_RwLock.AcquireWriterLock(-1);
-            try
-            {
-                return m_List.ToArray();
-            }
-            finally
-            {
-                m_RwLock.ReleaseWriterLock();
-            }
-        }
-
         public int IndexOf(T value)
         {
             m_RwLock.AcquireReaderLock(-1);
