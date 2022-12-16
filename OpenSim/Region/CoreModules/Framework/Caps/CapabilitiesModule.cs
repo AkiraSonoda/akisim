@@ -29,7 +29,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using log4net;
@@ -137,7 +136,7 @@ namespace OpenSim.Region.CoreModules.Framework
                 if (capsObjectPath == oldCaps.CapsObjectPath)
                 {
 //                        m_log.WarnFormat(
-//                           "[CAPS]: Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
+//                           "Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
 //                            agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
                     return;
                 }
@@ -157,14 +156,14 @@ namespace OpenSim.Region.CoreModules.Framework
             }
 
 //                m_log.DebugFormat(
-//                    "[CAPS]: Adding capabilities for agent {0} in {1} with path {2}",
+//                    "Adding capabilities for agent {0} in {1} with path {2}",
 //                    agentId, m_scene.RegionInfo.RegionName, capsObjectPath);
 
             caps = new Caps(MainServer.Instance, m_scene.RegionInfo.ExternalHostName,
                 (MainServer.Instance == null) ? 0 : MainServer.Instance.Port,
                 capsObjectPath, agentId, m_scene.RegionInfo.RegionName);
 
-            m_log.DebugFormat("[CreateCaps]: new caps agent {0}, circuit {1}, path {2}, time {3} ", agentId,
+            m_log.DebugFormat("New caps agent {0}, circuit {1}, path {2}, time {3} ", agentId,
                 circuitCode, caps.CapsObjectPath, Util.EnvironmentTickCountSubtract(ts));
 
             m_capsObjects[circuitCode] = caps;
@@ -175,7 +174,7 @@ namespace OpenSim.Region.CoreModules.Framework
 
         public void RemoveCaps(UUID agentId, uint circuitCode)
         {
-            m_log.DebugFormat("[CAPS]: Remove caps for agent {0} in region {1}", agentId, m_scene.RegionInfo.RegionName);
+            m_log.DebugFormat("Remove caps for agent {0} in region {1}", agentId, m_scene.RegionInfo.RegionName);
 
             // AKIDO
             if (m_childrenSeeds.TryRemove(agentId, out ConcurrentDictionary<ulong, string> dummy)) {
@@ -218,7 +217,7 @@ namespace OpenSim.Region.CoreModules.Framework
                 }
 
                 m_log.WarnFormat(
-                    "[CAPS]: Received request to remove CAPS handler for root agent {0} in {1}, but no such CAPS handler found!",
+                    "Received request to remove CAPS handler for root agent {0} in {1}, but no such CAPS handler found!",
                     agentId, m_scene.RegionInfo.RegionName);
             }
             // AKIDO
