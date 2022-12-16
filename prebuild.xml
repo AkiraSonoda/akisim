@@ -2283,7 +2283,6 @@
       <Reference name="Nini" path="../../../../../../bin/"/>
       <Reference name="log4net" path="../../../../../../bin/"/>
       <Reference name="SmartThreadPool"/>
-	  <Reference name="ThreadedClasses"/>
 
       <Files>
         <Match pattern="*.cs" recurse="true">
