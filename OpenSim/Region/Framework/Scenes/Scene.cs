@@ -26,29 +26,24 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime;
 using System.Text;
 using System.Threading;
 using System.Timers;
-using System.Xml;
 using Nini.Config;
 using OpenMetaverse;
-using OpenMetaverse.Packets;
-using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Services.Interfaces;
-using OpenSim.Framework.Console;
 using OpenSim.Region.Framework.Interfaces;
-using OpenSim.Region.Framework.Scenes.Scripting;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Region.PhysicsModules.SharedBase;
+using ThreadedClasses;
 using Timer = System.Timers.Timer;
 using TPFlags = OpenSim.Framework.Constants.TeleportFlags;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
@@ -305,8 +300,8 @@ namespace OpenSim.Region.Framework.Scenes
         protected int m_splitRegionID;
         protected Timer m_restartWaitTimer = new Timer();
         protected Timer m_timerWatchdog = new Timer();
-        protected List<RegionInfo> m_regionRestartNotifyList = new List<RegionInfo>();
-        protected List<RegionInfo> m_neighbours = new List<RegionInfo>();
+        protected RwLockedList<RegionInfo> m_regionRestartNotifyList = new RwLockedList<RegionInfo>();
+        protected RwLockedList<RegionInfo> m_neighbours = new RwLockedList<RegionInfo>();
         protected string m_simulatorVersion = "OpenSimulator Server";
         protected AgentCircuitManager m_authenticateHandler;
         protected SceneCommunicationService m_sceneGridService;
@@ -407,16 +402,12 @@ namespace OpenSim.Region.Framework.Scenes
         private SceneGraph m_sceneGraph;
         private readonly Timer m_restartTimer = new Timer(15000); // Wait before firing
         private volatile bool m_backingup;
-        private Dictionary<UUID, ReturnInfo> m_returns = new Dictionary<UUID, ReturnInfo>();
-        private HashSet<UUID> m_groupsWithTargets = new HashSet<UUID>();
+        private ConcurrentDictionary<UUID, ReturnInfo> m_returns = new ConcurrentDictionary<UUID, ReturnInfo>();
+        private RwLockedHashSet<UUID> m_groupsWithTargets = new RwLockedHashSet<UUID>();
 
         private string m_defaultScriptEngine;
 
-        private int m_unixStartTime;
-        public int UnixStartTime
-        {
-            get { return m_unixStartTime; }
-        }
+        public int UnixStartTime { get; private set; }
 
         /// <summary>
         /// Tick at which the last login occurred.
@@ -1416,29 +1407,27 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void AddNeighborRegion(RegionInfo region)
         {
-            lock (m_neighbours)
+            // AKIDO
+            if (!CheckNeighborRegion(region))
             {
-                if (!CheckNeighborRegion(region))
-                {
-                    m_neighbours.Add(region);
-                }
+                m_neighbours.Add(region);
             }
+            // AKIDO
         }
 
         public bool CheckNeighborRegion(RegionInfo region)
         {
             bool found = false;
-            lock (m_neighbours)
+            // AKIDO
+            foreach (RegionInfo reg in m_neighbours)
             {
-                foreach (RegionInfo reg in m_neighbours)
+                if (reg.RegionHandle == region.RegionHandle)
                 {
-                    if (reg.RegionHandle == region.RegionHandle)
-                    {
-                        found = true;
-                        break;
-                    }
+                    found = true;
+                    break;
                 }
             }
+            // AKIDO
             return found;
         }
 
@@ -1477,32 +1466,31 @@ namespace OpenSim.Region.Framework.Scenes
         public void RestartNotifyWaitElapsed(object sender, ElapsedEventArgs e)
         {
             m_restartWaitTimer.Stop();
-            lock (m_regionRestartNotifyList)
+            // AKIDO
+            if (EntityTransferModule != null)
             {
-                if(EntityTransferModule != null)
+                foreach (RegionInfo region in m_regionRestartNotifyList)
                 {
-                    foreach (RegionInfo region in m_regionRestartNotifyList)
+                    GridRegion r = new GridRegion(region);
+                    try
                     {
-                        GridRegion r = new GridRegion(region);
-                        try
+                        ForEachRootScenePresence(delegate(ScenePresence agent)
                         {
-                            ForEachRootScenePresence(delegate(ScenePresence agent)
-                            {
-                                if (!agent.IsNPC)
-                                    EntityTransferModule.EnableChildAgent(agent, r);
-                            });
-                        }
-                        catch (NullReferenceException)
-                        {
-                            // This means that we're not booted up completely yet.
-                            // This shouldn't happen too often anymore.
-                        }
+                            if (!agent.IsNPC)
+                                EntityTransferModule.EnableChildAgent(agent, r);
+                        });
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // This means that we're not booted up completely yet.
+                        // This shouldn't happen too often anymore.
                     }
                 }
-
-                // Reset list to nothing.
-                m_regionRestartNotifyList.Clear();
             }
+
+            // Reset list to nothing.
+            m_regionRestartNotifyList.Clear();
+            // AKIDO
         }
 
         public int GetInaccurateNeighborCount()
@@ -1604,7 +1592,7 @@ namespace OpenSim.Region.Framework.Scenes
             m_isRunning = true;
             m_active = true;
 
-            m_unixStartTime = Util.UnixTimeSinceEpoch();
+            UnixStartTime = Util.UnixTimeSinceEpoch();
 //            m_log.DebugFormat("[SCENE]: Starting Heartbeat timer for {0}", RegionInfo.RegionName);
             if (m_heartbeatThread != null)
             {
@@ -1989,25 +1977,31 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void AddGroupTarget(SceneObjectGroup grp)
         {
-            lock (m_groupsWithTargets)
-                m_groupsWithTargets.Add(grp.UUID);
+            m_groupsWithTargets.TryAdd(grp.UUID);
+            // AKIDO
+            if (!m_groupsWithTargets.TryAdd(grp.UUID)) {
+                m_log.WarnFormat("AddGroupTarget - m_groupsWithTargets.TryAdd unexpectedly failed" +
+                                 "when adding grp.UUID: {0}", grp.UUID);
+            }
         }
 
         public void RemoveGroupTarget(SceneObjectGroup grp)
         {
-            lock (m_groupsWithTargets)
-                m_groupsWithTargets.Remove(grp.UUID);
+            // AKIDO
+            if (!m_groupsWithTargets.TryRemove(grp.UUID)) {
+                m_log.WarnFormat("RemoveGroupTarget - m_groupsWithTargets.TryRemove unexpectedly failed" +
+                                 "when removing grp.UUID: {0}", grp.UUID);
+            }
         }
 
         private void CheckAtTargets()
         {
             List<UUID> objs = null;
 
-            lock (m_groupsWithTargets)
-            {
-                if (m_groupsWithTargets.Count != 0)
-                    objs = new List<UUID>(m_groupsWithTargets);
-            }
+            // AKIDO
+            if (m_groupsWithTargets.Count != 0)
+                objs = new List<UUID>(m_groupsWithTargets);
+            // AKIDI
 
             if (objs != null)
             {
@@ -2016,9 +2010,17 @@ namespace OpenSim.Region.Framework.Scenes
                     UUID entry = objs[i];
                     SceneObjectGroup grp = GetSceneObjectGroup(entry);
                     if (grp == null)
-                        m_groupsWithTargets.Remove(entry);
+                    {
+                        // AKIDO
+                        if (!m_groupsWithTargets.TryRemove(entry)) {
+                            m_log.WarnFormat("RemoveGroupTarget - m_groupsWithTargets.TryRemove unexpectedly failed" +
+                                             "when removing entry: {0}", entry);
+                        }
+                    }
                     else
+                    {
                         grp.CheckAtTargets();
+                    }
                 }
             }
         }
@@ -2081,63 +2083,66 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns></returns>
         public void Backup(bool forced)
         {
-            lock (m_returns)
+            // AKIDO
+            if (m_backingup)
             {
-                if(m_backingup)
-                {
-                    m_log.WarnFormat("[Scene] Backup of {0} already running. New call skipped", RegionInfo.RegionName);
-                    return;
-                }
-
-                m_backingup = true;
-                try
-                {
-                    EventManager.TriggerOnBackup(SimulationDataService, forced);
-
-                    if(m_returns.Count == 0)
-                        return;
-
-                    IMessageTransferModule tr = RequestModuleInterface<IMessageTransferModule>();
-                    if (tr == null)
-                        return;
-
-                    uint unixtime = (uint)Util.UnixTimeSinceEpoch();
-                    uint estateid =  RegionInfo.EstateSettings.ParentEstateID;
-                    Guid regionguid = RegionInfo.RegionID.Guid;
- 
-                    foreach (KeyValuePair<UUID, ReturnInfo> ret in m_returns)
-                    {
-                        GridInstantMessage msg = new GridInstantMessage()
-                        {
-                            fromAgentID = Guid.Empty, // From server
-                            toAgentID = ret.Key.Guid,
-                            imSessionID = Guid.NewGuid(),
-                            timestamp = unixtime,
-                            fromAgentName = "Server",
-                            dialog = 19, // Object msg
-                            fromGroup = false,
-                            offline = 1,
-                            ParentEstateID = estateid,
-                            Position = Vector3.Zero,
-                            RegionID = regionguid,
-                            // We must fill in a null-terminated 'empty' string here since bytes[0] will crash viewer 3.
-                            binaryBucket = new Byte[1] {0}
-                        };
-
-                        if (ret.Value.count > 1)
-                            msg.message = string.Format("Your {0} objects were returned from {1} in region {2} due to {3}", ret.Value.count, ret.Value.location.ToString(), RegionInfo.RegionName, ret.Value.reason);
-                        else
-                            msg.message = string.Format("Your object {0} was returned from {1} in region {2} due to {3}", ret.Value.objectName, ret.Value.location.ToString(), RegionInfo.RegionName, ret.Value.reason);
-
-                        tr.SendInstantMessage(msg, delegate(bool success) { });
-                    }
-                    m_returns.Clear();
-                }
-                finally
-                {
-                    m_backingup = false;
-                }
+                m_log.WarnFormat("[Scene] Backup of {0} already running. New call skipped", RegionInfo.RegionName);
+                return;
             }
+
+            m_backingup = true;
+            try
+            {
+                EventManager.TriggerOnBackup(SimulationDataService, forced);
+
+                if (m_returns.Count == 0)
+                    return;
+
+                IMessageTransferModule tr = RequestModuleInterface<IMessageTransferModule>();
+                if (tr == null)
+                    return;
+
+                uint unixtime = (uint)Util.UnixTimeSinceEpoch();
+                uint estateid = RegionInfo.EstateSettings.ParentEstateID;
+                Guid regionguid = RegionInfo.RegionID.Guid;
+
+                foreach (KeyValuePair<UUID, ReturnInfo> ret in m_returns)
+                {
+                    GridInstantMessage msg = new GridInstantMessage()
+                    {
+                        fromAgentID = Guid.Empty, // From server
+                        toAgentID = ret.Key.Guid,
+                        imSessionID = Guid.NewGuid(),
+                        timestamp = unixtime,
+                        fromAgentName = "Server",
+                        dialog = 19, // Object msg
+                        fromGroup = false,
+                        offline = 1,
+                        ParentEstateID = estateid,
+                        Position = Vector3.Zero,
+                        RegionID = regionguid,
+                        // We must fill in a null-terminated 'empty' string here since bytes[0] will crash viewer 3.
+                        binaryBucket = new Byte[1] { 0 }
+                    };
+
+                    if (ret.Value.count > 1)
+                        msg.message = string.Format("Your {0} objects were returned from {1} in region {2} due to {3}",
+                            ret.Value.count, ret.Value.location.ToString(), RegionInfo.RegionName, ret.Value.reason);
+                    else
+                        msg.message = string.Format("Your object {0} was returned from {1} in region {2} due to {3}",
+                            ret.Value.objectName, ret.Value.location.ToString(), RegionInfo.RegionName,
+                            ret.Value.reason);
+
+                    tr.SendInstantMessage(msg, delegate(bool success) { });
+                }
+
+                m_returns.Clear();
+            }
+            finally
+            {
+                m_backingup = false;
+            }
+            // AKIDO
         }
 
         /// <summary>
@@ -2165,26 +2170,25 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="reason">Reasion for object return</param>
         public void AddReturn(UUID agentID, string objectName, Vector3 location, string reason)
         {
-            lock (m_returns)
+            // AKIDO
+            if (m_returns.ContainsKey(agentID))
             {
-                if (m_returns.ContainsKey(agentID))
-                {
-                    ReturnInfo info = m_returns[agentID];
-                    info.count++;
-                    m_returns[agentID] = info;
-                }
-                else
-                {
-                    ReturnInfo info = new ReturnInfo()
-                    {
-                        count = 1,
-                        objectName = objectName,
-                        location = location,
-                        reason = reason
-                    };
-                    m_returns[agentID] = info;
-                }
+                ReturnInfo info = m_returns[agentID];
+                info.count++;
+                m_returns[agentID] = info;
             }
+            else
+            {
+                ReturnInfo info = new ReturnInfo()
+                {
+                    count = 1,
+                    objectName = objectName,
+                    location = location,
+                    reason = reason
+                };
+                m_returns[agentID] = info;
+            }
+            // AKIDO
         }
 
         #endregion
