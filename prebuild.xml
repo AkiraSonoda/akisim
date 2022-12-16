@@ -515,20 +515,12 @@
       <Reference name="OpenSim.Region.PhysicsModules.SharedBase"/>
 
       <!-- For scripting in funny languages by default -->
-<<<<<<< HEAD
       <Reference name="XMLRPC"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
       <Reference name="Mono.Addins"/>
       <Reference name="ThreadedClasses"/>
 	  
-=======
-      <Reference name="XMLRPC" path="../../../bin/"/>
-      <Reference name="Nini" path="../../../bin/"/>
-      <Reference name="log4net" path="../../../bin/"/>
-      <Reference name="Mono.Addins" path="../../../bin/"/>
-
->>>>>>> parent of a6ad66317a ([ARRIBA] a1c4bc3 AnimationSet.cs refactored to ThreadingClasses)
       <Files>
         <Match pattern="*.cs" recurse="true">
           <Exclude name="obj" pattern="obj"/>
