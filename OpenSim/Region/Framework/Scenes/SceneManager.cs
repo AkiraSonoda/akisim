@@ -80,7 +80,7 @@ namespace OpenSim.Region.Framework.Scenes
                             }
                             catch (Exception e)
                             {
-                                m_log.ErrorFormat("[SCENE MANAGER]: Delegate for OnRegionsReadyStatusChange failed - continuing {0} - {1}",
+                                m_log.ErrorFormat("Delegate for OnRegionsReadyStatusChange failed - continuing {0} - {1}",
                                     e.Message, e.StackTrace);
                             }
                         }
@@ -247,7 +247,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             else
             {
-                m_log.Error("[REGION]: Unable to notify Other regions of this Region coming up");
+                m_log.Error("Unable to notify Other regions of this Region coming up");
             }
         }
 
