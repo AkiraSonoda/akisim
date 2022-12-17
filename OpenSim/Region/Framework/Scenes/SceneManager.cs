@@ -405,44 +405,64 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TryGetScene(string regionName, out Scene scene)
         {
-            return m_localScenes.TryGetValue(regionName, out scene);
+            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
+            try {  
+                return m_localScenes.TryGetValue(regionName, out scene);
+            } finally {
+                m_localScenesRwLock.ReleaseReaderLock();
+            }
         }
 
         public bool TryGetScene(UUID regionID, out Scene scene)
         {
-            return m_localScenes.TryGetValue(regionID, out scene);
+            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
+            try {   
+                return m_localScenes.TryGetValue(regionID, out scene);
+            } finally {
+                m_localScenesRwLock.ReleaseReaderLock();
+            }
         }
 
         public bool TryGetScene(uint locX, uint locY, out Scene scene)
         {
-            List<Scene> sceneList = Scenes;
-            foreach (Scene mscene in sceneList)
-            {
-                if (mscene.RegionInfo.RegionLocX == locX &&
-                    mscene.RegionInfo.RegionLocY == locY)
+            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
+            try {
+                List<Scene> sceneList = Scenes;
+                foreach (Scene mscene in sceneList)
                 {
-                    scene = mscene;
-                    return true;
+                    if (mscene.RegionInfo.RegionLocX == locX &&
+                        mscene.RegionInfo.RegionLocY == locY)
+                    {
+                        scene = mscene;
+                        return true;
+                    }
                 }
+            } finally {
+                m_localScenesRwLock.ReleaseReaderLock();
             }
-
+            
             scene = null;
             return false;
         }
 
         public bool TryGetScene(IPEndPoint ipEndPoint, out Scene scene)
         {
-            List<Scene> sceneList = Scenes;
-            foreach (Scene mscene in sceneList)
-            {
-                if ((mscene.RegionInfo.InternalEndPoint.Equals(ipEndPoint.Address)) &&
-                    (mscene.RegionInfo.InternalEndPoint.Port == ipEndPoint.Port))
+            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
+            try {
+                List<Scene> sceneList = Scenes;
+                foreach (Scene mscene in sceneList)
                 {
-                    scene = mscene;
-                    return true;
+                    if ((mscene.RegionInfo.InternalEndPoint.Equals(ipEndPoint.Address)) &&
+                        (mscene.RegionInfo.InternalEndPoint.Port == ipEndPoint.Port))
+                    {
+                        scene = mscene;
+                        return true;
+                    }
                 }
+            } finally {
+                m_localScenesRwLock.ReleaseReaderLock();
             }
-
+            
             scene = null;
             return false;
         }
@@ -466,16 +486,21 @@ namespace OpenSim.Region.Framework.Scenes
 
         public List<ScenePresence> GetCurrentScenePresences()
         {
-            List<ScenePresence> presences = new List<ScenePresence>();
+            List<ScenePresence> presences;
+            
+            m_localScenesRwLock.AcquireWriterLock(-1);
+            try {
+                presences = new List<ScenePresence>();
 
-            ForEachSelectedScene(delegate(Scene scene)
-            {
-                scene.ForEachScenePresence(delegate(ScenePresence sp)
+                ForEachSelectedScene(delegate(Scene scene)
                 {
-                    presences.Add(sp);
+                    scene.ForEachScenePresence(delegate(ScenePresence sp) { presences.Add(sp); });
                 });
-            });
-
+            } finally
+            {
+                m_localScenesRwLock.ReleaseWriterLock();
+            }
+            
             return presences;
         }
 
@@ -502,15 +527,20 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TryGetScenePresence(UUID avatarId, out ScenePresence avatar)
         {
-            List<Scene> sceneList = Scenes;
-            foreach (Scene scene in sceneList)
-            {
-                if (scene.TryGetScenePresence(avatarId, out avatar))
+            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
+            try {
+                List<Scene> sceneList = Scenes;
+                foreach (Scene scene in sceneList)
                 {
-                    return true;
+                    if (scene.TryGetScenePresence(avatarId, out avatar))
+                    {
+                        return true;
+                    }
                 }
+            } finally {
+                m_localScenesRwLock.ReleaseReaderLock();
             }
-
+            
             avatar = null;
             return false;
         }
