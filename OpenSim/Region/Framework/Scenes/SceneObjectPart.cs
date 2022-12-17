@@ -35,6 +35,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
 using log4net;
+using ThreadedClasses;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
 using OpenSim.Framework;
@@ -303,7 +304,8 @@ namespace OpenSim.Region.Framework.Scenes
 
         private int m_scriptAccessPin;
 
-        private Dictionary<UUID, scriptEvents> m_scriptEvents = new Dictionary<UUID, scriptEvents>();
+        private RwLockedDictionary<UUID, scriptEvents> m_scriptEvents = // AKIDO
+            new RwLockedDictionary<UUID, scriptEvents>(); // AKIDO
         private Quaternion m_sitTargetOrientation = Quaternion.Identity;
         private Vector3 m_sitTargetPosition;
         private string m_sitAnimation = "SIT";
@@ -2158,7 +2160,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (userExposed)
                 dupe.UUID = UUID.Random();
 
-            dupe.m_scriptEvents = new Dictionary<UUID, scriptEvents>();
+            dupe.m_scriptEvents = new RwLockedDictionary<UUID, scriptEvents>();
 
             dupe.PhysActor = null;
 
@@ -2984,22 +2986,22 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void RemoveScriptEvents(UUID scriptid)
         {
-            lock (m_scriptEvents)
+            // AKIDO
+            if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
             {
-                if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
+                if ((ev & (scriptEvents.anyTarget)) != 0 && ParentGroup != null)
+                    ParentGroup.RemoveScriptTargets(scriptid);
+                if ((AggregatedScriptEvents & scriptEvents.email) != 0)
                 {
-                    if((ev & (scriptEvents.anyTarget)) != 0 && ParentGroup != null)
-                            ParentGroup.RemoveScriptTargets(scriptid);
-                    if ((AggregatedScriptEvents & scriptEvents.email) != 0)
-                    {
-                        IEmailModule scriptEmail = ParentGroup.Scene.RequestModuleInterface<IEmailModule>();
-                        if (scriptEmail != null)
-                            scriptEmail.RemovePartMailBox(UUID);
-                    }
-                    m_scriptEvents.Remove(scriptid);
-                    aggregateScriptEvents();
+                    IEmailModule scriptEmail = ParentGroup.Scene.RequestModuleInterface<IEmailModule>();
+                    if (scriptEmail != null)
+                        scriptEmail.RemovePartMailBox(UUID);
                 }
+
+                m_scriptEvents.Remove(scriptid);
+                aggregateScriptEvents();
             }
+            // AKIDO
         }
 
         public void RemoveScriptTargets(UUID scriptid)
@@ -3993,15 +3995,15 @@ namespace OpenSim.Region.Framework.Scenes
             //                "[SCENE OBJECT PART]: Set script events for script with id {0} on {1}/{2} to {3} in {4}",
             //                scriptid, Name, ParentGroup.Name, events, ParentGroup.Scene.Name);
             // scriptEvents oldparts;
-            lock (m_scriptEvents)
+            // AKIDO
+            if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
             {
-                if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
-                {
-                    if (ev == (scriptEvents)events)
-                        return;
-                }
-                m_scriptEvents[scriptid] = (scriptEvents) events;
+                if (ev == (scriptEvents)events)
+                    return;
             }
+
+            m_scriptEvents[scriptid] = (scriptEvents)events;
+            // AKIDO
             aggregateScriptEvents();
         }
 
@@ -5201,13 +5203,12 @@ namespace OpenSim.Region.Framework.Scenes
             AggregatedScriptEvents = 0;
 
             // Aggregate script events
-            lock (m_scriptEvents)
+            // AKIDO
+            foreach (scriptEvents s in m_scriptEvents.Values)
             {
-                foreach (scriptEvents s in m_scriptEvents.Values)
-                {
-                    AggregatedScriptEvents |= s;
-                }
+                AggregatedScriptEvents |= s;
             }
+            // AKIDO
 
             uint objectflagupdate = 0;
             if ((AggregatedScriptEvents & scriptEvents.anytouch) != 0 )
