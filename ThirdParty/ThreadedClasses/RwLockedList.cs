@@ -201,6 +201,20 @@ namespace ThreadedClasses
             }
         }
 
+        public T[] ToArray()
+        {
+            m_RwLock.AcquireReaderLock(-1);
+            try
+            {
+                return m_List.ToArray();
+            }
+            finally
+            {
+                m_RwLock.ReleaseReaderLock();
+            }
+            
+        }
+
         public void Add(T value)
         {
             m_RwLock.AcquireWriterLock(-1);
