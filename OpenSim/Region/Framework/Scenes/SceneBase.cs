@@ -33,7 +33,7 @@ using OpenMetaverse;
 using log4net;
 using Nini.Config;
 using OpenSim.Framework;
-using OpenSim.Framework.Console;
+using ThreadedClasses;
 
 using OpenSim.Region.Framework.Interfaces;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
@@ -94,7 +94,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <value>
         /// The module commanders available from this scene
         /// </value>
-        protected Dictionary<string, ICommander> m_moduleCommanders = new Dictionary<string, ICommander>();
+        protected RwLockedDictionary<string, ICommander> m_moduleCommanders = new RwLockedDictionary<string, ICommander>();
 
         /// <value>
         /// Registered classes that are capable of creating entities.
@@ -286,7 +286,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             catch (Exception e)
             {
-                m_log.Error(string.Format("[SCENE]: SceneBase.cs: Close() - Failed with exception {0}", e));
+                m_log.Error(string.Format("Close() - Failed with exception {0}", e));
             }
         }
 
@@ -334,10 +334,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="commander"></param>
         public void RegisterModuleCommander(ICommander commander)
         {
-            lock (m_moduleCommanders)
-            {
-                m_moduleCommanders.Add(commander.Name, commander);
-            }
+            m_moduleCommanders.Add(commander.Name, commander); // AKIDO
         }
 
         /// <summary>
@@ -346,12 +343,9 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="name"></param>
         public void UnregisterModuleCommander(string name)
         {
-            lock (m_moduleCommanders)
-            {
-                ICommander commander;
-                if (m_moduleCommanders.TryGetValue(name, out commander))
-                    m_moduleCommanders.Remove(name);
-            }
+            ICommander commander; // AKIDO
+            if (m_moduleCommanders.TryGetValue(name, out commander))
+                m_moduleCommanders.Remove(name);
         }
 
         /// <summary>
@@ -361,18 +355,15 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>The module commander, null if no module commander with that name was found</returns>
         public ICommander GetCommander(string name)
         {
-            lock (m_moduleCommanders)
-            {
-                if (m_moduleCommanders.ContainsKey(name))
-                    return m_moduleCommanders[name];
-            }
+            if (m_moduleCommanders.ContainsKey(name)) // AKIDO
+                return m_moduleCommanders[name];
 
             return null;
         }
 
         public Dictionary<string, ICommander> GetCommanders()
         {
-            return m_moduleCommanders;
+            return new Dictionary<string, ICommander>(m_moduleCommanders); // AKIDO 
         }
 
         public List<UUID> GetFormatsOffered()
@@ -415,7 +406,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="mod"></param>
         public void RegisterModuleInterface<M>(M mod)
         {
-//            m_log.DebugFormat("[SCENE BASE]: Registering interface {0}", typeof(M));
+//            m_log.DebugFormat("Registering interface {0}", typeof(M));
 
             List<Object> l = null;
             if (!ModuleInterfaces.TryGetValue(typeof(M), out l))
