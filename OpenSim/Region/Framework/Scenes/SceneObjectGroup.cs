@@ -37,6 +37,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading;
 using System.Xml;
+using ThreadedClasses;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.Framework.Scenes
@@ -1386,7 +1387,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// No avatar should appear more than once in this list.
         /// Do not manipulate this list directly - use the Add/Remove sitting avatar methods on SceneObjectPart.
         /// </remarks>
-        protected internal List<ScenePresence> m_sittingAvatars = new List<ScenePresence>();
+        protected internal RwLockedList<ScenePresence> m_sittingAvatars = new RwLockedList<ScenePresence>();
 
         #endregion
 
@@ -2594,7 +2595,7 @@ namespace OpenSim.Region.Framework.Scenes
             dupe.inTransit = false;
 
             // new group as no sitting avatars
-            dupe.m_sittingAvatars = new List<ScenePresence>();
+            dupe.m_sittingAvatars = new RwLockedList<ScenePresence>();
 
             dupe.CopyRootPart(m_rootPart, OwnerID, GroupID, userExposed);
             dupe.m_rootPart.LinkNum = m_rootPart.LinkNum;
@@ -5365,21 +5366,19 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>A list of the sitting avatars.  Returns an empty list if there are no sitting avatars.</returns>
         public List<ScenePresence> GetSittingAvatars()
         {
-            lock (m_sittingAvatars)
-                return new List<ScenePresence>(m_sittingAvatars);
+            return new List<ScenePresence>(m_sittingAvatars); // AKIDO
         }
 
         public bool HasSittingAvatar(UUID avatarID)
         {
             // locked O(n) :(
-            lock (m_sittingAvatars)
+            // AKIDO
+            for (int i = 0; i < m_sittingAvatars.Count; ++i)
             {
-                for(int i = 0; i < m_sittingAvatars.Count; ++i)
-                {
-                    if(m_sittingAvatars[i].UUID == avatarID)
-                        return true;
-                }
+                if (m_sittingAvatars[i].UUID == avatarID)
+                    return true;
             }
+            // AKDIO
             return false;
         }
 
@@ -5390,8 +5389,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns></returns>
         public int GetSittingAvatarsCount()
         {
-            lock (m_sittingAvatars)
-                return m_sittingAvatars.Count;
+            return m_sittingAvatars.Count; // AKIDO
         }
 
         public override string ToString()
