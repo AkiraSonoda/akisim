@@ -402,11 +402,11 @@ namespace OpenSim.Region.ClientStack.Linden
             {
                 lock (queue)
                 {
-                    m_log.WarnFormat("POLLED FOR EVENTS BY {0} in {1} -- {2}", agentID, m_scene.RegionInfo.RegionName, queue.Count);
+                    // m_log.WarnFormat("POLLED FOR EVENTS BY {0} in {1} -- {2}", agentID, m_scene.RegionInfo.RegionName, queue.Count);
                     return queue.Count > 0;
                 }
             }
-            m_log.WarnFormat("POLLED FOR EVENTS BY {0} unknown agent", agentID);
+            // m_log.WarnFormat("POLLED FOR EVENTS BY {0} unknown agent", agentID);
             return true;
         }
 
