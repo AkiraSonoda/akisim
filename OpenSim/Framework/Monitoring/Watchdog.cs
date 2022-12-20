@@ -144,7 +144,7 @@ namespace OpenSim.Framework.Monitoring
             get { return m_enabled; }
             set
             {
-                //                m_log.DebugFormat("[MEMORY WATCHDOG]: Setting MemoryWatchdog.Enabled to {0}", value);
+                //                m_log.DebugFormat("Setting MemoryWatchdog.Enabled to {0}", value);
 
                 if (value == m_enabled)
                     return;
@@ -184,23 +184,24 @@ namespace OpenSim.Framework.Monitoring
                 return;
 
             // AKIDO
-                m_enabled = false;            
-                if(m_watchdogTimer != null)
-                {
-                    m_watchdogTimer.Dispose();
-                    m_watchdogTimer = null;
-                }
-                
-                foreach(ThreadWatchdogInfo twi in m_threads.Values)
-                {
-                    Thread t = twi.Thread;
-                    // m_log.DebugFormat(
-                    //    "[WATCHDOG]: Stop: Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
+            m_enabled = false;
+            if (m_watchdogTimer != null)
+            {
+                m_watchdogTimer.Dispose();
+                m_watchdogTimer = null;
+            }
 
-                    if(t.IsAlive)
-                        t.Abort();
-                }
-                m_threads.Clear();
+            foreach (ThreadWatchdogInfo twi in m_threads.Values)
+            {
+                Thread t = twi.Thread;
+                m_log.DebugFormat(
+                   "Stop: Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
+
+                if (t.IsAlive)
+                    t.Abort();
+            }
+
+            m_threads.Clear();
             // AKIDO
         }
 
@@ -214,7 +215,7 @@ namespace OpenSim.Framework.Monitoring
         {
             if (log)
                 m_log.DebugFormat(
-                    "[WATCHDOG]: Started tracking thread {0}, ID {1}", name, info.Thread.ManagedThreadId);
+                    "Started tracking thread {0}, ID {1}", name, info.Thread.ManagedThreadId);
 
             // AKIDO
             m_threads.Add(info.Thread.ManagedThreadId, info);
@@ -299,7 +300,7 @@ namespace OpenSim.Framework.Monitoring
                 }
                 else
                 {
-                    m_log.WarnFormat("[WATCHDOG]: Asked to update thread {0} which is not being monitored", threadID);
+                    m_log.WarnFormat("Asked to update thread {0} which is not being monitored", threadID);
                 }
             }
             catch { }
