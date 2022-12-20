@@ -133,7 +133,7 @@ namespace OpenSim.Framework
 
         public AvatarAppearance()
         {
-//            m_log.WarnFormat("create empty appearance");
+            m_log.DebugFormat("create empty appearance");
 
             m_serial = 0;
             SetDefaultWearables();
@@ -191,7 +191,7 @@ namespace OpenSim.Framework
 
         public AvatarAppearance(AvatarAppearance appearance, bool copyWearables, bool copyBaked)
         {
-//            m_log.WarnFormat("create from an existing appearance");
+            m_log.DebugFormat("create from an existing appearance");
 
             if (appearance == null)
             {
@@ -390,7 +390,6 @@ namespace OpenSim.Framework
                 {
                     if (visualParams[i] != m_visualparams[i])
                     {
-                        m_log.WarnFormat("vparams changed [{0}] {1} ==> {2}", i,m_visualparams[i],visualParams[i]);
                         m_visualparams[i] = visualParams[i];
                         changed = true;
                     }
