@@ -199,12 +199,13 @@
       <ReferencePath>../../../bin/</ReferencePath>
       <Reference name="System"/>
       <Reference name="System.Core"/>
-      <Reference name="log4net" path="../../../bin/"/>
-      <Reference name="Nini" path="../../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../../bin/"/>
-      <Reference name="OpenMetaverse" path="../../../bin/"/>
-      <Reference name="OpenMetaverse.StructuredData" path="../../../bin/"/>
+      <Reference name="log4net"/>
+      <Reference name="Nini"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="OpenMetaverse"/>
+      <Reference name="OpenMetaverse.StructuredData"/>
       <Reference name="OpenSim.Framework"/>
+      <Reference name="ThreadedClasses"/>
 
       <Files>
         <Match pattern="*.cs" recurse="true">
