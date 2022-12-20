@@ -1460,9 +1460,9 @@
       <Reference name="System.Drawing"/>
       <Reference name="System.Xml"/>
       <Reference name="System.Web"/>
-      <Reference name="OpenMetaverse" path="../../../../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../../../../bin/"/>
-      <Reference name="OpenMetaverse.StructuredData" path="../../../../../bin/"/>
+      <Reference name="OpenMetaverse"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="OpenMetaverse.StructuredData"/>
       <Reference name="OpenSim.Capabilities"/>
       <Reference name="OpenSim.Region.Framework"/>
       <Reference name="OpenSim.Capabilities.Handlers"/>
@@ -1473,10 +1473,12 @@
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="OpenSim.Region.PhysicsModules.SharedBase"/>
       <Reference name="OpenSim.Services.Interfaces"/>
-      <Reference name="Mono.Addins" path="../../../../../bin/"/>
-      <Reference name="Nini" path="../../../../../bin/"/>
-      <Reference name="log4net" path="../../../../../bin/"/>
-      <Reference name="zlib.net" path="../../../../../bin/"/>
+      <Reference name="Mono.Addins"/>
+      <Reference name="Nini"/>
+      <Reference name="log4net"/>
+      <Reference name="zlib.net"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="true">
