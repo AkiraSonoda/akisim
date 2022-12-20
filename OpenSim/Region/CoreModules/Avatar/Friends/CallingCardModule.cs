@@ -37,6 +37,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using Mono.Addins;
 using PermissionMask = OpenSim.Framework.PermissionMask;
+using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.Avatar.Friends
 {
@@ -44,7 +45,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
     public class CallingCardModule : ISharedRegionModule, ICallingCardModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        protected List<Scene> m_Scenes = new List<Scene>();
+        protected RwLockedList<Scene> m_Scenes = new RwLockedList<Scene>();
         protected bool m_Enabled = true;
 
         public void Initialise(IConfigSource source)
@@ -189,7 +190,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 folderID = folder.ID;
             }
 
-            m_log.DebugFormat("[XCALLINGCARD]: Creating calling card for {0} in inventory of {1}", info.Name, userID);
+            m_log.DebugFormat("Creating calling card for {0} in inventory of {1}", info.Name, userID);
 
             InventoryItemBase item = new InventoryItemBase();
             item.AssetID = UUID.Zero;
@@ -266,25 +267,23 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
 
         private Scene GetClientScene(UUID agentId)
         {
-            lock (m_Scenes)
+            // AKIDO
+            foreach (Scene scene in m_Scenes)
             {
-                foreach (Scene scene in m_Scenes)
+                ScenePresence presence = scene.GetScenePresence(agentId);
+                if (presence != null)
                 {
-                    ScenePresence presence = scene.GetScenePresence(agentId);
-                    if (presence != null)
-                    {
-                        if (!presence.IsChildAgent)
-                            return scene;
-                    }
+                    if (!presence.IsChildAgent)
+                        return scene;
                 }
             }
+            // AKIDO
             return null;
         }
 
         private ScenePresence GetClientPresence(UUID agentId)
         {
-            lock (m_Scenes)
-            {
+            // AKIDO
                 foreach (Scene scene in m_Scenes)
                 {
                     ScenePresence presence = scene.GetScenePresence(agentId);
@@ -294,7 +293,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                             return presence;
                     }
                 }
-            }
+            // AKIDO
             return null;
         }
 
