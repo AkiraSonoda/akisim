@@ -27,10 +27,10 @@
 
 using System;
 using System.Reflection;
-using System.Collections;
 using System.Collections.Generic;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using ThreadedClasses;
 using log4net;
 
 namespace OpenSim.Framework
@@ -66,7 +66,7 @@ namespace OpenSim.Framework
         protected byte[] m_visualparams;
         protected Primitive.TextureEntry m_texture;
         protected AvatarWearable[] m_wearables;
-        protected Dictionary<int, List<AvatarAttachment>> m_attachments;
+        protected RwLockedDictionary<int, List<AvatarAttachment>> m_attachments;
         protected WearableCacheItem[] m_cacheitems;
         protected Vector3 m_avatarSize = new Vector3(0.45f, 0.6f, 1.9f); // sl Z cloud value
         protected Vector3 m_avatarBoxSize = new Vector3(0.45f, 0.6f, 1.9f);
@@ -141,7 +141,7 @@ namespace OpenSim.Framework
             SetDefaultParams();
 //            SetHeight();
             SetSize(new Vector3(0.45f,0.6f,1.9f));
-            m_attachments = new Dictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
         }
 
         public AvatarAppearance(OSDMap map)
@@ -177,7 +177,7 @@ namespace OpenSim.Framework
             if(m_avatarHeight == 0)
                 SetSize(new Vector3(0.45f,0.6f,1.9f));
 
-            m_attachments = new Dictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
         }
 
         public AvatarAppearance(AvatarAppearance appearance): this(appearance, true,true)
@@ -202,7 +202,7 @@ namespace OpenSim.Framework
 //                SetHeight();
                 SetSize(new Vector3(0.45f, 0.6f, 1.9f));
                 AvatarPreferencesHoverZ = 0;
-                m_attachments = new Dictionary<int, List<AvatarAttachment>>();
+                m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
 
                 return;
             }
@@ -243,7 +243,7 @@ namespace OpenSim.Framework
             SetSize(appearance.AvatarSize);
 
             // Copy the attachment, force append mode since that ensures consistency
-            m_attachments = new Dictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
             foreach (AvatarAttachment attachment in appearance.GetAttachments())
                 AppendAttachment(new AvatarAttachment(attachment));
         }
@@ -519,16 +519,16 @@ namespace OpenSim.Framework
         /// </remarks>
         public List<AvatarAttachment> GetAttachments()
         {
-            lock (m_attachments)
+            // AKIDO
+            List<AvatarAttachment> alist = new List<AvatarAttachment>();
+            foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
             {
-                List<AvatarAttachment> alist = new List<AvatarAttachment>();
-                foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
-                {
-                    foreach (AvatarAttachment attach in kvp.Value)
-                        alist.Add(new AvatarAttachment(attach));
-                }
-                return alist;
+                foreach (AvatarAttachment attach in kvp.Value)
+                    alist.Add(new AvatarAttachment(attach));
             }
+
+            return alist;
+            //
         }
 
         internal void AppendAttachment(AvatarAttachment attach)
@@ -537,19 +537,18 @@ namespace OpenSim.Framework
             //   "[AVATAR APPEARNCE]: Appending itemID={0}, assetID={1} at {2}",
             //    attach.ItemID, attach.AssetID, attach.AttachPoint);
 
-            lock (m_attachments)
+            // AKIDO
+            if (!m_attachments.ContainsKey(attach.AttachPoint))
+                m_attachments[attach.AttachPoint] = new List<AvatarAttachment>();
+
+            foreach (AvatarAttachment prev in m_attachments[attach.AttachPoint])
             {
-                if (!m_attachments.ContainsKey(attach.AttachPoint))
-                    m_attachments[attach.AttachPoint] = new List<AvatarAttachment>();
-
-                foreach (AvatarAttachment prev in m_attachments[attach.AttachPoint])
-                {
-                    if (prev.ItemID.Equals(attach.ItemID))
-                        return;
-                }
-
-                m_attachments[attach.AttachPoint].Add(attach);
+                if (prev.ItemID.Equals(attach.ItemID))
+                    return;
             }
+
+            m_attachments[attach.AttachPoint].Add(attach);
+            // AKIDO
         }
 
         internal void ReplaceAttachment(AvatarAttachment attach)
@@ -558,11 +557,10 @@ namespace OpenSim.Framework
             //    "[AVATAR APPEARANCE]: Replacing itemID={0}, assetID={1} at {2}",
             //    attach.ItemID, attach.AssetID, attach.AttachPoint);
 
-            lock (m_attachments)
-            {
-                m_attachments[attach.AttachPoint] = new List<AvatarAttachment>();
-                m_attachments[attach.AttachPoint].Add(attach);
-            }
+            // AKIDO
+            m_attachments[attach.AttachPoint] = new List<AvatarAttachment>();
+            m_attachments[attach.AttachPoint].Add(attach);
+            // AKIDO
         }
 
         /// <summary>
@@ -589,52 +587,51 @@ namespace OpenSim.Framework
             if (attachpoint == 0)
                 return false;
 
-            lock (m_attachments)
-            {
-                if (item.IsZero())
-                    return m_attachments.Remove(attachpoint);
+            // AKIDO
+            if (item.IsZero())
+                return m_attachments.Remove(attachpoint);
 
-                // When a user logs in, the attachment item ids are pulled from persistence in the Avatars table.  However,
-                // the asset ids are not saved.  When the avatar enters a simulator the attachments are set again.  If
-                // we simply perform an item check here then the asset ids (which are now present) are never set, and NPC attachments
-                // later fail unless the attachment is detached and reattached.
-                //
-                // Therefore, we will carry on with the set if the existing attachment has no asset id.
-                AvatarAttachment existingAttachment = GetAttachmentForItem(item);
-                if (existingAttachment != null)
-                {
+            // When a user logs in, the attachment item ids are pulled from persistence in the Avatars table.  However,
+            // the asset ids are not saved.  When the avatar enters a simulator the attachments are set again.  If
+            // we simply perform an item check here then the asset ids (which are now present) are never set, and NPC attachments
+            // later fail unless the attachment is detached and reattached.
+            //
+            // Therefore, we will carry on with the set if the existing attachment has no asset id.
+            AvatarAttachment existingAttachment = GetAttachmentForItem(item);
+            if (existingAttachment != null)
+            {
 //                    m_log.DebugFormat(
 //                        "[AVATAR APPEARANCE]: Found existing attachment for {0}, asset {1} at point {2}",
 //                        existingAttachment.ItemID, existingAttachment.AssetID, existingAttachment.AttachPoint);
 
-                    if (!existingAttachment.AssetID.IsZero() && existingAttachment.AttachPoint == (attachpoint & 0x7F))
-                    {
-                        m_log.DebugFormat(
-                            "[AVATAR APPEARANCE]: Ignoring attempt to attach an already attached item {0} at point {1}",
-                            item, attachpoint);
-
-                        return false;
-                    }
-                    else
-                    {
-                        // Remove it here so that the later append does not add a second attachment but we still update
-                        // the assetID
-                        DetachAttachment(existingAttachment.ItemID);
-                    }
-                }
-
-                // check if this is an append or a replace, 0x80 marks it as an append
-                if ((attachpoint & 0x80) > 0)
+                if (!existingAttachment.AssetID.IsZero() && existingAttachment.AttachPoint == (attachpoint & 0x7F))
                 {
-                    // strip the append bit
-                    int point = attachpoint & 0x7F;
-                    AppendAttachment(new AvatarAttachment(point, item, asset));
+                    m_log.DebugFormat(
+                        "[AVATAR APPEARANCE]: Ignoring attempt to attach an already attached item {0} at point {1}",
+                        item, attachpoint);
+
+                    return false;
                 }
                 else
                 {
-                    ReplaceAttachment(new AvatarAttachment(attachpoint,item, asset));
+                    // Remove it here so that the later append does not add a second attachment but we still update
+                    // the assetID
+                    DetachAttachment(existingAttachment.ItemID);
                 }
             }
+
+            // check if this is an append or a replace, 0x80 marks it as an append
+            if ((attachpoint & 0x80) > 0)
+            {
+                // strip the append bit
+                int point = attachpoint & 0x7F;
+                AppendAttachment(new AvatarAttachment(point, item, asset));
+            }
+            else
+            {
+                ReplaceAttachment(new AvatarAttachment(attachpoint, item, asset));
+            }
+            // AKIDO
 
             return true;
         }
@@ -646,65 +643,62 @@ namespace OpenSim.Framework
         /// <returns>Returns null if this item is not attached.</returns>
         public AvatarAttachment GetAttachmentForItem(UUID itemID)
         {
-            lock (m_attachments)
+            // AKIDO
+            foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
             {
-                foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
-                {
-                    int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
-                    if (index >= 0)
-                        return kvp.Value[index];
-                }
+                int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
+                if (index >= 0)
+                    return kvp.Value[index];
             }
+            // AKIDO
 
             return null;
         }
 
         public int GetAttachpoint(UUID itemID)
         {
-            lock (m_attachments)
+            // AKIDO
+            foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
             {
-                foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
-                {
-                    int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
-                    if (index >= 0)
-                        return kvp.Key;
-                }
+                int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
+                if (index >= 0)
+                    return kvp.Key;
             }
+            // AKIDO    
             return 0;
         }
 
         public bool DetachAttachment(UUID itemID)
         {
-            lock (m_attachments)
+            // AKIDO
+            foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
             {
-                foreach (KeyValuePair<int, List<AvatarAttachment>> kvp in m_attachments)
+                int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
+                if (index >= 0)
                 {
-                    int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
-                    if (index >= 0)
-                    {
-                        //m_log.DebugFormat(
-                        //    "[AVATAR APPEARANCE]: Detaching attachment {0}, index {1}, point {2}",
-                        //    m_attachments[kvp.Key][index].ItemID, index, m_attachments[kvp.Key][index].AttachPoint);
+                    //m_log.DebugFormat(
+                    //    "[AVATAR APPEARANCE]: Detaching attachment {0}, index {1}, point {2}",
+                    //    m_attachments[kvp.Key][index].ItemID, index, m_attachments[kvp.Key][index].AttachPoint);
 
-                        // Remove it from the list of attachments at that attach point
-                        m_attachments[kvp.Key].RemoveAt(index);
+                    // Remove it from the list of attachments at that attach point
+                    m_attachments[kvp.Key].RemoveAt(index);
 
-                        // And remove the list if there are no more attachments here
-                        if (m_attachments[kvp.Key].Count == 0)
-                            m_attachments.Remove(kvp.Key);
+                    // And remove the list if there are no more attachments here
+                    if (m_attachments[kvp.Key].Count == 0)
+                        m_attachments.Remove(kvp.Key);
 
-                        return true;
-                    }
+                    return true;
                 }
             }
+            // AKIDO
 
             return false;
         }
 
         public void ClearAttachments()
         {
-            lock (m_attachments)
-                m_attachments.Clear();
+            // AKIDO
+            m_attachments.Clear();
         }
 
         #region Packing Functions
@@ -790,14 +784,13 @@ namespace OpenSim.Framework
             OSDBinary visualparams = new OSDBinary(m_visualparams);
             data["visualparams"] = visualparams;
 
-            lock (m_attachments)
-            {
-                // Attachments
-                OSDArray attachs = new OSDArray(m_attachments.Count);
-                foreach (AvatarAttachment attach in GetAttachments())
-                    attachs.Add(attach.Pack());
-                data["attachments"] = attachs;
-            }
+            // AKIDO
+            // Attachments
+            OSDArray attachs = new OSDArray(m_attachments.Count);
+            foreach (AvatarAttachment attach in GetAttachments())
+                attachs.Add(attach.Pack());
+            data["attachments"] = attachs;
+            // AKIDO
 
             return data;
         }
@@ -848,20 +841,20 @@ namespace OpenSim.Framework
             OSDBinary visualparams = new OSDBinary(m_visualparams);
             data["visualparams"] = visualparams;
 
-            lock (m_attachments)
+            // AKIDO
+            // Attachments
+            OSDArray attachs = new OSDArray(m_attachments.Count);
+            foreach (AvatarAttachment attach in GetAttachments())
             {
-                // Attachments
-                OSDArray attachs = new OSDArray(m_attachments.Count);
-                foreach (AvatarAttachment attach in GetAttachments())
-                {
-                    if (NoHuds &&
-                            attach.AttachPoint >= (uint)AttachmentPoint.HUDCenter2 &&
-                            attach.AttachPoint <= (uint)AttachmentPoint.HUDBottomRight)
-                        continue;
-                    attachs.Add(attach.Pack());
-                }
-                data["attachments"] = attachs;
+                if (NoHuds &&
+                    attach.AttachPoint >= (uint)AttachmentPoint.HUDCenter2 &&
+                    attach.AttachPoint <= (uint)AttachmentPoint.HUDBottomRight)
+                    continue;
+                attachs.Add(attach.Pack());
             }
+
+            data["attachments"] = attachs;
+            // AKIDO
 
             return data;
         }
@@ -875,7 +868,7 @@ namespace OpenSim.Framework
             SetDefaultWearables();
             SetDefaultTexture();
             SetDefaultParams();
-            m_attachments = new Dictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
 
             if(data == null)
             {
