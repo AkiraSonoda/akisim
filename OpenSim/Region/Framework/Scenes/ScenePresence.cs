@@ -744,15 +744,9 @@ namespace OpenSim.Region.Framework.Scenes
                 if (PhysicsActor != null)
                 {
                     m_pos = PhysicsActor.Position;
-
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Set position of {0} in {1} to {2} via getting AbsolutePosition!",
-                        Name, Scene.Name, m_pos);
                 }
                 else
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Fetching abs pos where PhysicsActor == null and parent part {0} for {1}", Name, Scene.Name);
                     // Obtain the correct position of a seated avatar.
                     // In addition to providing the correct position while
                     // the avatar is seated, this value will also
@@ -780,8 +774,8 @@ namespace OpenSim.Region.Framework.Scenes
             }
             set
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Setting position of {0} to {1} in {2}", Name, value, Scene.Name);
+                // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                //     "Setting position of {0} to {1} in {2}", Name, value, Scene.Name);
                 
                 Util.PrintCallStack();
 
@@ -801,9 +795,9 @@ namespace OpenSim.Region.Framework.Scenes
                 if (ParentID == 0)
                     m_pos = value;
 
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "In {0} set AbsolutePosition of {1} to {2}",
-                    Scene.RegionInfo.RegionName, Name, m_pos);
+                // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                //     "In {0} set AbsolutePosition of {1} to {2}",
+                //     Scene.RegionInfo.RegionName, Name, m_pos);
                 
                 TriggerScenePresenceUpdated();
             }
@@ -840,9 +834,9 @@ namespace OpenSim.Region.Framework.Scenes
                 {
                     m_velocity = PhysicsActor.Velocity;
 
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Set velocity {0} for {1} in {2} via getting Velocity!",
-                        m_velocity, Name, Scene.RegionInfo.RegionName);
+                    // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    //     "Set velocity {0} for {1} in {2} via getting Velocity!",
+                    //     m_velocity, Name, Scene.RegionInfo.RegionName);
                 }
 
                 return m_velocity;
@@ -864,9 +858,9 @@ namespace OpenSim.Region.Framework.Scenes
 
                 m_velocity = value;
 
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "In {0} set velocity of {1} to {2}",
-                    Scene.RegionInfo.RegionName, Name, m_velocity);
+            //     if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            //         "In {0} set velocity of {1} to {2}",
+            //         Scene.RegionInfo.RegionName, Name, m_velocity);
             }
         }
 
