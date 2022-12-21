@@ -36,6 +36,7 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
+using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
 {
@@ -46,7 +47,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
             = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
-        private List<Scene> m_Scenelist = new List<Scene>();
+        private RwLockedList<Scene> m_Scenelist = new RwLockedList<Scene>(); // AKIDO
 
         private IMessageTransferModule m_TransferModule;
         private bool m_Enabled = true;
@@ -75,9 +76,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
                 return;
 
             m_Scenelist.Add(scene);
-
-//            scene.RegisterModuleInterface<IInventoryTransferModule>(this);
-
+            
             scene.EventManager.OnNewClient += OnNewClient;
             scene.EventManager.OnIncomingInstantMessage += OnGridInstantMessage;
         }
@@ -89,11 +88,9 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
                 m_TransferModule = m_Scenelist[0].RequestModuleInterface<IMessageTransferModule>();
                 if (m_TransferModule == null)
                 {
-                    m_log.Error("[INVENTORY TRANSFER]: No Message transfer module found, transfers will be local only");
+                    m_log.Error("No Message transfer module found, transfers will be local only");
                     m_Enabled = false;
 
-//                    m_Scenelist.Clear();
-//                    scene.EventManager.OnNewClient -= OnNewClient;
                     scene.EventManager.OnIncomingInstantMessage -= OnGridInstantMessage;
                 }
             }
@@ -135,24 +132,23 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
         private Scene FindClientAndScene(UUID agentId, out ScenePresence presence)
         {
             presence = null;
-            lock (m_Scenelist)
+            // AKIDO
+            foreach (Scene scene in m_Scenelist)
             {
-                foreach (Scene scene in m_Scenelist)
-                {
-                    presence = scene.GetScenePresence(agentId);
-                    if (presence != null && !presence.IsDeleted)
-                        return scene;
-                }
+                presence = scene.GetScenePresence(agentId);
+                if (presence != null && !presence.IsDeleted)
+                    return scene;
             }
+            // AKIDO
             return null;
         }
 
         private void OnInstantMessage(IClientAPI client, GridInstantMessage im)
         {
-//            m_log.DebugFormat(
-//                "[INVENTORY TRANSFER]: {0} IM type received from client {1}. From={2} ({3}), To={4}",
-//                (InstantMessageDialog)im.dialog, client.Name,
-//                im.fromAgentID, im.fromAgentName, im.toAgentID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "{0} IM type received from client {1}. From={2} ({3}), To={4}",
+                (InstantMessageDialog)im.dialog, client.Name,
+                im.fromAgentID, im.fromAgentName, im.toAgentID);
 
             Scene scene = client.Scene as Scene;
             if (scene == null) // Something seriously wrong here.
@@ -198,7 +194,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
                                 ids[new UUID(iddata, i + 1)] = (AssetType)im.binaryBucket[i];
                         }
 
-                        m_log.DebugFormat("[INVENTORY TRANSFER]: offering folder {0} to agent {1}'s inventory",
+                        m_log.DebugFormat("offering folder {0} to agent {1}'s inventory",
                             folderID, recipientID);
 
                         InventoryFolderBase folderCopy = scene.GiveInventoryFolder(client, recipientID, agentID, folderID, UUID.Zero, ids);
@@ -226,7 +222,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
                             return;
                         }
 
-                        m_log.DebugFormat("[INVENTORY TRANSFER]: (giving) Inserting item {0} "+
+                        m_log.DebugFormat("(giving) Inserting item {0} "+
                                 "into agent {1}'s inventory",
                                 itemID, recipientID);
 
