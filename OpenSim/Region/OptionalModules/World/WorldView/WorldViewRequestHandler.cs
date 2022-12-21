@@ -47,7 +47,6 @@ namespace OpenSim.Region.OptionalModules.World.WorldView
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected WorldViewModule m_WorldViewModule;
-        protected Object m_RequestLock = new Object();
 
         public WorldViewRequestHandler(WorldViewModule fmodule, string rid)
                 : base("GET", "/worldview/" + rid)
@@ -59,27 +58,21 @@ namespace OpenSim.Region.OptionalModules.World.WorldView
                 IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
         {
             httpResponse.ContentType = "image/jpeg";
-
-//            StreamReader sr = new StreamReader(requestData);
-//            string body = sr.ReadToEnd();
-//            sr.Close();
-//            body = body.Trim();
-
+            
             try
             {
-                lock (m_RequestLock)
-                {
-                    Dictionary<string, object> request =
-                            new Dictionary<string, object>();
-                    foreach (string name in httpRequest.QueryString)
-                        request[name] = httpRequest.QueryString[name];
+                // AKIDO
+                Dictionary<string, object> request =
+                    new Dictionary<string, object>();
+                foreach (string name in httpRequest.QueryString)
+                    request[name] = httpRequest.QueryString[name];
 
-                    return SendWorldView(request);
-                }
+                return SendWorldView(request);
+                // AKIDO
             }
             catch (Exception e)
             {
-                m_log.Debug("[WORLDVIEW]: Exception: " + e.ToString());
+                m_log.Debug("Exception: " + e.ToString());
             }
 
             return Array.Empty<byte>();
