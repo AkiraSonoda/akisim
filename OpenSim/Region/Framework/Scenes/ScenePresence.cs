@@ -924,7 +924,6 @@ namespace OpenSim.Region.Framework.Scenes
                         m_log.Error("Orientation " + e.Message);
                     }
                 }
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("Body rot for {0} set to {1}", Name, m_bodyRot);
             }
         }
 
@@ -2553,13 +2552,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public void HandleAgentUpdate(IClientAPI remoteClient, AgentUpdateArgs agentData)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "In {0} received agent update from {1}, flags {2}",
-                Scene.Name, remoteClient.Name, (ACFlags)agentData.ControlFlags);
-
             if (IsChildAgent || IsInTransit)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("HandleAgentUpdate: child agent in {0}", Scene.Name);
                 return;
             }
 
