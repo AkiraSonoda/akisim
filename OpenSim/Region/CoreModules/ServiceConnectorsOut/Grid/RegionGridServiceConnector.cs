@@ -88,9 +88,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
                     {
                         m_Enabled = true;
                         if(m_RemoteGridService == null)
-                            m_log.Info("[REGION GRID CONNECTOR]: enabled in Standalone mode");
+                            m_log.Info("enabled in Standalone mode");
                         else
-                            m_log.Info("[REGION GRID CONNECTOR]: enabled in Grid mode");
+                            m_log.Info("enabled in Grid mode");
                     }
                 }
             }
@@ -101,14 +101,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
             IConfig gridConfig = source.Configs["GridService"];
             if (gridConfig == null)
             {
-                m_log.Error("[REGION GRID CONNECTOR]: GridService missing from OpenSim.ini");
+                m_log.Error("GridService missing from OpenSim.ini");
                 return false;
             }
 
             string serviceDll = gridConfig.GetString("LocalServiceModule", string.Empty);
             if (string.IsNullOrWhiteSpace(serviceDll))
             {
-                m_log.Error("[REGION GRID CONNECTOR]: No LocalServiceModule named in section GridService");
+                m_log.Error("No LocalServiceModule named in section GridService");
                 return false;
             }
             
@@ -117,7 +117,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
 
             if (m_LocalGridService == null)
             {
-                m_log.Error("[REGION GRID CONNECTOR]: failed to load LocalServiceModule");
+                m_log.Error("failed to load LocalServiceModule");
                 return false;
             }
 
@@ -127,7 +127,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
                 m_RemoteGridService = ServerUtils.LoadPlugin<IGridService>(networkConnector, args);
                 if (m_RemoteGridService == null)
                 {
-                    m_log.Error("[REGION GRID CONNECTOR]: failed to load NetworkConnector");
+                    m_log.Error("failed to load NetworkConnector");
                     return false;
                 }
             }
@@ -271,8 +271,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
             rinfo = m_LocalGridService.GetRegionByPosition(scopeID, x, y);
             if (rinfo != null)
             {
-                // m_log.DebugFormat("[REMOTE GRID CONNECTOR]: GetRegionByPosition. Found region {0} on local. Pos=<{1},{2}>, RegionHandle={3}",
-                //    rinfo.RegionName, rinfo.RegionCoordX, rinfo.RegionCoordY, rinfo.RegionHandle);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "GetRegionByPosition. Found region {0} on local. Pos=<{1},{2}>, RegionHandle={3}",
+                    rinfo.RegionName, rinfo.RegionCoordX, rinfo.RegionCoordY, rinfo.RegionHandle);
                 m_RegionInfoCache.Cache(scopeID, rinfo);
                 return rinfo;
             }
@@ -282,16 +283,17 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
                 rinfo = m_RemoteGridService.GetRegionByPosition(scopeID, x, y);
                 if (rinfo == null)
                 {
-    //                uint regionX = Util.WorldToRegionLoc((uint)x);
-    //                uint regionY = Util.WorldToRegionLoc((uint)y);
-    //                m_log.WarnFormat("[REMOTE GRID CONNECTOR]: Requested region {0}-{1} not found", regionX, regionY);
+                    uint regionX = Util.WorldToRegionLoc((uint)x);
+                    uint regionY = Util.WorldToRegionLoc((uint)y);
+                    m_log.WarnFormat("Requested region {0}-{1} not found", regionX, regionY);
                 }
                 else
                 {
                     m_RegionInfoCache.Cache(scopeID, rinfo);
 
-    //                m_log.DebugFormat("[REMOTE GRID CONNECTOR]: GetRegionByPosition. Added region {0} to the cache. Pos=<{1},{2}>, RegionHandle={3}",
-    //                    rinfo.RegionName, rinfo.RegionCoordX, rinfo.RegionCoordY, rinfo.RegionHandle);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                        "GetRegionByPosition. Added region {0} to the cache. Pos=<{1},{2}>, RegionHandle={3}",
+                        rinfo.RegionName, rinfo.RegionCoordX, rinfo.RegionCoordY, rinfo.RegionHandle);
                 }
             }
             return rinfo;
@@ -326,9 +328,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
             {
                 rinfo = m_RemoteGridService.GetDefaultRegions(UUID.Zero)[0];
                 if (rinfo == null)
-                    m_log.Warn("[REMOTE GRID CONNECTOR] returned null default region");
+                    m_log.Warn("returned null default region");
                 else
-                    m_log.WarnFormat("[REMOTE GRID CONNECTOR] returned default region {0}", rinfo.RegionName);
+                    m_log.WarnFormat("returned default region {0}", rinfo.RegionName);
             }
 
             m_RegionInfoCache.Cache(scopeID, rinfo);
@@ -347,7 +349,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
                 return null;
 
             List<GridRegion> rinfo = m_LocalGridService.GetRegionsByURI(scopeID, uri, maxNumber);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetRegionsByName {0} found {1} regions", name, rinfo.Count);
+            m_log.DebugFormat("Local GetRegionsByName {0} found {1} regions", uri, rinfo.Count);
 
             if (m_RemoteGridService == null || !uri.IsLocalGrid)
                 return rinfo;
@@ -357,10 +359,10 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
             {
                 List<GridRegion> grinfos = m_RemoteGridService.GetDefaultRegions(scopeID);
                 if (grinfos == null || grinfos.Count == 0)
-                    m_log.Info("[REMOTE GRID CONNECTOR] returned no default regions");
+                    m_log.Info("returned no default regions");
                 else
                 {
-                    m_log.InfoFormat("[REMOTE GRID CONNECTOR] returned default regions {0}, ...", grinfos[0].RegionName);
+                    m_log.InfoFormat("returned default regions {0}, ...", grinfos[0].RegionName);
                     // only return first
                     grinfo = new List<GridRegion>() { grinfos[0] };
                 }
@@ -370,7 +372,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
 
             if (grinfo != null)
             {
-                //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetRegionsByName {0} found {1} regions", name, grinfo.Count);
+                m_log.DebugFormat("Remote GetRegionsByName {0} found {1} regions", uri, grinfo.Count);
                 foreach (GridRegion r in grinfo)
                 {
                     m_RegionInfoCache.Cache(r);
@@ -385,14 +387,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
         public virtual List<GridRegion> GetRegionRange(UUID scopeID, int xmin, int xmax, int ymin, int ymax)
         {
             List<GridRegion> rinfo = m_LocalGridService.GetRegionRange(scopeID, xmin, xmax, ymin, ymax);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetRegionRange {0} found {1} regions", name, rinfo.Count);
             if(m_RemoteGridService != null)
             {
                 List<GridRegion> grinfo = m_RemoteGridService.GetRegionRange(scopeID, xmin, xmax, ymin, ymax);
 
                 if (grinfo != null)
                 {
-                    //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetRegionRange {0} found {1} regions", name, grinfo.Count);
                     foreach (GridRegion r in grinfo)
                     {
                         m_RegionInfoCache.Cache(r);
@@ -407,14 +407,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
         public List<GridRegion> GetDefaultRegions(UUID scopeID)
         {
             List<GridRegion> rinfo = m_LocalGridService.GetDefaultRegions(scopeID);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetDefaultRegions {0} found {1} regions", name, rinfo.Count);
             if(m_RemoteGridService != null)
             {
                 List<GridRegion> grinfo = m_RemoteGridService.GetDefaultRegions(scopeID);
 
                 if (grinfo != null)
                 {
-                    //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetDefaultRegions {0} found {1} regions", name, grinfo.Count);
                     foreach (GridRegion r in grinfo)
                     {
                         m_RegionInfoCache.Cache(r);
@@ -429,14 +427,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
         public List<GridRegion> GetDefaultHypergridRegions(UUID scopeID)
         {
             List<GridRegion> rinfo = m_LocalGridService.GetDefaultHypergridRegions(scopeID);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetDefaultHypergridRegions {0} found {1} regions", name, rinfo.Count);
             if(m_RemoteGridService != null)
             {
                 List<GridRegion> grinfo = m_RemoteGridService.GetDefaultHypergridRegions(scopeID);
 
                 if (grinfo != null)
                 {
-                    //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetDefaultHypergridRegions {0} found {1} regions", name, grinfo.Count);
                     foreach (GridRegion r in grinfo)
                     {
                         m_RegionInfoCache.Cache(r);
@@ -451,14 +447,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
         public List<GridRegion> GetFallbackRegions(UUID scopeID, int x, int y)
         {
             List<GridRegion> rinfo = m_LocalGridService.GetFallbackRegions(scopeID, x, y);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetFallbackRegions {0} found {1} regions", name, rinfo.Count);
             if (m_RemoteGridService != null)
             {
                 List<GridRegion> grinfo = m_RemoteGridService.GetFallbackRegions(scopeID, x, y);
 
                 if (grinfo != null)
                 {
-                    //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetFallbackRegions {0} found {1} regions", name, grinfo.Count);
                     foreach (GridRegion r in grinfo)
                     {
                         m_RegionInfoCache.Cache(r);
@@ -473,14 +467,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
         public List<GridRegion> GetOnlineRegions(UUID scopeID, int x, int y, int maxCount)
         {
             List<GridRegion> rinfo = m_LocalGridService.GetOnlineRegions(scopeID, x, y, maxCount);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetFallbackRegions {0} found {1} regions", name, rinfo.Count);
             if (m_RemoteGridService != null)
             {
                 List<GridRegion> grinfo = m_RemoteGridService.GetOnlineRegions(scopeID, x, y, maxCount);
 
                 if (grinfo != null)
                 {
-                    //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetOnlineRegions {0} found {1} regions", name, grinfo.Count);
                     foreach (GridRegion r in grinfo)
                     {
                         m_RegionInfoCache.Cache(r);
@@ -495,14 +487,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid
         public List<GridRegion> GetHyperlinks(UUID scopeID)
         {
             List<GridRegion> rinfo = m_LocalGridService.GetHyperlinks(scopeID);
-            //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Local GetHyperlinks {0} found {1} regions", name, rinfo.Count);
             if(m_RemoteGridService != null)
             {
                 List<GridRegion> grinfo = m_RemoteGridService.GetHyperlinks(scopeID);
 
                 if (grinfo != null)
                 {
-                    //m_log.DebugFormat("[REMOTE GRID CONNECTOR]: Remote GetHyperlinks {0} found {1} regions", name, grinfo.Count);
                     foreach (GridRegion r in grinfo)
                     {
                         m_RegionInfoCache.Cache(r);
