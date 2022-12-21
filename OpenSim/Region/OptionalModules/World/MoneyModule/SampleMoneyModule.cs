@@ -42,6 +42,7 @@ using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
+using ThreadedClasses;
 
 namespace OpenSim.Region.OptionalModules.World.MoneyModule
 {
@@ -66,7 +67,7 @@ namespace OpenSim.Region.OptionalModules.World.MoneyModule
         /// </summary>
         // private UUID EconomyBaseAccount = UUID.Zero;
 
-        private Dictionary<string, XmlRpcMethod> m_rpcHandlers;
+        private RwLockedDictionary<string, XmlRpcMethod> m_rpcHandlers; // AKIDO
         private string m_localEconomyURL;
 
         private float EnergyEfficiency = 1f;
@@ -143,7 +144,7 @@ namespace OpenSim.Region.OptionalModules.World.MoneyModule
                     if (m_scenes.Count == 0)
                     {
                         m_localEconomyURL = scene.RegionInfo.ServerURI;
-                        m_rpcHandlers = new Dictionary<string, XmlRpcMethod>();
+                        m_rpcHandlers = new RwLockedDictionary<string, XmlRpcMethod>();
                         m_rpcHandlers.Add("getCurrencyQuote", quote_func);
                         m_rpcHandlers.Add("buyCurrency", buy_func);
                         m_rpcHandlers.Add("preflightBuyLandPrep", preflightBuyLandPrep_func);
@@ -195,7 +196,7 @@ namespace OpenSim.Region.OptionalModules.World.MoneyModule
 
         public void processPHP(IOSHttpRequest request, IOSHttpResponse response)
         {
-            MainServer.Instance.HandleXmlRpcRequests((OSHttpRequest)request, (OSHttpResponse)response, m_rpcHandlers);
+            MainServer.Instance.HandleXmlRpcRequests((OSHttpRequest)request, (OSHttpResponse)response, new Dictionary<string, XmlRpcMethod>(m_rpcHandlers));
         }
 
         // Please do not refactor these to be just one method
@@ -403,7 +404,7 @@ namespace OpenSim.Region.OptionalModules.World.MoneyModule
             else
             {
                 m_log.ErrorFormat(
-                    "[MONEY]: Could not resolve user {0}",
+                    "Could not resolve user {0}",
                     agentID);
             }
 
@@ -785,7 +786,7 @@ namespace OpenSim.Region.OptionalModules.World.MoneyModule
         private void AvatarEnteringParcel(ScenePresence avatar, int localLandID, UUID regionID)
         {
 
-            //m_log.Info("[FRIEND]: " + avatar.Name + " status:" + (!avatar.IsChildAgent).ToString());
+            //m_log.Info(avatar.Name + " status:" + (!avatar.IsChildAgent).ToString());
         }
 
         public int GetBalance(UUID agentID)
