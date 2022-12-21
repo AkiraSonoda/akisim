@@ -1692,7 +1692,6 @@ namespace OpenSim.Region.Framework.Scenes
             PhysicsActor pa = Interlocked.Exchange(ref m_physActor, null);
             if (pa != null)
             {
-                //PhysicsActor.OnRequestTerseUpdate -= SendTerseUpdateToAllClients;
                 pa.OnOutOfBounds -= OutOfBoundsCall;
                 pa.OnCollisionUpdate -= PhysicsCollisionUpdate;
                 pa.UnSubscribeEvents();
@@ -2617,10 +2616,7 @@ namespace OpenSim.Region.Framework.Scenes
             State = agentData.State;
 
             #endregion Inputs
-
-            //if (oldState != State)
-            //    SendAgentTerseUpdate(this);
-
+            
             if ((allFlags & ACFlags.AGENT_CONTROL_STAND_UP) != 0)
                 StandUp();
 
@@ -2811,10 +2807,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         private void HandleAgentCamerasUpdate(IClientAPI remoteClient, AgentUpdateArgs agentData)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "In {0} received agent camera update from {1}, flags {2}",
-                Scene.RegionInfo.RegionName, remoteClient.Name, (ACFlags)agentData.ControlFlags);
-
             if (IsChildAgent || IsInTransit)
                 return;
 
@@ -3823,7 +3815,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (remoteClient.IsActive)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(Name + " sending TerseUpdate to " + remoteClient.Name + " : Pos={0} Rot={1} Vel={2}", m_pos, Rotation, m_velocity);
                 remoteClient.SendEntityUpdate(this, PrimUpdateFlags.FullUpdate);
                 m_scene.StatsReporter.AddAgentUpdates(1);
             }
@@ -3833,7 +3824,6 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if (remoteClient.IsActive)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(Name + " sending TerseUpdate to " + remoteClient.Name + " : Pos={0} Rot={1} Vel={2}", m_pos, Rotation, m_velocity);
                 remoteClient.SendEntityUpdate(this, PrimUpdateFlags.FullUpdate);
                 m_scene.StatsReporter.AddAgentUpdates(1);
             }
@@ -3857,9 +3847,6 @@ namespace OpenSim.Region.Framework.Scenes
             // server.
             if (remoteClient.IsActive)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    Name + " sending TerseUpdate to " + remoteClient.Name + 
-                    " : Pos={0} Rot={1} Vel={2}", m_pos, Rotation, m_velocity);
                 remoteClient.SendEntityUpdate(
                     this,
                     PrimUpdateFlags.Position | PrimUpdateFlags.Rotation | PrimUpdateFlags.Velocity
@@ -3878,9 +3865,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (ParcelHideThisAvatar && p.currentParcelUUID.NotEqual(currentParcelUUID )&& !p.IsViewerUIGod)
                 return;
-
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(Name + " sending TerseUpdate to {0} : Pos={1} Rot={2} Vel={3}", 
-                remoteClient.Name, m_pos, Rotation, m_velocity);
             
             remoteClient.SendEntityUpdate(
                 this,
@@ -3895,10 +3879,6 @@ namespace OpenSim.Region.Framework.Scenes
             IClientAPI remoteClient = p.ControllingClient;
             if (remoteClient.IsActive)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    Name + " sending TerseUpdate to {0} : Pos={1} Rot={2} Vel={2}",
-                    remoteClient.Name, m_pos, Rotation, m_velocity);
-                
                 remoteClient.SendEntityUpdate(this,
                     PrimUpdateFlags.Position | PrimUpdateFlags.Rotation | PrimUpdateFlags.Velocity
                     | PrimUpdateFlags.Acceleration | PrimUpdateFlags.AngularVelocity);
@@ -5099,7 +5079,6 @@ namespace OpenSim.Region.Framework.Scenes
                 LocalId, Firstname + "." + Lastname, pVec,
                 Appearance.AvatarBoxSize,Appearance.AvatarFeetOffset, isFlying);
             pa.Orientation = m_bodyRot;
-            //PhysicsActor.OnRequestTerseUpdate += SendTerseUpdateToAllClients;
             pa.OnCollisionUpdate += PhysicsCollisionUpdate;
             pa.OnOutOfBounds += OutOfBoundsCall; // Called for PhysicsActors when there's something wrong
             pa.SubscribeEvents(100);
@@ -5430,7 +5409,6 @@ namespace OpenSim.Region.Framework.Scenes
         public void SendAttachmentsToAgentNF(ScenePresence p)
         {
             SendTerseUpdateToAgentNF(p);
-            //SendAvatarDataToAgentNF(this);
             lock (m_attachments)
             {
                 foreach (SceneObjectGroup sog in m_attachments)

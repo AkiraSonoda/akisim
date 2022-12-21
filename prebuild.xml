@@ -1700,13 +1700,13 @@
       <Reference name="System.Xml"/>
       <Reference name="System.Drawing"/>
       <Reference name="System.Web"/>
-      <Reference name="Ionic.Zip" path="../../../bin/"/>
-      <Reference name="NDesk.Options" path="../../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../../bin/"/>
-      <Reference name="OpenMetaverse.StructuredData" path="../../../bin/"/>
-      <Reference name="OpenMetaverse" path="../../../bin/"/>
-      <Reference name="Mono.Data.SqliteClient" path="../../../bin/"/>
-      <Reference name="netcd" path="../../../bin/"/>
+      <Reference name="Ionic.Zip"/>
+      <Reference name="NDesk.Options"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="OpenMetaverse.StructuredData"/>
+      <Reference name="OpenMetaverse"/>
+      <Reference name="Mono.Data.SqliteClient"/>
+      <Reference name="netcd"/>
       <Reference name="OpenSim.Framework"/>
       <Reference name="OpenSim.Capabilities"/>
       <Reference name="OpenSim.Data"/>
@@ -1723,12 +1723,13 @@
       <Reference name="OpenSim.Services.Connectors"/>
       <Reference name="OpenSim.Services.Base"/>
       <Reference name="OpenSim.Services.Interfaces"/>
-      <Reference name="Mono.Addins" path="../../../bin/"/>
+      <Reference name="Mono.Addins"/>
 
       <!-- For scripting in funny languages by default -->
-      <Reference name="XMLRPC" path="../../../bin/"/>
-      <Reference name="Nini" path="../../../bin/"/>
-      <Reference name="log4net" path="../../../bin/"/>
+      <Reference name="XMLRPC"/>
+      <Reference name="Nini"/>
+      <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
 
       <Files>
         <Match pattern="*.cs" recurse="true">

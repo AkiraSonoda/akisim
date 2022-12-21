@@ -34,7 +34,7 @@ using System.Text;
 using log4net;
 using Mono.Addins;
 using Nini.Config;
-
+using ThreadedClasses;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
@@ -63,10 +63,10 @@ namespace OpenSim.Region.OptionalModules.Materials
         private int m_maxMaterialsPerTransaction = 50;
         private object materialslock = new object();
 
-        public Dictionary<UUID, FaceMaterial> m_Materials = new Dictionary<UUID, FaceMaterial>();
-        public Dictionary<UUID, int> m_MaterialsRefCount = new Dictionary<UUID, int>();
+        public RwLockedDictionary<UUID, FaceMaterial> m_Materials = new RwLockedDictionary<UUID, FaceMaterial>();
+        public RwLockedDictionary<UUID, int> m_MaterialsRefCount = new RwLockedDictionary<UUID, int>();
 
-        private Dictionary<FaceMaterial, double> m_changed = new Dictionary<FaceMaterial, double>();
+        private RwLockedDictionary<FaceMaterial, double> m_changed = new RwLockedDictionary<FaceMaterial, double>();
         private Queue<UUID> delayedDelete = new Queue<UUID>();
         private bool m_storeBusy;
 
@@ -84,7 +84,7 @@ namespace OpenSim.Region.OptionalModules.Materials
             }
 
             if (m_enabled)
-                m_log.DebugFormat("[Materials]: Initialized");
+                m_log.DebugFormat("Initialized");
         }
 
         public void Close()
@@ -329,7 +329,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                         }
                         catch (Exception e)
                         {
-                            m_log.Warn("[Materials]: exception decoding persisted legacy material: " + e.ToString());
+                            m_log.Warn("exception decoding persisted legacy material: " + e.ToString());
                         }
                     }
                 }
@@ -357,7 +357,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                 facechanged = GetStoredMaterialInFace(part, te.DefaultTexture);
             else
                 m_log.WarnFormat(
-                    "[Materials]: Default texture for part {0} (part of object {1}) in {2} unexpectedly null.  Ignoring.",
+                    "Default texture for part {0} (part of object {1}) in {2} unexpectedly null.  Ignoring.",
                     part.Name, part.ParentGroup.Name, m_scene.Name);
 
             foreach (Primitive.TextureEntryFace face in te.FaceTextures)
@@ -410,19 +410,19 @@ namespace OpenSim.Region.OptionalModules.Materials
                 }
                 catch (Exception e)
                 {
-                    m_log.WarnFormat("[Materials]: cannot decode material asset {0}: {1}", id, e.Message);
+                    m_log.WarnFormat("cannot decode material asset {0}: {1}", id, e.Message);
                     return false;
                 }
 
                 FaceMaterial fmat = new FaceMaterial(mat);
 
-                if(fmat == null ||
-                        (fmat.DiffuseAlphaMode == 1
-                        && fmat.NormalMapID.IsZero()
-                        && fmat.SpecularMapID.IsZero()))
+                if (fmat == null ||
+                    (fmat.DiffuseAlphaMode == 1
+                     && fmat.NormalMapID.IsZero()
+                     && fmat.SpecularMapID.IsZero()))
                 {
-                        face.MaterialID = UUID.Zero;
-                        return true;
+                    face.MaterialID = UUID.Zero;
+                    return true;
                 }
 
                 fmat.ID = id;
@@ -521,7 +521,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                                     }
                                     else
                                     {
-                                        m_log.Warn("[Materials]: request for unknown material ID: " + id.ToString());
+                                        m_log.Warn("request for unknown material ID: " + id.ToString());
 
                                         // Theoretically we could try to load the material from the assets service,
                                         // but that shouldn't be necessary because the viewer should only request
@@ -540,7 +540,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                 }
                 catch (Exception e)
                 {
-                    m_log.Warn("[Materials]: exception decoding zipped CAP payload ", e);
+                    m_log.Warn("exception decoding zipped CAP payload ", e);
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     return;
                 }
@@ -549,10 +549,6 @@ namespace OpenSim.Region.OptionalModules.Materials
             OSDMap resp = new OSDMap();
             resp["Zipped"] = ZCompressOSD(respArr, false);
             response.RawBuffer = Encoding.UTF8.GetBytes(OSDParser.SerializeLLSDXmlString(resp));
-
-            //m_log.Debug("[Materials]: cap request: " + request);
-            //m_log.Debug("[Materials]: cap request (zipped portion): " + ZippedOsdBytesToString(req["Zipped"].AsBinary()));
-            //m_log.Debug("[Materials]: cap response: " + response);
         }
 
         public void RenderMaterialsPutCap(IOSHttpRequest request, IOSHttpResponse response, UUID agentID)
@@ -596,14 +592,14 @@ namespace OpenSim.Region.OptionalModules.Materials
                                     }
                                     catch (Exception e)
                                     {
-                                        m_log.Warn("[Materials]: cannot decode \"ID\" from matsMap: " + e.Message);
+                                        m_log.Warn("cannot decode \"ID\" from matsMap: " + e.Message);
                                         continue;
                                     }
 
                                     SceneObjectPart sop = m_scene.GetSceneObjectPart(primLocalID);
                                     if (sop == null)
                                     {
-                                        m_log.WarnFormat("[Materials]: SOP not found for localId: {0}", primLocalID.ToString());
+                                        m_log.WarnFormat("SOP not found for localId: {0}", primLocalID.ToString());
                                         continue;
                                     }
 
@@ -611,7 +607,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                                     {
                                         if(!errorReported.Contains(primLocalID))
                                         {
-                                            m_log.WarnFormat("[Materials]: User {0} can't edit object {1} {2}", agentID, sop.Name, sop.UUID);
+                                            m_log.WarnFormat("User {0} can't edit object {1} {2}", agentID, sop.Name, sop.UUID);
                                             errorReported.Add(primLocalID);
                                         }
                                         continue;
@@ -624,14 +620,14 @@ namespace OpenSim.Region.OptionalModules.Materials
                                     }
                                     catch (Exception e)
                                     {
-                                        m_log.Warn("[Materials]: cannot decode \"Material\" from matsMap: " + e.Message);
+                                        m_log.Warn("cannot decode \"Material\" from matsMap: " + e.Message);
                                         continue;
                                     }
 
                                     Primitive.TextureEntry te = new Primitive.TextureEntry(sop.Shape.TextureEntry, 0, sop.Shape.TextureEntry.Length);
                                     if (te == null)
                                     {
-                                        m_log.WarnFormat("[Materials]: Error in TextureEntry for SOP {0} {1}", sop.Name, sop.UUID);
+                                        m_log.WarnFormat("Error in TextureEntry for SOP {0} {1}", sop.Name, sop.UUID);
                                         continue;
                                     }
 
@@ -678,7 +674,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                                     if (faceEntry != null)
                                     {
                                         faceEntry.MaterialID = id;
-                                        //m_log.DebugFormat("[Materials]: in \"{0}\" {1}, setting material ID for face {2} to {3}", sop.Name, sop.UUID, face, id);
+                                        //m_log.DebugFormat("in \"{0}\" {1}, setting material ID for face {2} to {3}", sop.Name, sop.UUID, face, id);
                                         // We can't use sop.UpdateTextureEntry(te) because it filters, so do it manually
                                         sop.Shape.TextureEntry = te.GetBytes(9);
                                     }
@@ -717,7 +713,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                             }
                             catch (Exception e)
                             {
-                                m_log.Warn("[Materials]: exception processing received material ", e);
+                                m_log.Warn("exception processing received material ", e);
                                 response.StatusCode = (int)HttpStatusCode.BadRequest;
                                 return;
                             }
@@ -726,7 +722,7 @@ namespace OpenSim.Region.OptionalModules.Materials
                 }
                 catch (Exception e)
                 {
-                    m_log.Warn("[Materials]: exception decoding zipped CAP payload ", e);
+                    m_log.Warn("exception decoding zipped CAP payload ", e);
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     return;
                 }
