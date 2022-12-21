@@ -27,31 +27,26 @@
 
 using System;
 using System.Timers;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Region.Framework.Interfaces;
-using OpenSim.Region.PhysicsModules.SharedBase;
-using OpenSim.Region.Framework.Scenes.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Runtime.Serialization;
 using Timer = System.Timers.Timer;
 using log4net;
+using ThreadedClasses;
 
 namespace OpenSim.Region.Framework.Scenes
 {
     public class KeyframeTimer
     {
-        private static Dictionary<Scene, KeyframeTimer> m_timers =
-                new Dictionary<Scene, KeyframeTimer>();
+        private static RwLockedDictionary<Scene, KeyframeTimer> m_timers =
+                new RwLockedDictionary<Scene, KeyframeTimer>();
 
         private Timer m_timer;
-        private Dictionary<KeyframeMotion, object> m_motions = new Dictionary<KeyframeMotion, object>();
+        private RwLockedDictionary<KeyframeMotion, object> m_motions = new RwLockedDictionary<KeyframeMotion, object>();
         private object m_lockObject = new object();
         private object m_timerLock = new object();
         private const double m_tickDuration = 50.0;
@@ -180,7 +175,7 @@ namespace OpenSim.Region.Framework.Scenes
     [Serializable]
     public class KeyframeMotion
     {
-        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public enum PlayMode : int
         {
