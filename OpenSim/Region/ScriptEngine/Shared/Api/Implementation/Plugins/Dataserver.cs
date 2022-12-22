@@ -43,8 +43,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         {
             get
             {
-                lock (DataserverRequests)
-                    return DataserverRequests.Count;
+                // AKIDO
+                return DataserverRequests.Count;
             }
         }
 
