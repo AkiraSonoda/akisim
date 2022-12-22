@@ -2017,7 +2017,6 @@
       <Reference name="OpenSim.Region.PhysicsModule.Meshing"/>
       <Reference name="OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet"/>
       <Reference name="Mono.Addins"/>
-      <Reference name="BulletXNA"/>
       <Reference name="log4net"/>
       <Reference name="ThreadedClasses"/>
 	  
