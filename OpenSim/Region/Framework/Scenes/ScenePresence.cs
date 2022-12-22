@@ -3662,10 +3662,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// Optional additional speed modifier for this particular add.  Default is 1</param>
         public void AddNewMovement(Vector3 vec, float thisAddSpeedModifier, bool breaking = false)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-               "Adding new movement {0} with rotation {1}, thisAddSpeedModifier {2} for {3}",
-                   vec, Rotation, thisAddSpeedModifier, Name);
-            
             m_delayedStop = -1;
             // rotate from avatar coord space to world
             Quaternion rot = Rotation;
