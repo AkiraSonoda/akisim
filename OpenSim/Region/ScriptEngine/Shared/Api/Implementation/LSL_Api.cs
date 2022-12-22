@@ -70,6 +70,7 @@ using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using PrimType = OpenSim.Region.Framework.Scenes.PrimType;
 using RegionFlags = OpenSim.Framework.RegionFlags;
 using RegionInfo = OpenSim.Framework.RegionInfo;
+using ThreadedClasses;
 
 #pragma warning disable IDE1006
 
@@ -247,7 +248,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         protected int m_msMaxInCastRay = 40;
         protected static List<CastRayCall> m_castRayCalls = new List<CastRayCall>();
         protected bool m_useMeshCacheInCastRay = true;
-        protected static Dictionary<ulong, FacetedMesh> m_cachedMeshes = new Dictionary<ulong, FacetedMesh>();
+        protected static RwLockedDictionary<ulong, FacetedMesh> m_cachedMeshes = // AKIDO
+            new RwLockedDictionary<ulong, FacetedMesh>();
 
 //        protected Timer m_ShoutSayTimer;
         protected int m_SayShoutCount = 0;
@@ -16103,10 +16105,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             if (m_useMeshCacheInCastRay)
                             {
                                 meshKey = part.Shape.GetMeshKey(Vector3.One, (float)(4 << lod));
-                                lock (m_cachedMeshes)
-                                {
-                                    m_cachedMeshes.TryGetValue(meshKey, out mesh);
-                                }
+                                // AKIDO
+                                m_cachedMeshes.TryGetValue(meshKey, out mesh);
+                                // AKIDO
                             }
 
                             // Create mesh if no cached mesh
@@ -16158,11 +16159,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 // Cache mesh if configured
                                 if (m_useMeshCacheInCastRay && mesh != null)
                                 {
-                                    lock(m_cachedMeshes)
-                                    {
-                                        if (!m_cachedMeshes.ContainsKey(meshKey))
-                                            m_cachedMeshes.Add(meshKey, mesh);
-                                    }
+                                    // AKIDO
+                                    if (!m_cachedMeshes.ContainsKey(meshKey))
+                                        m_cachedMeshes.Add(meshKey, mesh);
+                                    // AKIDO
                                 }
                             }
                             // Check mesh for ray hits
@@ -16218,10 +16218,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             FacetedMesh mesh = null;
                             if (m_useMeshCacheInCastRay)
                             {
-                                lock (m_cachedMeshes)
-                                {
-                                    m_cachedMeshes.TryGetValue(meshKey, out mesh);
-                                }
+                                // AKIDO
+                                m_cachedMeshes.TryGetValue(meshKey, out mesh);
+                                // AKIDO
                             }
 
                             // Create mesh if no cached mesh
@@ -16235,11 +16234,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 // Cache mesh if configured
                                 if (m_useMeshCacheInCastRay && mesh != null)
                                 {
-                                    lock(m_cachedMeshes)
-                                    {
-                                        if (!m_cachedMeshes.ContainsKey(meshKey))
-                                            m_cachedMeshes.Add(meshKey, mesh);
-                                    }
+                                    // AKIDO
+                                    if (!m_cachedMeshes.ContainsKey(meshKey))
+                                        m_cachedMeshes.Add(meshKey, mesh);
+                                    // AKIDO
                                 }
                             }
 
