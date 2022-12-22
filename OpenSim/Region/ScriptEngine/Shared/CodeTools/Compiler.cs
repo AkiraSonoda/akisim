@@ -129,7 +129,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
             AllowedCompilers.Clear();
 
 #if DEBUG
-            m_log.Debug("[Compiler]: Allowed languages: " + allowComp);
+            m_log.Debug("Allowed languages: " + allowComp);
 #endif
 
 
@@ -138,18 +138,18 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
                 string strlan = strl.Trim(" \t".ToCharArray()).ToLower();
                 if (!LanguageMapping.ContainsKey(strlan))
                 {
-                    m_log.Error("[Compiler]: Config error. Compiler is unable to recognize language type \"" + strlan + "\" specified in \"AllowedCompilers\".");
+                    m_log.Error("Config error. Compiler is unable to recognize language type \"" + strlan + "\" specified in \"AllowedCompilers\".");
                 }
                 else
                 {
 #if DEBUG
-                    //m_log.Debug("[Compiler]: Config OK. Compiler recognized language type \"" + strlan + "\" specified in \"AllowedCompilers\".");
+                    //m_log.Debug("Config OK. Compiler recognized language type \"" + strlan + "\" specified in \"AllowedCompilers\".");
 #endif
                 }
                 AllowedCompilers.Add(strlan, true);
             }
             if (AllowedCompilers.Count == 0)
-                m_log.Error("[Compiler]: Config error. Compiler could not recognize any language in \"AllowedCompilers\". Scripts will not be executed!");
+                m_log.Error("Config error. Compiler could not recognize any language in \"AllowedCompilers\". Scripts will not be executed!");
 
             // Default language
             string defaultCompileLanguage = m_scriptEngine.Config.GetString("DefaultCompileLanguage", "lsl").ToLower();
@@ -157,22 +157,19 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
             // Is this language recognized at all?
             if (!LanguageMapping.ContainsKey(defaultCompileLanguage))
             {
-                m_log.Error("[Compiler]: " +
-                                            "Config error. Default language \"" + defaultCompileLanguage + "\" specified in \"DefaultCompileLanguage\" is not recognized as a valid language. Changing default to: \"lsl\".");
+                m_log.Error("Config error. Default language \"" + defaultCompileLanguage + "\" specified in \"DefaultCompileLanguage\" is not recognized as a valid language. Changing default to: \"lsl\".");
                 defaultCompileLanguage = "lsl";
             }
 
             // Is this language in allow-list?
             if (!AllowedCompilers.ContainsKey(defaultCompileLanguage))
             {
-                m_log.Error("[Compiler]: " +
-                            "Config error. Default language \"" + defaultCompileLanguage + "\"specified in \"DefaultCompileLanguage\" is not in list of \"AllowedCompilers\". Scripts may not be executed!");
+                m_log.Error("Config error. Default language \"" + defaultCompileLanguage + "\"specified in \"DefaultCompileLanguage\" is not in list of \"AllowedCompilers\". Scripts may not be executed!");
             }
             else
             {
 #if DEBUG
-                //                m_log.Debug("[Compiler]: " +
-                //                                            "Config OK. Default language \"" + defaultCompileLanguage + "\" specified in \"DefaultCompileLanguage\" is recognized as a valid language.");
+                //                m_log.Debug("Config OK. Default language \"" + defaultCompileLanguage + "\" specified in \"DefaultCompileLanguage\" is recognized as a valid language.");
 #endif
                 // LANGUAGE IS IN ALLOW-LIST
                 DefaultCompileLanguage = LanguageMapping[defaultCompileLanguage];
@@ -194,7 +191,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
                 }
                 catch (Exception ex)
                 {
-                    m_log.Error("[Compiler]: Exception trying to create ScriptEngine directory \"" + ScriptEnginesPath + "\": " + ex.ToString());
+                    m_log.Error("Exception trying to create ScriptEngine directory \"" + ScriptEnginesPath + "\": " + ex.ToString());
                 }
             }
 
@@ -208,7 +205,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
                 }
                 catch (Exception ex)
                 {
-                    m_log.Error("[Compiler]: Exception trying to create ScriptEngine directory \"" + Path.Combine(ScriptEnginesPath,
+                    m_log.Error("Exception trying to create ScriptEngine directory \"" + Path.Combine(ScriptEnginesPath,
                                             m_scriptEngine.World.RegionInfo.RegionID.ToString()) + "\": " + ex.ToString());
                 }
             }
@@ -228,7 +225,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
                 }
                 catch (Exception ex)
                 {
-                    m_log.Error("[Compiler]: Exception trying delete old script file \"" + file + "\": " + ex.ToString());
+                    m_log.Error("Exception trying delete old script file \"" + file + "\": " + ex.ToString());
                 }
             }
             foreach (string file in Directory.GetFiles(Path.Combine(ScriptEnginesPath,
@@ -240,7 +237,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
                 }
                 catch (Exception ex)
                 {
-                    m_log.Error("[Compiler]: Exception trying delete old script file \"" + file + "\": " + ex.ToString());
+                    m_log.Error("Exception trying delete old script file \"" + file + "\": " + ex.ToString());
                 }
             }
         }
@@ -268,25 +265,19 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
             string source, string asset, UUID ownerUUID, bool alwaysRecompile,
             out string assembly, out Dictionary<KeyValuePair<int, int>, KeyValuePair<int, int>> linemap)
         {
-//            m_log.DebugFormat("[Compiler]: Checking script for asset {0} in {1}\n{2}", asset, m_scriptEngine.World.Name, source);
-
             IScriptModuleComms comms = m_scriptEngine.World.RequestModuleInterface<IScriptModuleComms>();
 
             linemap = null;
             m_warnings.Clear();
 
             assembly = GetCompilerOutput(asset);
-
-//            m_log.DebugFormat("[Compiler]: Retrieved assembly {0} for asset {1} in {2}", assembly, asset, m_scriptEngine.World.Name);
-
+            
             CheckOrCreateScriptsDirectory();
 
             // Don't recompile if we're not forced to and we already have it
             // Performing 3 file exists tests for every script can still be slow
             if (!alwaysRecompile && File.Exists(assembly) && File.Exists(assembly + ".text") && File.Exists(assembly + ".map"))
             {
-//                m_log.DebugFormat("[Compiler]: Found existing assembly {0} for asset {1} in {2}", assembly, asset, m_scriptEngine.World.Name);
-
                 // If we have already read this linemap file, then it will be in our dictionary.
                 // Don't build another copy of the dictionary (saves memory) and certainly
                 // don't keep reading the same file from disk multiple times.
@@ -295,8 +286,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
                 linemap = m_lineMaps[assembly];
                 return;
             }
-
-//            m_log.DebugFormat("[Compiler]: Compiling assembly {0} for asset {1} in {2}", assembly, asset, m_scriptEngine.World.Name);
 
             if (source.Length == 0)
                 throw new Exception("Cannot find script assembly and no script text present");
@@ -314,9 +303,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.CodeTools
             }
             if (source.StartsWith("//lsl", true, CultureInfo.InvariantCulture))
                 language = enumCompileType.lsl;
-
-//            m_log.DebugFormat("[Compiler]: Compile language is {0}", language);
-
+            
             if (!AllowedCompilers.ContainsKey(language.ToString()))
             {
                 // Not allowed to compile to this language!
@@ -484,8 +471,6 @@ namespace SecondLife
         /// <returns>Filename to .dll assembly</returns>
         internal string CompileFromDotNetText(string Script, enumCompileType lang, string asset, string assembly)
         {
-//            m_log.DebugFormat("[Compiler]: Compiling to assembly\n{0}", Script);
-
             string ext = "." + lang.ToString();
 
             // Output assembly name
@@ -519,7 +504,7 @@ namespace SecondLife
                 }
                 catch (Exception ex) //NOTLEGIT - Should be just FileIOException
                 {
-                    m_log.Error("[Compiler]: Exception while " +
+                    m_log.Error("Exception while " +
                                 "trying to write script source to file \"" +
                                 srcFileName + "\": " + ex.ToString());
                 }
@@ -667,10 +652,7 @@ namespace SecondLife
                     throw new Exception(errtext);
                 }
             }
-
-            //            m_log.DebugFormat("[Compiler] Compiled new assembly "+
-            //                    "for {0}", asset);
-
+            
             // Because windows likes to perform exclusive locks, we simply
             // write out a textual representation of the file here
             //
@@ -744,16 +726,13 @@ namespace SecondLife
 
             foreach (KeyValuePair<KeyValuePair<int, int>, KeyValuePair<int, int>> posmap in sorted)
             {
-                //m_log.DebugFormat("[Compiler]: Scanning line map {0},{1} --> {2},{3}", posmap.Key.Key, posmap.Key.Value, posmap.Value.Key, posmap.Value.Value);
                 int nl = posmap.Value.Key + line - posmap.Key.Key;      // New, translated LSL line and column.
                 int nc = posmap.Value.Value + col - posmap.Key.Value;
                 // Keep going until we find the first point passed line,col.
                 if (posmap.Key.Key > line)
                 {
-                  //m_log.DebugFormat("[Compiler]: Line is larger than requested {0},{1}, returning {2},{3}", line, col, l, c);
                   if (pl < line)
                   {
-                    //m_log.DebugFormat("[Compiler]: Previous line ({0}) is less than requested line ({1}), setting column to 1.", pl, line);
                     c = 1;
                   }
                   break;
@@ -763,12 +742,9 @@ namespace SecondLife
                   // Never move l,c backwards.
                   if (nl > l || (nl == l && nc > c))
                   {
-                    //m_log.DebugFormat("[Compiler]: Using offset relative to this: {0} + {1} - {2}, {3} + {4} - {5} = {6}, {7}",
-                    //    posmap.Value.Key, line, posmap.Key.Key, posmap.Value.Value, col, posmap.Key.Value, nl, nc);
                     l = nl;
                     c = nc;
                   }
-                  //m_log.DebugFormat("[Compiler]: Column is larger than requested {0},{1}, returning {2},{3}", line, col, l, c);
                   break;
                 }
                 pl = posmap.Key.Key;
