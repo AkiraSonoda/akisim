@@ -26,11 +26,8 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using OpenMetaverse;
-using OpenSim.Framework;
-using OpenSim.Data;
 using System.Reflection;
 using log4net;
 using ThreadedClasses;
@@ -41,7 +38,7 @@ namespace OpenSim.Data.Null
 {
     public class NullRegionData : IRegionData
     {
-        private static NullRegionData Instance = null;
+        private static NullRegionData Instance;
 
         /// <summary>
         /// Should we use the static instance for all invocations?
@@ -120,13 +117,13 @@ namespace OpenSim.Data.Null
 
             Matcher queryMatch;
             if (wildcardPrefix && wildcardSuffix)
-                queryMatch = delegate(string s) { return s.Contains(cleanName); };
+                queryMatch = s => s.Contains(cleanName); // AKIDO
             else if (wildcardSuffix)
-                queryMatch = delegate(string s) { return s.StartsWith(cleanName); };
+                queryMatch = s => s.StartsWith(cleanName); // AKIDO
             else if (wildcardPrefix)
-                queryMatch = delegate(string s) { return s.EndsWith(cleanName); };
+                queryMatch = s => s.EndsWith(cleanName); // AKIDO
             else
-                queryMatch = delegate(string s) { return s.Equals(cleanName); };
+                queryMatch = s => s.Equals(cleanName); // AKIDO
 
             // Find region data
             List<RegionData> ret = new List<RegionData>();
