@@ -106,7 +106,6 @@ namespace OpenSim.Framework
             get { return m_texture; }
             set
             {
-//                m_log.DebugFormat("Set TextureEntry to {0}", value);
                 m_texture = value;
             }
         }
@@ -948,10 +947,6 @@ namespace OpenSim.Framework
                     {
                         AvatarAttachment att = new AvatarAttachment((OSDMap)attachs[i]);
                         AppendAttachment(att);
-
-                        //m_log.DebugFormat(
-                        //    "Unpacked attachment itemID {0}, assetID {1}, point {2}",
-                        //    att.ItemID, att.AssetID, att.AttachPoint);
                     }
                 }
             }
