@@ -41,6 +41,7 @@ using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Caps=OpenSim.Framework.Capabilities.Caps;
+// AKIDO: clean
 
 namespace OpenSim.Region.ClientStack.Linden
 {
