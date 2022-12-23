@@ -500,7 +500,7 @@ namespace OpenSim.Framework
 
         internal void AppendAttachment(AvatarAttachment attach)
         {
-            m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
                "Appending itemID={0}, assetID={1} at {2}",
                 attach.ItemID, attach.AssetID, attach.AttachPoint);
 
@@ -520,7 +520,7 @@ namespace OpenSim.Framework
 
         internal void ReplaceAttachment(AvatarAttachment attach)
         {
-            m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Replacing itemID={0}, assetID={1} at {2}",
                 attach.ItemID, attach.AssetID, attach.AttachPoint);
 
@@ -547,7 +547,7 @@ namespace OpenSim.Framework
         /// </returns>
         public bool SetAttachment(int attachpoint, UUID item, UUID asset)
         {
-            m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Setting attachment at {0} with item ID {1}, asset ID {2}",
                 attachpoint, item, asset);
 
@@ -567,13 +567,13 @@ namespace OpenSim.Framework
             AvatarAttachment existingAttachment = GetAttachmentForItem(item);
             if (existingAttachment != null)
             {
-                    m_log.DebugFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                         "Found existing attachment for {0}, asset {1} at point {2}",
                         existingAttachment.ItemID, existingAttachment.AssetID, existingAttachment.AttachPoint);
 
                 if (!existingAttachment.AssetID.IsZero() && existingAttachment.AttachPoint == (attachpoint & 0x7F))
                 {
-                    m_log.DebugFormat(
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
                         "Ignoring attempt to attach an already attached item {0} at point {1}",
                         item, attachpoint);
 
@@ -643,7 +643,7 @@ namespace OpenSim.Framework
                 int index = kvp.Value.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
                 if (index >= 0)
                 {
-                    m_log.DebugFormat(
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
                         "Detaching attachment {0}, index {1}, point {2}",
                         m_attachments[kvp.Key][index].ItemID, index, m_attachments[kvp.Key][index].AttachPoint);
 
