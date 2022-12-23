@@ -89,7 +89,8 @@ namespace OpenSim.Groups
 
             m_Enabled = true;
 
-            m_log.DebugFormat("[Groups]: Initializing {0} with LocalService {1}", this.Name, m_ServiceLocation);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Initializing {0} with LocalService {1}", this.Name, m_ServiceLocation);
         }
 
         public string Name
@@ -107,7 +108,9 @@ namespace OpenSim.Groups
             if (!m_Enabled)
                 return;
 
-            m_log.DebugFormat("[Groups]: Registering {0} with {1}", this.Name, scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering {0} with {1}", this.Name, scene.RegionInfo.RegionName);
+            
             scene.RegisterModuleInterface<IGroupsServicesConnector>(this);
             m_Scenes.Add(scene);
 
@@ -120,7 +123,7 @@ namespace OpenSim.Groups
                 return;
 
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             scene.UnregisterModuleInterface<IGroupsServicesConnector>(this);
@@ -133,7 +136,7 @@ namespace OpenSim.Groups
                 return;
 
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             if (m_UserManagement == null)
@@ -177,7 +180,7 @@ namespace OpenSim.Groups
         void OnCompleteMovementToRegion(IClientAPI client, bool arg2)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -206,7 +209,7 @@ namespace OpenSim.Groups
         {
 
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -225,7 +228,7 @@ namespace OpenSim.Groups
             bool openEnrollment, bool allowPublish, bool maturePublish, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             reason = string.Empty;
@@ -244,7 +247,7 @@ namespace OpenSim.Groups
         public ExtendedGroupRecord GetGroupRecord(string RequestingAgentID, UUID GroupID, string GroupName)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -286,7 +289,7 @@ namespace OpenSim.Groups
         public List<GroupMembersData> GetGroupMembers(string RequestingAgentID, UUID GroupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -320,7 +323,7 @@ namespace OpenSim.Groups
         public bool AddGroupRole(string RequestingAgentID, UUID groupID, UUID roleID, string name, string description, string title, ulong powers, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             reason = string.Empty;
@@ -338,7 +341,7 @@ namespace OpenSim.Groups
         public bool UpdateGroupRole(string RequestingAgentID, UUID groupID, UUID roleID, string name, string description, string title, ulong powers)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -356,7 +359,7 @@ namespace OpenSim.Groups
         public void RemoveGroupRole(string RequestingAgentID, UUID groupID, UUID roleID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -373,7 +376,7 @@ namespace OpenSim.Groups
         public List<GroupRolesData> GetGroupRoles(string RequestingAgentID, UUID groupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -407,7 +410,7 @@ namespace OpenSim.Groups
         public List<GroupRoleMembersData> GetGroupRoleMembers(string RequestingAgentID, UUID groupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -441,7 +444,7 @@ namespace OpenSim.Groups
         public bool AddAgentToGroup(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID, string token, out string reason)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -498,7 +501,7 @@ namespace OpenSim.Groups
         public void RemoveAgentFromGroup(string RequestingAgentID, string AgentID, UUID GroupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -521,7 +524,7 @@ namespace OpenSim.Groups
         public bool AddAgentToGroupInvite(string RequestingAgentID, UUID inviteID, UUID groupID, UUID roleID, string agentID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -536,7 +539,7 @@ namespace OpenSim.Groups
         public GroupInviteInfo GetAgentToGroupInvite(string RequestingAgentID, UUID inviteID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -546,7 +549,7 @@ namespace OpenSim.Groups
         public void RemoveAgentToGroupInvite(string RequestingAgentID, UUID inviteID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -556,7 +559,7 @@ namespace OpenSim.Groups
         public void AddAgentToGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -569,7 +572,7 @@ namespace OpenSim.Groups
         public void RemoveAgentFromGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -581,7 +584,7 @@ namespace OpenSim.Groups
         public List<GroupRolesData> GetAgentGroupRoles(string RequestingAgentID, string AgentID, UUID GroupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -595,7 +598,7 @@ namespace OpenSim.Groups
         public void SetAgentActiveGroup(string RequestingAgentID, string AgentID, UUID GroupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -608,7 +611,7 @@ namespace OpenSim.Groups
         public ExtendedGroupMembershipData GetAgentActiveMembership(string RequestingAgentID, string AgentID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -618,7 +621,7 @@ namespace OpenSim.Groups
         public void SetAgentActiveGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -630,7 +633,7 @@ namespace OpenSim.Groups
         public void UpdateMembership(string RequestingAgentID, string AgentID, UUID GroupID, bool AcceptNotices, bool ListInProfile)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             m_LocalGroupsConnector.UpdateMembership(AgentUUI(RequestingAgentID), AgentUUI(AgentID), GroupID, AcceptNotices, ListInProfile);
@@ -639,7 +642,7 @@ namespace OpenSim.Groups
         public ExtendedGroupMembershipData GetAgentGroupMembership(string RequestingAgentID, string AgentID, UUID GroupID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -653,7 +656,7 @@ namespace OpenSim.Groups
         public List<GroupMembershipData> GetAgentGroupMemberships(string RequestingAgentID, string AgentID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             return m_LocalGroupsConnector.GetAgentGroupMemberships(AgentUUI(RequestingAgentID), AgentUUI(AgentID));
@@ -663,7 +666,7 @@ namespace OpenSim.Groups
             bool hasAttachment, byte attType, string attName, UUID attItemID, string attOwnerID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             string url = string.Empty, gname = string.Empty;
@@ -713,7 +716,7 @@ namespace OpenSim.Groups
         public GroupNoticeInfo GetGroupNotice(string RequestingAgentID, UUID noticeID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             GroupNoticeInfo notice = m_LocalGroupsConnector.GetGroupNotice(AgentUUI(RequestingAgentID), noticeID);
@@ -736,7 +739,7 @@ namespace OpenSim.Groups
         private string AgentUUI(string AgentIDStr)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -766,7 +769,7 @@ namespace OpenSim.Groups
         private string AgentUUIForOutside(string AgentIDStr)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
 
@@ -790,10 +793,9 @@ namespace OpenSim.Groups
         private UUID ImportForeigner(string uID)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
-
-
+            
             UUID userID = UUID.Zero;
             string url = string.Empty, first = string.Empty, last = string.Empty, tmp = string.Empty;
             if (Util.ParseUniversalUserIdentifier(uID, out userID, out url, out first, out last, out tmp))
@@ -805,7 +807,7 @@ namespace OpenSim.Groups
         private bool IsLocal(UUID groupID, out string serviceLocation, out string name)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             serviceLocation = string.Empty;
@@ -816,21 +818,19 @@ namespace OpenSim.Groups
             ExtendedGroupRecord group = m_LocalGroupsConnector.GetGroupRecord(UUID.Zero.ToString(), groupID, string.Empty);
             if (group == null)
             {
-                //m_log.DebugFormat("[XXX]: IsLocal? group {0} not found -- no.", groupID);
                 return false;
             }
 
             serviceLocation = group.ServiceLocation;
             name = group.GroupName;
             bool isLocal = (group.ServiceLocation.Length == 0);
-            //m_log.DebugFormat("[XXX]: IsLocal? {0}", isLocal);
             return isLocal;
         }
 
         private GroupsServiceHGConnector GetConnector(string url)
         {
 			if (m_log.IsDebugEnabled) {
-				m_log.DebugFormat ("{0} called", System.Reflection.MethodBase.GetCurrentMethod ().Name);
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
 			}
 
             if (m_NetworkConnectors.ContainsKey(url))
