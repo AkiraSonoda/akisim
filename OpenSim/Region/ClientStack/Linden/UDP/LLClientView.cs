@@ -31,7 +31,6 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Reflection;
 using System.Runtime;
-using System.Text;
 using System.Threading;
 
 using log4net;
@@ -50,6 +49,7 @@ using AssetLandmark = OpenSim.Framework.AssetLandmark;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 using RegionFlags = OpenMetaverse.RegionFlags;
+// AKIDO: clean
 
 namespace OpenSim.Region.ClientStack.LindenUDP
 {
