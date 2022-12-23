@@ -182,19 +182,21 @@ namespace OpenSim.Framework.Capabilities
         /// <param name="handler"></param>
         public void RegisterHandler(string capName, IRequestHandler handler)
         {
-            m_log.DebugFormat("Registering handler for \"{0}\": path {1}", capName, handler.Path);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering handler for \"{0}\": path {1}", capName, handler.Path);
             m_capsHandlers[capName] = handler;
         }
 
         public void RegisterSimpleHandler(string capName, ISimpleStreamHandler handler, bool addToListener = true)
         {
-            m_log.DebugFormat("Registering handler for \"{0}\": path {1}", capName, handler.Path);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering handler for \"{0}\": path {1}", capName, handler.Path);
             m_capsHandlers.AddSimpleHandler(capName, handler, addToListener);
         }
 
         public void RegisterPollHandler(string capName, PollServiceEventArgs pollServiceHandler)
         {
-            m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Registering handler with name {0}, url {1} for {2}, region {3}",
                 capName, pollServiceHandler.Url, m_agentID, m_regionName);
 
