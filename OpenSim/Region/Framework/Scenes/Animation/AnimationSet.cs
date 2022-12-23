@@ -75,11 +75,19 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         {
             if (m_defaultAnimation.AnimID.Equals(animID))
                 return true;
-
-            for (int i = 0; i < m_animations.Count; ++i)
+            
+            m_AnimationsLock.AcquireReaderLock(-1);
+            try
             {
-                if (m_animations[i].AnimID.Equals(animID))
-                    return true;
+                for (int i = 0; i < m_animations.Count; ++i)
+                {
+                    if (m_animations[i].AnimID.Equals(animID))
+                        return true;
+                }
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseReaderLock();
             }
 
             return false;
@@ -90,7 +98,14 @@ namespace OpenSim.Region.Framework.Scenes.Animation
             m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
             try
             {
-                if (!HasAnimation(animID))
+                bool hasAnimation = false;
+                for (int i = 0; i < m_animations.Count; ++i)
+                {
+                    if (m_animations[i].AnimID == animID)
+                        hasAnimation = true;
+                }
+                
+                if (!hasAnimation)
                 {
                     m_animations.Add(new OpenSim.Framework.Animation(animID, sequenceNum, objectID));
                     return true;
@@ -300,7 +315,8 @@ namespace OpenSim.Region.Framework.Scenes.Animation
             OSDArray ret = new OSDArray();
             ret.Add(DefaultAnimation.PackUpdateMessage());
             ret.Add(ImplicitDefaultAnimation.PackUpdateMessage());
-            m_AnimationsLock.AcquireReaderLock(-1);
+            
+            m_AnimationsLock.AcquireReaderLock(-1); // AKIDO
             try
             {
                 foreach (OpenSim.Framework.Animation anim in m_animations)
