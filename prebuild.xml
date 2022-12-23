@@ -424,10 +424,12 @@
       <Reference name="OpenSim.Framework.Servers"/>
       <Reference name="OpenSim.Framework.Servers.HttpServer"/>
       <Reference name="OpenSim.Services.Interfaces"/>
-      <Reference name="OpenMetaverse" path="../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../bin/"/>
-      <Reference name="Nini" path="../../bin/"/>
-      <Reference name="log4net" path="../../bin/"/>
+      <Reference name="OpenMetaverse"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="Nini"/>
+      <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="false">
