@@ -31,6 +31,7 @@ using System.Linq;
 using System.Threading;
 using ThreadedClasses;
 using log4net;
+// AKIDO: clean
 
 namespace OpenSim.Framework.Monitoring
 {
@@ -194,7 +195,7 @@ namespace OpenSim.Framework.Monitoring
             foreach (ThreadWatchdogInfo twi in m_threads.Values)
             {
                 Thread t = twi.Thread;
-                m_log.DebugFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                    "Stop: Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
 
                 if (t.IsAlive)
@@ -214,7 +215,7 @@ namespace OpenSim.Framework.Monitoring
         public static void AddThread(ThreadWatchdogInfo info, string name, bool log = true)
         {
             if (log)
-                m_log.DebugFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "Started tracking thread {0}, ID {1}", name, info.Thread.ManagedThreadId);
 
             // AKIDO
@@ -249,7 +250,7 @@ namespace OpenSim.Framework.Monitoring
             if (m_threads.TryGetValue(threadID, out twi))
             {
                 if (log)
-                    m_log.DebugFormat(
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
                         "Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
 
                 twi.Cleanup();
