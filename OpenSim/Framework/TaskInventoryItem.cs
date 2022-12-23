@@ -37,7 +37,7 @@ namespace OpenSim.Framework
     /// </summary>
     public class TaskInventoryItem : ICloneable
     {
-        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// XXX This should really be factored out into some constants class.
@@ -355,9 +355,9 @@ namespace OpenSim.Framework
             set
             {
                 _ownerChanged = value;
-//                m_log.DebugFormat(
-//                    "[TASK INVENTORY ITEM]: Owner changed set {0} for {1} {2} owned by {3}",
-//                    _ownerChanged, Name, ItemID, OwnerID);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Owner changed set {0} for {1} {2} owned by {3}",
+                    _ownerChanged, Name, ItemID, OwnerID);
             }
         }
 
