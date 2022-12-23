@@ -1480,7 +1480,6 @@
       <Reference name="Mono.Addins"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
-      <Reference name="zlib.net"/>
       <Reference name="ThreadedClasses"/>
 	  
 
