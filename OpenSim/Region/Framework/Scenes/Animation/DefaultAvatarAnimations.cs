@@ -30,18 +30,19 @@ using System.Reflection;
 using System.Xml;
 using log4net;
 using OpenMetaverse;
+using ThreadedClasses;
 
 namespace OpenSim.Region.Framework.Scenes.Animation
 {
     public class DefaultAvatarAnimations
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public static readonly string DefaultAnimationsPath = "data/avataranimations.xml";
 
-        public static Dictionary<string, UUID> AnimsUUIDbyName = new Dictionary<string, UUID>();
-        public static Dictionary<UUID, string> AnimsNamesbyUUID = new Dictionary<UUID, string>();
-        public static Dictionary<UUID, string> AnimStateNames = new Dictionary<UUID, string>();
+        public static RwLockedDictionary<string, UUID> AnimsUUIDbyName = new RwLockedDictionary<string, UUID>();
+        public static RwLockedDictionary<UUID, string> AnimsNamesbyUUID = new RwLockedDictionary<UUID, string>();
+        public static RwLockedDictionary<UUID, string> AnimStateNames = new RwLockedDictionary<UUID, string>();
 
         static DefaultAvatarAnimations()
         {
@@ -54,35 +55,28 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// <returns></returns>
         private static void LoadAnimations(string path)
         {
-//            Dictionary<string, UUID> animations = new Dictionary<string, UUID>();
-
             using (XmlTextReader reader = new XmlTextReader(path))
             {
                 reader.DtdProcessing = DtdProcessing.Ignore;
                 XmlDocument doc = new XmlDocument();
                 doc.Load(reader);
-//                if (doc.DocumentElement != null)
-//                {
-                    foreach (XmlNode nod in doc.DocumentElement.ChildNodes)
+                foreach (XmlNode nod in doc.DocumentElement.ChildNodes)
+                {
+                    if (nod.Attributes["name"] != null)
                     {
-                        if (nod.Attributes["name"] != null)
-                        {
-                            string name = nod.Attributes["name"].Value;
-                            UUID id = (UUID)nod.InnerText;
-                            string animState = (string)nod.Attributes["state"].Value;
+                        string name = nod.Attributes["name"].Value;
+                        UUID id = (UUID)nod.InnerText;
+                        string animState = (string)nod.Attributes["state"].Value;
 
-                            AnimsUUIDbyName.Add(name, id);
-                            AnimsNamesbyUUID.Add(id, name);
-                            if (animState != "")
-                                AnimStateNames.Add(id, animState);
-
-//                            m_log.DebugFormat("[AVATAR ANIMATIONS]: Loaded {0} {1} {2}", id, name, animState);
-                        }
+                        AnimsUUIDbyName.Add(name, id);
+                        AnimsNamesbyUUID.Add(id, name);
+                        if (animState != "")
+                            AnimStateNames.Add(id, animState);
+                        
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Loaded {0} {1} {2}", id, name, animState);
                     }
-//                }
+                }
             }
-
-//            return animations;
         }
 
         /// <summary>
@@ -92,13 +86,14 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// <returns></returns>
         public static UUID GetDefaultAnimation(string name)
         {
-//            m_log.DebugFormat(
-//                "[AVATAR ANIMATIONS]: Looking for default avatar animation with name {0}", name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Looking for default avatar animation with name {0}", name);
+            
             UUID id;
             if (AnimsUUIDbyName.TryGetValue(name.ToUpper(), out id))
             {
-//                m_log.DebugFormat(
-//                    "[AVATAR ANIMATIONS]: Found {0} {1} in GetDefaultAvatarAnimation()", AnimsUUID[name], name);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Found {0} {1} in GetDefaultAvatarAnimation()", id, name);
 
                 return id;
             }
