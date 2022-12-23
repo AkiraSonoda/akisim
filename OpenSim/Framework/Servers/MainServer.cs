@@ -36,6 +36,7 @@ using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers.HttpServer;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Framework.Servers
 {
