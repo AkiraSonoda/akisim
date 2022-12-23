@@ -254,15 +254,7 @@ namespace OpenSim.Groups
             // Used for Notices and Group Invites/Accept/Reject
             sp.ControllingClient.OnInstantMessage -= OnInstantMessage;
         }
-        /*
-        private void OnRequestAvatarProperties(IClientAPI remoteClient, UUID avatarID)
-        {
-            if (m_debugEnabled) m_log.DebugFormat("{0} called", System.Reflection.MethodBase.GetCurrentMethod().Name);
 
-            GroupMembershipData[] avatarGroups = GetProfileListedGroupMemberships(remoteClient, avatarID);
-            remoteClient.SendAvatarGroupsReply(avatarID, avatarGroups);
-        }
-        */
         private void OnClientClosed(UUID AgentId, Scene scene)
         {
             if (m_debugEnabled) m_log.DebugFormat("{0} called", MethodBase.GetCurrentMethod().Name);
@@ -279,28 +271,6 @@ namespace OpenSim.Groups
                 client.OnUUIDGroupNameRequest -= HandleUUIDGroupNameRequest;
                 client.OnInstantMessage -= OnInstantMessage;
             }
-
-            /*
-            lock (m_ActiveClients)
-            {
-                if (m_ActiveClients.ContainsKey(AgentId))
-                {
-                    IClientAPI client = m_ActiveClients[AgentId];
-                    client.OnUUIDGroupNameRequest -= HandleUUIDGroupNameRequest;
-                    client.OnAgentDataUpdateRequest -= OnAgentDataUpdateRequest;
-                    client.OnDirFindQuery -= OnDirFindQuery;
-                    client.OnInstantMessage -= OnInstantMessage;
-
-                    m_ActiveClients.Remove(AgentId);
-                }
-                else
-                {
-                    if (m_debugEnabled) m_log.WarnFormat("Client closed that wasn't registered here.");
-                }
-
-        }
-        */
-
         }
 
         private void OnAgentDataUpdateRequest(IClientAPI remoteClient, UUID dataForAgentID, UUID sessionID)
@@ -349,7 +319,6 @@ namespace OpenSim.Groups
 
             string remoteAgentIDstr = remoteClient.AgentId.ToString();
 
-            //m_log.DebugFormat("IM From {0} to {1} msg {2} type {3}", im.fromAgentID, im.toAgentID, im.message, (InstantMessageDialog)im.dialog);
             // Group invitations
             if ((im.dialog == (byte)InstantMessageDialog.GroupInvitationAccept) || (im.dialog == (byte)InstantMessageDialog.GroupInvitationDecline))
             {
@@ -361,9 +330,7 @@ namespace OpenSim.Groups
                     if (m_debugEnabled) m_log.WarnFormat("Received an Invite IM for an invite that does not exist {0}.", inviteID);
                     return;
                 }
-
-                //m_log.DebugFormat("[XXX]: Invite is for Agent {0} to Group {1}.", inviteInfo.AgentID, inviteInfo.GroupID);
-
+                
                 UUID fromAgentID = new UUID(im.fromAgentID);
                 UUID invitee = UUID.Zero;
                 string tmp = string.Empty;
@@ -373,8 +340,6 @@ namespace OpenSim.Groups
                     // Accept
                     if (im.dialog == (byte)InstantMessageDialog.GroupInvitationAccept)
                     {
-                        //m_log.DebugFormat("[XXX]: Received an accept invite notice.");
-
                         // and the sessionid is the role
                         string reason = string.Empty;
                         if (!m_groupData.AddAgentToGroup(remoteAgentIDstr, invitee.ToString(), inviteInfo.GroupID, inviteInfo.RoleID, string.Empty, out reason))
@@ -517,7 +482,7 @@ namespace OpenSim.Groups
                 UUID noticeID = new UUID(im.imSessionID);
 
                 if (m_debugEnabled)
-                    m_log.DebugFormat("[xmlGROUPS]: Accepted notice {0} for {1}", noticeID, remoteClient.AgentId);
+                    m_log.DebugFormat("Accepted notice {0} for {1}", noticeID, remoteClient.AgentId);
 
                 if (noticeID.IsZero())
                     return;
@@ -530,7 +495,7 @@ namespace OpenSim.Groups
                 }
                 catch
                 {
-                    m_log.DebugFormat("[xmlGROUPS]: GroupNoticeInventoryAccepted failed to decode target folder");
+                    m_log.DebugFormat("GroupNoticeInventoryAccepted failed to decode target folder");
                     return;
                 }
 
@@ -594,7 +559,7 @@ namespace OpenSim.Groups
                     return;
 
                 if (m_debugEnabled)
-                    m_log.DebugFormat("[xmlGroups]: Deny inventory from {0} to {1}", giver, remoteAgentIDstr);
+                    m_log.DebugFormat("Deny inventory from {0} to {1}", giver, remoteAgentIDstr);
 
                 string message = String.Empty;
 
