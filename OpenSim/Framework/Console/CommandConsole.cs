@@ -38,6 +38,7 @@ using log4net;
 using OpenSim.Framework;
 using Nini.Config;
 using ThreadedClasses;
+// AKIDO: clear
 
 namespace OpenSim.Framework.Console
 {

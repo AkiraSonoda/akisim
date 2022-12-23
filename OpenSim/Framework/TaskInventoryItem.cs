@@ -29,6 +29,7 @@ using System;
 using System.Reflection;
 using log4net;
 using OpenMetaverse;
+// AKIDO: clear
 
 namespace OpenSim.Framework
 {
