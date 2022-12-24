@@ -40,9 +40,11 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors.Friends;
 using OpenSim.Server.Base;
+using ThreadedClasses;
 using FriendInfo = OpenSim.Services.Interfaces.FriendInfo;
 using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.Friends
 {
@@ -73,7 +75,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
 
         protected static readonly FriendInfo[] EMPTY_FRIENDS = new FriendInfo[0];
 
-        protected List<Scene> m_Scenes = new List<Scene>();
+        protected RwLockedList<Scene> m_Scenes = new RwLockedList<Scene>();
 
         protected IPresenceService m_PresenceService = null;
         protected IFriendsService m_FriendsService = null;
@@ -161,7 +163,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                     InitModule(config);
 
                     m_Enabled = true;
-                    m_log.DebugFormat("{0} enabled.", Name);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} enabled.", Name);
                 }
             }
         }
@@ -206,7 +208,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
             if (!m_Enabled)
                 return;
 
-            m_log.DebugFormat("AddRegion on {0}", Name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("AddRegion on {0}", Name);
 
             m_Scenes.Add(scene);
             scene.RegisterModuleInterface<IFriendsModule>(this);
@@ -405,7 +407,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 string firstname = "Unknown", lastname = "UserFMSFOIN";
                 if (!GetAgentInfo(client.Scene.RegionInfo.ScopeID, fid, out fromAgentID, out firstname, out lastname))
                 {
-                    m_log.DebugFormat("skipping malformed friend {0}", fid);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("skipping malformed friend {0}", fid);
                     continue;
                 }
 
@@ -483,14 +485,19 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
         /// </summary>
         public IClientAPI LocateClientObject(UUID agentID)
         {
-            lock (m_Scenes)
+            
+            try
             {
-                foreach (Scene scene in m_Scenes)
+                m_Scenes.ForEach(delegate(Scene scene)
                 {
                     ScenePresence presence = scene.GetScenePresence(agentID);
                     if (presence != null && !presence.IsDeleted && !presence.IsChildAgent)
-                        return presence.ControllingClient;
-                }
+                        throw new ReturnValueException<IClientAPI>(presence.ControllingClient);
+                });
+            }
+            catch(ReturnValueException<IClientAPI> e)
+            {
+                return e.Value;
             }
 
             return null;
