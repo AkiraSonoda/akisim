@@ -33,8 +33,8 @@ using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using System.Collections.Generic;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
 {
@@ -99,7 +99,7 @@ namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
             }
 
             if (m_enabled)
-                m_log.DebugFormat("module is enabled");
+                m_log.Debug("module is enabled");
         }
 
         // -----------------------------------------------------------------
