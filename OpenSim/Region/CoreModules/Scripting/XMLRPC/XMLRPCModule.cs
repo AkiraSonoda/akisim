@@ -27,7 +27,6 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
 using System.Threading;
@@ -42,6 +41,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Mono.Addins;
 using ThreadedClasses;
+// AKIDO: clean
 
 /*****************************************************
  *
