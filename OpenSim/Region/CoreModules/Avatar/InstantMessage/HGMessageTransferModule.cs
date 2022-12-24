@@ -40,6 +40,7 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors.Hypergrid;
 using OpenSim.Server.Handlers.Hypergrid;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
@@ -87,7 +88,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                 return;
 
             // AKIDO
-            m_log.DebugFormat("Message transfer module {0} active", Name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Message transfer module {0} active", Name);
             scene.RegisterModuleInterface<IMessageTransferModule>(this);
             m_Scenes.Add(scene);
             // AKIDO
@@ -138,7 +139,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             // Try root avatar first
             foreach (Scene scene in m_Scenes)
             {
-                m_log.DebugFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "Looking for root agent {0} in {1}",
                      toAgentID.ToString(), scene.RegionInfo.RegionName);
                 ScenePresence sp = scene.GetScenePresence(toAgentID);
@@ -148,7 +149,9 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                         achildsp = sp;
                     else
                     {
-                        m_log.DebugFormat("Delivering IM to root agent {0} {1}", sp.Name, toAgentID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "Delivering IM to root agent {0} {1}", sp.Name, toAgentID);
+                        
                         sp.ControllingClient.SendInstantMessage(im);
                         result(true);
                         return;
@@ -157,13 +160,17 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             }
             if(achildsp != null)
             {
-                m_log.DebugFormat("Delivering IM to child agent {0} {1}", achildsp.Name, toAgentID);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Delivering IM to child agent {0} {1}", achildsp.Name, toAgentID);
+                
                 achildsp.ControllingClient.SendInstantMessage(im);
                 result(true);
                 return;
             }
 
-            m_log.DebugFormat("Delivering IM to {0} via XMLRPC", im.toAgentID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Delivering IM to {0} via XMLRPC", im.toAgentID);
+            
             // Is the user a local user?
             string url = string.Empty;
             bool foreigner = false;
@@ -253,7 +260,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                 return;
             }
             
-            m_log.DebugFormat("[INSTANT MESSAGE]: Undeliverable");
+            m_log.Debug("[INSTANT MESSAGE]: Undeliverable");
             result(false);
         }
 
@@ -268,7 +275,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                 if (circuit.ServiceURLs.ContainsKey("HomeURI"))
                 {
                     string uasURL = circuit.ServiceURLs["HomeURI"].ToString();
-                    m_log.DebugFormat("getting UUI of user {0} from {1}", toAgent, uasURL);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("getting UUI of user {0} from {1}", toAgent, uasURL);
                     UserAgentServiceConnector uasConn = new UserAgentServiceConnector(uasURL);
 
                     string agentUUI = string.Empty;
@@ -307,7 +314,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         #region IInstantMessageSimConnector
         public bool SendInstantMessage(GridInstantMessage im)
         {
-            m_log.DebugFormat("Hook SendInstantMessage {0}", im.message);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Hook SendInstantMessage {0}", im.message);
             UUID agentID = new UUID(im.toAgentID);
             return SendIMToScene(im, agentID);
         }
