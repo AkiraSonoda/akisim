@@ -4445,7 +4445,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         public void SendAnimations(UUID[] animations, int[] seqs, UUID sourceAgentId, UUID[] objectIDs)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Sending animations for {0} to {1}", sourceAgentId, Name);
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat("Sending animations for {0} to {1}", sourceAgentId, Name);
 
             UDPPacketBuffer buf = m_udpServer.GetNewUDPBuffer(m_udpClient.RemoteEndPoint);
             byte[] data = buf.Data;
@@ -6745,8 +6745,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 rotation.Normalize();
                 angularVelocity = presence.AngularVelocity;
 
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+                // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                //     "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
 
                 attachPoint = presence.State;
                 collisionPlane = presence.CollisionPlane;
@@ -6966,8 +6966,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         protected void CreateAvatartImprovedTerseBlock(ScenePresence presence, byte[] data, ref int pos)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            //     "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
 
             //object block size
             data[pos++] = 60;
@@ -7034,8 +7034,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         protected unsafe void CreateAvatartImprovedTerseBlock(ScenePresence presence, ref byte* data)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            //     "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
 
             //object block size
             *data++ = 60;
