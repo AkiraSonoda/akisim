@@ -1104,8 +1104,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public virtual void AddUser(UUID uuid, string first, string last, string homeURL)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            //     "Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
 
             UserData oldUser;
             if (m_userCacheByID.TryGetValue(uuid, out oldUser))

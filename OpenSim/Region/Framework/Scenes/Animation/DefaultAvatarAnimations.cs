@@ -25,18 +25,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
 using System.Reflection;
 using System.Xml;
 using log4net;
 using OpenMetaverse;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes.Animation
 {
     public class DefaultAvatarAnimations
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public static readonly string DefaultAnimationsPath = "data/avataranimations.xml";
 
@@ -73,7 +73,7 @@ namespace OpenSim.Region.Framework.Scenes.Animation
                         if (animState != "")
                             AnimStateNames.Add(id, animState);
                         
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Loaded {0} {1} {2}", id, name, animState);
+                        // if(m_log.IsDebugEnabled) m_log.DebugFormat("Loaded {0} {1} {2}", id, name, animState);
                     }
                 }
             }
@@ -86,14 +86,14 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// <returns></returns>
         public static UUID GetDefaultAnimation(string name)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "Looking for default avatar animation with name {0}", name);
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            //     "Looking for default avatar animation with name {0}", name);
             
             UUID id;
             if (AnimsUUIDbyName.TryGetValue(name.ToUpper(), out id))
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Found {0} {1} in GetDefaultAvatarAnimation()", id, name);
+                // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                //     "Found {0} {1} in GetDefaultAvatarAnimation()", id, name);
 
                 return id;
             }
