@@ -37,6 +37,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using Timer = System.Timers.Timer;
 using log4net;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -175,7 +176,7 @@ namespace OpenSim.Region.Framework.Scenes
     [Serializable]
     public class KeyframeMotion
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public enum PlayMode : int
         {
