@@ -36,6 +36,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Mono.Addins;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 {
@@ -52,7 +53,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <summary>
         /// Each agent has its own singleton collection of transactions
         /// </summary>
-        private RwLockedDictionary<UUID, AgentAssetTransactions> AgentTransactions =
+        private RwLockedDictionary<UUID, AgentAssetTransactions> AgentTransactions = // AKIDO
             new RwLockedDictionary<UUID, AgentAssetTransactions>();
 
         #region Region Module interface
@@ -126,7 +127,9 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <param name="userID"></param>
         public void RemoveAgentAssetTransactions(UUID userID)
         {
-            m_log.DebugFormat("Removing agent asset transactions structure for agent {0}", userID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Removing agent asset transactions structure for agent {0}", userID);
+            
             AgentTransactions.Remove(userID);
         }
 
@@ -151,7 +154,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 string description, string name, sbyte invType,
                 sbyte type, byte wearableType, uint nextOwnerMask)
         {
-            m_log.DebugFormat("HandleItemCreationFromTransaction with item {0}", name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "HandleItemCreationFromTransaction with item {0}", name);
 
             AgentAssetTransactions transactions = GetUserTransactions(remoteClient.AgentId);
 
@@ -175,7 +179,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         public void HandleItemUpdateFromTransaction(IClientAPI remoteClient,
                 UUID transactionID, InventoryItemBase item)
         {
-            m_log.DebugFormat("HandleItemUpdateFromTransaction with item {0}", item.Name);
+            if(m_log.IsDebugEnabled)  m_log.DebugFormat(
+                "HandleItemUpdateFromTransaction with item {0}", item.Name);
 
             AgentAssetTransactions transactions = GetUserTransactions(remoteClient.AgentId);
 
@@ -198,7 +203,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         public void HandleTaskItemUpdateFromTransaction(
             IClientAPI remoteClient, SceneObjectPart part, UUID transactionID, TaskInventoryItem item)
         {
-            m_log.DebugFormat("HandleTaskItemUpdateFromTransaction with item {0} in {1} for {2} in {3}",
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "HandleTaskItemUpdateFromTransaction with item {0} in {1} for {2} in {3}",
                 item.Name, part.Name, remoteClient.Name, m_Scene.RegionInfo.RegionName);
 
             AgentAssetTransactions transactions =
@@ -221,7 +227,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 UUID assetID, UUID transactionID, sbyte type, byte[] data,
                 bool storeLocal, bool tempFile)
         {
-            m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "HandleUDPUploadRequest - assetID: {0}, transaction {1}, type {2}, storeLocal {3}, tempFile {4}, data.Length {5}",
                 assetID, transactionID, type, storeLocal, tempFile, data.Length);
 
@@ -274,7 +280,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         public void HandleXfer(IClientAPI remoteClient, ulong xferID,
                 uint packetID, byte[] data)
         {
-            m_log.Debug("HandleXfer - xferID: " + xferID + "  packetID: " + packetID + "  data length " + data.Length);
+            if(m_log.IsDebugEnabled) m_log.Debug("HandleXfer - xferID: " + xferID + "  packetID: " + packetID + "  data length " + data.Length);
             AgentAssetTransactions transactions = GetUserTransactions(remoteClient.AgentId);
             transactions.HandleXfer(xferID, packetID, data);
         }
