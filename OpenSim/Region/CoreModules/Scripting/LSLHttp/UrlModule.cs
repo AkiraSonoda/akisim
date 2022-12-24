@@ -43,6 +43,7 @@ using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 {
