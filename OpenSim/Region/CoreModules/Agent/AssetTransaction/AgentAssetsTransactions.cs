@@ -32,6 +32,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
 using System.Reflection;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 {
@@ -81,7 +82,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
             {
                 XferUploaders.ForEach(delegate(AssetXferUploader uploader) // AKIDO
                 {
-                    m_log.DebugFormat("In HandleXfer, inspect xfer upload with xfer id {0}", uploader.XferID);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                        "In HandleXfer, inspect xfer upload with xfer id {0}", uploader.XferID);
 
                     if (uploader.XferID == xferID)
                     {
@@ -98,7 +100,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 
             if (foundUploader != null)
             {
-                m_log.DebugFormat("Found xfer uploader for xfer id {0}, packet id {1}, data length {2}", 
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Found xfer uploader for xfer id {0}, packet id {1}, data length {2}", 
                     xferID, packetID, data.Length);
 
                 foundUploader.HandleXferPacket(xferID, packetID, data);
