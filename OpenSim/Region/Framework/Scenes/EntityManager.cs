@@ -26,12 +26,10 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
-using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
