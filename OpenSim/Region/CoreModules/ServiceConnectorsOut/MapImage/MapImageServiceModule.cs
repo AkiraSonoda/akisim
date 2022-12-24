@@ -26,13 +26,11 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.IO;
 using System.Timers;
 using System.Drawing;
 using System.Drawing.Imaging;
-
 using log4net;
 using Mono.Addins;
 using Nini.Config;
@@ -43,6 +41,7 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Server.Base;
 using OpenMetaverse;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 {
@@ -96,14 +95,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             int refreshminutes = Convert.ToInt32(config.GetString("RefreshTime"));
             if (refreshminutes < 0)
             {
-                m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: Negative refresh time given in config. Module disabled.");
+                m_log.WarnFormat("Negative refresh time given in config. Module disabled.");
                 return;
             }
 
             string service = config.GetString("LocalServiceModule", string.Empty);
             if (service.Length == 0)
             {
-                m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: No service dll given in config. Unable to proceed.");
+                m_log.WarnFormat("No service dll given in config. Unable to proceed.");
                 return;
             }
 
@@ -111,7 +110,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             m_MapService = ServerUtils.LoadPlugin<IMapImageService>(service, args);
             if (m_MapService == null)
             {
-                m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: Unable to load LocalServiceModule from {0}. MapService module disabled. Please fix the configuration.", service);
+                m_log.WarnFormat("Unable to load LocalServiceModule from {0}. MapService module disabled. Please fix the configuration.", service);
                 return;
             }
 
@@ -127,12 +126,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                 m_refreshTimer.Elapsed += new ElapsedEventHandler(HandleMaptileRefresh);
 
 
-                m_log.InfoFormat("[MAP IMAGE SERVICE MODULE]: enabled with refresh time {0} min and service object {1}",
+                m_log.InfoFormat("enabled with refresh time {0} min and service object {1}",
                              refreshminutes, service);
             }
             else
             {
-                m_log.InfoFormat("[MAP IMAGE SERVICE MODULE]: enabled with no refresh and service object {0}", service);
+                m_log.InfoFormat("enabled with no refresh and service object {0}", service);
             }
             m_enabled = true;
         }
@@ -182,7 +181,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             if (m_lastrefresh > 0 && Util.EnvironmentTickCountSubtract(m_lastrefresh) < m_refreshtime)
                 return;
 
-            m_log.DebugFormat("map refresh!");
+            m_log.Debug("map refresh!");
             // AKIDO
             foreach (IScene scene in m_scenes.Values)
             {
