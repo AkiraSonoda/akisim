@@ -38,6 +38,7 @@ using OpenSim.Services.Interfaces;
 using Mono.Addins;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.Friends
 {
@@ -190,7 +191,8 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
                 folderID = folder.ID;
             }
 
-            m_log.DebugFormat("Creating calling card for {0} in inventory of {1}", info.Name, userID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Creating calling card for {0} in inventory of {1}", info.Name, userID);
 
             InventoryItemBase item = new InventoryItemBase();
             item.AssetID = UUID.Zero;
