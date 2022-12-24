@@ -27,7 +27,7 @@
 using System;
 using System.Collections.Generic;
 using ThreadedClasses;
-
+// AKIDO: clean
 
 namespace OpenSim.Region.PhysicsModule.BulletS
 {
