@@ -34,9 +34,9 @@ using log4net;
 using Nini.Config;
 using OpenSim.Framework;
 using ThreadedClasses;
-
 using OpenSim.Region.Framework.Interfaces;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -406,7 +406,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="mod"></param>
         public void RegisterModuleInterface<M>(M mod)
         {
-//            m_log.DebugFormat("Registering interface {0}", typeof(M));
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Registering interface {0}", typeof(M));
 
             List<Object> l = null;
             if (!ModuleInterfaces.TryGetValue(typeof(M), out l))
