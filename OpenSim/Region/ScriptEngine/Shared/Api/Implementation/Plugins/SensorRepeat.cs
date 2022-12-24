@@ -32,6 +32,7 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 {
@@ -502,7 +503,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
             Action<ScenePresence> senseEntity = new Action<ScenePresence>(presence =>
             {
 //                m_log.DebugFormat(
-//                    "[SENSOR REPEAT]: Inspecting scene presence {0}, type {1} on sensor sweep for {2}, type {3}",
+//                    "Inspecting scene presence {0}, type {1} on sensor sweep for {2}, type {3}",
 //                    presence.Name, presence.PresenceType, ts.name, ts.type);
 
                 if ((ts.type & NPC) == 0 && presence.PresenceType == PresenceType.Npc)
@@ -511,7 +512,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                     if (npcData == null || !npcData.SenseAsAgent)
                     {
 //                        m_log.DebugFormat(
-//                            "[SENSOR REPEAT]: Discarding NPC {0} from agent sense sweep for script item id {1}",
+//                            "Discarding NPC {0} from agent sense sweep for script item id {1}",
 //                            presence.Name, ts.itemID);
                         return;
                     }
@@ -529,7 +530,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                         if (npcData != null && npcData.SenseAsAgent)
                         {
 //                            m_log.DebugFormat(
-//                                "[SENSOR REPEAT]: Discarding NPC {0} from non-agent sense sweep for script item id {1}",
+//                                "Discarding NPC {0} from non-agent sense sweep for script item id {1}",
 //                                presence.Name, ts.itemID);
                             return;
                         }
