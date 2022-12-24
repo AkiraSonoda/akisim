@@ -41,6 +41,7 @@ using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Caps=OpenSim.Framework.Capabilities.Caps;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Framework
 {
@@ -120,24 +121,16 @@ namespace OpenSim.Region.CoreModules.Framework
         public void CreateCaps(UUID agentId, uint circuitCode)
         {
             int ts = Util.EnvironmentTickCount();
-/*  this as no business here...
- * must be done elsewhere ( and is )
-            int flags = m_scene.GetUserFlags(agentId);
-
-            m_log.ErrorFormat("[CreateCaps]: banCheck {0} ", Util.EnvironmentTickCountSubtract(ts));
-
-            if (m_scene.RegionInfo.EstateSettings.IsBanned(agentId, flags))
-                return;
-*/
             string capsObjectPath = GetCapsPath(agentId);
             Caps caps;
             if (m_capsObjects.TryGetValue(circuitCode, out Caps oldCaps))
             {
                 if (capsObjectPath == oldCaps.CapsObjectPath)
                 {
-//                        m_log.WarnFormat(
-//                           "Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
-//                            agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
+                    m_log.WarnFormat(
+                        "Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
+                        agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
+                    
                     return;
                 }
                 else
@@ -155,26 +148,27 @@ namespace OpenSim.Region.CoreModules.Framework
                 }
             }
 
-//                m_log.DebugFormat(
-//                    "Adding capabilities for agent {0} in {1} with path {2}",
-//                    agentId, m_scene.RegionInfo.RegionName, capsObjectPath);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Adding capabilities for agent {0} in {1} with path {2}",
+                agentId, m_scene.RegionInfo.RegionName, capsObjectPath);
 
             caps = new Caps(MainServer.Instance, m_scene.RegionInfo.ExternalHostName,
                 (MainServer.Instance == null) ? 0 : MainServer.Instance.Port,
                 capsObjectPath, agentId, m_scene.RegionInfo.RegionName);
 
-            m_log.DebugFormat("New caps agent {0}, circuit {1}, path {2}, time {3} ", agentId,
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "New caps agent {0}, circuit {1}, path {2}, time {3} ", agentId,
                 circuitCode, caps.CapsObjectPath, Util.EnvironmentTickCountSubtract(ts));
 
             m_capsObjects[circuitCode] = caps;
             m_scene.EventManager.TriggerOnRegisterCaps(agentId, caps);
-//            m_log.ErrorFormat("[CreateCaps]: end {0} ", Util.EnvironmentTickCountSubtract(ts));
 
         }
 
         public void RemoveCaps(UUID agentId, uint circuitCode)
         {
-            m_log.DebugFormat("Remove caps for agent {0} in region {1}", agentId, m_scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Remove caps for agent {0} in region {1}", agentId, m_scene.RegionInfo.RegionName);
 
             // AKIDO
             if (!m_childrenSeeds.TryRemove(agentId, out ConcurrentDictionary<ulong, string> dummy)) {
