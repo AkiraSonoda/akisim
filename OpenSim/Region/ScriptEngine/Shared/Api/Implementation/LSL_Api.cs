@@ -71,6 +71,7 @@ using PrimType = OpenSim.Region.Framework.Scenes.PrimType;
 using RegionFlags = OpenSim.Framework.RegionFlags;
 using RegionInfo = OpenSim.Framework.RegionInfo;
 using ThreadedClasses;
+// AKIDO: clean
 
 #pragma warning disable IDE1006
 
