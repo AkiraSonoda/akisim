@@ -33,17 +33,14 @@ using System.Threading;
 using log4net;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-
-using OpenSim.Framework;
-
-using Animation = OpenSim.Framework.Animation;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes.Animation
 {
     [Serializable]
     public class AnimationSet
     {
-        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private OpenSim.Framework.Animation m_implicitDefaultAnimation = new OpenSim.Framework.Animation();
         private OpenSim.Framework.Animation m_defaultAnimation = new OpenSim.Framework.Animation();
@@ -203,9 +200,9 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// </summary>
         public bool TrySetDefaultAnimation(string anim, int sequenceNum, UUID objectID)
         {
-            //m_log.DebugFormat(
-            //    "[ANIMATION SET]: Setting default animation {0}, sequence number {1}, object id {2}",
-            //    anim, sequenceNum, objectID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Setting default animation {0}, sequence number {1}, object id {2}",
+                anim, sequenceNum, objectID);
 
             if (DefaultAvatarAnimations.AnimsUUIDbyName.TryGetValue(anim, out UUID id))
             {
