@@ -27,13 +27,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using OpenSim.Framework;
 using OpenSim.Region.PhysicsModules.SharedBase;
-
 using OMV = OpenMetaverse;
+// AKIDO: clean
 
 namespace OpenSim.Region.PhysicsModule.BulletS
 {
