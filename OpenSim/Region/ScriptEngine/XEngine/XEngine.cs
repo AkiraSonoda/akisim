@@ -28,17 +28,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security;
 using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Xml;
 using OpenMetaverse;
-using OpenMetaverse.StructuredData;
 using log4net;
 using Nini.Config;
 using Amib.Threading;
@@ -59,6 +56,7 @@ using System.Collections.Concurrent;
 using ScriptTimer = OpenSim.Region.ScriptEngine.Shared.Api.Plugins.ScriptTimer;
 using ScriptCompileQueue = System.Collections.Concurrent.ConcurrentQueue<object[]>;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.ScriptEngine.XEngine
 {
@@ -2455,8 +2453,8 @@ namespace OpenSim.Region.ScriptEngine.XEngine
             if (instance == null)
                 return false;
 
-           instance.Suspend();
-           return true;
+            instance.Suspend();
+            return true;
         }
 
         public bool ResumeScript(UUID itemID)
