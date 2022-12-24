@@ -28,8 +28,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using OpenSim.Framework;
@@ -41,6 +39,7 @@ using Nini.Config;
 using log4net;
 using OpenMetaverse;
 using Mono.Addins;
+// AKIDO: clean
 
 namespace OpenSim.Region.PhysicsModule.BulletS
 {
@@ -48,7 +47,6 @@ namespace OpenSim.Region.PhysicsModule.BulletS
     public sealed class BSScene : PhysicsScene, IPhysicsParameters, INonSharedRegionModule
     {
         internal static readonly ILog m_log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-        internal static readonly string LogHeader = "[BULLETS SCENE]";
 
         private bool m_Enabled = false;
         private IConfigSource m_Config;
@@ -284,7 +282,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             mesher = scene.RequestModuleInterface<IMesher>();
             if (mesher == null)
-                m_log.WarnFormat("{0} No mesher. Things will not work well.", LogHeader);
+                m_log.Warn("No mesher. Things will not work well.");
 
             scene.PhysicsEnabled = true;
         }
@@ -313,7 +311,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             // Only use heightmap terrain implementation if terrain larger than legacy size
             if ((uint)regionExtent.X > Constants.RegionSize || (uint)regionExtent.Y > Constants.RegionSize)
             {
-                m_log.WarnFormat("{0} Forcing terrain implementation to heightmap for large region", LogHeader);
+                m_log.Warn("Forcing terrain implementation to heightmap for large region");
                 BSParam.TerrainImplementation = (float)BSTerrainPhys.TerrainImplementation.Heightmap;
             }
 
@@ -351,7 +349,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             TerrainManager.CreateInitialGroundPlaneAndTerrain();
 
             // Put some informational messages into the log file.
-            m_log.InfoFormat("{0} Linksets implemented with {1}", LogHeader, (BSLinkset.LinksetImplementation)BSParam.LinksetImplementation);
+            m_log.InfoFormat("Linksets implemented with {0}", (BSLinkset.LinksetImplementation)BSParam.LinksetImplementation);
 
             InSimulationTime = false;
             m_initialized = true;
@@ -462,11 +460,11 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             if (ret == null)
             {
-                m_log.ErrorFormat("{0} COULD NOT SELECT BULLET ENGINE: '[BulletSim]PhysicsEngine' must be either 'BulletUnmanaged-*' or 'BulletXNA-*'", LogHeader);
+                m_log.Error("COULD NOT SELECT BULLET ENGINE: '[BulletSim]PhysicsEngine' must be either 'BulletUnmanaged-*' or 'BulletXNA-*'");
             }
             else
             {
-                m_log.InfoFormat("{0} Selected bullet engine {1} -> {2}/{3}", LogHeader, engineName, ret.BulletEngineName, ret.BulletEngineVersion);
+                m_log.InfoFormat("Selected bullet engine {0} -> {1}/{2}", engineName, ret.BulletEngineName, ret.BulletEngineVersion);
             }
 
             return ret;
@@ -518,7 +516,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         public override PhysicsActor AddAvatar(string avName, Vector3 position, Vector3 velocity, Vector3 size, bool isFlying)
         {
-            m_log.ErrorFormat("{0}: CALL TO AddAvatar in BSScene. NOT IMPLEMENTED", LogHeader);
+            m_log.Error("CALL TO AddAvatar in BSScene. NOT IMPLEMENTED");
             return null;
         }
 
@@ -564,15 +562,15 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 }
                 catch (Exception e)
                 {
-                    m_log.WarnFormat("{0}: Attempt to remove avatar that is not in physics scene: {1}", LogHeader, e);
+                    m_log.WarnFormat("Attempt to remove avatar that is not in physics scene: {0}", e);
                 }
                 bsactor.Destroy();
                 // bsactor.dispose();
             }
             else
             {
-                m_log.ErrorFormat("{0}: Requested to remove avatar that is not a BSCharacter. ID={1}, type={2}",
-                                            LogHeader, actor.LocalID, actor.GetType().Name);
+                m_log.ErrorFormat("Requested to remove avatar that is not a BSCharacter. ID={0}, type={1}",
+                    actor.LocalID, actor.GetType().Name);
             }
         }
 
@@ -594,14 +592,14 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("{0}: Attempt to remove prim that is not in physics scene: {1}", LogHeader, e);
+                    m_log.ErrorFormat("Attempt to remove prim that is not in physics scene: {0}", e);
                 }
                 bsprim.Destroy();
                 // bsprim.dispose();
             }
             else
             {
-                m_log.ErrorFormat("{0}: Attempt to remove prim that is not a BSPrim type.", LogHeader);
+                m_log.Error("Attempt to remove prim that is not a BSPrim type.");
             }
         }
 
@@ -689,8 +687,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 }
                 catch (Exception e)
                 {
-                    m_log.WarnFormat("{0},PhysicsStep Exception: nTaints={1}, substeps={2}, updates={3}, colliders={4}, e={5}",
-                                LogHeader, numTaints, numSubSteps, updatedEntityCount, collidersCount, e);
+                    m_log.WarnFormat("PhysicsStep Exception: nTaints={0}, substeps={1}, updates={2}, colliders={3}, e={4}",
+                                numTaints, numSubSteps, updatedEntityCount, collidersCount, e);
                     DetailLog("{0},PhysicsStepException,call, nTaints={1}, substeps={2}, updates={3}, colliders={4}",
                                 DetailLogZero, numTaints, numSubSteps, updatedEntityCount, collidersCount);
                     updatedEntityCount = 0;
@@ -1298,7 +1296,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("{0}: ProcessTaints: {1}: Exception: {2}", LogHeader, tcbe.ident, e);
+                        m_log.ErrorFormat("ProcessTaints: {0}: Exception: {1}", tcbe.ident, e);
                     }
                 }
                 oldList.Clear();
@@ -1346,7 +1344,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("{0}: ProcessPostTaintTaints: {1}: Exception: {2}", LogHeader, kvp.Key, e);
+                        m_log.ErrorFormat("ProcessPostTaintTaints: {0}: Exception: {1}", kvp.Key, e);
                     }
                 }
                 oldList.Clear();
