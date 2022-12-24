@@ -37,6 +37,7 @@ using OpenMetaverse;
 using System.Linq;
 using System.Linq.Expressions;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
 {
@@ -93,7 +94,7 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
             m_scriptModule = scene.RequestModuleInterface<IScriptModule>();
 
             if (m_scriptModule != null)
-                m_log.Info("[MODULE COMMANDS]: Script engine found, module active");
+                m_log.Info("Script engine found, module active");
         }
 
         public string Name
@@ -166,7 +167,9 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
 
         public void RegisterScriptInvocation(object target, MethodInfo mi)
         {
-//            m_log.DebugFormat("[MODULE COMMANDS] Register method {0} from type {1}", mi.Name, (target is Type) ? ((Type)target).Name : target.GetType().Name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Register method {0} from type {1}", 
+                mi.Name, (target is Type) ? ((Type)target).Name : target.GetType().Name);
 
             Type delegateType = typeof(void);
             List<Type> typeArgs = mi.GetParameters()
@@ -186,7 +189,8 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("{0} Failed to create function signature. Most likely more than 5 parameters. Method={1}. Error={2}",
+                    m_log.ErrorFormat(
+                        "{0} Failed to create function signature. Most likely more than 5 parameters. Method={1}. Error={2}",
                         LogHeader, mi.Name, e);
                 }
             }
@@ -215,7 +219,7 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
             {
                 MethodInfo mi = GetMethodInfoFromType(target, method, false);
                 if (mi == null)
-                    m_log.WarnFormat("[MODULE COMMANDS] Failed to register method {0}", method);
+                    m_log.WarnFormat("Failed to register method {0}", method);
                 else
                     RegisterScriptInvocation(target, mi);
             }
@@ -270,7 +274,7 @@ namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
                 else if (sid.ReturnType == typeof(void))
                     return "modInvokeN";
 
-                m_log.WarnFormat("[MODULE COMMANDS] failed to find match for {0} with return type {1}", fname,
+                m_log.WarnFormat("failed to find match for {0} with return type {1}", fname,
                     sid.ReturnType.Name);
             }
 
