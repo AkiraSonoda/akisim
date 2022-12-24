@@ -78,7 +78,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void AddRegion(Scene scene)
         {
-            m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
 
             // AKIDO 
             m_scenes[scene.RegionInfo.RegionID] = scene;
@@ -96,7 +96,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void RemoveRegion(Scene scene)
         {
-            m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
             // AKIDO
             m_scenes.Remove(scene.RegionInfo.RegionID);
@@ -104,7 +104,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void RegionLoaded(Scene scene)
         {
-//            m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled)  m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
         }
 
         private ScenePresence GetUser(string firstName, string lastName)
