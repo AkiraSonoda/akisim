@@ -37,6 +37,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
 {
@@ -194,7 +195,8 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
                                 ids[new UUID(iddata, i + 1)] = (AssetType)im.binaryBucket[i];
                         }
 
-                        m_log.DebugFormat("offering folder {0} to agent {1}'s inventory",
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "offering folder {0} to agent {1}'s inventory",
                             folderID, recipientID);
 
                         InventoryFolderBase folderCopy = scene.GiveInventoryFolder(client, recipientID, agentID, folderID, UUID.Zero, ids);
@@ -222,9 +224,8 @@ namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer
                             return;
                         }
 
-                        m_log.DebugFormat("(giving) Inserting item {0} "+
-                                "into agent {1}'s inventory",
-                                itemID, recipientID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "(giving) Inserting item {0} into agent {1}'s inventory", itemID, recipientID);
 
                         string message;
                         InventoryItemBase itemCopy = scene.GiveInventoryItem(recipientID, agentID, itemID, out message);
