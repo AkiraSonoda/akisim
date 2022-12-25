@@ -39,6 +39,8 @@ using OpenSim.Region.Framework.Scenes;
 using log4net;
 using System.Reflection;
 using Mono.Addins;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 {
@@ -68,12 +70,13 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
         /// to work around this problem.</remarks>
         public bool ReuseLowDataTextures { get; set; }
 
-        private Dictionary<UUID, Scene> RegisteredScenes = new Dictionary<UUID, Scene>();
+        private RwLockedDictionary<UUID, Scene> RegisteredScenes = new RwLockedDictionary<UUID, Scene>();
 
-        private Dictionary<string, IDynamicTextureRender> RenderPlugins =
-            new Dictionary<string, IDynamicTextureRender>();
+        private RwLockedDictionary<string, IDynamicTextureRender> RenderPlugins = // AKIDO
+            new RwLockedDictionary<string, IDynamicTextureRender>();
 
-        private Dictionary<UUID, DynamicTextureUpdater> Updaters = new Dictionary<UUID, DynamicTextureUpdater>();
+        private RwLockedDictionary<UUID, DynamicTextureUpdater> Updaters = // AKIDO
+            new RwLockedDictionary<UUID, DynamicTextureUpdater>();
 
         /// <summary>
         /// Record dynamic textures that we can reuse for a given data and parameter combination rather than
@@ -113,19 +116,10 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
         {
             DynamicTextureUpdater updater = null;
 
-            lock (Updaters)
+            if(Updaters.TryGetValue(updaterId, out updater))
             {
-                if (Updaters.ContainsKey(updaterId))
+                if (RegisteredScenes.TryGetValue(updater.SimUUID, out Scene scene))
                 {
-                    updater = Updaters[updaterId];
-                }
-            }
-
-            if (updater != null)
-            {
-                if (RegisteredScenes.ContainsKey(updater.SimUUID))
-                {
-                    Scene scene = RegisteredScenes[updater.SimUUID];
                     UUID newTextureID = updater.DataReceived(texture.Data, scene);
 
                     if (ReuseTextures
@@ -136,14 +130,11 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                         m_reuseableDynamicTextures.Store(
                             GenerateReusableTextureKey(texture.InputCommands, texture.InputParams), newTextureID);
                     }
-                    updater.newTextureID = newTextureID;
                 }
 
-                lock (Updaters)
-                {
-                    if (Updaters.ContainsKey(updater.UpdaterID))
-                        Updaters.Remove(updater.UpdaterID);
-                }
+                // AKIDO
+                Updaters.Remove(updater.UpdaterID);
+                // AKIDO
             }
         }
 
@@ -199,12 +190,9 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                 updater.Face = face;
                 updater.Disp = disp;
 
-                lock (Updaters)
-                {
-                    if (!Updaters.ContainsKey(updater.UpdaterID))
-                    {
-                        Updaters.Add(updater.UpdaterID, updater);
-                    }
+                try {
+                    Updaters.Add(updater.UpdaterID, updater);
+                } catch {
                 }
 
                 RenderPlugins[contentType].AsyncConvertUrl(updater.UpdaterID, url, extraParams);
@@ -284,13 +272,7 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
             // We cannot reuse a dynamic texture if the data is going to be blended with something already there.
             if (objReusableTextureUUID == null)
             {
-                lock (Updaters)
-                {
-                    if (!Updaters.ContainsKey(updater.UpdaterID))
-                    {
-                        Updaters.Add(updater.UpdaterID, updater);
-                    }
-                }
+                Updaters.AddIfNotExists(updater.UpdaterID, delegate() { return updater; });
 
 //                m_log.DebugFormat(
 //                    "[DYNAMIC TEXTURE MODULE]: Requesting generation of new dynamic texture for {0} in {1}",
@@ -354,11 +336,10 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
         public void AddRegion(Scene scene)
         {
-            if (!RegisteredScenes.ContainsKey(scene.RegionInfo.RegionID))
-            {
-                RegisteredScenes.Add(scene.RegionInfo.RegionID, scene);
-                scene.RegisterModuleInterface<IDynamicTextureManager>(this);
-            }
+            // AKIDO
+            RegisteredScenes.Add(scene.RegionInfo.RegionID, scene);
+            scene.RegisterModuleInterface<IDynamicTextureManager>(this);
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -367,8 +348,8 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
         public void RemoveRegion(Scene scene)
         {
-            if (RegisteredScenes.ContainsKey(scene.RegionInfo.RegionID))
-                RegisteredScenes.Remove(scene.RegionInfo.RegionID);
+            // AKIDO
+            RegisteredScenes.Remove(scene.RegionInfo.RegionID);
         }
 
         public void Close()
@@ -575,9 +556,7 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat(
-                        "[DYNAMICTEXTUREMODULE]: OpenJpeg Encode Failed.  Exception {0}{1}",
-                            e.Message, e.StackTrace);
+                        m_log.ErrorFormat("OpenJpeg Encode Failed.  Exception {0}{1}", e.Message, e.StackTrace);
                     }
                     image1.Dispose();
                     return result;
@@ -605,9 +584,7 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat(
-                        "[DYNAMICTEXTUREMODULE]: OpenJpeg Encode Failed.  Exception {0}{1}",
-                            e.Message, e.StackTrace);
+                        m_log.ErrorFormat("OpenJpeg Encode Failed.  Exception {0}{1}", e.Message, e.StackTrace);
                     }
 
                     return result;
