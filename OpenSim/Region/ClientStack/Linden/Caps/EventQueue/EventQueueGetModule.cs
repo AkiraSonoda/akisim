@@ -159,10 +159,10 @@ namespace OpenSim.Region.ClientStack.Linden
             MainConsole.Instance.Output("Events in Scene {0} agents queues :", m_scene.Name);
 
             // AKIDO
-            foreach (KeyValuePair<UUID, ThreadedClasses.BlockingQueue<byte[]>> kvp in queues)
+            queues.ForEach(delegate(KeyValuePair<UUID, ThreadedClasses.BlockingQueue<byte[]>> kvp)
             {
                 MainConsole.Instance.Output("    {0}  {1}", kvp.Key, kvp.Value.Count);
-            }
+            });
             // AKIDO
         }
 
