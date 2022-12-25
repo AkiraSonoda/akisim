@@ -25,8 +25,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// AKIDO Modified
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,6 +36,8 @@ using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 {
@@ -49,7 +49,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private List<Scene> m_scenes = new List<Scene>();
+        private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>();
 
 //        private IAvatarFactoryModule m_avatarFactory;
 
@@ -81,16 +81,16 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
         {
 //            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes.Remove(scene);
+            // AKIDO
+            m_scenes.Remove(scene);
         }
 
         public void RegionLoaded(Scene scene)
         {
 //            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes.Add(scene);
+            // AKIDO
+            m_scenes.Add(scene);
 
             scene.AddCommand(
                 "Users", this, "show appearance",
@@ -167,14 +167,25 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                 optionalTargetLastName = cmd[3];
             }
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes)
             {
-                foreach (Scene scene in m_scenes)
+                if (targetNameSupplied)
                 {
-                    if (targetNameSupplied)
+                    ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
+                    if (sp != null && !sp.IsChildAgent)
                     {
-                        ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
-                        if (sp != null && !sp.IsChildAgent)
+                        MainConsole.Instance.Output(
+                            "Sending appearance information for {0} to all other avatars in {1}",
+                            sp.Name, scene.RegionInfo.RegionName);
+
+                        scene.AvatarFactory.SendAppearance(sp.UUID);
+                    }
+                }
+                else
+                {
+                    scene.ForEachRootScenePresence(
+                        sp =>
                         {
                             MainConsole.Instance.Output(
                                 "Sending appearance information for {0} to all other avatars in {1}",
@@ -182,22 +193,10 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
                             scene.AvatarFactory.SendAppearance(sp.UUID);
                         }
-                    }
-                    else
-                    {
-                        scene.ForEachRootScenePresence(
-                            sp =>
-                            {
-                                MainConsole.Instance.Output(
-                                    "Sending appearance information for {0} to all other avatars in {1}",
-                                    sp.Name, scene.RegionInfo.RegionName);
-
-                                scene.AvatarFactory.SendAppearance(sp.UUID);
-                            }
-                        );
-                    }
+                    );
                 }
             }
+            // AKIDO
         }
 
         private void HandleShowAppearanceCommand(string module, string[] cmd)
@@ -219,29 +218,29 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                 optionalTargetLastName = cmd[3];
             }
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes)
             {
-                foreach (Scene scene in m_scenes)
+                if (targetNameSupplied)
                 {
-                    if (targetNameSupplied)
-                    {
-                        ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
-                        if (sp != null && !sp.IsChildAgent)
-                            scene.AvatarFactory.WriteBakedTexturesReport(sp); // AKIDO
-                    }
-                    else
-                    {
-                        scene.ForEachRootScenePresence(
-                            sp =>
-                            {
-                                bool bakedTextureValid = scene.AvatarFactory.ValidateBakedTextureCache(sp);
-                                MainConsole.Instance.Output(
-                                    "{0} baked appearance texture is {1}", sp.Name, bakedTextureValid ? "OK" : "incomplete");
-                            }
-                        );
-                    }
+                    ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
+                    if (sp != null && !sp.IsChildAgent)
+                        scene.AvatarFactory.WriteBakedTexturesReport(sp); // AKIDO
+                }
+                else
+                {
+                    scene.ForEachRootScenePresence(
+                        sp =>
+                        {
+                            bool bakedTextureValid = scene.AvatarFactory.ValidateBakedTextureCache(sp);
+                            MainConsole.Instance.Output(
+                                "{0} baked appearance texture is {1}", sp.Name,
+                                bakedTextureValid ? "OK" : "incomplete");
+                        }
+                    );
                 }
             }
+            // AKIDO
         }
 
         private void HandleRebakeAppearanceCommand(string module, string[] cmd)
@@ -255,26 +254,25 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
             string firstname = cmd[2];
             string lastname = cmd[3];
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes)
             {
-                foreach (Scene scene in m_scenes)
+                ScenePresence sp = scene.GetScenePresence(firstname, lastname);
+                if (sp != null && !sp.IsChildAgent)
                 {
-                    ScenePresence sp = scene.GetScenePresence(firstname, lastname);
-                    if (sp != null && !sp.IsChildAgent)
-                    {
-                        int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, false);
+                    int rebakesRequested = scene.AvatarFactory.RequestRebake(sp, false);
 
-                        if (rebakesRequested > 0)
-                            MainConsole.Instance.Output(
-                                "Requesting rebake of {0} uploaded textures for {1} in {2}",
-                                rebakesRequested, sp.Name, scene.RegionInfo.RegionName);
-                        else
-                            MainConsole.Instance.Output(
-                                "No texture IDs available for rebake request for {0} in {1}",
-                                sp.Name, scene.RegionInfo.RegionName);
-                    }
+                    if (rebakesRequested > 0)
+                        MainConsole.Instance.Output(
+                            "Requesting rebake of {0} uploaded textures for {1} in {2}",
+                            rebakesRequested, sp.Name, scene.RegionInfo.RegionName);
+                    else
+                        MainConsole.Instance.Output(
+                            "No texture IDs available for rebake request for {0} in {1}",
+                            sp.Name, scene.RegionInfo.RegionName);
                 }
             }
+            // AKIDO
         }
 
         private void HandleFindAppearanceCommand(string module, string[] cmd)
@@ -289,22 +287,22 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             HashSet<ScenePresence> matchedAvatars = new HashSet<ScenePresence>();
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes)
             {
-                foreach (Scene scene in m_scenes)
-                {
-                    scene.ForEachRootScenePresence(
-                        sp =>
+                scene.ForEachRootScenePresence(
+                    sp =>
+                    {
+                        Dictionary<BakeType, Primitive.TextureEntryFace> bakedFaces =
+                            scene.AvatarFactory.GetBakedTextureFaces(sp.UUID);
+                        foreach (Primitive.TextureEntryFace face in bakedFaces.Values)
                         {
-                            Dictionary<BakeType, Primitive.TextureEntryFace> bakedFaces = scene.AvatarFactory.GetBakedTextureFaces(sp.UUID);
-                            foreach (Primitive.TextureEntryFace face in bakedFaces.Values)
-                            {
-                                if (face != null && face.TextureID.ToString().StartsWith(rawUuid))
-                                    matchedAvatars.Add(sp);
-                            }
-                        });
-                }
+                            if (face != null && face.TextureID.ToString().StartsWith(rawUuid))
+                                matchedAvatars.Add(sp);
+                        }
+                    });
             }
+            // AKIDO
 
             if (matchedAvatars.Count == 0)
             {
@@ -342,15 +340,14 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
             if (targetNameSupplied)
             {
-                lock (m_scenes)
+                // AKIDO
+                foreach (Scene scene in m_scenes)
                 {
-                    foreach (Scene scene in m_scenes)
-                    {
-                        ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
-                        if (sp != null && !sp.IsChildAgent)
-                            AppendWearablesDetailReport(sp, sb);
-                    }
+                    ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
+                    if (sp != null && !sp.IsChildAgent)
+                        AppendWearablesDetailReport(sp, sb);
                 }
+                // AKIDO
             }
             else
             {
@@ -358,23 +355,22 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
                 cdt.AddColumn("Name", ConsoleDisplayUtil.UserNameSize);
                 cdt.AddColumn("Wearables", 2);
 
-                lock (m_scenes)
+                // AKIDO
+                foreach (Scene scene in m_scenes)
                 {
-                    foreach (Scene scene in m_scenes)
-                    {
-                        scene.ForEachRootScenePresence(
-                            sp =>
-                            {
-                                int count = 0;
+                    scene.ForEachRootScenePresence(
+                        sp =>
+                        {
+                            int count = 0;
 
-                                for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
-                                    count += sp.Appearance.Wearables[i].Count;
+                            for (int i = (int)WearableType.Shape; i < (int)WearableType.Physics; i++)
+                                count += sp.Appearance.Wearables[i].Count;
 
-                                cdt.AddRow(sp.Name, count);
-                            }
-                        );
-                    }
+                            cdt.AddRow(sp.Name, count);
+                        }
+                    );
                 }
+                // AKIDO
 
                 sb.Append(cdt.ToString());
             }
@@ -396,68 +392,68 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
             StringBuilder sb = new StringBuilder();
             UuidGatherer uuidGatherer = new UuidGatherer(m_scenes[0].AssetService);
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes)
             {
-                foreach (Scene scene in m_scenes)
+                ScenePresence sp = scene.GetScenePresence(firstname, lastname);
+                if (sp != null && !sp.IsChildAgent)
                 {
-                    ScenePresence sp = scene.GetScenePresence(firstname, lastname);
-                    if (sp != null && !sp.IsChildAgent)
+                    sb.AppendFormat("Wearables checks for {0}\n\n", sp.Name);
+
+                    AvatarWearable[] wearables = sp.Appearance.Wearables;
+                    if (wearables.Length == 0)
                     {
-                        sb.AppendFormat("Wearables checks for {0}\n\n", sp.Name);
+                        MainConsole.Instance.Output("avatar has no wearables");
+                        return;
+                    }
 
-                        AvatarWearable[] wearables = sp.Appearance.Wearables;
-                        if(wearables.Length == 0)
-                        {
-                            MainConsole.Instance.Output("avatar has no wearables");
-                            return;
-                        }
-                        
-                        for (int i = 0; i < wearables.Length; i++)
-                        {
-                            AvatarWearable aw = wearables[i];
+                    for (int i = 0; i < wearables.Length; i++)
+                    {
+                        AvatarWearable aw = wearables[i];
 
-                            sb.Append(Enum.GetName(typeof(WearableType), i));
-                            sb.Append("\n");
-                            if (aw.Count > 0)
+                        sb.Append(Enum.GetName(typeof(WearableType), i));
+                        sb.Append("\n");
+                        if (aw.Count > 0)
+                        {
+                            for (int j = 0; j < aw.Count; j++)
                             {
-                                for (int j = 0; j < aw.Count; j++)
-                                {
-                                    WearableItem wi = aw[j];
+                                WearableItem wi = aw[j];
 
-                                    ConsoleDisplayList cdl = new ConsoleDisplayList();
-                                    cdl.Indent = 2;
-                                    cdl.AddRow("Item UUID", wi.ItemID);
-                                    cdl.AddRow("Assets", "");
-                                    sb.Append(cdl.ToString());
+                                ConsoleDisplayList cdl = new ConsoleDisplayList();
+                                cdl.Indent = 2;
+                                cdl.AddRow("Item UUID", wi.ItemID);
+                                cdl.AddRow("Assets", "");
+                                sb.Append(cdl.ToString());
 
-                                    uuidGatherer.AddForInspection(wi.AssetID);
-                                    uuidGatherer.GatherAll();
-                                    string[] assetStrings
-                                        = Array.ConvertAll<UUID, string>(uuidGatherer.GatheredUuids.Keys.ToArray(), u => u.ToString());
+                                uuidGatherer.AddForInspection(wi.AssetID);
+                                uuidGatherer.GatherAll();
+                                string[] assetStrings
+                                    = Array.ConvertAll<UUID, string>(uuidGatherer.GatheredUuids.Keys.ToArray(),
+                                        u => u.ToString());
 
-                                    bool[] existChecks = scene.AssetService.AssetsExist(assetStrings);
+                                bool[] existChecks = scene.AssetService.AssetsExist(assetStrings);
 
-                                    ConsoleDisplayTable cdt = new ConsoleDisplayTable();
-                                    cdt.Indent = 4;
-                                    cdt.AddColumn("Type", 10);
-                                    cdt.AddColumn("UUID", ConsoleDisplayUtil.UuidSize);
-                                    cdt.AddColumn("Found", 5);
+                                ConsoleDisplayTable cdt = new ConsoleDisplayTable();
+                                cdt.Indent = 4;
+                                cdt.AddColumn("Type", 10);
+                                cdt.AddColumn("UUID", ConsoleDisplayUtil.UuidSize);
+                                cdt.AddColumn("Found", 5);
 
-                                    for (int k = 0; k < existChecks.Length; k++)
-                                        cdt.AddRow(
-                                            (AssetType)uuidGatherer.GatheredUuids[new UUID(assetStrings[k])],
-                                            assetStrings[k], existChecks[k] ? "yes" : "no");
+                                for (int k = 0; k < existChecks.Length; k++)
+                                    cdt.AddRow(
+                                        (AssetType)uuidGatherer.GatheredUuids[new UUID(assetStrings[k])],
+                                        assetStrings[k], existChecks[k] ? "yes" : "no");
 
-                                    sb.Append(cdt.ToString());
-                                    sb.Append("\n");
-                                }
+                                sb.Append(cdt.ToString());
+                                sb.Append("\n");
                             }
-                            else
-                                sb.Append("  Empty\n");
                         }
+                        else
+                            sb.Append("  Empty\n");
                     }
                 }
             }
+            // AKIDO
 
             MainConsole.Instance.Output(sb.ToString());
         }
