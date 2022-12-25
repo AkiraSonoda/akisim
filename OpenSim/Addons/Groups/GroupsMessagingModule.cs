@@ -41,6 +41,7 @@ using OpenSim.Services.Interfaces;
 using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Groups
 {
@@ -77,7 +78,7 @@ namespace OpenSim.Groups
         /// until caches have updated.
         /// Therefore, we set the cache expiry to just 20 seconds.
         /// </remarks>
-        private OpenMetaverse.ExpiringCache<UUID, PresenceInfo[]> m_usersOnlineCache;
+        private ThreadedClasses.ExpiringCache<UUID, PresenceInfo[]> m_usersOnlineCache;
 
         private int m_usersOnlineCacheExpirySeconds = 20;
 
@@ -115,7 +116,7 @@ namespace OpenSim.Groups
 
             if (m_messageOnlineAgentsOnly)
             {
-                m_usersOnlineCache = new OpenMetaverse.ExpiringCache<UUID, PresenceInfo[]>();
+                m_usersOnlineCache = new ThreadedClasses.ExpiringCache<UUID, PresenceInfo[]>(30);
             }
             else
             {
