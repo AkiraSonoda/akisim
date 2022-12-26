@@ -30,16 +30,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-
 using Nwc.XmlRpc;
-
 using log4net;
 using Mono.Addins;
 using Nini.Config;
-
 using OpenMetaverse;
-using OpenMetaverse.StructuredData;
-
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
@@ -122,7 +117,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
         private IUserAccountService m_accountService = null;
 
-        private ExpiringCache<string, XmlRpcResponse> m_memoryCache;
+        private ExpiringCacheOS<string, XmlRpcResponse> m_memoryCache;
         private int m_cacheTimeout = 30;
 
         // Used to track which agents are have dropped from a group chat session
@@ -165,7 +160,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
                     return;
                 }
 
-                m_log.DebugFormat("[XMLRPC-GROUPS-CONNECTOR]: Initializing {0}", this.Name);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Initializing {0}", this.Name);
 
                 m_groupsServerURI = groupsConfig.GetString("GroupsServerURI", string.Empty);
                 if (string.IsNullOrEmpty(m_groupsServerURI))
@@ -184,17 +179,17 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
                 if (m_cacheTimeout == 0)
                 {
-                    m_log.WarnFormat("[XMLRPC-GROUPS-CONNECTOR]: Groups Cache Disabled.");
+                    m_log.WarnFormat("Groups Cache Disabled.");
                 }
                 else
                 {
-                    m_log.InfoFormat("[XMLRPC-GROUPS-CONNECTOR]: Groups Cache Timeout set to {0}.", m_cacheTimeout);
+                    m_log.InfoFormat("Groups Cache Timeout set to {0}.", m_cacheTimeout);
                 }
 
                 m_debugEnabled = groupsConfig.GetBoolean("DebugEnabled", false);
 
                 // If we got all the config options we need, lets start'er'up
-                m_memoryCache = new ExpiringCache<string, XmlRpcResponse>();
+                m_memoryCache = new ExpiringCacheOS<string, XmlRpcResponse>();
                 m_connectorEnabled = true;
             }
         }
@@ -959,8 +954,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
             if (resp == null)
             {
-                if (m_debugEnabled)
-                    m_log.DebugFormat("[XMLRPC-GROUPS-CONNECTOR]: Cache miss for key {0}", CacheKey);
+                if (m_debugEnabled) m_log.DebugFormat("Cache miss for key {0}", CacheKey);
 
                 string UserService;
                 UUID SessionID;
@@ -985,21 +979,21 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
                 catch (Exception e)
                 {
                     m_log.ErrorFormat(
-                        "[XMLRPC-GROUPS-CONNECTOR]: An error has occured while attempting to access the XmlRpcGroups server method {0} at {1}: {2}",
+                        "An error has occured while attempting to access the XmlRpcGroups server method {0} at {1}: {2}",
                         function, m_groupsServerURI, e.Message);
 
                     if(m_debugEnabled)
                     {
-                        m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0}", e.StackTrace);
+                        m_log.ErrorFormat("{0}", e.StackTrace);
 
                         foreach (string ResponseLine in req.RequestResponse.Split(new string[] { Environment.NewLine }, StringSplitOptions.None))
                         {
-                            m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} ", ResponseLine);
+                            m_log.ErrorFormat("{0} ", ResponseLine);
                         }
 
                         foreach (string key in param.Keys)
                         {
-                            m_log.WarnFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} :: {1}", key, param[key].ToString());
+                            m_log.WarnFormat("{0} :: {1}", key, param[key].ToString());
                         }
                     }
 
@@ -1029,21 +1023,21 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
                 return respData;
             }
 
-            m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: The XmlRpc server returned a {1} instead of a hashtable for {0}", function, resp.Value.GetType().ToString());
+            m_log.ErrorFormat("The XmlRpc server returned a {1} instead of a hashtable for {0}", function, resp.Value.GetType().ToString());
 
             if (resp.Value is ArrayList)
             {
                 ArrayList al = (ArrayList)resp.Value;
-                m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: Contains {0} elements", al.Count);
+                m_log.ErrorFormat("Contains {0} elements", al.Count);
 
                 foreach (object o in al)
                 {
-                    m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: {0} :: {1}", o.GetType().ToString(), o.ToString());
+                    m_log.ErrorFormat("{0} :: {1}", o.GetType().ToString(), o.ToString());
                 }
             }
             else
             {
-                m_log.ErrorFormat("[XMLRPC-GROUPS-CONNECTOR]: Function returned: {0}", resp.Value.ToString());
+                m_log.ErrorFormat("Function returned: {0}", resp.Value.ToString());
             }
 
             Hashtable error = new Hashtable();
@@ -1054,7 +1048,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
         private void LogRespDataToConsoleError(UUID requestingAgentID, string function, Hashtable param, Hashtable respData)
         {
             m_log.ErrorFormat(
-                "[XMLRPC-GROUPS-CONNECTOR]: Error when calling {0} for {1} with params {2}.  Response params are {3}",
+                "Error when calling {0} for {1} with params {2}.  Response params are {3}",
                 function, requestingAgentID, Util.PrettyFormatToSingleLine(param), Util.PrettyFormatToSingleLine(respData));
         }
 
