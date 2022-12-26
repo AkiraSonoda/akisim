@@ -25,21 +25,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Servers;
-using OpenSim.Framework.Client;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Mono.Addins;
-
-using OpenSim.Server.Base;
 using OpenSim.Services.Interfaces;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
@@ -50,7 +46,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         protected bool m_Enabled = false;
-        protected List<Scene> m_SceneList = new List<Scene>();
+        protected RwLockedList<Scene> m_SceneList = new RwLockedList<Scene>();
         protected IMuteListService m_service = null;
         private IUserManagement m_userManagementModule;
 
@@ -78,7 +74,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             IXfer xfer = scene.RequestModuleInterface<IXfer>();
             if (xfer == null)
             {
-                m_log.ErrorFormat("[MuteListModule]: Xfer not available in region {0}. Module Disabled", scene.Name);
+                m_log.ErrorFormat("Xfer not available in region {0}. Module Disabled", scene.Name);
                 m_Enabled = false;
                 return;
             }
@@ -86,7 +82,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             IMuteListService srv = scene.RequestModuleInterface<IMuteListService>();
             if(srv == null)
             {
-                m_log.ErrorFormat("[MuteListModule]: MuteListService not available in region {0}. Module Disabled", scene.Name);
+                m_log.ErrorFormat("MuteListService not available in region {0}. Module Disabled", scene.Name);
                 m_Enabled = false;
                 return;
             }
@@ -119,7 +115,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!m_Enabled)
                 return;
 
-            m_log.Debug("[MuteListModule]: enabled");
+            m_log.Debug("enabled");
         }
 
         public string Name
