@@ -25,19 +25,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors;
-
 using OpenMetaverse;
 using log4net;
 using Mono.Addins;
 using Nini.Config;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
 {
@@ -102,7 +100,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
 
                     m_ActivityDetector = new ActivityDetector(this);
 
-                    m_log.Info("[REMOTE GRID USER CONNECTOR]: Remote grid user enabled");
+                    m_log.Info("Remote grid user enabled");
                 }
             }
         }
@@ -123,7 +121,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
             scene.RegisterModuleInterface<IGridUserService>(this);
             m_ActivityDetector.AddRegion(scene);
 
-            m_log.InfoFormat("[REMOTE GRID USER CONNECTOR]: Enabled remote grid user for region {0}", scene.RegionInfo.RegionName);
+            m_log.InfoFormat("Enabled remote grid user for region {0}", scene.RegionInfo.RegionName);
 
         }
 
@@ -148,7 +146,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
 
         public GridUserInfo LoggedIn(string userID)
         {
-            m_log.Warn("[REMOTE GRID USER CONNECTOR]: LoggedIn not implemented at the simulators");
+            m_log.Warn("LoggedIn not implemented at the simulators");
             return null;
         }
 
