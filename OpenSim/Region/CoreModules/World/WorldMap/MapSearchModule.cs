@@ -36,13 +36,14 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.WorldMap
 {
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MapSearchModule")]
     public class MapSearchModule : ISharedRegionModule
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         IGridService m_gridservice = null;
         UUID m_stupidScope = UUID.Zero;
@@ -128,7 +129,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 if (!remoteClient.IsActive)
                     return;
 
-                //m_log.DebugFormat("[MAPSEARCHMODULE]: search {0} returned {1} regions", mapName, regionInfos.Count);
+                //m_log.DebugFormat("search {0} returned {1} regions", mapName, regionInfos.Count);
 
                 MapBlockData data;
                 if (regionInfos != null && regionInfos.Count > 0)
