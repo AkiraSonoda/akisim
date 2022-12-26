@@ -41,8 +41,8 @@ using OpenSim.Region.PhysicsModules.SharedBase;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OpenSim.Services.Interfaces;
 using TeleportFlags = OpenSim.Framework.Constants.TeleportFlags;
-
 using ACFlags = OpenMetaverse.AgentManager.ControlFlags;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -3091,16 +3091,15 @@ namespace OpenSim.Region.Framework.Scenes
                 TaskInventoryDictionary taskIDict = part.TaskInventory;
                 if (taskIDict != null)
                 {
-                    lock (taskIDict)
+                    // AKIDO
+                    foreach (UUID taskID in taskIDict.Keys)
                     {
-                        foreach (UUID taskID in taskIDict.Keys)
-                        {
-                            UnRegisterControlEventsToScript(LocalId, taskID);
-                            taskIDict[taskID].PermsMask &= ~(
-                                2048 | //PERMISSION_CONTROL_CAMERA
-                                4); // PERMISSION_TAKE_CONTROLS
-                        }
+                        UnRegisterControlEventsToScript(LocalId, taskID);
+                        taskIDict[taskID].PermsMask &= ~(
+                            2048 | //PERMISSION_CONTROL_CAMERA
+                            4); // PERMISSION_TAKE_CONTROLS
                     }
+                    // Akido
                 }
 
                 ControllingClient.SendClearFollowCamProperties(part.ParentUUID);
