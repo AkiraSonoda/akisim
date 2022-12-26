@@ -38,6 +38,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
+// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 {
