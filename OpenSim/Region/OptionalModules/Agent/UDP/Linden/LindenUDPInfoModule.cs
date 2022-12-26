@@ -35,11 +35,12 @@ using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Console;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.UDP.Linden
 {
@@ -54,7 +55,7 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        protected Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
+        protected RwLockedDictionary<UUID, Scene> m_scenes = new RwLockedDictionary<UUID, Scene>(); // AKIDO
 
         public string Name { get { return "Linden UDP Module"; } }
 
@@ -62,25 +63,25 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
 
         public void Initialise(IConfigSource source)
         {
-//            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: INITIALIZED MODULE");
+            m_log.Debug("INITIALIZED MODULE");
         }
 
         public void PostInitialise()
         {
-//            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: POST INITIALIZED MODULE");
+            m_log.Debug("POST INITIALIZED MODULE");
         }
 
         public void Close()
         {
-//            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: CLOSED MODULE");
+            m_log.DebugFormat("CLOSED MODULE");
         }
 
         public void AddRegion(Scene scene)
         {
-//            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes[scene.RegionInfo.RegionID] = scene;
+            // AKIDO
+            m_scenes[scene.RegionInfo.RegionID] = scene;
 
             scene.AddCommand(
                 "Comms", this, "show pqueues",
@@ -128,15 +129,15 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
 
         public void RemoveRegion(Scene scene)
         {
-//            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
+            m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes.Remove(scene.RegionInfo.RegionID);
+            //AKIDO
+            m_scenes.Remove(scene.RegionInfo.RegionID);
         }
 
         public void RegionLoaded(Scene scene)
         {
-//            m_log.DebugFormat("[LINDEN UDP INFO MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
         }
 
         protected string HandleImageQueuesClear(string[] cmd)
@@ -149,15 +150,14 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
 
             List<ScenePresence> foundAgents = new List<ScenePresence>();
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes.Values)
             {
-                foreach (Scene scene in m_scenes.Values)
-                {
-                    ScenePresence sp = scene.GetScenePresence(firstName, lastName);
-                    if (sp != null)
-                        foundAgents.Add(sp);
-                }
+                ScenePresence sp = scene.GetScenePresence(firstName, lastName);
+                if (sp != null)
+                    foundAgents.Add(sp);
             }
+            // AKIDO
 
             if (foundAgents.Count == 0)
                 return string.Format("No agents found for {0} {1}", firstName, lastName);
@@ -231,33 +231,32 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
                 "Pri 10",
                 "Pri 11");
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes.Values)
             {
-                foreach (Scene scene in m_scenes.Values)
-                {
-                    scene.ForEachClient(
-                        delegate(IClientAPI client)
+                scene.ForEachClient(
+                    delegate(IClientAPI client)
+                    {
+                        if (client is LLClientView)
                         {
-                            if (client is LLClientView)
-                            {
-                                bool isChild = client.SceneAgent.IsChildAgent;
-                                if (isChild && !showChildren)
-                                    return;
+                            bool isChild = client.SceneAgent.IsChildAgent;
+                            if (isChild && !showChildren)
+                                return;
 
-                                string name = client.Name;
-                                if (pname != "" && name != pname)
-                                    return;
+                            string name = client.Name;
+                            if (pname != "" && name != pname)
+                                return;
 
-                                string regionName = scene.RegionInfo.RegionName;
+                            string regionName = scene.RegionInfo.RegionName;
 
-                                report.Append(GetColumnEntry(name, maxNameLength, columnPadding));
-                                report.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
-                                report.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
-                                report.AppendLine(((LLClientView)client).EntityUpdateQueue.ToString());
-                            }
-                        });
-                }
+                            report.Append(GetColumnEntry(name, maxNameLength, columnPadding));
+                            report.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
+                            report.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
+                            report.AppendLine(((LLClientView)client).EntityUpdateQueue.ToString());
+                        }
+                    });
             }
+            // AKIDO
 
             return report.ToString();
         }
@@ -279,15 +278,14 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
 
             List<ScenePresence> foundAgents = new List<ScenePresence>();
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes.Values)
             {
-                foreach (Scene scene in m_scenes.Values)
-                {
-                    ScenePresence sp = scene.GetScenePresence(firstName, lastName);
-                    if (sp != null && (showChildAgents || !sp.IsChildAgent))
-                        foundAgents.Add(sp);
-                }
+                ScenePresence sp = scene.GetScenePresence(firstName, lastName);
+                if (sp != null && (showChildAgents || !sp.IsChildAgent))
+                    foundAgents.Add(sp);
             }
+            // AKIDO
 
             if (foundAgents.Count == 0)
                 return string.Format("No agents found for {0} {1}", firstName, lastName);
@@ -391,36 +389,34 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
                 "Texture",
                 "Asset");
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes.Values)
             {
-                foreach (Scene scene in m_scenes.Values)
-                {
-                    scene.ForEachClient(
-                        delegate(IClientAPI client)
+                scene.ForEachClient(
+                    delegate(IClientAPI client)
+                    {
+                        if (client is IStatsCollector)
                         {
-                            if (client is IStatsCollector)
-                            {
+                            bool isChild = client.SceneAgent.IsChildAgent;
+                            if (isChild && !showChildren)
+                                return;
 
-                                bool isChild = client.SceneAgent.IsChildAgent;
-                                if (isChild && !showChildren)
-                                    return;
+                            string name = client.Name;
+                            if (pname != "" && name != pname)
+                                return;
 
-                                string name = client.Name;
-                                if (pname != "" && name != pname)
-                                    return;
+                            string regionName = scene.RegionInfo.RegionName;
 
-                                string regionName = scene.RegionInfo.RegionName;
+                            report.Append(GetColumnEntry(name, maxNameLength, columnPadding));
+                            report.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
+                            report.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
 
-                                report.Append(GetColumnEntry(name, maxNameLength, columnPadding));
-                                report.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
-                                report.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
-
-                                IStatsCollector stats = (IStatsCollector)client;
-                                report.AppendLine(stats.Report());
-                            }
-                        });
-                }
+                            IStatsCollector stats = (IStatsCollector)client;
+                            report.AppendLine(stats.Report());
+                        }
+                    });
             }
+            // AKIDO
 
             return report.ToString();
         }
@@ -481,64 +477,62 @@ namespace OpenSim.Region.OptionalModules.UDP.Linden
 
             report.AppendLine();
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes.Values)
             {
-                foreach (Scene scene in m_scenes.Values)
-                {
-                    scene.ForEachClient(
-                        delegate(IClientAPI client)
+                scene.ForEachClient(
+                    delegate(IClientAPI client)
+                    {
+                        if (client is LLClientView)
                         {
-                            if (client is LLClientView)
-                            {
-                                LLClientView llClient = client as LLClientView;
+                            LLClientView llClient = client as LLClientView;
 
-                                bool isChild = client.SceneAgent.IsChildAgent;
-                                if (isChild && !showChildren)
-                                    return;
+                            bool isChild = client.SceneAgent.IsChildAgent;
+                            if (isChild && !showChildren)
+                                return;
 
-                                string name = client.Name;
-                                if (pname != "" && name != pname)
-                                    return;
+                            string name = client.Name;
+                            if (pname != "" && name != pname)
+                                return;
 
-                                string regionName = scene.RegionInfo.RegionName;
+                            string regionName = scene.RegionInfo.RegionName;
 
-                                LLUDPClient llUdpClient = llClient.UDPClient;
-                                ClientInfo ci = llUdpClient.GetClientInfo();
+                            LLUDPClient llUdpClient = llClient.UDPClient;
+                            ClientInfo ci = llUdpClient.GetClientInfo();
 
-                                report.Append(GetColumnEntry(name, maxNameLength, columnPadding));
-                                report.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
-                                report.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
+                            report.Append(GetColumnEntry(name, maxNameLength, columnPadding));
+                            report.Append(GetColumnEntry(regionName, maxRegionNameLength, columnPadding));
+                            report.Append(GetColumnEntry(isChild ? "Cd" : "Rt", maxTypeLength, columnPadding));
 
-                                report.AppendFormat(
-                                    "{0,8} {1,8} {2,7} {3,8} {4,7} {5,7} {6,7} {7,7} {8,9} {9,7}\n",
-                                    ci.maxThrottle > 0 ? ((ci.maxThrottle * 8) / 1000).ToString() : "-",
-                                    llUdpClient.FlowThrottle.AdaptiveEnabled
-                                        ? ((ci.targetThrottle * 8) / 1000).ToString()
-                                        : (llUdpClient.FlowThrottle.TotalDripRequest * 8 / 1000).ToString(),
-                                    (ci.totalThrottle * 8) / 1000,
-                                    (ci.resendThrottle * 8) / 1000,
-                                    (ci.landThrottle * 8) / 1000,
-                                    (ci.windThrottle * 8) / 1000,
-                                    (ci.cloudThrottle * 8) / 1000,
-                                    (ci.taskThrottle * 8) / 1000,
-                                    (ci.textureThrottle  * 8) / 1000,
-                                    (ci.assetThrottle  * 8) / 1000);
-                            }
-                        });
-                }
+                            report.AppendFormat(
+                                "{0,8} {1,8} {2,7} {3,8} {4,7} {5,7} {6,7} {7,7} {8,9} {9,7}\n",
+                                ci.maxThrottle > 0 ? ((ci.maxThrottle * 8) / 1000).ToString() : "-",
+                                llUdpClient.FlowThrottle.AdaptiveEnabled
+                                    ? ((ci.targetThrottle * 8) / 1000).ToString()
+                                    : (llUdpClient.FlowThrottle.TotalDripRequest * 8 / 1000).ToString(),
+                                (ci.totalThrottle * 8) / 1000,
+                                (ci.resendThrottle * 8) / 1000,
+                                (ci.landThrottle * 8) / 1000,
+                                (ci.windThrottle * 8) / 1000,
+                                (ci.cloudThrottle * 8) / 1000,
+                                (ci.taskThrottle * 8) / 1000,
+                                (ci.textureThrottle * 8) / 1000,
+                                (ci.assetThrottle * 8) / 1000);
+                        }
+                    });
             }
+            // AKIDO
 
             return report.ToString();
         }
 
         private void PrintRequests(string type, Dictionary<string, int> sortedDict, int sum)
         {
-            m_log.InfoFormat("[INFO]:");
-            m_log.InfoFormat("[INFO]: {0,25}", type);
+            m_log.InfoFormat("{0,25}", type);
             foreach (KeyValuePair<string, int> kvp in sortedDict.Take(12))
-                m_log.InfoFormat("[INFO]: {0,25} {1,-6}", kvp.Key, kvp.Value);
-            m_log.InfoFormat("[INFO]: {0,25}", "...");
-            m_log.InfoFormat("[INFO]: {0,25} {1,-6}", "Total", sum);
+                m_log.InfoFormat("{0,25} {1,-6}", kvp.Key, kvp.Value);
+            m_log.InfoFormat("{0,25}", "...");
+            m_log.InfoFormat("{0,25} {1,-6}", "Total", sum);
         }
     }
 }
