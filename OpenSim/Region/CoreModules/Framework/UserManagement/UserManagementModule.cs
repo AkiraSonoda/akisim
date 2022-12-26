@@ -321,8 +321,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         protected virtual void CacheCreators(SceneObjectGroup sog)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "processing {0} {1}; {2}", 
+            m_log.InfoFormat(
+                "CacheCreators - processing Name: {0}, CreatorID: {1}, CreatorDate: {2}", 
                 sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
             
             AddCreatorUser(sog.RootPart.CreatorID, sog.RootPart.CreatorData);
@@ -1163,7 +1163,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public virtual void AddCreatorUser(UUID id, string creatorData)
         {
-            if(m_log.IsDebugEnabled) m_log.InfoFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Adding user with id {0}, creatorData {1}", id, creatorData);
 
             if(string.IsNullOrEmpty(creatorData))
