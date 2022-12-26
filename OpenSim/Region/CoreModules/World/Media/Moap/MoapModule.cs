@@ -29,8 +29,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
-using System.Web;
-using System.Xml;
 using log4net;
 using Mono.Addins;
 using Nini.Config;
@@ -41,9 +39,9 @@ using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using OSDMap = OpenMetaverse.StructuredData.OSDMap;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.Media.Moap
 {
@@ -72,7 +70,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
             if (config != null && !config.GetBoolean("Enabled", false))
                 m_isEnabled = false;
 //            else
-//                m_log.Debug("[MOAP]: Initialised module.")l
+//                m_log.Debug("Initialised module.")l
         }
 
         public void AddRegion(Scene scene)
@@ -107,7 +105,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
         public void OnRegisterCaps(UUID agentID, Caps caps)
         {
 //            m_log.DebugFormat(
-//                "[MOAP]: Registering ObjectMedia and ObjectMediaNavigate capabilities for agent {0}", agentID);
+//                "Registering ObjectMedia and ObjectMediaNavigate capabilities for agent {0}", agentID);
 
 
             caps.RegisterSimpleHandler("ObjectMedia",
@@ -169,7 +167,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                 }
             }
 
-//            m_log.DebugFormat("[MOAP]: GetMediaEntry for {0} face {1} found {2}", part.Name, face, me);
+//            m_log.DebugFormat("GetMediaEntry for {0} face {1} found {2}", part.Name, face, me);
 
             return me;
         }
@@ -182,7 +180,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
         /// <param name="me">If null, then the media entry is cleared.</param>
         public void SetMediaEntry(SceneObjectPart part, int face, MediaEntry me)
         {
-//            m_log.DebugFormat("[MOAP]: SetMediaEntry for {0}, face {1}", part.Name, face);
+//            m_log.DebugFormat("SetMediaEntry for {0}, face {1}", part.Name, face);
 
             CheckFaceParam(part, face);
 
@@ -238,7 +236,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
         /// </summary>
         protected void HandleObjectMediaMessage(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, UUID agentID)
         {
-//            m_log.DebugFormat("[MOAP]: Got ObjectMedia path [{0}], raw request [{1}]", path, request);
+//            m_log.DebugFormat("Got ObjectMedia path [{0}], raw request [{1}]", path, request);
 
             try
             {
@@ -267,7 +265,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                 else
                 {
                     m_log.ErrorFormat(
-                        "[MOAP]: ObjectMediaMessage has unrecognized ObjectMediaBlock of {0}",
+                        "ObjectMediaMessage has unrecognized ObjectMediaBlock of {0}",
                         omm.Request.GetType());
                 }
             }
@@ -292,7 +290,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
             if (null == part)
             {
                 m_log.WarnFormat(
-                    "[MOAP]: Received a GET ObjectMediaRequest for prim {0} but this doesn't exist in region {1}",
+                    "Received a GET ObjectMediaRequest for prim {0} but this doesn't exist in region {1}",
                     primId, m_scene.RegionInfo.RegionName);
                 return string.Empty;
             }
@@ -340,7 +338,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
 
             string rawResp = OSDParser.SerializeLLSDXmlString(resp.Serialize());
 
-//            m_log.DebugFormat("[MOAP]: Got HandleObjectMediaRequestGet raw response is [{0}]", rawResp);
+//            m_log.DebugFormat("Got HandleObjectMediaRequestGet raw response is [{0}]", rawResp);
 
             return rawResp;
         }
@@ -359,24 +357,24 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
             if (null == part)
             {
                 m_log.WarnFormat(
-                    "[MOAP]: Received an UPDATE ObjectMediaRequest for prim {0} but this doesn't exist in region {1}",
+                    "Received an UPDATE ObjectMediaRequest for prim {0} but this doesn't exist in region {1}",
                     primId, m_scene.RegionInfo.RegionName);
                 return false;
             }
 
-//            m_log.DebugFormat("[MOAP]: Received {0} media entries for prim {1}", omu.FaceMedia.Length, primId);
+//            m_log.DebugFormat("Received {0} media entries for prim {1}", omu.FaceMedia.Length, primId);
 //
 //            for (int i = 0; i < omu.FaceMedia.Length; i++)
 //            {
 //                MediaEntry me = omu.FaceMedia[i];
 //                string v = (null == me ? "null": OSDParser.SerializeLLSDXmlString(me.GetOSD()));
-//                m_log.DebugFormat("[MOAP]: Face {0} [{1}]", i, v);
+//                m_log.DebugFormat("Face {0} [{1}]", i, v);
 //            }
 
             if (omu.FaceMedia.Length > part.GetNumberOfSides())
             {
                 m_log.WarnFormat(
-                    "[MOAP]: Received {0} media entries from client for prim {1} {2} but this prim has only {3} faces.  Dropping request.",
+                    "Received {0} media entries from client for prim {1} {2} but this prim has only {3} faces.  Dropping request.",
                     omu.FaceMedia.Length, part.Name, part.UUID, part.GetNumberOfSides());
                 return false;
             }
@@ -385,7 +383,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
 
             if (null == media)
             {
-//                m_log.DebugFormat("[MOAP]: Setting all new media list for {0}", part.Name);
+//                m_log.DebugFormat("Setting all new media list for {0}", part.Name);
                 part.Shape.Media = new PrimitiveBaseShape.MediaList(omu.FaceMedia);
 
                 for (int i = 0; i < omu.FaceMedia.Length; i++)
@@ -397,14 +395,14 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                         // directly.
                         SetPartMediaFlags(part, i, true);
 //                        m_log.DebugFormat(
-//                            "[MOAP]: Media flags for face {0} is {1}",
+//                            "Media flags for face {0} is {1}",
 //                            i, part.Shape.Textures.FaceTextures[i].MediaFlags);
                     }
                 }
             }
             else
             {
-//                m_log.DebugFormat("[MOAP]: Setting existing media list for {0}", part.Name);
+//                m_log.DebugFormat("Setting existing media list for {0}", part.Name);
 
                 // We need to go through the media textures one at a time to make sure that we have permission
                 // to change them
@@ -430,9 +428,9 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                             SetPartMediaFlags(part, i, true);
 
     //                        m_log.DebugFormat(
-    //                            "[MOAP]: Media flags for face {0} is {1}",
+    //                            "Media flags for face {0} is {1}",
     //                            i, face.MediaFlags);
-    //                        m_log.DebugFormat("[MOAP]: Set media entry for face {0} on {1}", i, part.Name);
+    //                        m_log.DebugFormat("Set media entry for face {0} on {1}", i, part.Name);
                         }
                     }
                 }
@@ -440,7 +438,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                 part.Shape.Textures = te;
 
 //                for (int i2 = 0; i2 < part.Shape.Textures.FaceTextures.Length; i2++)
-//                    m_log.DebugFormat("[MOAP]: FaceTexture[{0}] is {1}", i2, part.Shape.Textures.FaceTextures[i2]);
+//                    m_log.DebugFormat("FaceTexture[{0}] is {1}", i2, part.Shape.Textures.FaceTextures[i2]);
             }
 
             UpdateMediaUrl(part, agentId);
@@ -465,7 +463,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
         /// <returns></returns>
         protected void HandleObjectMediaNavigateMessage(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, UUID agentId)
         {
-//            m_log.DebugFormat("[MOAP]: Got ObjectMediaNavigate request [{0}]", request);
+//            m_log.DebugFormat("Got ObjectMediaNavigate request [{0}]", request);
 
             try
             {
@@ -485,7 +483,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                     if (null == part)
                     {
                         m_log.WarnFormat(
-                            "[MOAP]: Received an ObjectMediaNavigateMessage for prim {0} but this doesn't exist in region {1}",
+                            "Received an ObjectMediaNavigateMessage for prim {0} but this doesn't exist in region {1}",
                             primId, m_scene.RegionInfo.RegionName);
                     }
 
@@ -493,7 +491,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                         break;
 
                     //m_log.DebugFormat(
-                    //    "[MOAP]: Received request to update media entry for face {0} on prim {1} {2} to {3}",
+                    //    "Received request to update media entry for face {0} on prim {1} {2} to {3}",
                     //        omn.Face, part.Name, part.UUID, omn.URL);
 
                     // If media has never been set for this prim, then just return.
@@ -512,7 +510,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                         if (!CheckUrlAgainstWhitelist(omn.URL, me.WhiteList))
                         {
                             //m_log.DebugFormat(
-                            //    "[MOAP]: Blocking change of face {0} on prim {1} {2} to {3} since it's not on the enabled whitelist",
+                            //    "Blocking change of face {0} on prim {1} {2} to {3} since it's not on the enabled whitelist",
                             //    omn.Face, part.Name, part.UUID, omn.URL);
                             break;
                         }
@@ -582,7 +580,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                 part.MediaUrl = string.Format("x-mv:{0:D10}/{1}", ++version, updateId);
             }
 
-            //m_log.DebugFormat("[MOAP]: Storing media url [{0}] in prim {1} {2}", part.MediaUrl, part.Name, part.UUID);
+            //m_log.DebugFormat("Storing media url [{0}] in prim {1} {2}", part.MediaUrl, part.Name, part.UUID);
         }
 
         /// <summary>
@@ -606,7 +604,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
                 if (wlUrl.EndsWith("*"))
                     wlUrl = wlUrl.Remove(wlUrl.Length - 1);
 
-//                m_log.DebugFormat("[MOAP]: Checking whitelist URL pattern {0}", origWlUrl);
+//                m_log.DebugFormat("Checking whitelist URL pattern {0}", origWlUrl);
 
                 // Handle a line starting wildcard slightly differently since this can only match the domain, not the path
                 if (wlUrl.StartsWith("*"))
@@ -615,7 +613,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
 
                     if (url.Host.Contains(wlUrl))
                     {
-//                        m_log.DebugFormat("[MOAP]: Whitelist URL {0} matches {1}", origWlUrl, rawUrl);
+//                        m_log.DebugFormat("Whitelist URL {0} matches {1}", origWlUrl, rawUrl);
                         return true;
                     }
                 }
@@ -625,7 +623,7 @@ namespace OpenSim.Region.CoreModules.World.Media.Moap
 
                     if (urlToMatch.StartsWith(wlUrl))
                     {
-//                        m_log.DebugFormat("[MOAP]: Whitelist URL {0} matches {1}", origWlUrl, rawUrl);
+//                        m_log.DebugFormat("Whitelist URL {0} matches {1}", origWlUrl, rawUrl);
                         return true;
                     }
                 }
