@@ -28,16 +28,14 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-
 using OpenSim.Services.Interfaces;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OpenSim.Server.Base;
-using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
-
 using OpenMetaverse;
 using log4net;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.Estate
 {
@@ -187,15 +185,8 @@ namespace OpenSim.Region.CoreModules.World.Estate
         private bool Call(GridRegion region, Dictionary<string, object> sendData)
         {
             string reqString = ServerUtils.BuildQueryString(sendData);
-            // m_log.DebugFormat("[ESTATE CONNECTOR]: queryString = {0}", reqString);
             try
             {
-                //string url = "";
-                //if(region.HttpPort != 0)
-                //    url = "http://" + region.ExternalHostName + ":" + region.HttpPort + "/";
-                //else
-                //    url = region.ServerURI;
-
                 string reply = SynchronousRestFormsRequester.MakeRequest("POST",
                 //        url + "estate",
                         region.ServerURI + "estate",
@@ -207,11 +198,11 @@ namespace OpenSim.Region.CoreModules.World.Estate
                         return indx > 0;
                 }
                 else
-                    m_log.DebugFormat("[ESTATE CONNECTOR]: received empty reply");
+                    m_log.DebugFormat("received empty reply");
             }
             catch (Exception e)
             {
-                m_log.DebugFormat("[ESTATE CONNECTOR]: Exception when contacting remote sim: {0}", e.Message);
+                m_log.DebugFormat("Exception when contacting remote sim: {0}", e.Message);
             }
 
             return false;
