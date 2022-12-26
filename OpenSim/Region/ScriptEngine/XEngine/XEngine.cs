@@ -141,7 +141,7 @@ namespace OpenSim.Region.ScriptEngine.XEngine
 
         private string m_ScriptEnginesPath = null;
 
-        private OpenMetaverse.ExpiringCache<UUID, bool> m_runFlags = new OpenMetaverse.ExpiringCache<UUID, bool>();
+        private ExpiringCacheOS<UUID, bool> m_runFlags = new ExpiringCacheOS<UUID, bool>(240000);
 
         /// <summary>
         /// Is the entire simulator in the process of shutting down?
