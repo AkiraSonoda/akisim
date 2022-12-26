@@ -26,8 +26,6 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using log4net;
@@ -36,13 +34,12 @@ using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
-using OpenSim.Framework.Monitoring;
-using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Animation;
-using OpenSim.Services.Interfaces;
+using ThreadedClasses;
 using AnimationSet = OpenSim.Region.Framework.Scenes.Animation.AnimationSet;
+// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.Avatar.Animations
 {
@@ -52,9 +49,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.Animations
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AnimationsCommandModule")]
     public class AnimationsCommandModule : ISharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private List<Scene> m_scenes = new List<Scene>();
+        private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
 
         public string Name { get { return "Animations Command Module"; } }
 
@@ -62,38 +59,38 @@ namespace OpenSim.Region.OptionalModules.Avatar.Animations
 
         public void Initialise(IConfigSource source)
         {
-//            m_log.DebugFormat("[ANIMATIONS COMMAND MODULE]: INITIALIZED MODULE");
+            m_log.Debug("INITIALIZED MODULE");
         }
 
         public void PostInitialise()
         {
-//            m_log.DebugFormat("[ANIMATIONS COMMAND MODULE]: POST INITIALIZED MODULE");
+           m_log.Debug("POST INITIALIZED MODULE");
         }
 
         public void Close()
         {
-//            m_log.DebugFormat("[ANIMATIONS COMMAND MODULE]: CLOSED MODULE");
+            m_log.Debug("CLOSED MODULE");
         }
 
         public void AddRegion(Scene scene)
         {
-//            m_log.DebugFormat("[ANIMATIONS COMMAND MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
         {
-//            m_log.DebugFormat("[ATTACHMENTS COMMAND MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes.Remove(scene);
+            // AKIDO
+            m_scenes.Remove(scene);
         }
 
         public void RegionLoaded(Scene scene)
         {
-//            m_log.DebugFormat("[ANIMATIONS COMMAND MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes.Add(scene);
+            // AKIDO
+            m_scenes.Add(scene);
 
             scene.AddCommand(
                 "Users", this, "show animations",
@@ -126,22 +123,21 @@ namespace OpenSim.Region.OptionalModules.Avatar.Animations
 
             StringBuilder sb = new StringBuilder();
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes)
             {
-                foreach (Scene scene in m_scenes)
+                if (targetNameSupplied)
                 {
-                    if (targetNameSupplied)
-                    {
-                        ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
-                        if (sp != null && !sp.IsChildAgent)
-                            GetAttachmentsReport(sp, sb);
-                    }
-                    else
-                    {
-                        scene.ForEachRootScenePresence(sp => GetAttachmentsReport(sp, sb));
-                    }
+                    ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
+                    if (sp != null && !sp.IsChildAgent)
+                        GetAttachmentsReport(sp, sb);
+                }
+                else
+                {
+                    scene.ForEachRootScenePresence(sp => GetAttachmentsReport(sp, sb));
                 }
             }
+            // AKIDO
 
             MainConsole.Instance.Output(sb.ToString());
         }
