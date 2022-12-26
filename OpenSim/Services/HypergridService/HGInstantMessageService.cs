@@ -35,6 +35,7 @@ using OpenSim.Server.Base;
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
+// AKIDO: clean
 
 namespace OpenSim.Services.HypergridService
 {
