@@ -43,6 +43,8 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Services.Interfaces;
+using ThreadedClasses;
+
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.Archiver
@@ -153,7 +155,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <summary>
         /// Used to cache lookups for valid uuids.
         /// </summary>
-        private IDictionary<UUID, bool> m_validUserUuids = new Dictionary<UUID, bool>();
+        private RwLockedDictionary<UUID, bool> m_validUserUuids = new RwLockedDictionary<UUID, bool>(); // AKIDO
 
         private IUserManagement m_UserMan;
         private IUserManagement UserManager
@@ -171,7 +173,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <summary>
         /// Used to cache lookups for valid groups.
         /// </summary>
-        private IDictionary<UUID, bool> m_validGroupUuids = new Dictionary<UUID, bool>();
+        private RwLockedDictionary<UUID, bool> m_validGroupUuids = new RwLockedDictionary<UUID, bool>();
 
         private IGroupsModule m_groupsModule;
 
@@ -976,18 +978,13 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <returns></returns>
         private bool ResolveUserUuid(Scene scene, UUID uuid)
         {
-            lock (m_validUserUuids)
+            // AKIDO
+            return m_validUserUuids.GetOrAddIfNotExists(uuid, delegate()
             {
-                if (!m_validUserUuids.ContainsKey(uuid))
-                {
-                    // Note: we call GetUserAccount() inside the lock because this UserID is likely
-                    // to occur many times, and we only want to query the users service once.
-                    UserAccount account = scene.UserAccountService.GetUserAccount(scene.RegionInfo.ScopeID, uuid);
-                    m_validUserUuids.Add(uuid, account != null);
-                }
-
-                return m_validUserUuids[uuid];
-            }
+                UserAccount account = scene.UserAccountService.GetUserAccount(scene.RegionInfo.ScopeID, uuid);
+                return account != null;
+            });
+            // AKIDO
         }
 
         /// <summary>
@@ -997,26 +994,14 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <returns></returns>
         private bool ResolveGroupUuid(UUID uuid)
         {
-            lock (m_validGroupUuids)
+            if (m_groupsModule == null) // AKIDO
             {
-                if (!m_validGroupUuids.ContainsKey(uuid))
-                {
-                    bool exists;
-                    if (m_groupsModule == null)
-                    {
-                        exists = false;
-                    }
-                    else
-                    {
-                        // Note: we call GetGroupRecord() inside the lock because this GroupID is likely
-                        // to occur many times, and we only want to query the groups service once.
-                        exists = (m_groupsModule.GetGroupRecord(uuid) != null);
-                    }
-                    m_validGroupUuids.Add(uuid, exists);
-                }
-
-                return m_validGroupUuids[uuid];
+                return false;
             }
+            return m_validGroupUuids.GetOrAddIfNotExists(uuid, delegate()
+            {
+                return (m_groupsModule.GetGroupRecord(uuid) != null);
+            });
         }
 
         private bool TryUploadAsset(UUID assetID, sbyte assetType, byte[] data)
