@@ -1636,12 +1636,12 @@
       <Reference name="System.Web"/>
       <Reference name="System.Data"/>
       <Reference name="Microsoft.CSharp" />
-      <Reference name="NDesk.Options" path="../../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../../bin/"/>
-      <Reference name="OpenMetaverse.StructuredData" path="../../../bin/"/>
-      <Reference name="OpenMetaverse" path="../../../bin/"/>
-      <Reference name="CSJ2K" path="../../../bin/"/>
-      <Reference name="Warp3D" path="../../../bin/"/>
+      <Reference name="NDesk.Options"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="OpenMetaverse.StructuredData"/>
+      <Reference name="OpenMetaverse"/>
+      <Reference name="CSJ2K"/>
+      <Reference name="Warp3D"/>
       <Reference name="OpenSim.Capabilities"/>
       <Reference name="OpenSim.Framework"/>
       <Reference name="OpenSim.Framework.Console"/>
@@ -1659,9 +1659,9 @@
       <Reference name="OpenSim.Services.Interfaces"/>
       <Reference name="OpenSim.Data"/>
       <Reference name="OpenSim.Data.MySQL"/>
-      <Reference name="Ionic.Zip" path="../../../bin/"/>
-      <Reference name="MySql.Data" path="../../../bin/"/>
-	  <Reference name="ThreadedClasses" path="../../../bin/"/>	  
+      <Reference name="Ionic.Zip"/>
+      <Reference name="MySql.Data"/>
+	  <Reference name="ThreadedClasses"/>	  
 
 
       <!-- For scripting in funny languages by default -->
