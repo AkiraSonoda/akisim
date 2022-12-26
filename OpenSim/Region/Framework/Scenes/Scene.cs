@@ -610,12 +610,6 @@ namespace OpenSim.Region.Framework.Scenes
                 if (m_AuthorizationService == null)
                 {
                     m_AuthorizationService = RequestModuleInterface<IAuthorizationService>();
-
-                    //if (m_AuthorizationService == null)
-                    //{
-                    //    // don't throw an exception if no authorization service is set for the time being
-                    //     m_log.InfoFormat("[SCENE]: No Authorization service is configured");
-                    //}
                 }
 
                 return m_AuthorizationService;
@@ -1570,7 +1564,7 @@ namespace OpenSim.Region.Framework.Scenes
             // attempt to reference a null or disposed physics scene.
             if (PhysicsScene != null)
             {
-                m_log.Debug("[SCENE]: Dispose Physics");
+                m_log.Debug("Dispose Physics");
                 PhysicsScene phys = PhysicsScene;
                 // remove the physics engine from both Scene and SceneGraph
                 PhysicsScene = null;
@@ -2508,8 +2502,6 @@ namespace OpenSim.Region.Framework.Scenes
                             // Ray Trace against target here
                             EntityIntersection ei = target.TestIntersectionOBB(NewRay, Quaternion.Identity, frontFacesOnly, FaceCenter);
 
-                            // Un-comment out the following line to Get Raytrace results printed to the console.
-                            // m_log.Info("[RAYTRACERESULTS]: Hit:" + ei.HitTF.ToString() + " Point: " + ei.ipoint.ToString() + " Normal: " + ei.normal.ToString());
                             float ScaleOffset = 0.5f;
 
                             // If we hit something
@@ -2539,10 +2531,7 @@ namespace OpenSim.Region.Framework.Scenes
                         {
                             // We don't have a target here, so we're going to raytrace all the objects in the scene.
                             EntityIntersection ei = m_sceneGraph.GetClosestIntersectingPrim(NewRay, true, false);
-
-                            // Un-comment the following line to print the raytrace results to the console.
-                            //m_log.Info("[RAYTRACERESULTS]: Hit:" + ei.HitTF.ToString() + " Point: " + ei.ipoint.ToString() + " Normal: " + ei.normal.ToString());
-
+                            
                             if (ei.HitTF)
                             {
                                 pos = new Vector3(ei.ipoint.X, ei.ipoint.Y, ei.ipoint.Z);
@@ -2608,9 +2597,6 @@ namespace OpenSim.Region.Framework.Scenes
         public virtual SceneObjectGroup AddNewPrim(UUID ownerID, UUID groupID,
             Vector3 pos, Quaternion rot, PrimitiveBaseShape shape, uint addFlags = 0)
         {
-            //m_log.DebugFormat(
-            //    "[SCENE]: Scene.AddNewPrim() pcode {0} called for {1} in {2}", shape.PCode, ownerID, RegionInfo.RegionName);
-
             SceneObjectGroup sceneObject = null;
 
             // If an entity creator has been registered for this prim type then use that
@@ -2835,8 +2821,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="removeScripts">If true, then scripts are removed.  If false, then they are only stopped.</para>
         public void DeleteSceneObject(SceneObjectGroup group, bool silent, bool removeScripts)
         {
-            // m_log.DebugFormat("[SCENE]: Deleting scene object {0} {1}", group.Name, group.UUID);
-
             if (removeScripts)
                 group.RemoveScriptInstances(true);
             else
@@ -2881,7 +2865,6 @@ namespace OpenSim.Region.Framework.Scenes
             if (removeScripts)
                 group.Dispose();
             partList = null;
-            // m_log.DebugFormat("[SCENE]: Exit DeleteSceneObject() for {0} {1}", group.Name, group.UUID);
         }
 
         /// <summary>
@@ -2915,59 +2898,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             return false;
         }
-
-
-        /* not in use, outdate by async method
-                /// <summary>
-                /// Move the given scene object into a new region depending on which region its absolute position has moved
-                /// into.
-                ///
-                /// </summary>
-                /// <param name="attemptedPosition">the attempted out of region position of the scene object</param>
-                /// <param name="grp">the scene object that we're crossing</param>
-                public void CrossPrimGroupIntoNewRegion(Vector3 attemptedPosition, SceneObjectGroup grp, bool silent)
-                {
-                    if (grp == null)
-                        return;
-                    if (grp.IsDeleted)
-                        return;
-
-                    if (grp.RootPart.DIE_AT_EDGE)
-                    {
-                        // We remove the object here
-                        try
-                        {
-                            DeleteSceneObject(grp, false);
-                        }
-                        catch (Exception)
-                        {
-                            m_log.Warn("[SCENE]: exception when trying to remove the prim that crossed the border.");
-                        }
-                        return;
-                    }
-
-                    if (grp.RootPart.RETURN_AT_EDGE)
-                    {
-                        // We remove the object here
-                        try
-                        {
-                            List<SceneObjectGroup> objects = new List<SceneObjectGroup>();
-                            objects.Add(grp);
-                            SceneObjectGroup[] objectsArray = objects.ToArray();
-                            returnObjects(objectsArray, UUID.Zero);
-                        }
-                        catch (Exception)
-                        {
-                            m_log.Warn("[SCENE]: exception when trying to return the prim that crossed the border.");
-                        }
-                        return;
-                    }
-
-                    if (EntityTransferModule != null)
-                        EntityTransferModule.Cross(grp, attemptedPosition, silent);
-                }
-        */
-
+        
         // Simple test to see if a position is in the current region.
         // This test is mostly used to see if a region crossing is necessary.
         // Assuming the position is relative to the region so anything outside its bounds.
@@ -2993,8 +2924,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns></returns>
         public bool IncomingCreateObject(Vector3 newPosition, ISceneObject sog)
         {
-            //m_log.DebugFormat(" >>> IncomingCreateObject(sog) <<< {0} deleted? {1} isAttach? {2}", ((SceneObjectGroup)sog).AbsolutePosition,
-            //    ((SceneObjectGroup)sog).IsDeleted, ((SceneObjectGroup)sog).RootPart.IsAttachment);
 
             SceneObjectGroup newObject;
             try
@@ -3018,9 +2947,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool IncomingAttechments(ScenePresence sp, List<SceneObjectGroup> attachments)
         {
-            //m_log.DebugFormat(" >>> IncomingCreateObject(sog) <<< {0} deleted? {1} isAttach? {2}", ((SceneObjectGroup)sog).AbsolutePosition,
-            //    ((SceneObjectGroup)sog).IsDeleted, ((SceneObjectGroup)sog).RootPart.IsAttachment);
-
             if (!EntityTransferModule.HandleIncomingAttachments(sp, attachments) || sp.IsDeleted)
                 return false;
 
@@ -3080,11 +3006,6 @@ namespace OpenSim.Region.Framework.Scenes
                 if (sp != null)
                 {
                     SceneObjectGroup grp = sceneObject;
-
-                    // m_log.DebugFormat(
-                    //     "[ATTACHMENT]: Received attachment {0}, inworld asset id {1}", grp.FromItemID, grp.UUID);
-                    // m_log.DebugFormat(
-                    //     "[ATTACHMENT]: Attach to avatar {0} at position {1}", sp.UUID, grp.AbsolutePosition);
 
                     // We must currently not resume scripts at this stage since AttachmentsModule does not have the
                     // information that this is due to a teleport/border cross rather than an ordinary attachment.
@@ -3672,7 +3593,6 @@ namespace OpenSim.Region.Framework.Scenes
         {
             Vector3 pos;
             const bool frontFacesOnly = true;
-            //m_log.Info("HITTARGET: " + RayTargetObj.ToString() + ", COPYTARGET: " + localID.ToString());
             SceneObjectPart target = GetSceneObjectPart(localID);
             SceneObjectPart target2 = GetSceneObjectPart(RayTargetObj);
 
@@ -3683,7 +3603,6 @@ namespace OpenSim.Region.Framework.Scenes
                 Vector3 direction = Vector3.Normalize(RayEnd - RayStart);
 
                 pos = target2.AbsolutePosition;
-                //m_log.Info("[OBJECT_REZ]: TargetPos: " + pos.ToString() + ", RayStart: " + RayStart.ToString() + ", RayEnd: " + RayEnd.ToString() + ", Volume: " + Util.GetDistanceTo(RayStart,RayEnd).ToString() + ", mag1: " + Util.GetMagnitude(RayStart).ToString() + ", mag2: " + Util.GetMagnitude(RayEnd).ToString());
 
                 // TODO: Raytrace better here
 
@@ -3694,7 +3613,6 @@ namespace OpenSim.Region.Framework.Scenes
                 EntityIntersection ei = target2.TestIntersectionOBB(NewRay, Quaternion.Identity, frontFacesOnly, CopyCenters);
 
                 // Un-comment out the following line to Get Raytrace results printed to the console.
-                //m_log.Info("[RAYTRACERESULTS]: Hit:" + ei.HitTF.ToString() + " Point: " + ei.ipoint.ToString() + " Normal: " + ei.normal.ToString());
                 float ScaleOffset = 0.5f;
 
                 // If we hit something
@@ -3842,17 +3760,13 @@ namespace OpenSim.Region.Framework.Scenes
                     }
 
                     m_eventManager.TriggerClientClosed(agentID, this);
-//                    m_log.Debug("[Scene]TriggerClientClosed done");
                     m_eventManager.TriggerOnRemovePresence(agentID);
-//                    m_log.Debug("[Scene]TriggerOnRemovePresence done");
 
                     if (!isChildAgent)
                     {
                         if (AttachmentsModule != null)
                         {
-//                            m_log.Debug("[Scene]DeRezAttachments");
                             AttachmentsModule.DeRezAttachments(avatar);
-//                            m_log.Debug("[Scene]DeRezAttachments done");
                         }
 
                         ForEachClient(
@@ -3867,7 +3781,6 @@ namespace OpenSim.Region.Framework.Scenes
                     // It's possible for child agents to have transactions if changes are being made cross-border.
                     if (AgentTransactionsModule != null)
                     {
-//                        m_log.Debug("[Scene]RemoveAgentAssetTransactions");
                         AgentTransactionsModule.RemoveAgentAssetTransactions(agentID);
                     }
                     m_log.Debug("The avatar has left the building");
@@ -4018,9 +3931,7 @@ namespace OpenSim.Region.Framework.Scenes
                 acd.startpos,
                 (source == null) ? "" : string.Format("From region {0} ({1}){2}", source.RegionName, source.RegionID, (source.RawServerURI == null) ? "" : " @ " + source.ServerURI)
             );
-
-//            m_log.DebugFormat("NewUserConnection stack {0}", Environment.StackTrace);
-
+            
             if (!LoginsEnabled)
             {
                 reason = "Logins to this region are disabled";
@@ -4103,15 +4014,6 @@ namespace OpenSim.Region.Framework.Scenes
                     // vulnerable to an issue when a viewer quits a region without sending a proper logout but then
                     // re-establishes the connection on a relogin.  This could wrongly set the DoNotCloseAfterTeleport
                     // flag when no teleport had taken place (and hence no close was going to come).
-//                    if (!acd.ChildrenCapSeeds.ContainsKey(RegionInfo.RegionHandle))
-//                    {
-//                        m_log.DebugFormat(
-//                            "[SCENE]: Setting DoNotCloseAfterTeleport for child scene presence {0} in {1} because source will attempt close.",
-//                            sp.Name, Name);
-//
-//                        sp.DoNotCloseAfterTeleport = true;
-//                    }
-//                    else if (EntityTransferModule.IsInTransit(sp.UUID))
 
                     sp.LifecycleState = ScenePresenceState.Running;
 
@@ -4217,8 +4119,9 @@ namespace OpenSim.Region.Framework.Scenes
 
                         sp = null;
                     }
-                    //else
-                    //    m_log.WarnFormat("[SCENE]: Existing root scene presence for {0} {1} in {2}, but agent is in trasit", sp.Name, sp.UUID, RegionInfo.RegionName);
+                    else
+                        m_log.WarnFormat("Existing root scene presence for {0} {1} in {2}, but agent is in trasit", 
+                            sp.Name, sp.UUID, RegionInfo.RegionName);
                 }
 
                 // Optimistic: add or update the circuit data with the new agent circuit data and teleport flags.
@@ -4561,71 +4464,7 @@ Label_GroupsDone:
         {
             return m_authenticateHandler.TryChangeCircuitCode(oldcc, newcc);
         }
-
-//        /// <summary>
-//        /// The Grid has requested that we log-off a user.  Log them off.
-//        /// </summary>
-//        /// <param name="AvatarID">Unique ID of the avatar to log-off</param>
-//        /// <param name="RegionSecret">SecureSessionID of the user, or the RegionSecret text when logging on to the grid</param>
-//        /// <param name="message">message to display to the user.  Reason for being logged off</param>
-//        public void HandleLogOffUserFromGrid(UUID AvatarID, UUID RegionSecret, string message)
-//        {
-//            ScenePresence loggingOffUser = GetScenePresence(AvatarID);
-//            if (loggingOffUser != null)
-//            {
-//                UUID localRegionSecret = UUID.Zero;
-//                bool parsedsecret = UUID.TryParse(RegionInfo.regionSecret, out localRegionSecret);
-//
-//                // Region Secret is used here in case a new sessionid overwrites an old one on the user server.
-//                // Will update the user server in a few revisions to use it.
-//
-//                if (RegionSecret == loggingOffUser.ControllingClient.SecureSessionId || (parsedsecret && RegionSecret == localRegionSecret))
-//                {
-//                    m_sceneGridService.SendCloseChildAgentConnections(loggingOffUser.UUID, loggingOffUser.KnownRegionHandles);
-//                    loggingOffUser.ControllingClient.Kick(message);
-//                    // Give them a second to receive the message!
-//                    Thread.Sleep(1000);
-//                    loggingOffUser.ControllingClient.Close();
-//                }
-//                else
-//                {
-//                    m_log.Info("[USERLOGOFF]: System sending the LogOff user message failed to sucessfully authenticate");
-//                }
-//            }
-//            else
-//            {
-//                m_log.InfoFormat("[USERLOGOFF]: Got a logoff request for {0} but the user isn't here.  The user might already have been logged out", AvatarID.ToString());
-//            }
-//        }
-
-//        /// <summary>
-//        /// Triggered when an agent crosses into this sim.  Also happens on initial login.
-//        /// </summary>
-//        /// <param name="agentID"></param>
-//        /// <param name="position"></param>
-//        /// <param name="isFlying"></param>
-//        public virtual void AgentCrossing(UUID agentID, Vector3 position, bool isFlying)
-//        {
-//            ScenePresence presence = GetScenePresence(agentID);
-//            if (presence != null)
-//            {
-//                try
-//                {
-//                    presence.MakeRootAgent(position, isFlying);
-//                }
-//                catch (Exception e)
-//                {
-//                    m_log.ErrorFormat("[SCENE]: Unable to do agent crossing, exception {0}{1}", e.Message, e.StackTrace);
-//                }
-//            }
-//            else
-//            {
-//                m_log.ErrorFormat(
-//                    "[SCENE]: Could not find presence for agent {0} crossing into scene {1}",
-//                    agentID, RegionInfo.RegionName);
-//            }
-//        }
-
+        
         /// <summary>
         /// We've got an update about an agent that sees into this region,
         /// send it to ScenePresence for processing  It's the full data.
@@ -4718,18 +4557,9 @@ Label_GroupsDone:
         /// <returns>true if we handled it.</returns>
         public virtual bool IncomingUpdateChildAgent(AgentPosition cAgentData)
         {
-//            m_log.DebugFormat(
-//                "[SCENE PRESENCE]: IncomingChildAgentDataUpdate POSITION for {0} in {1}, position {2}",
-//                cAgentData.AgentID, Name, cAgentData.Position);
-
             ScenePresence childAgentUpdate = GetScenePresence(cAgentData.AgentID);
             if (childAgentUpdate != null)
             {
-//                if (childAgentUpdate.ControllingClient.SessionId != cAgentData.SessionID)
-//                    // Only warn for now
-//                    m_log.WarnFormat("[SCENE]: Attempt at updating position of agent {0} with invalid session id {1}. Neighbor running older version?",
-//                        childAgentUpdate.UUID, cAgentData.SessionID);
-
                 // I can't imagine *yet* why we would get an update if the agent is a root agent..
                 // however to avoid a race condition crossing borders..
                 if (childAgentUpdate.IsChildAgent)
@@ -4775,8 +4605,6 @@ Label_GroupsDone:
         /// <returns></returns>
         public bool CloseAgent(UUID agentID, bool force, string auth_token)
         {
-            //m_log.DebugFormat("[SCENE]: Processing incoming close agent {0} in region {1} with auth_token {2}", agentID, RegionInfo.RegionName, auth_token);
-
             // Check that the auth_token is valid
             AgentCircuitData acd = AuthenticateHandler.GetAgentCircuitData(agentID);
 
@@ -5150,7 +4978,6 @@ Label_GroupsDone:
 
         public LandData GetLandData(uint x, uint y)
         {
-//            m_log.DebugFormat("[SCENE]: returning land for {0},{1}", x, y);
             ILandObject parcel = LandChannel.GetLandObject((int)x, (int)y);
             if (parcel == null)
                 return null;
@@ -5514,17 +5341,7 @@ Label_GroupsDone:
 
         #endregion
 
-
-// Commented pending deletion since this method no longer appears to do anything at all
-//        public bool NeedSceneCacheClear(UUID agentID)
-//        {
-//            IInventoryTransferModule inv = RequestModuleInterface<IInventoryTransferModule>();
-//            if (inv == null)
-//                return true;
-//
-//            return inv.NeedSceneCacheClear(agentID, this);
-//        }
-
+        
         public void CleanTempObjects()
         {
             DateTime now =  DateTime.UtcNow;
@@ -5603,20 +5420,6 @@ Label_GroupsDone:
                 health+=1;
                 flags |= 4;
             }
-            /*
-            else
-            {
-int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-System.Diagnostics.Process proc = new System.Diagnostics.Process();
-proc.EnableRaisingEvents=false;
-proc.StartInfo.FileName = "/bin/kill";
-proc.StartInfo.Arguments = "-QUIT " + pid.ToString();
-proc.Start();
-proc.WaitForExit();
-Thread.Sleep(1000);
-Environment.Exit(1);
-            }
-            */
 
             if (flags != 7)
                 return health;
@@ -5947,11 +5750,7 @@ Environment.Exit(1);
 
                 g.GetAxisAlignedBoundingBoxRaw(out float ominX, out float omaxX, out float ominY,
                     out float omaxY, out float ominZ, out float omaxZ);
-
-//                m_log.DebugFormat(
-//                    "[SCENE]: For {0} found AxisAlignedBoundingBoxRaw {1}, {2}",
-//                    g.Name, new Vector3(ominX, ominY, ominZ), new Vector3(omaxX, omaxY, omaxZ));
-
+                
                 ominX += vec.X;
                 omaxX += vec.X;
                 ominY += vec.Y;
@@ -5997,42 +5796,7 @@ Environment.Exit(1);
             if (mapModule != null)
                 mapModule.GenerateMaptile();
         }
-
-        //        public void CleanDroppedAttachments()
-        //        {
-        //            List<SceneObjectGroup> objectsToDelete =
-        //                    new List<SceneObjectGroup>();
-        //
-        //            lock (m_cleaningAttachments)
-        //            {
-        //                ForEachSOG(delegate (SceneObjectGroup grp)
-        //                        {
-        //                            if (grp.RootPart.Shape.PCode == 0 && grp.RootPart.Shape.State != 0 && (!objectsToDelete.Contains(grp)))
-        //                            {
-        //                                UUID agentID = grp.OwnerID;
-        //                                if (agentID.IsZero())
-        //                                {
-        //                                    objectsToDelete.Add(grp);
-        //                                    return;
-        //                                }
-        //
-        //                                ScenePresence sp = GetScenePresence(agentID);
-        //                                if (sp == null)
-        //                                {
-        //                                    objectsToDelete.Add(grp);
-        //                                    return;
-        //                                }
-        //                            }
-        //                        });
-        //            }
-        //
-        //            foreach (SceneObjectGroup grp in objectsToDelete)
-        //            {
-        //                m_log.InfoFormat("[SCENE]: Deleting dropped attachment {0} of user {1}", grp.UUID, grp.OwnerID);
-        //                DeleteSceneObject(grp, true);
-        //            }
-        //        }
-
+        
         public void ThreadAlive(int threadCode)
         {
             switch(threadCode)
@@ -6135,11 +5899,6 @@ Environment.Exit(1);
             if (Permissions.IsGod(agentID))
                 return true;
 
-            // Permissions.IsAdministrator is the same as IsGod for now
-//            bool isAdmin = Permissions.IsAdministrator(agentID);
-//            if(isAdmin)
-//                return true;
-
             // also honor estate managers access rights
             bool isManager = Permissions.IsEstateManager(agentID);
             if(isManager)
@@ -6156,7 +5915,7 @@ Environment.Exit(1);
                 reason = "The region is full";
 
                 m_log.DebugFormat(
-                    "[SCENE]: Denying presence with id {0} entry into {1} since region is at agent limit of {2}",
+                    "Denying presence with id {0} entry into {1} since region is at agent limit of {2}",
                     agentID, RegionInfo.RegionName, RegionInfo.RegionSettings.AgentLimit);
 
                 return false;
@@ -6226,7 +5985,6 @@ Environment.Exit(1);
                 // allow position relocation
                 if (!TestLandRestrictions(agentID, out reason, ref posX, ref posY))
                 {
-                    // m_log.DebugFormat("[SCENE]: Denying {0} because they are banned on all parcels", agentID);
                     reason = "You dont have access to the region parcels";
                     return false;
                 }
