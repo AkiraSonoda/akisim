@@ -29,17 +29,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-
 using log4net;
 using Nini.Config;
 using Mono.Addins;
-
 using OpenMetaverse;
-using OpenSim.Region.CoreModules.Framework.InterfaceCommander;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.Serialiser
 {
@@ -49,7 +47,6 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
         private static readonly ILog m_log =
             LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-//        private Commander m_commander = new Commander("export");
         private RwLockedList<Scene> m_regions = new RwLockedList<Scene>(); // AKIDO
         private string m_savedir = "exports";
         private RwLockedList<IFileSerialiser> m_serialisers = new RwLockedList<IFileSerialiser>(); // AKIDO
@@ -78,14 +75,10 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
             m_serialisers.Add(new SerialiseTerrain());
             m_serialisers.Add(new SerialiseObjects());
             // AKIDO
-
-//            LoadCommanderCommands();
         }
 
         public void AddRegion(Scene scene)
         {
-//            scene.RegisterModuleCommander(m_commander);
-//            scene.EventManager.OnPluginConsole += EventManager_OnPluginConsole;
             scene.RegisterModuleInterface<IRegionSerialiserModule>(this);
 
             // AKIDO
