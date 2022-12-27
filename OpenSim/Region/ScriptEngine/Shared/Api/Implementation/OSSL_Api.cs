@@ -2522,7 +2522,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                         }
                     }
                 }
-                catch (Exception /*e*/)
+                catch (Exception e)
                 {
                     m_log.Warn("UserAgentServiceConnector - Unable to connect to destination grid ", e);
                 }
