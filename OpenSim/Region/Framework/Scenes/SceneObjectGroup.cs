@@ -39,6 +39,7 @@ using System.Threading;
 using System.Xml;
 using ThreadedClasses;
 using PermissionMask = OpenSim.Framework.PermissionMask;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -903,7 +904,7 @@ namespace OpenSim.Region.Framework.Scenes
                     ScenePresence av = avinfo.av;
                     av.IsInLocalTransit = true;
                     av.IsInTransit = true;
-                    m_log.DebugFormat("Crossing avatar {0} to {1}", av.Name, val);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Crossing avatar {0} to {1}", av.Name, val);
 
                     if(av.m_crossingFlags > 0)
                         entityTransfer.CrossAgentToNewRegionAsync(av, newpos, destination, false, ctx);
@@ -921,7 +922,7 @@ namespace OpenSim.Region.Framework.Scenes
                         // In any case
                         av.IsInTransit = false;
                         av.m_crossingFlags = 0;
-                        m_log.DebugFormat("Crossing agent {0} {1} completed.", av.Firstname, av.Lastname);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Crossing agent {0} {1} completed.", av.Firstname, av.Lastname);
                     }
                     else
                     {
@@ -957,7 +958,7 @@ namespace OpenSim.Region.Framework.Scenes
                                     av.SendAttachmentsToAgentNF(oav); // not ok
                                 }
                             });
-                        m_log.DebugFormat("Crossing agent {0} {1} failed.", av.Firstname, av.Lastname);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Crossing agent {0} {1} failed.", av.Firstname, av.Lastname);
                     }
                 }
 
@@ -1390,12 +1391,7 @@ namespace OpenSim.Region.Framework.Scenes
         protected internal RwLockedList<ScenePresence> m_sittingAvatars = new RwLockedList<ScenePresence>();
 
         #endregion
-
-//        ~SceneObjectGroup()
-//        {
-//            //m_log.DebugFormat("Destructor called for {0}, local id {1}", Name, LocalId);
-//            Console.WriteLine("Destructor called for {0}, local id {1}", Name, LocalId);
-//        }
+        
 
         #region Constructors
 
@@ -1489,14 +1485,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void LoadScriptState(XmlReader reader)
         {
-//            m_log.DebugFormat("Looking for script state for {0}", Name);
-
             while (true)
             {
                 if (reader.Name == "SavedScriptState" && reader.NodeType == XmlNodeType.Element)
                 {
-//                    m_log.DebugFormat("Loading script state for {0}", Name);
-
                     if (m_savedScriptState == null)
                         m_savedScriptState = new Dictionary<UUID, string>();
 
@@ -1508,8 +1500,6 @@ namespace OpenSim.Region.Framework.Scenes
 
                     if (uuid != null)
                     {
-//                        m_log.DebugFormat("Found state for item ID {0} in object {1}", uuid, Name);
-
                         UUID itemid = new UUID(uuid);
                         if (!itemid.IsZero())
                             m_savedScriptState[itemid] = innerXml;
@@ -1535,16 +1525,12 @@ namespace OpenSim.Region.Framework.Scenes
             if (IsAttachment) return;
             m_scene.SceneGraph.FireAttachToBackup(this);
 
-//           if (InSceneBackup)
-            {
-//                m_log.DebugFormat(
-//                    "Attaching object {0} {1} to scene presistence sweep", Name, UUID);
+            // AKIDO
+            if (!Backup)
+                m_scene.EventManager.OnBackup += ProcessBackup;
 
-                if (!Backup)
-                    m_scene.EventManager.OnBackup += ProcessBackup;
-
-                Backup = true;
-            }
+            Backup = true;
+            // AKIDO
         }
 
         /// <summary>
@@ -1578,7 +1564,6 @@ namespace OpenSim.Region.Framework.Scenes
                     part.LocalId = m_scene.AllocateLocalId();
 
                 part.ParentID = m_rootPart.LocalId;
-                //m_log.DebugFormat("Given local id {0} to part {1}, linknum {2}, parent {3} {4}", part.LocalId, part.UUID, part.LinkNum, part.ParentID, part.ParentUUID);
             }
 
             ApplyPhysics();
@@ -1787,8 +1772,6 @@ namespace OpenSim.Region.Framework.Scenes
                 offsetHeight = lower - 0.5f * boundingBox.Z;
             else if (maxZ > lower)
                 offsetHeight = 0.5f * boundingBox.Z - maxZ;
-
-           // m_log.InfoFormat("BoundingBox is {0} , {1} , {2} ", boundingBox.X, boundingBox.Y, boundingBox.Z);
             return boundingBox;
         }
 
@@ -2204,11 +2187,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public virtual void OnGrabPart(SceneObjectPart part, Vector3 offsetPos, IClientAPI remoteClient)
         {
-//            m_log.DebugFormat(
-//                "Processing OnGrabPart for {0} on {1} {2}, offsetPos {3}",
-//                remoteClient.Name, part.Name, part.LocalId, offsetPos);
-
-//            part.StoreUndoState();
             part.OnGrab(offsetPos, remoteClient);
         }
 
@@ -2415,15 +2393,11 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if (!Backup)
             {
-//                m_log.DebugFormat(
-//                    "Ignoring backup of {0} {1} since object is not marked to be backed up", Name, UUID);
                 return;
             }
 
             if (IsDeleted || inTransit || UUID.IsZero())
             {
-//                m_log.DebugFormat(
-//                    "Ignoring backup of {0} {1} since object is marked as already deleted", Name, UUID);
                 return;
             }
 
@@ -2467,7 +2441,7 @@ namespace OpenSim.Region.Framework.Scenes
                                 }
 
                                 DetachFromBackup();
-                                m_log.DebugFormat(
+                                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                                     "Returning object {0} due to parcel autoreturn",
                                      RootPart.UUID);
                                 m_scene.AddReturn(OwnerID == GroupID ? LastOwnerID : OwnerID, Name, AbsolutePosition, "parcel autoreturn");
@@ -3010,8 +2984,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public void ScheduleGroupForFullUpdate()
         {
-            //            if (IsAttachment)
-            //                m_log.DebugFormat("Scheduling full update for {0} {1}", Name, LocalId);
             if (Scene.GetNumberOfClients() == 0)
                 return;
 
@@ -3028,8 +3000,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void ScheduleGroupForFullAnimUpdate()
         {
-            //            if (IsAttachment)
-            //                m_log.DebugFormat("Scheduling full update for {0} {1}", Name, LocalId);
             if (Scene.GetNumberOfClients() == 0)
                 return;
 
@@ -3068,8 +3038,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public void ScheduleGroupForTerseUpdate()
         {
-//            m_log.DebugFormat("Scheduling terse update for {0} {1}", Name, UUID);
-
             SceneObjectPart[] parts = m_parts.GetArray();
             for (int i = 0; i < parts.Length; i++)
                 parts[i].ScheduleTerseUpdate();
@@ -3194,10 +3162,6 @@ namespace OpenSim.Region.Framework.Scenes
         // The group being linked need not be a linkset -- it can have just one prim.
         public void LinkToGroup(SceneObjectGroup objectGroup, bool insert)
         {
-//            m_log.DebugFormat(
-//                "Linking group with root part {0}, {1} to group with root part {2}, {3}",
-//                objectGroup.RootPart.Name, objectGroup.RootPart.UUID, RootPart.Name, RootPart.UUID);
-
             // Linking to ourselves is not a valid operation.
             if (objectGroup == this)
                 return;
@@ -3209,7 +3173,7 @@ namespace OpenSim.Region.Framework.Scenes
                     (PrimCount + objectGroup.PrimCount) >
                     m_scene.m_linksetCapacity)
             {
-                m_log.DebugFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "Cannot link group with root" +
                     " part {0}, {1} ({2} prims) to group with root part" +
                     " {3}, {4} ({5} prims) because the new linkset" +
@@ -3452,10 +3416,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>The object group of the newly delinked prim.</returns>
         public SceneObjectGroup DelinkFromGroup(SceneObjectPart linkPart, bool sendEvents)
         {
-//                m_log.DebugFormat(
-//                    "Delinking part {0}, {1} from group with root part {2}, {3}",
-//                    linkPart.Name, linkPart.UUID, RootPart.Name, RootPart.UUID);
-
             if (m_rootPart.PhysActor != null)
                 m_rootPart.PhysActor.Building = true;
 
@@ -3540,110 +3500,6 @@ namespace OpenSim.Region.Framework.Scenes
             return objectGroup;
         }
 
-/* working on it
-        public void DelinkFromGroup(List<SceneObjectPart> linkParts, bool sendEvents)
-        {
-//                m_log.DebugFormat(
-//                    "Delinking part {0}, {1} from group with root part {2}, {3}",
-//                    linkPart.Name, linkPart.UUID, RootPart.Name, RootPart.UUID);
-
-            if(PrimCount == 1)
-                return;
-
-            if (m_rootPart.PhysActor != null)
-                m_rootPart.PhysActor.Building = true;
-
-            bool unlinkroot = false;
-            foreach(SceneObjectPart linkPart in linkParts)
-            {
-                // first we only remove child parts
-                if(linkPart.LocalId == m_rootPart.LocalId)
-                {
-                    unlinkroot = true;
-                    continue;
-                }
-
-                lock (m_parts.SyncRoot)
-                    if(!m_parts.Remove(linkPart.UUID))
-                        continue;
-
-                linkPart.ClearUndoState();
-
-                Vector3 worldPos = linkPart.GetWorldPosition();
-                Quaternion worldRot = linkPart.GetWorldRotation();
-
-                linkPart.ParentID = 0;
-                linkPart.LinkNum = 0;
-
-                PhysicsActor linkPartPa = linkPart.PhysActor;
-
-                // Remove the SOP from the physical scene.
-                // If the new SOG is physical, it is re-created later.
-                // (There is a problem here in that we have not yet told the physics
-                //    engine about the delink. Someday, linksets should be made first
-                //    class objects in the physics engine interface).
-                if (linkPartPa != null)
-                {
-                    m_scene.PhysicsScene.RemovePrim(linkPartPa);
-                    linkPart.PhysActor = null;
-                }
-
-                linkPart.setGroupPosition(worldPos);
-                linkPart.setOffsetPosition(Vector3.Zero);
-                linkPart.setRotationOffset(worldRot);
-
-                // Create a new SOG to go around this unlinked and unattached SOP
-                SceneObjectGroup objectGroup = new SceneObjectGroup(linkPart);
-
-                m_scene.AddNewSceneObject(objectGroup, true);
-
-                linkPart.Rezzed = RootPart.Rezzed;
-
-                // this is as it seems to be in sl now
-                if(linkPart.PhysicsShapeType == (byte)PhysShapeType.none)
-                    linkPart.PhysicsShapeType = linkPart.DefaultPhysicsShapeType(); // root prims can't have type none for now
-
-                objectGroup.HasGroupChangedDueToDelink = true;
-                if (sendEvents)
-                   linkPart.TriggerScriptChangedEvent(Changed.LINK);
-            }
-
-            if(unlinkroot)
-            {
-                //TODO
-            }
-
-            lock (m_parts.SyncRoot)
-            {
-                SceneObjectPart[] parts = m_parts.GetArray();
-                if (parts.Length == 1)
-                {
-                    // Single prim left
-                    m_rootPart.LinkNum = 0;
-                }
-                else
-                {
-                    m_rootPart.LinkNum = 1;
-                    int linknum = 2;
-                    for (int i = 1; i < parts.Length; i++)
-                        parts[i].LinkNum = linknum++;
-                }
-            }
-
-            InvalidBoundsRadius();
-
-            if (m_rootPart.PhysActor != null)
-                m_rootPart.PhysActor.Building = false;
-
-            // When we delete a group, we currently have to force persist to the database if the object id has changed
-            // (since delete works by deleting all rows which have a given object id)
-
-            Scene.SimulationDataService.RemoveObject(UUID, Scene.RegionInfo.RegionID);
-            HasGroupChangedDueToDelink = true;
-            TriggerScriptChangedEvent(Changed.LINK);
-            return;
-        }
-*/
         /// <summary>
         /// Stop this object from being persisted over server restarts.
         /// </summary>
@@ -3853,8 +3709,6 @@ namespace OpenSim.Region.Framework.Scenes
                         // save and update old orientation
                         Quaternion old = m_rootPart.SpinOldOrientation;
                         m_rootPart.SpinOldOrientation = newOrientation;
-                        //m_log.Error("Old orientation is " + old);
-                        //m_log.Error("Incoming new orientation is " + newOrientation);
 
                         // compute difference between previous old rotation and new incoming rotation
                         Quaternion minimalRotationFromQ1ToQ2 = newOrientation * Quaternion.Inverse(old);
@@ -3865,7 +3719,6 @@ namespace OpenSim.Region.Framework.Scenes
 
                         spinforce.Normalize();
 
-                        //m_log.Error("rotation axis is " + rotationAxis);
                         if(rotationAngle > 0)
                             spinforce = spinforce * pa.Mass * 0.1f; // 0.1 is an arbitrary torque scaling factor
                         else
@@ -4073,9 +3926,6 @@ namespace OpenSim.Region.Framework.Scenes
             uint lockBit = RootPart.OwnerMask & (uint)(PermissionMask.Move);
             RootPart.OwnerMask = (RootPart.OwnerMask & lockBit) | ((newOwnerMask | foldedPerms) & lockMask);
 
-//            m_log.DebugFormat(
-//                "RootPart.OwnerMask now {0} for {1} in {2}",
-//                (OpenMetaverse.PermissionMask)RootPart.OwnerMask, Name, Scene.Name);
             InvalidateEffectivePerms();
             RootPart.ScheduleFullUpdate();
         }
@@ -4144,9 +3994,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="scale"></param>
         public void GroupResize(Vector3 scale)
         {
-//            m_log.DebugFormat(
-//                "[Group resizing {0} {1} from {2} to {3}", Name, LocalId, RootPart.Scale, scale);
-
             if (Scene == null)
                 return;
 
@@ -4273,9 +4120,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool GroupResize(double fscale)
         {
-//            m_log.DebugFormat(
-//                "Group resizing {0} {1} from {2} to {3}", Name, LocalId, RootPart.Scale, fscale);
-
             if (Scene == null || IsDeleted || inTransit || fscale < 0)
                 return false;
 
