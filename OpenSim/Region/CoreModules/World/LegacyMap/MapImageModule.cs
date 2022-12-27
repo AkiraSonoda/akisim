@@ -37,6 +37,7 @@ using OpenMetaverse.Imaging;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.LegacyMap
 {
