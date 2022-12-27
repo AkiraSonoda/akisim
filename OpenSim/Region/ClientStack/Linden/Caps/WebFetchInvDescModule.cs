@@ -28,11 +28,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.IO;
 using System.Reflection;
-using System.Text;
-using System.Threading;
 using log4net;
 using Nini.Config;
 using Mono.Addins;
@@ -41,13 +37,12 @@ using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Framework.Capabilities;
 using OpenSim.Services.Interfaces;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using OpenSim.Capabilities.Handlers;
 using OpenSim.Framework.Monitoring;
-
-using OpenMetaverse.StructuredData;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.ClientStack.Linden
 {
@@ -231,7 +226,7 @@ namespace OpenSim.Region.ClientStack.Linden
         {
             private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-            private Dictionary<UUID, Hashtable> responses = new Dictionary<UUID, Hashtable>();
+            private RwLockedDictionary<UUID, Hashtable> responses = new RwLockedDictionary<UUID, Hashtable>(); // AKIDO
             private HashSet<UUID> dropedResponses = new HashSet<UUID>();
 
             private WebFetchInvDescModule m_module;
@@ -243,33 +238,24 @@ namespace OpenSim.Region.ClientStack.Linden
 
                 HasEvents = (requestID, y) =>
                 {
-                    lock (responses)
-                        return responses.ContainsKey(requestID);
+                    // AKIDO
+                    return responses.ContainsKey(requestID);
                 };
 
                 Drop = (requestID, y) =>
                 {
-                    lock (responses)
-                    {
+                    // AKIDO
                         responses.Remove(requestID);
                         lock(dropedResponses)
                             dropedResponses.Add(requestID);
-                    }
+                    // AKIODO
                 };
 
                 GetEvents = (requestID, y) =>
                 {
-                    lock (responses)
-                    {
-                        try
-                        {
-                            return responses[requestID];
-                        }
-                        finally
-                        {
-                            responses.Remove(requestID);
-                        }
-                    }
+                    Hashtable val;
+                    responses.Remove(requestID, out val);
+                    return val;
                 };
 
                 Request = (requestID, request) =>
@@ -301,38 +287,29 @@ namespace OpenSim.Region.ClientStack.Linden
 
                 UUID requestID = requestinfo.reqID;
 
-                lock(responses)
-                {
-                    lock(dropedResponses)
-                    {
-                        if(dropedResponses.Contains(requestID))
-                        {
-                            dropedResponses.Remove(requestID);
-                            return;
-                        }
-                    }
-                }
+                // AKIDO
+                dropedResponses.Remove(requestID);
+                // AKIDO
 
                 OSHttpResponse osresponse = new OSHttpResponse(requestinfo.request);
                 m_webFetchHandler.FetchInventoryDescendentsRequest(requestinfo.request, osresponse, m_module.m_badRequests);
                 requestinfo.request.InputStream.Dispose();
 
-                lock (responses)
+                // AKIDO
+                lock (dropedResponses)
                 {
-                    lock(dropedResponses)
+                    if (dropedResponses.Contains(requestID))
                     {
-                        if(dropedResponses.Contains(requestID))
-                        {
-                            dropedResponses.Remove(requestID);
-                            ProcessedRequestsCount++;
-                            return;
-                        }
+                        dropedResponses.Remove(requestID);
+                        ProcessedRequestsCount++;
+                        return;
                     }
-
-                    Hashtable response = new Hashtable();
-                    response["h"] = osresponse;
-                    responses[requestID] = response;
                 }
+
+                Hashtable response = new Hashtable();
+                response["h"] = osresponse;
+                responses[requestID] = response;
+                // AKIDO
                 ProcessedRequestsCount++;
             }
         }
