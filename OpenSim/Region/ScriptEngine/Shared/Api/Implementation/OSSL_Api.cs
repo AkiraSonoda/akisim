@@ -2324,9 +2324,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 for (int count = 0; count < NotecardCache.GetLines(assetID); count++)
                 {
                     string line = NotecardCache.GetLine(assetID, count) + "\n";
-
-                    m_log.DebugFormat("From notecard {0} loading line {1}", notecardNameOrUuid, line);
-
                     notecardData.Append(line);
                 }
 
