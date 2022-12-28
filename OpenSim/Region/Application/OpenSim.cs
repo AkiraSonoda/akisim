@@ -128,7 +128,7 @@ namespace OpenSim
 
             m_log.Info("Using async_call_method " + Util.FireAndForgetMethod);
 
-            m_log.InfoFormat("[OPENSIM MAIN] Running GC in {0} mode", GCSettings.IsServerGC ? "server":"workstation");
+            m_log.InfoFormat("Running GC in {0} mode", GCSettings.IsServerGC ? "server":"workstation");
         }
 
         /// <summary>
