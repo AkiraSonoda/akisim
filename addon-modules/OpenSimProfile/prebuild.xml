@@ -16,24 +16,24 @@
      <Reference name="System.Xml"/>
      <Reference name="System.Drawing"/>
      <Reference name="System.Runtime.Remoting"/>
-     <Reference name="OpenMetaverseTypes" path="../../../bin/"/>
-     <Reference name="OpenMetaverse" path="../../../bin/"/>
+     <Reference name="OpenMetaverseTypes"/>
+     <Reference name="OpenMetaverse"/>
      <Reference name="OpenSim.Framework"/>
      <Reference name="OpenSim.Data"/>
      <Reference name="OpenSim.Region.Framework"/>
      <Reference name="OpenSim.Framework.Console"/>
      <Reference name="OpenSim.Framework.Servers"/>
-     <Reference name="OpenSim.Framework.Communications"/>
-     <Reference name="OpenSim.Region.Physics.Manager"/>
      <Reference name="OpenSim.Services.Interfaces"/>
      <Reference name="OpenSim.Services.Connectors"/>
-     <Reference name="Nini" path="../../../bin/"/>
-     <Reference name="log4net" path="../../../bin/"/>
-     <Reference name="XMLRPC" path="../../../bin/"/>
-     <Reference name="Mono.Addins" path="../../../bin/"/>
-     <Reference name="ThreadedClasses" path="../../../bin/"/>
+     <Reference name="Nini"/>
+     <Reference name="log4net"/>
+     <Reference name="XMLRPC"/>
+     <Reference name="Mono.Addins"/>
+     <Reference name="ThreadedClasses"/>
 
      <Files>
-       <Match pattern="*.cs" recurse="true"/>
+       <Match pattern="*.cs" recurse="true">
+	      <Exclude name="obj" pattern="obj"/>
+	   </Match>
      </Files>
 </Project>
