@@ -2184,7 +2184,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public void SendKillObject(List<uint> localIDs)
         {
             // foreach (uint id in localIDs)
-            //  m_log.DebugFormat("[CLIENT]: Sending KillObjectPacket to {0} for {1} in {2}", Name, id, regionHandle);
+            //  m_log.DebugFormat("Sending KillObjectPacket to {0} for {1} in {2}", Name, id, regionHandle);
 
             // remove pending entities to reduce looping chances.
             m_entityProps.Remove(localIDs);
@@ -4717,8 +4717,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// </summary>
         private void ResendPrimUpdates(List<EntityUpdate> updates, OutgoingPacket oPacket)
         {
-            // m_log.WarnFormat("[CLIENT] resending prim updates {0}, packet sequence number {1}", updates[0].UpdateTime, oPacket.SequenceNumber);
-
             // Remove the update packet from the list of packets waiting for acknowledgement
             // because we are requeuing the list of updates. They will be resent in new packets
             // with the most recent state and priority.
@@ -8800,7 +8798,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 return;
 
             ScriptDialogReplyPacket rdialog = (ScriptDialogReplyPacket)Pack;
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("[CLIENT]: Received ScriptDialogReply from {0}", rdialog.Data.ObjectID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Received ScriptDialogReply from {0}", rdialog.Data.ObjectID);
             if (rdialog.AgentData.SessionID.NotEqual(m_sessionId) || rdialog.AgentData.AgentID.NotEqual(m_agentId))
                 return;
 
@@ -11601,7 +11599,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         private void HandleViewerStats(Packet Pack)
         {
             // TODO: handle this packet
-            //m_log.Warn("[CLIENT]: unhandled ViewerStats packet");
+            //m_log.Warn("unhandled ViewerStats packet");
         }
 
         private void HandleMapItemRequest(Packet Pack)
