@@ -106,7 +106,7 @@ namespace OpenSim.Region.Framework.Scenes
                 else
                 {
                     if(EnvironmentVersion <= 0)
-                        EnvironmentVersion = 0x7000000 | Util.RandomClass.Next();
+                        EnvironmentVersion = 0x7000000 | Random.Shared.Next();
                     else
                         ++EnvironmentVersion;
                     m_environment.version = EnvironmentVersion;
@@ -187,7 +187,6 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public static readonly Vector3 SIT_TARGET_ADJUSTMENT = new Vector3(0.0f, 0.0f, 0.4f);
         public readonly bool  LegacySitOffsets = true;
-        public static readonly Vector3 OLD_SIT_TARGET_ADJUSTMENT = new Vector3(0.1f, 0.0f, 0.3f); // AKIDO
 
         /// <summary>
         /// Movement updates for agents in neighboring regions are sent directly to clients.
@@ -491,7 +490,6 @@ namespace OpenSim.Region.Framework.Scenes
             get { return m_appearance; }
             set
             {
-                m_log.Info("SETAPPEARANCE"); // AKIDO
                 m_appearance = value;
 //                m_log.DebugFormat("[SCENE PRESENCE]: Set appearance for {0} to {1}", Name, value);
             }
@@ -2001,7 +1999,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 ulong regionHandle = region.RegionHandle;
                 m_knownChildRegions[regionHandle] = capsPath;
-                m_knownChildRegionsSizeInfo[regionHandle] = new spRegionSizeInfo(region.RegionSizeX, region.RegionSizeY); ;
+                m_knownChildRegionsSizeInfo[regionHandle] = new spRegionSizeInfo(region.RegionSizeX, region.RegionSizeY);
             }
         }
 
@@ -2367,8 +2365,8 @@ namespace OpenSim.Region.Framework.Scenes
                         if (p == this)
                             continue;
 
-                    if (ParcelHideThisAvatar && currentParcelUUID.NotEqual(p.currentParcelUUID) && !p.IsViewerUIGod)
-                        continue;
+                        if (ParcelHideThisAvatar && currentParcelUUID.NotEqual(p.currentParcelUUID) && !p.IsViewerUIGod)
+                            continue;
 
                         SendAppearanceToAgentNF(p);
                         if (haveAnims)
@@ -3099,7 +3097,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 if (!Flying)
                     shouldfly = noFly ? false : (pos.Z > terrainHeight + Appearance.AvatarHeight);
-                LandAtTarget = landAtTarget & shouldfly;
+                LandAtTarget = landAtTarget && shouldfly;
             }
             else
             {   
@@ -3638,20 +3636,6 @@ namespace OpenSim.Region.Framework.Scenes
                         newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                     }
 
-
-               
-                    // AKIDO
-                    // SitTarget Compatibility Workaround 
-                    if (m_scene.m_useWrongSitTarget) {
-                        if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-                            newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
-                        } else {
-                            newPos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
-                        }
-                    } else {
-                        newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
-                    }
-                    newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                     if (part.IsRoot)
                     {
                         newRot = sitTargetOrient;
@@ -4126,7 +4110,7 @@ namespace OpenSim.Region.Framework.Scenes
                 else
                 {
                     //bool cacheCulling = (flags & 1) != 0;
-                    bool cacheEmpty = (flags & 2) != 0;;
+                    bool cacheEmpty = (flags & 2) != 0;
 
                     EntityBase[] entities = Scene.Entities.GetEntities();
                     if(cacheEmpty)
@@ -6141,7 +6125,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             // forcing telehubs on any tp that reachs this
             if ((m_teleportFlags & TeleHubTPFlags) != 0 ||
-                (m_scene.TelehubAllowLandmarks == true ? false : ((m_teleportFlags & TeleportFlags.ViaLandmark) != 0 )))
+                (m_scene.TelehubAllowLandmarks ? false : ((m_teleportFlags & TeleportFlags.ViaLandmark) != 0 )))
             {
                 ILandObject land;
                 Vector3 teleHubPosition = telehub.AbsolutePosition;
@@ -6178,7 +6162,7 @@ namespace OpenSim.Region.Framework.Scenes
                             goto case "sequence";
                         do
                         {
-                            index = Util.RandomClass.Next(spawnPoints.Length - 1);
+                            index = Random.Shared.Next(spawnPoints.Length - 1);
 
                             spawnPosition = spawnPoints[index].GetLocation(teleHubPosition, teleHubRotation);
                             land = m_scene.LandChannel.GetLandObject(spawnPosition.X,spawnPosition.Y);

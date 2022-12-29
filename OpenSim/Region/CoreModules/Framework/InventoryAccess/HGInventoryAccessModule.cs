@@ -30,12 +30,8 @@ using System.Collections.Generic;
 using System.Reflection;
 
 using OpenSim.Framework;
-using OpenSim.Framework.Client;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Services.Connectors.Hypergrid;
-using OpenSim.Services.Interfaces;
-using OpenSim.Server.Base;
 
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 
@@ -150,22 +146,18 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
         protected void OnCompleteMovementToRegion(IClientAPI client, bool arg2)
         {
             //m_log.DebugFormat("[HG INVENTORY ACCESS MODULE]: OnCompleteMovementToRegion of user {0}", client.Name);
-            object sp = null;
-            if (client.Scene.TryGetScenePresence(client.AgentId, out sp))
+            if (client.SceneAgent is ScenePresence sp)
             {
-                if (sp is ScenePresence)
+                AgentCircuitData aCircuit = sp.Scene.AuthenticateHandler.GetAgentCircuitData(client.AgentId);
+                if (aCircuit != null &&  (aCircuit.teleportFlags & (uint)Constants.TeleportFlags.ViaHGLogin) != 0)
                 {
-                    AgentCircuitData aCircuit = ((ScenePresence)sp).Scene.AuthenticateHandler.GetAgentCircuitData(client.AgentId);
-                    if (aCircuit != null &&  (aCircuit.teleportFlags & (uint)Constants.TeleportFlags.ViaHGLogin) != 0)
+                    if (m_RestrictInventoryAccessAbroad)
                     {
-                        if (m_RestrictInventoryAccessAbroad)
-                        {
-                            IUserManagement uMan = m_Scene.RequestModuleInterface<IUserManagement>();
-                            if (uMan.IsLocalGridUser(client.AgentId))
-                                ProcessInventoryForComingHome(client);
-                            else
-                                ProcessInventoryForArriving(client);
-                        }
+                        IUserManagement uMan = m_Scene.RequestModuleInterface<IUserManagement>();
+                        if (uMan.IsLocalGridUser(client.AgentId))
+                            ProcessInventoryForComingHome(client);
+                        else
+                            ProcessInventoryForArriving(client);
                     }
                 }
             }
@@ -253,11 +245,13 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
 
             // We need to construct this here to satisfy the calling convention.
             // Better this in two places than five formal params in all others.
-            InventoryItemBase item = new InventoryItemBase();
-            item.Owner = remoteClient.AgentId;
-            item.AssetType = (int)AssetType.Unknown;
-            item.AssetID = newAssetID;
-            item.Name = String.Empty;
+            InventoryItemBase item = new InventoryItemBase
+            {
+                Owner = remoteClient.AgentId,
+                AssetType = (int)AssetType.Unknown,
+                AssetID = newAssetID,
+                Name = String.Empty
+            };
 
             PostInventoryAsset(item, 0);
 
@@ -285,11 +279,13 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
         {
             if (!assetID.Equals(UUID.Zero))
             {
-                InventoryItemBase item = new InventoryItemBase();
-                item.Owner = agentID;
-                item.AssetType = (int)AssetType.Unknown;
-                item.AssetID = assetID;
-                item.Name = String.Empty;
+                InventoryItemBase item = new()
+                {
+                    Owner = agentID,
+                    AssetType = (int)AssetType.Unknown,
+                    AssetID = assetID,
+                    Name = String.Empty
+                };
 
                 PostInventoryAsset(item, 0);
             }
@@ -319,8 +315,15 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
                             bool RezSelected, bool RemoveItem, UUID fromTaskID, bool attachment)
         {
             InventoryItemBase item = m_Scene.InventoryService.GetItem(remoteClient.AgentId, itemID);
-            if (item == null || item.AssetID.IsZero())
+            if (item is null || item.AssetID.IsZero())
                 return null;
+
+            if (attachment && (item.Flags & (uint)InventoryItemFlags.ObjectHasMultipleItems) != 0)
+            {
+                if (remoteClient is not null && remoteClient.IsActive)
+                    remoteClient.SendAlertMessage("You can't attach multiple objects to one spot");
+                return null;
+            }
 
             string userAssetServer;
             if (IsForeignUser(remoteClient.AgentId, out userAssetServer))
@@ -338,8 +341,8 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
 
         public override void TransferInventoryAssets(InventoryItemBase item, UUID sender, UUID receiver)
         {
-            string senderAssetServer = string.Empty;
-            string receiverAssetServer = string.Empty;
+            string senderAssetServer;
+            string receiverAssetServer;
             bool isForeignSender, isForeignReceiver;
             isForeignSender = IsForeignUser(sender, out senderAssetServer);
             isForeignReceiver = IsForeignUser(receiver, out receiverAssetServer);
@@ -496,7 +499,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess
 
                 // items directly under the root folder
                 foreach (InventoryItemBase it in content.Items)
-                    it.Name = it.Name + " (Unavailable)"; ;
+                    it.Name += " (Unavailable)";
 
                 // Send the new names
                 client.SendBulkUpdateInventory(keep.ToArray(), content.Items.ToArray());

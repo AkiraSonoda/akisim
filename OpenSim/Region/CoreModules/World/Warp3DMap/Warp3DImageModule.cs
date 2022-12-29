@@ -42,8 +42,6 @@ using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Region.PhysicsModules.SharedBase;
-using OpenSim.Services.Interfaces;
 
 using OpenMetaverse;
 using OpenMetaverse.Assets;
@@ -75,7 +73,6 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         private Dictionary<UUID, warp_Texture> m_warpTextures = new Dictionary<UUID, warp_Texture>();
         private Dictionary<UUID, int> m_colors = new Dictionary<UUID, int>();
 
-        private IConfigSource m_config;
         private bool m_drawPrimVolume = true;   // true if should render the prims on the tile
         private bool m_textureTerrain = true;   // true if to create terrain splatting texture
         private bool m_textureAverageTerrain = false; // replace terrain textures by their average color
@@ -89,40 +86,35 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
         private bool m_Enabled = false;
 
-//        private Bitmap lastImage = null;
-        private DateTime lastImageTime = DateTime.MinValue;
-
         #region Region Module interface
 
         public void Initialise(IConfigSource source)
         {
-            m_config = source;
-
             string[] configSections = new string[] { "Map", "Startup" };
 
             if (Util.GetConfigVarFromSections<string>(
-                m_config, "MapImageModule", configSections, "MapImageModule") != "Warp3DImageModule")
+                source, "MapImageModule", configSections, "MapImageModule") != "Warp3DImageModule")
                 return;
 
             m_Enabled = true;
 
             m_drawPrimVolume =
-                Util.GetConfigVarFromSections<bool>(m_config, "DrawPrimOnMapTile", configSections, m_drawPrimVolume);
+                Util.GetConfigVarFromSections<bool>(source, "DrawPrimOnMapTile", configSections, m_drawPrimVolume);
             m_textureTerrain =
-                Util.GetConfigVarFromSections<bool>(m_config, "TextureOnMapTile", configSections, m_textureTerrain);
+                Util.GetConfigVarFromSections<bool>(source, "TextureOnMapTile", configSections, m_textureTerrain);
             m_textureAverageTerrain =
-                Util.GetConfigVarFromSections<bool>(m_config, "AverageTextureColorOnMapTile", configSections, m_textureAverageTerrain);
+                Util.GetConfigVarFromSections<bool>(source, "AverageTextureColorOnMapTile", configSections, m_textureAverageTerrain);
             if (m_textureAverageTerrain)
                 m_textureTerrain = true;
             m_texturePrims =
-                Util.GetConfigVarFromSections<bool>(m_config, "TexturePrims", configSections, m_texturePrims);
+                Util.GetConfigVarFromSections<bool>(source, "TexturePrims", configSections, m_texturePrims);
             m_texturePrimSize =
-                Util.GetConfigVarFromSections<float>(m_config, "TexturePrimSize", configSections, m_texturePrimSize);
+                Util.GetConfigVarFromSections<float>(source, "TexturePrimSize", configSections, m_texturePrimSize);
             m_renderMeshes =
-                Util.GetConfigVarFromSections<bool>(m_config, "RenderMeshes", configSections, m_renderMeshes);
+                Util.GetConfigVarFromSections<bool>(source, "RenderMeshes", configSections, m_renderMeshes);
 
-            m_renderMaxHeight = Util.GetConfigVarFromSections<float>(m_config, "RenderMaxHeight", configSections, m_renderMaxHeight);
-            m_renderMinHeight = Util.GetConfigVarFromSections<float>(m_config, "RenderMinHeight", configSections, m_renderMinHeight);
+            m_renderMaxHeight = Util.GetConfigVarFromSections<float>(source, "RenderMaxHeight", configSections, m_renderMaxHeight);
+            m_renderMinHeight = Util.GetConfigVarFromSections<float>(source, "RenderMinHeight", configSections, m_renderMinHeight);
             /*
             m_cameraHeight = Util.GetConfigVarFromSections<float>(m_config, "RenderCameraHeight", configSections, m_cameraHeight);
 
@@ -190,7 +182,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
         private Vector3 cameraPos;
         private Vector3 cameraDir;
-        private int viewWitdh = 256;
+        private int viewWidth = 256;
         private int viewHeight = 256;
         private float fov;
         private bool orto;
@@ -203,11 +195,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 m_primMesher = RenderingLoader.LoadRenderer(renderers[0]);
             }
 
-            viewWitdh = (int)m_scene.RegionInfo.RegionSizeX;
+            viewWidth = (int)m_scene.RegionInfo.RegionSizeX;
             viewHeight = (int)m_scene.RegionInfo.RegionSizeY;
 
             cameraPos = new Vector3(
-                            viewWitdh * 0.5f,
+                            viewWidth * 0.5f,
                             viewHeight * 0.5f,
                             m_cameraHeight);
 
@@ -217,7 +209,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             Bitmap tile = GenImage();
             // image may be reloaded elsewhere, so no compression format
             string filename = "MAP-" + m_scene.RegionInfo.RegionID.ToString() + ".png";
-            tile.Save(filename, ImageFormat.Png);
+            tile.Save(filename,ImageFormat.Png);
             m_primMesher = null;
             return tile;
         }
@@ -232,7 +224,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
             cameraPos = camPos;
             cameraDir = camDir;
-            viewWitdh = width;
+            viewWidth = width;
             viewHeight = height;
             fov = pfov;
             orto = false;
@@ -249,8 +241,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
             WarpRenderer renderer = new WarpRenderer();
 
-            if (!renderer.CreateScene(viewWitdh, viewHeight))
-                return new Bitmap(viewWitdh, viewHeight);
+            if (!renderer.CreateScene(viewWidth, viewHeight))
+                return new Bitmap(viewWidth, viewHeight);
 
             #region Camera
 
@@ -258,7 +250,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             warp_Vector lookat = warp_Vector.add(pos, ConvertVector(cameraDir));
 
             if (orto)
-                renderer.Scene.defaultCamera.setOrthographic(true, viewWitdh, viewHeight);
+                renderer.Scene.defaultCamera.setOrthographic(true, viewWidth, viewHeight);
             else
                 renderer.Scene.defaultCamera.setFov(fov);
 
@@ -440,7 +432,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         m_scene.RegionInfo.WorldLocX, m_scene.RegionInfo.WorldLocY,
                         m_scene.AssetService, m_imgDecoder, m_textureTerrain, m_textureAverageTerrain,
                         twidth, twidth))
-                texture = new warp_Texture(image);
+                    texture = new warp_Texture(image);
 
             warp_Material material = new warp_Material(texture);
             renderer.Scene.addMaterial("TerrainMat", material);
@@ -845,10 +837,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
         private static Vector3 SurfaceNormal(Vector3 c1, Vector3 c2, Vector3 c3)
         {
-            Vector3 edge1 = new Vector3(c2.X - c1.X, c2.Y - c1.Y, c2.Z - c1.Z);
-            Vector3 edge2 = new Vector3(c3.X - c1.X, c3.Y - c1.Y, c3.Z - c1.Z);
-
-            Vector3 normal = Vector3.Cross(edge1, edge2);
+            Vector3 normal = Vector3.Cross(c2 - c1, c3 - c1);
             normal.Normalize();
 
             return normal;
@@ -871,56 +860,52 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                     height = bitmap.Height;
 
                     BitmapData bitmapData = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-                    pixelBytes = (bitmap.PixelFormat == PixelFormat.Format24bppRgb) ? 3 : 4;
+                    pixelBytes = (bitmapData.PixelFormat == PixelFormat.Format24bppRgb) ? 3 : 4;
 
                     // Sum up the individual channels
                     unsafe
                     {
+                        byte* start = (byte*)bitmapData.Scan0;
                         if (pixelBytes == 4)
                         {
                             for (int y = 0; y < height; y++)
                             {
-                                byte* row = (byte*)bitmapData.Scan0 + (y * bitmapData.Stride);
-
-                                for (int x = 0; x < width; x++)
+                                
+                                byte* end = start + 4 * width;
+                                for(byte* row = start; row < end; row += 4)
                                 {
-                                    b += row[x * pixelBytes + 0];
-                                    g += row[x * pixelBytes + 1];
-                                    r += row[x * pixelBytes + 2];
-                                    a += row[x * pixelBytes + 3];
+                                    b += row[0];
+                                    g += row[1];
+                                    r += row[2];
+                                    a += row[3];
                                 }
+                                start += bitmapData.Stride;
                             }
                         }
                         else
                         {
                             for (int y = 0; y < height; y++)
                             {
-                                byte* row = (byte*)bitmapData.Scan0 + (y * bitmapData.Stride);
-
-                                for (int x = 0; x < width; x++)
+                                byte* end = start + 3 * width;
+                                for (byte* row = start; row < end; row += 3)
                                 {
-                                    b += row[x * pixelBytes + 0];
-                                    g += row[x * pixelBytes + 1];
-                                    r += row[x * pixelBytes + 2];
+                                    b += row[0];
+                                    g += row[1];
+                                    r += row[2];
                                 }
+                                start += bitmapData.Stride;
                             }
                         }
                     }
+                    bitmap.UnlockBits(bitmapData);
                 }
                 // Get the averages for each channel
-                const decimal OO_255 = 1m / 255m;
-                decimal totalPixels = (decimal)(width * height);
-
-                decimal rm = ((decimal)r / totalPixels) * OO_255;
-                decimal gm = ((decimal)g / totalPixels) * OO_255;
-                decimal bm = ((decimal)b / totalPixels) * OO_255;
-                decimal am = ((decimal)a / totalPixels) * OO_255;
-
-                if (pixelBytes == 3)
-                    am = 1m;
-
+                double invtotalPixels = 1.0/(255.0 * width * height);
+                double rm = r * invtotalPixels;
+                double gm = g * invtotalPixels;
+                double bm = b * invtotalPixels;
+                double am = pixelBytes == 3 ? 1.0 : a * invtotalPixels;
                 return new Color4((float)rm, (float)gm, (float)bm, (float)am);
-
             }
             catch (Exception ex)
             {
@@ -952,6 +937,12 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         public static float Bilinear(float v00, float v01, float v10, float v11, float xPercent, float yPercent)
         {
             return Utils.Lerp(Utils.Lerp(v00, v01, xPercent), Utils.Lerp(v10, v11, xPercent), yPercent);
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static float Bilinear(float[] v, float xPercent, float yPercent)
+        {
+            return Utils.Lerp(Utils.Lerp(v[0], v[2], xPercent), Utils.Lerp(v[1], v[3], xPercent), yPercent);
         }
     }
 }

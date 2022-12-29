@@ -108,7 +108,7 @@ namespace OpenSim.Region.Framework.Scenes
     {
         //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private Scene m_scene;
+        private readonly Scene m_scene;
         public ScenePermissions(Scene scene)
         {
             m_scene = scene;
@@ -1164,8 +1164,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (client == null || client.SceneAgent == null|| destPart == null || item == null)
                     return false;
 
-                ScenePresence sp = client.SceneAgent as ScenePresence;
-                if(sp == null || sp.IsDeleted)
+                if(client.SceneAgent is not ScenePresence sp || sp.IsDeleted)
                     return false;
 
                 Delegate[] list = handler.GetInvocationList();

@@ -591,7 +591,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
             }
         }
 
-        protected void Drop(UUID requestID, UUID sessionID)
+        protected void Drop(UUID requestID, UUID _)
         {
             UrlData url = null;
             lock (m_RequestMap)
@@ -707,7 +707,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                     string uri_tmp;
                     string pathInfo;
 
-                    int pos = uri.IndexOf("/", 45); // /lslhttp/uuid/ <-
+                    int pos = uri.IndexOf('/', 45); // /lslhttp/uuid/ <-
                     if (pos >= 45)
                     {
                         uri_tmp = uri.Substring(0, pos);

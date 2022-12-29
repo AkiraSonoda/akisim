@@ -26,7 +26,6 @@
  */
 
 using System;
-using System.Runtime.Remoting.Lifetime;
 using System.Threading;
 using System.Reflection;
 using System.Collections;
@@ -56,10 +55,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
 
         public void ApiTypeMOD(IScriptApi api)
         {
-            if (!(api is IMOD_Api))
-                return;
-
-            m_MOD_Functions = (IMOD_Api)api;
+            if (api is IMOD_Api p)
+                m_MOD_Functions = p;
         }
 
         public void modInvokeN(string fname, params object[] parms)

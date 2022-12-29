@@ -45,15 +45,14 @@ namespace OpenSim.Region.PhysicsModule.ubOde
             m_raymanager = raymanager;
         }
 
-        private static readonly Vector3 SitAjust = new Vector3(0, 0, 0.4f);
+        private static readonly Vector3 SitAjust = new(0, 0, 0.4f);
         private const RayFilterFlags RaySitFlags = RayFilterFlags.AllPrims | RayFilterFlags.ClosestHit;
 
         private void RotAroundZ(float x, float y, ref Quaternion ori)
         {
-            double ang = Math.Atan2(y, x);
-            ang *= 0.5d;
-            float s = (float)Math.Sin(ang);
-            float c = (float)Math.Cos(ang);
+            float ang = 0.5f * MathF.Atan2(y, x);
+            float s = MathF.Sin(ang);
+            float c = MathF.Cos(ang);
 
             ori.X = 0;
             ori.Y = 0;
@@ -64,7 +63,7 @@ namespace OpenSim.Region.PhysicsModule.ubOde
 
         public void Sit(PhysicsActor actor, Vector3 avPos, Vector3 avCameraPosition, Vector3 offset, Vector3 avOffset, SitAvatarCallback PhysicsSitResponse)
         {
-            if (!m_scene.haveActor(actor) || !(actor is OdePrim) || ((OdePrim)actor).m_prim_geom == IntPtr.Zero)
+            if (!m_scene.haveActor(actor) || actor is not OdePrim || ((OdePrim)actor).m_prim_geom == IntPtr.Zero)
             {
                 PhysicsSitResponse(-1, actor.LocalID, offset, Quaternion.Identity);
                 return;
@@ -72,8 +71,8 @@ namespace OpenSim.Region.PhysicsModule.ubOde
 
             IntPtr geom = ((OdePrim)actor).m_prim_geom;
 
-            Vector3 geopos = SafeNativeMethods.GeomGetPositionOMV(geom);
-            Quaternion geomOri = SafeNativeMethods.GeomGetQuaternionOMV(geom);
+            Vector3 geopos = UBOdeNative.GeomGetPositionOMV(geom);
+            Quaternion geomOri = UBOdeNative.GeomGetQuaternionOMV(geom);
 
             //Vector3 geopos = actor.Position;
             //Quaternion geomOri = actor.Orientation;
@@ -116,11 +115,11 @@ namespace OpenSim.Region.PhysicsModule.ubOde
 
             offset = rayResults[0].Pos - geopos;
 
-            SafeNativeMethods.GeomClassID geoclass = SafeNativeMethods.GeomGetClass(geom);
+            UBOdeNative.GeomClassID geoclass = UBOdeNative.GeomGetClass(geom);
 
-            if (geoclass == SafeNativeMethods.GeomClassID.SphereClass)
+            if (geoclass == UBOdeNative.GeomClassID.SphereClass)
             {
-                float r = SafeNativeMethods.GeomSphereGetRadius(geom);
+                float r = UBOdeNative.GeomSphereGetRadius(geom);
 
                 offset.Normalize();
                 offset *= r;
@@ -205,7 +204,7 @@ namespace OpenSim.Region.PhysicsModule.ubOde
                     if (rayResults.Count == 0)
                         break;
 
-                    if (Math.Abs(rayResults[0].Normal.Z) < 0.7f)
+                    if (MathF.Abs(rayResults[0].Normal.Z) < 0.7f)
                     {
                         rayDist -= rayResults[0].Depth;
                         if (rayDist < 0f)

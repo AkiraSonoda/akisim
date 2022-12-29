@@ -27,7 +27,6 @@
 
 using System;
 using System.Diagnostics; //for [DebuggerNonUserCode]
-using System.Runtime.Remoting.Lifetime;
 using System.Threading;
 using System.Reflection;
 using System.Collections;
@@ -53,10 +52,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
 
         public void ApiTypeLSL(IScriptApi api)
         {
-            if (!(api is ILSL_Api))
-                return;
-
-            m_LSL_Functions = (ILSL_Api)api;
+            if (api is ILSL_Api p)
+                m_LSL_Functions = p;
         }
 
         public void state(string newState)
@@ -561,6 +558,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_Key llGetLinkKey(int linknum)
         {
             return m_LSL_Functions.llGetLinkKey(linknum);
+        }
+
+        public LSL_Key llObjectGetLinkKey(LSL_Key objectid, int linknum)
+        {
+            return m_LSL_Functions.llObjectGetLinkKey(objectid, linknum);
         }
 
         public LSL_String llGetLinkName(int linknum)
@@ -1151,6 +1153,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_String llSHA1String(string src)
         {
             return m_LSL_Functions.llSHA1String(src);
+        }
+
+        public LSL_String llSHA256String(LSL_String src)
+        {
+            return m_LSL_Functions.llSHA256String(src);
         }
 
         public void llMessageLinked(int linknum, int num, string str, string id)
