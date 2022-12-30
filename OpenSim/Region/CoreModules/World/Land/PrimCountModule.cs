@@ -26,18 +26,14 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection;
-using log4net;
+using System.Threading;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
 using Mono.Addins;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Services.Interfaces;
 
 namespace OpenSim.Region.CoreModules.World.Land
 {
@@ -53,7 +49,7 @@ namespace OpenSim.Region.CoreModules.World.Land
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "PrimCountModule")]
     public class PrimCountModule : IPrimCountModule, INonSharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Scene m_Scene;
         private Dictionary<UUID, PrimCounts> m_PrimCounts =
@@ -73,8 +69,8 @@ namespace OpenSim.Region.CoreModules.World.Land
         /// We start out tainted so that the first get call resets the various prim counts.
         /// </value>
         private bool m_Tainted = true;
-
-        private Object m_TaintLock = new Object();
+        
+        private ReaderWriterLock m_TaintLock = new ReaderWriterLock(); // AKIDO
 
         public Type ReplaceableInterface
         {
@@ -118,29 +114,33 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             // If we're tainted already, don't bother to add. The next
             // access will cause a recount anyway
-            lock (m_TaintLock)
+            if (!m_Tainted)
             {
-                if (!m_Tainted)
+                m_TaintLock.AcquireWriterLock(-1); // AKIDO
+                try
+                {
                     AddObject(obj);
+                }
+                finally
+                {
+                    m_TaintLock.ReleaseWriterLock();
+                }
+            }
 //                else
 //                    m_log.DebugFormat(
 //                        "[PRIM COUNT MODULE]: Ignoring OnParcelPrimCountAdd() for {0} on {1} since count is tainted",
 //                        obj.Name, m_Scene.RegionInfo.RegionName);
-            }
         }
 
         private void OnObjectBeingRemovedFromScene(SceneObjectGroup obj)
         {
             // Don't bother to update tainted counts
-            lock (m_TaintLock)
-            {
-                if (!m_Tainted)
-                    RemoveObject(obj);
+            if (!m_Tainted) // AKIDO
+                RemoveObject(obj);
 //                else
 //                    m_log.DebugFormat(
 //                        "[PRIM COUNT MODULE]: Ignoring OnObjectBeingRemovedFromScene() for {0} on {1} since count is tainted",
 //                        obj.Name, m_Scene.RegionInfo.RegionName);
-            }
         }
 
         private void OnParcelPrimCountTainted()
@@ -148,26 +148,23 @@ namespace OpenSim.Region.CoreModules.World.Land
 //            m_log.DebugFormat(
 //                "[PRIM COUNT MODULE]: OnParcelPrimCountTainted() called on {0}", m_Scene.RegionInfo.RegionName);
 
-            lock (m_TaintLock)
-                m_Tainted = true;
+
+            m_Tainted = true; // AKIDO
         }
 
         public void TaintPrimCount(ILandObject land)
         {
-            lock (m_TaintLock)
-                m_Tainted = true;
+            m_Tainted = true; // AKIDO
         }
 
         public void TaintPrimCount(int x, int y)
         {
-            lock (m_TaintLock)
-                m_Tainted = true;
+            m_Tainted = true; // AKIDO
         }
 
         public void TaintPrimCount()
         {
-            lock (m_TaintLock)
-                m_Tainted = true;
+            m_Tainted = true; // AKIDO
         }
 
         // NOTE: Call under Taint Lock
@@ -260,17 +257,31 @@ namespace OpenSim.Region.CoreModules.World.Land
         public int GetOwnerCount(UUID parcelID)
         {
             int count = 0;
-
-            lock (m_TaintLock)
+            // AKIDO
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
+                {
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
 
                 ParcelCounts counts;
                 if (m_ParcelCounts.TryGetValue(parcelID, out counts))
                     count = counts.Owner;
             }
-
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
+            }
 //            m_log.DebugFormat(
 //                "[PRIM COUNT MODULE]: GetOwnerCount for parcel {0} in {1} returning {2}",
 //                parcelID, m_Scene.RegionInfo.RegionName, count);
@@ -287,15 +298,31 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             int count = 0;
 
-            lock (m_TaintLock)
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
+                {
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
 
                 ParcelCounts counts;
                 if (m_ParcelCounts.TryGetValue(parcelID, out counts))
                     count = counts.Group;
             }
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
+            }
+
 
 //            m_log.DebugFormat(
 //                "[PRIM COUNT MODULE]: GetGroupCount for parcel {0} in {1} returning {2}",
@@ -313,14 +340,29 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             int count = 0;
 
-            lock (m_TaintLock)
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
+                {
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
 
                 ParcelCounts counts;
                 if (m_ParcelCounts.TryGetValue(parcelID, out counts))
                     count = counts.Others;
+            }
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
             }
 
 //            m_log.DebugFormat(
@@ -339,14 +381,29 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             int count = 0;
 
-            lock (m_TaintLock)
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
+                { 
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
 
                 ParcelCounts counts;
                 if (m_ParcelCounts.TryGetValue(parcelID, out counts))
                     count = counts.Selected;
+            }
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
             }
 
 //            m_log.DebugFormat(
@@ -366,10 +423,21 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             int count = 0;
 
-            lock (m_TaintLock)
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
+                {
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
 
                 ParcelCounts counts;
                 if (m_ParcelCounts.TryGetValue(parcelID, out counts))
@@ -378,6 +446,10 @@ namespace OpenSim.Region.CoreModules.World.Land
                     count += counts.Group;
                     count += counts.Others;
                 }
+            }
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
             }
 
 //            m_log.DebugFormat(
@@ -396,11 +468,22 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             int count = 0;
 
-            lock (m_TaintLock)
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
-
+                {
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
+                
                 UUID owner;
                 if (m_OwnerMap.TryGetValue(parcelID, out owner))
                 {
@@ -408,6 +491,10 @@ namespace OpenSim.Region.CoreModules.World.Land
                     if (m_SimwideCounts.TryGetValue(owner, out val))
                         count = val;
                 }
+            }
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
             }
 
 //            m_log.DebugFormat(
@@ -427,10 +514,21 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             int count = 0;
 
-            lock (m_TaintLock)
+            m_TaintLock.AcquireReaderLock(-1);
+            try
             {
                 if (m_Tainted)
-                    Recount();
+                {
+                    LockCookie lc = m_TaintLock.UpgradeToWriterLock(-1);
+                    try
+                    {
+                        Recount();
+                    }
+                    finally
+                    {
+                        m_TaintLock.DowngradeFromWriterLock(ref lc);
+                    }
+                }
 
                 ParcelCounts counts;
                 if (m_ParcelCounts.TryGetValue(parcelID, out counts))
@@ -439,6 +537,10 @@ namespace OpenSim.Region.CoreModules.World.Land
                     if (counts.Users.TryGetValue(userID, out val))
                         count = val;
                 }
+            }
+            finally
+            {
+                m_TaintLock.ReleaseReaderLock();
             }
 
 //            m_log.DebugFormat(

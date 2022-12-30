@@ -30,6 +30,8 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Data.Null
 {
@@ -78,33 +80,29 @@ namespace OpenSim.Data.Null
 
         #region Environment Settings
 
-        private Dictionary<UUID, string> EnvironmentSettings = new Dictionary<UUID, string>();
+        private RwLockedDictionary<UUID, string> EnvironmentSettings = new RwLockedDictionary<UUID, string>(); // AKIDO
 
         public string LoadRegionEnvironmentSettings(UUID regionUUID)
         {
-            lock (EnvironmentSettings)
-            {
-                if (EnvironmentSettings.ContainsKey(regionUUID))
-                    return EnvironmentSettings[regionUUID];
-            }
+            // AKIDO
+            if (EnvironmentSettings.ContainsKey(regionUUID))
+                return EnvironmentSettings[regionUUID];
+            // AKIDO
             return string.Empty;
         }
 
         public void StoreRegionEnvironmentSettings(UUID regionUUID, string settings)
         {
-            lock (EnvironmentSettings)
-            {
-                EnvironmentSettings[regionUUID] = settings;
-            }
+            // AKIDO
+            EnvironmentSettings[regionUUID] = settings;
+            // AKIDO
         }
 
         public void RemoveRegionEnvironmentSettings(UUID regionUUID)
         {
-            lock (EnvironmentSettings)
-            {
-                if (EnvironmentSettings.ContainsKey(regionUUID))
-                    EnvironmentSettings.Remove(regionUUID);
-            }
+            // AKIDO
+            EnvironmentSettings.Remove(regionUUID);
+            // AKIDO
         }
         #endregion
 
@@ -132,8 +130,8 @@ namespace OpenSim.Data.Null
             return new List<SceneObjectGroup>();
         }
 
-        Dictionary<UUID, TerrainData> m_terrains = new Dictionary<UUID, TerrainData>();
-        Dictionary<UUID, TerrainData> m_bakedterrains = new Dictionary<UUID, TerrainData>();
+        RwLockedDictionary<UUID, TerrainData> m_terrains = new RwLockedDictionary<UUID, TerrainData>(); // AKIDO
+        RwLockedDictionary<UUID, TerrainData> m_bakedterrains = new RwLockedDictionary<UUID, TerrainData>();
         public void StoreTerrain(TerrainData ter, UUID regionID)
         {
             if (m_terrains.ContainsKey(regionID))
@@ -159,27 +157,27 @@ namespace OpenSim.Data.Null
         // Returns 'null' if region not found
         public double[,] LoadTerrain(UUID regionID)
         {
-            if (m_terrains.ContainsKey(regionID))
+            if (m_terrains.TryGetValue(regionID, out var data))
             {
-                return m_terrains[regionID].GetDoubles();
+                return data.GetDoubles();
             }
             return null;
         }
 
         public TerrainData LoadTerrain(UUID regionID, int pSizeX, int pSizeY, int pSizeZ)
         {
-            if (m_terrains.ContainsKey(regionID))
+            if (m_terrains.TryGetValue(regionID, out var data))
             {
-                return m_terrains[regionID];
+                return data;
             }
             return null;
         }
 
         public TerrainData LoadBakedTerrain(UUID regionID, int pSizeX, int pSizeY, int pSizeZ)
         {
-            if (m_bakedterrains.ContainsKey(regionID))
+            if (m_bakedterrains.TryGetValue(regionID, out TerrainData data))
             {
-                return m_bakedterrains[regionID];
+                return data;
             }
             return null;
         }

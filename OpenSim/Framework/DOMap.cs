@@ -25,16 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Xml;
-using System.Xml.Schema;
-using System.Xml.Serialization;
-using OpenMetaverse;
-using OpenMetaverse.StructuredData;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Framework
 {
@@ -46,19 +38,15 @@ namespace OpenSim.Framework
     /// </remarks>
     public class DOMap
     {
-        private IDictionary<string, object> m_map;
+        private RwLockedDictionary<string, object> m_map = new RwLockedDictionary<string, object>();
 
         public void Add(string ns, string objName, object dynObj)
         {
             DAMap.ValidateNamespace(ns);
 
-            lock (this)
-            {
-                if (m_map == null)
-                    m_map = new Dictionary<string, object>();
-
-                m_map.Add(objName, dynObj);
-            }
+            // AKIDO
+            m_map.Add(objName, dynObj);
+            // AKIDO
         }
 
         public bool ContainsKey(string key)
@@ -75,24 +63,16 @@ namespace OpenSim.Framework
         /// <param name='key'></param>
         public object Get(string key)
         {
-            lock (this)
-            {
-                if (m_map == null)
-                    return null;
-                else
-                    return m_map[key];
-            }
+            // AKIDO
+            return m_map[key];
+            // AKIDO
         }
 
         public bool Remove(string key)
         {
-            lock (this)
-            {
-                if (m_map == null)
-                    return false;
-                else
-                    return m_map.Remove(key);
-            }
+            // AKIDO
+            return m_map.Remove(key);
+            // AKIDO
         }
     }
 }

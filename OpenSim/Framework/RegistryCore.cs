@@ -26,14 +26,14 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Text;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Framework
 {
     public class RegistryCore : IRegistryCore
     {
-        protected Dictionary<Type, object> m_moduleInterfaces = new Dictionary<Type, object>();
+        protected RwLockedDictionary<Type, object> m_moduleInterfaces = new RwLockedDictionary<Type, object>(); // AKIDO
 
         /// <summary>
         /// Register an Module interface.
@@ -42,20 +42,21 @@ namespace OpenSim.Framework
         /// <param name="iface"></param>
         public void RegisterInterface<T>(T iface)
         {
-            lock (m_moduleInterfaces)
+            try // AKIDO
             {
-                if (!m_moduleInterfaces.ContainsKey(typeof(T)))
-                {
-                    m_moduleInterfaces.Add(typeof(T), iface);
-                }
+                m_moduleInterfaces.Add(typeof(T), iface);
+            }
+            catch
+            {
+
             }
         }
 
         public bool TryGet<T>(out T iface)
         {
-            if (m_moduleInterfaces.ContainsKey(typeof(T)))
+            if(m_moduleInterfaces.TryGetValue(typeof(T), out var o)) // AKIDO
             {
-                iface = (T)m_moduleInterfaces[typeof(T)];
+                iface = (T)o;
                 return true;
             }
             iface = default(T);

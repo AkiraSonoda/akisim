@@ -26,14 +26,10 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Text;
-
-using OpenSim.Framework;
-using OpenSim.Region.Framework;
-using OpenSim.Region.PhysicsModules.SharedBase;
-
-using Nini.Config;
+using System.Collections.Concurrent;
 using log4net;
+using OpenSim.Framework;
+using OpenSim.Region.PhysicsModules.SharedBase;
 
 using OpenMetaverse;
 
@@ -67,6 +63,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
     // ==========================================================================================
     public sealed class BSTerrainManager : IDisposable
     {
+        internal static readonly ILog m_log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         static string LogHeader = "[BULLETSIM TERRAIN MANAGER]";
 
         // These height values are fractional so the odd values will be
@@ -91,7 +89,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         // If doing mega-regions, if we're region zero we will be managing multiple
         //    region terrains since region zero does the physics for the whole mega-region.
-        private Dictionary<Vector3, BSTerrainPhys> m_terrains;
+        private ConcurrentDictionary<Vector3, BSTerrainPhys> m_terrains;
 
         // Flags used to know when to recalculate the height.
         private bool m_terrainModified = false;
@@ -114,7 +112,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             m_physicsScene = physicsScene;
             DefaultRegionSize = regionSize;
 
-            m_terrains = new Dictionary<Vector3,BSTerrainPhys>();
+            m_terrains = new ConcurrentDictionary<Vector3, BSTerrainPhys>();
 
             // Assume one region of default size
             m_worldOffset = Vector3.Zero;
@@ -149,10 +147,9 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             m_physicsScene.PE.ForceActivationState(m_groundPlane, ActivationState.DISABLE_SIMULATION);
 
             BSTerrainPhys initialTerrain = new BSTerrainHeightmap(m_physicsScene, Vector3.Zero, BSScene.TERRAIN_ID, DefaultRegionSize);
-            lock (m_terrains)
-            {
-                // Build an initial terrain and put it in the world. This quickly gets replaced by the real region terrain.
-                m_terrains.Add(Vector3.Zero, initialTerrain);
+            // Build an initial terrain and put it in the world. This quickly gets replaced by the real region terrain.
+            if (!m_terrains.TryAdd(Vector3.Zero, initialTerrain)) { // AKIDO
+                m_log.WarnFormat("CreateInitialGroundPlaneAndTerrain m_terrains.TryAdd() unexpectedly failed when adding initialTerrain: {0}", initialTerrain);        
             }
         }
 
@@ -175,14 +172,12 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         // Release all the terrain we have allocated
         public void ReleaseTerrain()
         {
-            lock (m_terrains)
+            foreach (KeyValuePair<Vector3, BSTerrainPhys> kvp in m_terrains) // AKIDO
             {
-                foreach (KeyValuePair<Vector3, BSTerrainPhys> kvp in m_terrains)
-                {
-                    kvp.Value.Dispose();
-                }
-                m_terrains.Clear();
+                kvp.Value.Dispose();
             }
+
+            m_terrains.Clear();
         }
 
         // The simulator wants to set a new heightmap for the terrain.
@@ -262,58 +257,67 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             Vector3 terrainRegionBase = new Vector3(minCoords.X, minCoords.Y, 0f);
 
-            lock (m_terrains)
+            BSTerrainPhys terrainPhys;
+            if (m_terrains.TryGetValue(terrainRegionBase, out terrainPhys))
             {
-                BSTerrainPhys terrainPhys;
-                if (m_terrains.TryGetValue(terrainRegionBase, out terrainPhys))
-                {
-                    // There is already a terrain in this spot. Free the old and build the new.
-                    DetailLog("{0},BSTerrainManager.UpdateTerrain:UpdateExisting,call,id={1},base={2},minC={3},maxC={4}",
-                                    BSScene.DetailLogZero, id, terrainRegionBase, minCoords, maxCoords);
+                // There is already a terrain in this spot. Free the old and build the new.
+                DetailLog("{0},BSTerrainManager.UpdateTerrain:UpdateExisting,call,id={1},base={2},minC={3},maxC={4}",
+                    BSScene.DetailLogZero, id, terrainRegionBase, minCoords, maxCoords);
 
-                    // Remove old terrain from the collection
-                    m_terrains.Remove(terrainRegionBase);
-                    // Release any physical memory it may be using.
-                    terrainPhys.Dispose();
-
-                    if (MegaRegionParentPhysicsScene == null)
-                    {
-                        // This terrain is not part of the mega-region scheme. Create vanilla terrain.
-                        BSTerrainPhys newTerrainPhys = BuildPhysicalTerrain(terrainRegionBase, id, heightMap, minCoords, maxCoords);
-                        m_terrains.Add(terrainRegionBase, newTerrainPhys);
-
-                        m_terrainModified = true;
-                    }
-                    else
-                    {
-                        // It's possible that Combine() was called after this code was queued.
-                        // If we are a child of combined regions, we don't create any terrain for us.
-                        DetailLog("{0},BSTerrainManager.UpdateTerrain:AmACombineChild,taint", BSScene.DetailLogZero);
-
-                        // Get rid of any terrain that may have been allocated for us.
-                        ReleaseGroundPlaneAndTerrain();
-
-                        // I hate doing this, but just bail
-                        return;
-                    }
+                // Remove old terrain from the collection
+                if (!m_terrains.TryRemove(terrainRegionBase, out BSTerrainPhys bsTerrainPhys)) { // AKIDO
+                    m_log.WarnFormat("UpdateTerrain m_terrains.TryRemove() " +
+                                     "unexpectedly failed when removing terrainRegionBase: {0}", terrainRegionBase);
                 }
-                else
+                // Release any physical memory it may be using.
+                terrainPhys.Dispose();
+
+                if (MegaRegionParentPhysicsScene == null)
                 {
-                    // We don't know about this terrain so either we are creating a new terrain or
-                    //    our mega-prim child is giving us a new terrain to add to the phys world
-
-                    // if this is a child terrain, calculate a unique terrain id
-                    uint newTerrainID = id;
-                    if (newTerrainID >= BSScene.CHILDTERRAIN_ID)
-                        newTerrainID = ++m_terrainCount;
-
-                    DetailLog("{0},BSTerrainManager.UpdateTerrain:NewTerrain,taint,newID={1},minCoord={2},maxCoord={3}",
-                                                BSScene.DetailLogZero, newTerrainID, minCoords, maxCoords);
-                    BSTerrainPhys newTerrainPhys = BuildPhysicalTerrain(terrainRegionBase, id, heightMap, minCoords, maxCoords);
-                    m_terrains.Add(terrainRegionBase, newTerrainPhys);
+                    // This terrain is not part of the mega-region scheme. Create vanilla terrain.
+                    BSTerrainPhys newTerrainPhys =
+                        BuildPhysicalTerrain(terrainRegionBase, id, heightMap, minCoords, maxCoords);
+                    if (!m_terrains.TryAdd(terrainRegionBase, newTerrainPhys)) { // AKIDO
+                        m_log.WarnFormat("UpdateTerrain m_terrains.TryAdd() unexpectedly failed when " +
+                                         "adding terrainRegionBase: {0} initialTerrain: {1}", 
+                            terrainRegionBase,newTerrainPhys);
+                    }
 
                     m_terrainModified = true;
                 }
+                else
+                {
+                    // It's possible that Combine() was called after this code was queued.
+                    // If we are a child of combined regions, we don't create any terrain for us.
+                    DetailLog("{0},BSTerrainManager.UpdateTerrain:AmACombineChild,taint", BSScene.DetailLogZero);
+
+                    // Get rid of any terrain that may have been allocated for us.
+                    ReleaseGroundPlaneAndTerrain();
+
+                    // I hate doing this, but just bail
+                    return;
+                }
+            }
+            else
+            {
+                // We don't know about this terrain so either we are creating a new terrain or
+                //    our mega-prim child is giving us a new terrain to add to the phys world
+
+                // if this is a child terrain, calculate a unique terrain id
+                uint newTerrainID = id;
+                if (newTerrainID >= BSScene.CHILDTERRAIN_ID)
+                    newTerrainID = ++m_terrainCount;
+
+                DetailLog("{0},BSTerrainManager.UpdateTerrain:NewTerrain,taint,newID={1},minCoord={2},maxCoord={3}",
+                    BSScene.DetailLogZero, newTerrainID, minCoords, maxCoords);
+                BSTerrainPhys newTerrainPhys =
+                    BuildPhysicalTerrain(terrainRegionBase, id, heightMap, minCoords, maxCoords);
+                if (!m_terrains.TryAdd(terrainRegionBase, newTerrainPhys)) { // AKIDO
+                    m_log.WarnFormat("UpdateTerrain m_terrains.TryAdd() unexpectedly failed when " +
+                                     "adding terrainRegionBase {0} newTerrainPhys: {1}", terrainRegionBase, newTerrainPhys);
+                }
+
+                m_terrainModified = true;
             }
         }
 
@@ -490,10 +494,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             }
 
             BSTerrainPhys physTerrain = null;
-            lock (m_terrains)
-            {
-                ret = m_terrains.TryGetValue(terrainBaseXYZ, out physTerrain);
-            }
+            ret = m_terrains.TryGetValue(terrainBaseXYZ, out physTerrain); // AKIDO
             outTerrainBase = terrainBaseXYZ;
             outPhysTerrain = physTerrain;
             return ret;
@@ -514,28 +515,29 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             ret.Y = Util.Clamp<float>(ret.Y, 0f, 1000000f);
             ret.Z = 0f;
 
-            lock (m_terrains)
+            // AKIDO
+            // Once down to the <0,0> region, we have to be done.
+            while (ret.X > 0f || ret.Y > 0f)
             {
-                // Once down to the <0,0> region, we have to be done.
-                while (ret.X > 0f || ret.Y > 0f)
+                if (ret.X > 0f)
                 {
-                    if (ret.X > 0f)
-                    {
-                        ret.X = Math.Max(0f, ret.X - DefaultRegionSize.X);
-                        DetailLog("{0},BSTerrainManager.FindAdjacentTerrainBase,reducingX,terrainBase={1}", BSScene.DetailLogZero, ret);
-                        if (m_terrains.ContainsKey(ret))
-                            break;
-                    }
-                    if (ret.Y > 0f)
-                    {
-                        ret.Y = Math.Max(0f, ret.Y - DefaultRegionSize.Y);
-                        DetailLog("{0},BSTerrainManager.FindAdjacentTerrainBase,reducingY,terrainBase={1}", BSScene.DetailLogZero, ret);
-                        if (m_terrains.ContainsKey(ret))
-                            break;
-                    }
+                    ret.X = Math.Max(0f, ret.X - DefaultRegionSize.X);
+                    DetailLog("{0},BSTerrainManager.FindAdjacentTerrainBase,reducingX,terrainBase={1}",
+                        BSScene.DetailLogZero, ret);
+                    if (m_terrains.ContainsKey(ret))
+                        break;
+                }
+
+                if (ret.Y > 0f)
+                {
+                    ret.Y = Math.Max(0f, ret.Y - DefaultRegionSize.Y);
+                    DetailLog("{0},BSTerrainManager.FindAdjacentTerrainBase,reducingY,terrainBase={1}",
+                        BSScene.DetailLogZero, ret);
+                    if (m_terrains.ContainsKey(ret))
+                        break;
                 }
             }
-
+            
             return ret;
         }
 

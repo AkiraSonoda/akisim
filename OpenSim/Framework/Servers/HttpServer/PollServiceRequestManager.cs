@@ -31,9 +31,8 @@ using System.Threading;
 using System.Reflection;
 using log4net;
 using OpenSim.Framework.Monitoring;
-using Amib.Threading;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+// AKIDO: clean
 
 namespace OpenSim.Framework.Servers.HttpServer
 {

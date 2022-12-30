@@ -29,6 +29,7 @@ using System;
 using System.Reflection;
 using log4net;
 using OpenMetaverse;
+// AKIDO: clear
 
 namespace OpenSim.Framework
 {
@@ -37,7 +38,7 @@ namespace OpenSim.Framework
     /// </summary>
     public class TaskInventoryItem : ICloneable
     {
-        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>
         /// XXX This should really be factored out into some constants class.
@@ -355,9 +356,9 @@ namespace OpenSim.Framework
             set
             {
                 _ownerChanged = value;
-//                m_log.DebugFormat(
-//                    "[TASK INVENTORY ITEM]: Owner changed set {0} for {1} {2} owned by {3}",
-//                    _ownerChanged, Name, ItemID, OwnerID);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Owner changed set {0} for {1} {2} owned by {3}",
+                    _ownerChanged, Name, ItemID, OwnerID);
             }
         }
 
@@ -386,11 +387,14 @@ namespace OpenSim.Framework
         /// <param name="partID">The new part ID to which this item belongs</param>
         public void ResetIDs(UUID partID)
         {
-            LoadedItemID = OldItemID;
-            OldItemID = ItemID;
-            ItemID = UUID.Random();
-            ParentPartID = partID;
-            ParentID = partID;
+            lock (this) // AKIDO
+            {
+                LoadedItemID = OldItemID;
+                OldItemID = ItemID;
+                ItemID = UUID.Random();
+                ParentPartID = partID;
+                ParentID = partID;
+            }
         }
 
         public TaskInventoryItem()

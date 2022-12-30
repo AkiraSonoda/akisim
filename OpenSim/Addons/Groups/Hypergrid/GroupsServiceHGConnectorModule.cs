@@ -27,9 +27,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
@@ -42,6 +40,7 @@ using OpenMetaverse;
 using Mono.Addins;
 using log4net;
 using Nini.Config;
+using ThreadedClasses;
 
 namespace OpenSim.Groups
 {
@@ -61,7 +60,7 @@ namespace OpenSim.Groups
         private string m_ServiceLocation;
         private IConfigSource m_Config;
 
-        private Dictionary<string, GroupsServiceHGConnector> m_NetworkConnectors = new Dictionary<string, GroupsServiceHGConnector>();
+        private RwLockedDictionary<string, GroupsServiceHGConnector> m_NetworkConnectors = new RwLockedDictionary<string, GroupsServiceHGConnector>();
         private RemoteConnectorCacheWrapper m_CacheWrapper; // for caching info of external group services
 
         #region ISharedRegionModule
@@ -85,7 +84,8 @@ namespace OpenSim.Groups
 
             m_Enabled = true;
 
-            m_log.DebugFormat("[Groups]: Initializing {0} with LocalService {1}", this.Name, m_ServiceLocation);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Initializing {0} with LocalService {1}", this.Name, m_ServiceLocation);
         }
 
         public string Name
@@ -103,7 +103,9 @@ namespace OpenSim.Groups
             if (!m_Enabled)
                 return;
 
-            m_log.DebugFormat("[Groups]: Registering {0} with {1}", this.Name, scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering {0} with {1}", this.Name, scene.RegionInfo.RegionName);
+            
             scene.RegisterModuleInterface<IGroupsServicesConnector>(this);
             m_Scenes.Add(scene);
 
@@ -115,6 +117,10 @@ namespace OpenSim.Groups
             if (!m_Enabled)
                 return;
 
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             scene.UnregisterModuleInterface<IGroupsServicesConnector>(this);
             m_Scenes.Remove(scene);
         }
@@ -123,6 +129,10 @@ namespace OpenSim.Groups
         {
             if (!m_Enabled)
                 return;
+
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
 
             if (m_UserManagement == null)
             {
@@ -164,6 +174,9 @@ namespace OpenSim.Groups
 
         void OnCompleteMovementToRegion(IClientAPI client, bool arg2)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+            }
             if (client.SceneAgent is ScenePresence sp)
             {
                 if (sp.PresenceType != PresenceType.Npc)
@@ -186,6 +199,10 @@ namespace OpenSim.Groups
         public UUID CreateGroup(UUID RequestingAgentID, string name, string charter, bool showInList, UUID insigniaID, int membershipFee, bool openEnrollment,
             bool allowPublish, bool maturePublish, UUID founderID, out string reason)
         {
+            if (m_log.IsDebugEnabled) {
+               m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+            }
+
             reason = string.Empty;
             if (m_UserManagement.IsLocalGridUser(RequestingAgentID))
                 return m_LocalGroupsConnector.CreateGroup(RequestingAgentID, name, charter, showInList, insigniaID,
@@ -200,6 +217,10 @@ namespace OpenSim.Groups
         public bool UpdateGroup(string RequestingAgentID, UUID groupID, string charter, bool showInList, UUID insigniaID, int membershipFee,
             bool openEnrollment, bool allowPublish, bool maturePublish, out string reason)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+            }
+
             reason = string.Empty;
             string url = string.Empty;
             string name = string.Empty;
@@ -215,6 +236,10 @@ namespace OpenSim.Groups
 
         public ExtendedGroupRecord GetGroupRecord(string RequestingAgentID, UUID GroupID, string GroupName)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+            }
+            
             string url = string.Empty;
             string name = string.Empty;
             if (IsLocal(GroupID, out url, out name))
@@ -252,6 +277,10 @@ namespace OpenSim.Groups
 
         public List<GroupMembersData> GetGroupMembers(string RequestingAgentID, UUID GroupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
             if (IsLocal(GroupID, out url, out gname))
             {
@@ -282,6 +311,10 @@ namespace OpenSim.Groups
 
         public bool AddGroupRole(string RequestingAgentID, UUID groupID, UUID roleID, string name, string description, string title, ulong powers, out string reason)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             reason = string.Empty;
             string url = string.Empty, gname = string.Empty;
 
@@ -296,6 +329,11 @@ namespace OpenSim.Groups
 
         public bool UpdateGroupRole(string RequestingAgentID, UUID groupID, UUID roleID, string name, string description, string title, ulong powers)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(groupID, out url, out gname))
@@ -309,6 +347,11 @@ namespace OpenSim.Groups
 
         public void RemoveGroupRole(string RequestingAgentID, UUID groupID, UUID roleID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(groupID, out url, out gname))
@@ -321,6 +364,11 @@ namespace OpenSim.Groups
 
         public List<GroupRolesData> GetGroupRoles(string RequestingAgentID, UUID groupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(groupID, out url, out gname))
@@ -350,6 +398,11 @@ namespace OpenSim.Groups
 
         public List<GroupRoleMembersData> GetGroupRoleMembers(string RequestingAgentID, UUID groupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(groupID, out url, out gname))
@@ -379,6 +432,11 @@ namespace OpenSim.Groups
 
         public bool AddAgentToGroup(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID, string token, out string reason)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty;
             string name = string.Empty;
             reason = string.Empty;
@@ -431,6 +489,11 @@ namespace OpenSim.Groups
 
         public void RemoveAgentFromGroup(string RequestingAgentID, string AgentID, UUID GroupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, name = string.Empty;
             if (!IsLocal(GroupID, out url, out name) && url != string.Empty)
             {
@@ -449,6 +512,11 @@ namespace OpenSim.Groups
 
         public bool AddAgentToGroupInvite(string RequestingAgentID, UUID inviteID, UUID groupID, UUID roleID, string agentID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(groupID, out url, out gname))
@@ -459,16 +527,29 @@ namespace OpenSim.Groups
 
         public GroupInviteInfo GetAgentToGroupInvite(string RequestingAgentID, UUID inviteID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+            }
+
             return m_LocalGroupsConnector.GetAgentToGroupInvite(AgentUUI(RequestingAgentID), inviteID);
         }
 
         public void RemoveAgentToGroupInvite(string RequestingAgentID, UUID inviteID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             m_LocalGroupsConnector.RemoveAgentToGroupInvite(AgentUUI(RequestingAgentID), inviteID);
         }
 
         public void AddAgentToGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(GroupID, out url, out gname))
@@ -478,6 +559,10 @@ namespace OpenSim.Groups
 
         public void RemoveAgentFromGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(GroupID, out url, out gname))
@@ -486,6 +571,10 @@ namespace OpenSim.Groups
 
         public List<GroupRolesData> GetAgentGroupRoles(string RequestingAgentID, string AgentID, UUID GroupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(GroupID, out url, out gname))
@@ -496,6 +585,11 @@ namespace OpenSim.Groups
 
         public void SetAgentActiveGroup(string RequestingAgentID, string AgentID, UUID GroupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(GroupID, out url, out gname))
@@ -504,11 +598,20 @@ namespace OpenSim.Groups
 
         public ExtendedGroupMembershipData GetAgentActiveMembership(string RequestingAgentID, string AgentID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             return m_LocalGroupsConnector.GetAgentActiveMembership(AgentUUI(RequestingAgentID), AgentUUI(AgentID));
         }
 
         public void SetAgentActiveGroupRole(string RequestingAgentID, string AgentID, UUID GroupID, UUID RoleID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(GroupID, out url, out gname))
@@ -517,11 +620,19 @@ namespace OpenSim.Groups
 
         public void UpdateMembership(string RequestingAgentID, string AgentID, UUID GroupID, bool AcceptNotices, bool ListInProfile)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             m_LocalGroupsConnector.UpdateMembership(AgentUUI(RequestingAgentID), AgentUUI(AgentID), GroupID, AcceptNotices, ListInProfile);
         }
 
         public ExtendedGroupMembershipData GetAgentGroupMembership(string RequestingAgentID, string AgentID, UUID GroupID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(GroupID, out url, out gname))
@@ -532,12 +643,20 @@ namespace OpenSim.Groups
 
         public List<GroupMembershipData> GetAgentGroupMemberships(string RequestingAgentID, string AgentID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             return m_LocalGroupsConnector.GetAgentGroupMemberships(AgentUUI(RequestingAgentID), AgentUUI(AgentID));
         }
 
         public bool AddGroupNotice(string RequestingAgentID, UUID groupID, UUID noticeID, string fromName, string subject, string message,
             bool hasAttachment, byte attType, string attName, UUID attItemID, string attOwnerID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             string url = string.Empty, gname = string.Empty;
 
             if (IsLocal(groupID, out url, out gname))
@@ -584,6 +703,10 @@ namespace OpenSim.Groups
 
         public GroupNoticeInfo GetGroupNotice(string RequestingAgentID, UUID noticeID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             GroupNoticeInfo notice = m_LocalGroupsConnector.GetGroupNotice(AgentUUI(RequestingAgentID), noticeID);
 
             if (notice != null && notice.noticeData.HasAttachment && notice.noticeData.AttachmentOwnerID != null)
@@ -603,6 +726,11 @@ namespace OpenSim.Groups
 
         private string AgentUUI(string AgentIDStr)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             UUID AgentID = UUID.Zero;
             if (!UUID.TryParse(AgentIDStr, out AgentID) || AgentID.IsZero())
                 return UUID.Zero.ToString();
@@ -628,6 +756,11 @@ namespace OpenSim.Groups
 
         private string AgentUUIForOutside(string AgentIDStr)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
+
             UUID AgentID = UUID.Zero;
             if (!UUID.TryParse(AgentIDStr, out AgentID) || AgentID.IsZero())
                 return UUID.ZeroString;
@@ -647,6 +780,10 @@ namespace OpenSim.Groups
 
         private UUID ImportForeigner(string uID)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+            
             UUID userID = UUID.Zero;
             string url = string.Empty, first = string.Empty, last = string.Empty, tmp = string.Empty;
             if (Util.ParseUniversalUserIdentifier(uID, out userID, out url, out first, out last, out tmp))
@@ -657,6 +794,10 @@ namespace OpenSim.Groups
 
         private bool IsLocal(UUID groupID, out string serviceLocation, out string name)
         {
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
+
             serviceLocation = string.Empty;
             name = string.Empty;
             if (groupID.Equals(UUID.Zero))
@@ -665,27 +806,26 @@ namespace OpenSim.Groups
             ExtendedGroupRecord group = m_LocalGroupsConnector.GetGroupRecord(UUID.Zero.ToString(), groupID, string.Empty);
             if (group == null)
             {
-                //m_log.DebugFormat("[XXX]: IsLocal? group {0} not found -- no.", groupID);
                 return false;
             }
 
             serviceLocation = group.ServiceLocation;
             name = group.GroupName;
             bool isLocal = (group.ServiceLocation.Length == 0);
-            //m_log.DebugFormat("[XXX]: IsLocal? {0}", isLocal);
             return isLocal;
         }
 
         private GroupsServiceHGConnector GetConnector(string url)
         {
-            lock (m_NetworkConnectors)
-            {
-                if (m_NetworkConnectors.ContainsKey(url))
-                    return m_NetworkConnectors[url];
+			if (m_log.IsDebugEnabled) {
+				m_log.DebugFormat ("{0} called", MethodBase.GetCurrentMethod ().Name);
+			}
 
-                GroupsServiceHGConnector c = new GroupsServiceHGConnector(url);
-                m_NetworkConnectors[url] = c;
-            }
+            if (m_NetworkConnectors.ContainsKey(url))
+                return m_NetworkConnectors[url];
+
+            GroupsServiceHGConnector c = new GroupsServiceHGConnector(url);
+            m_NetworkConnectors[url] = c;
 
             return m_NetworkConnectors[url];
         }

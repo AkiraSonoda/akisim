@@ -25,11 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 
 using OpenSim.Framework;
 using OpenSim.Framework.ServiceAuth;
@@ -48,7 +45,6 @@ namespace OpenSim.OfflineIM
 
         private string m_ServerURI = string.Empty;
         private IServiceAuth m_Auth;
-        private object m_Lock = new object();
 
         public OfflineIMServiceRemoteConnector(string url)
         {
@@ -154,12 +150,14 @@ namespace OpenSim.OfflineIM
             sendData["METHOD"] = method;
 
             string reply = string.Empty;
-            lock (m_Lock)
-                reply = SynchronousRestFormsRequester.MakeRequest("POST",
-                         m_ServerURI + "/offlineim",
-                         ServerUtils.BuildQueryString(sendData),
-                         m_Auth);
-
+            
+            // AKIDO remove lock
+            reply = SynchronousRestFormsRequester.MakeRequest("POST",
+                m_ServerURI + "/offlineim",
+                ServerUtils.BuildQueryString(sendData),
+                m_Auth);
+            // AKIDO end of remove lock
+            
             Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(
                     reply);
 

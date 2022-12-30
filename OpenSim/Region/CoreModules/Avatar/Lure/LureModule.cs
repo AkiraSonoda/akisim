@@ -26,7 +26,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using log4net;
 using Mono.Addins;
@@ -35,6 +34,8 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean 
 
 namespace OpenSim.Region.CoreModules.Avatar.Lure
 {
@@ -44,7 +45,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
         private static readonly ILog m_log = LogManager.GetLogger(
                 MethodBase.GetCurrentMethod().DeclaringType);
 
-        private readonly List<Scene> m_scenes = new List<Scene>();
+        private readonly RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
 
         private IMessageTransferModule m_TransferModule = null;
         private bool m_Enabled = false;
@@ -58,7 +59,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
                         "LureModule")
                 {
                     m_Enabled = true;
-                    m_log.DebugFormat("[LURE MODULE]: {0} enabled", Name);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} enabled", Name);
                 }
             }
         }
@@ -68,13 +69,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
             if (!m_Enabled)
                 return;
 
-            lock (m_scenes)
-            {
-                m_scenes.Add(scene);
-                scene.EventManager.OnNewClient += OnNewClient;
-                scene.EventManager.OnIncomingInstantMessage +=
-                        OnGridInstantMessage;
-            }
+            // AKIDO
+            m_scenes.Add(scene);
+            scene.EventManager.OnNewClient += OnNewClient;
+            scene.EventManager.OnIncomingInstantMessage += OnGridInstantMessage;
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -89,8 +88,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
 
                 if (m_TransferModule == null)
                 {
-                    m_log.Error("[INSTANT MESSAGE]: No message transfer module, "+
-                    "lures will not work!");
+                    m_log.Error("No message transfer module, lures will not work!");
 
                     m_Enabled = false;
                     m_scenes.Clear();
@@ -107,13 +105,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
             if (!m_Enabled)
                 return;
 
-            lock (m_scenes)
-            {
-                m_scenes.Remove(scene);
-                scene.EventManager.OnNewClient -= OnNewClient;
-                scene.EventManager.OnIncomingInstantMessage -=
-                        OnGridInstantMessage;
-            }
+            // AKIDO
+            m_scenes.Remove(scene);
+            scene.EventManager.OnNewClient -= OnNewClient;
+            scene.EventManager.OnIncomingInstantMessage -= OnGridInstantMessage;
+            // AKIOD
         }
 
         void OnNewClient(IClientAPI client)
@@ -170,7 +166,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
                     (uint)presence.AbsolutePosition.Y,
                     (uint)presence.AbsolutePosition.Z + 2);
 
-            m_log.DebugFormat("[LURE MODULE]: TP invite with message {0}, type {1}", message, lureType);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("TP invite with message {0}, type {1}", message, lureType);
 
             GridInstantMessage m;
 

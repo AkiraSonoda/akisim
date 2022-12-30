@@ -28,8 +28,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
-using Timer = System.Timers.Timer;
 
 using log4net;
 using Nini.Config;
@@ -39,7 +37,7 @@ using OpenMetaverse;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Framework;
-using OpenSim.Services.Interfaces;
+using ThreadedClasses;
 
 namespace OpenSim.Region.OptionalModules.World.NPC
 {
@@ -48,7 +46,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private readonly Dictionary<UUID, NPCAvatar> m_avatars = new Dictionary<UUID, NPCAvatar>();
+        private readonly RwLockedDictionary<UUID, NPCAvatar> m_avatars = new RwLockedDictionary<UUID, NPCAvatar>(); // AKIDO
         private NPCOptionsFlags m_NPCOptionFlags;
 
         private int m_MaxNumberNPCperScene = 40;
@@ -120,8 +118,8 @@ namespace OpenSim.Region.OptionalModules.World.NPC
             if (sp == null || sp.IsChildAgent)
                 return false;
 
-            lock (m_avatars)
-                return m_avatars.ContainsKey(agentId);
+            // AKIDO
+            return m_avatars.ContainsKey(agentId);
         }
 
         public bool SetNPCAppearance(UUID agentId, AvatarAppearance appearance, Scene scene)
@@ -130,9 +128,9 @@ namespace OpenSim.Region.OptionalModules.World.NPC
             if (npc == null || npc.IsChildAgent)
                 return false;
 
-            lock (m_avatars)
-                if (!m_avatars.ContainsKey(agentId))
-                    return false;
+            // AKIDO
+            if (!m_avatars.ContainsKey(agentId))
+                return false;
 
             // Delete existing npc attachments
             if(scene.AttachmentsModule != null)
@@ -218,8 +216,7 @@ namespace OpenSim.Region.OptionalModules.World.NPC
             }
             */
 
-            lock (m_avatars)
-            {
+            // AKIDO
                 scene.AuthenticateHandler.AddNewCircuit(acd);
                 scene.AddNewAgent(npcAvatar, PresenceType.Npc);
 
@@ -232,9 +229,9 @@ namespace OpenSim.Region.OptionalModules.World.NPC
                     m_avatars.Add(agentID, npcAvatar);
                     //m_log.DebugFormat("[NPC MODULE]: Created NPC {0} {1}", npcAvatar.AgentId, sp.Name);
                 }
-            }
+            // AKIDO
 
-//            m_log.DebugFormat("[NPC MODULE]: Created NPC with id {0}", npcAvatar.AgentId);
+            m_log.DebugFormat("[NPC MODULE]: Created NPC with id {0}", npcAvatar.AgentId);
 
             return agentID;
         }
@@ -242,47 +239,40 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         public bool MoveToTarget(UUID agentID, Scene scene, Vector3 pos,
                 bool noFly, bool landAtTarget, bool running)
         {
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
+                ScenePresence sp;
+                if (scene.TryGetScenePresence(agentID, out sp))
                 {
-                    ScenePresence sp;
-                    if (scene.TryGetScenePresence(agentID, out sp))
-                    {
-                        if (sp.IsSatOnObject || sp.SitGround)
-                            return false;
+                    if (sp.IsSatOnObject || sp.SitGround)
+                        return false;
 
-                    //m_log.DebugFormat(
-                    //        "[NPC MODULE]: Moving {0} to {1} in {2}, noFly {3}, landAtTarget {4}",
-                    //        sp.Name, pos, scene.RegionInfo.RegionName,
-                    //        noFly, landAtTarget);
+                    sp.MoveToTarget(pos, noFly, landAtTarget, running);
 
-                        sp.MoveToTarget(pos, noFly, landAtTarget, running);
-
-                        return true;
-                    }
+                    return true;
                 }
             }
+            // AKIDO
 
             return false;
         }
 
         public bool StopMoveToTarget(UUID agentID, Scene scene)
         {
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
+                ScenePresence sp;
+                if (scene.TryGetScenePresence(agentID, out sp))
                 {
-                    ScenePresence sp;
-                    if (scene.TryGetScenePresence(agentID, out sp))
-                    {
-                        sp.Velocity = Vector3.Zero;
-                        sp.ResetMoveToTarget();
+                    sp.Velocity = Vector3.Zero;
+                    sp.ResetMoveToTarget();
 
-                        return true;
-                    }
+                    return true;
                 }
             }
+            // AKIDO
 
             return false;
         }
@@ -294,49 +284,46 @@ namespace OpenSim.Region.OptionalModules.World.NPC
 
         public bool Say(UUID agentID, Scene scene, string text, int channel)
         {
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
-                {
-                    m_avatars[agentID].Say(channel, text);
+                m_avatars[agentID].Say(channel, text);
 
-                    return true;
-                }
+                return true;
             }
+            // AKIDO
 
             return false;
         }
 
         public bool Shout(UUID agentID, Scene scene, string text, int channel)
         {
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
-                {
-                    m_avatars[agentID].Shout(channel, text);
+                m_avatars[agentID].Shout(channel, text);
 
-                    return true;
-                }
+                return true;
             }
+            // AKIDO
 
             return false;
         }
 
         public bool Sit(UUID agentID, UUID partID, Scene scene)
         {
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
+                ScenePresence sp;
+                if (scene.TryGetScenePresence(agentID, out sp))
                 {
-                    ScenePresence sp;
-                    if (scene.TryGetScenePresence(agentID, out sp))
-                    {
-                        sp.HandleAgentRequestSit(m_avatars[agentID], agentID, partID, Vector3.Zero);
+                    sp.HandleAgentRequestSit(m_avatars[agentID], agentID, partID, Vector3.Zero);
 
-                        return true;
-                    }
+                    return true;
                 }
             }
+            // AKIDO
 
             return false;
         }
@@ -344,95 +331,84 @@ namespace OpenSim.Region.OptionalModules.World.NPC
         public bool Whisper(UUID agentID, Scene scene, string text,
                 int channel)
         {
-            lock (m_avatars)
+            // kido
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
-                {
-                    m_avatars[agentID].Whisper(channel, text);
+                m_avatars[agentID].Whisper(channel, text);
 
-                    return true;
-                }
+                return true;
             }
+            // AKIDO
 
             return false;
         }
 
         public bool Stand(UUID agentID, Scene scene)
         {
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
             {
-                if (m_avatars.ContainsKey(agentID))
+                ScenePresence sp;
+                if (scene.TryGetScenePresence(agentID, out sp))
                 {
-                    ScenePresence sp;
-                    if (scene.TryGetScenePresence(agentID, out sp))
-                    {
-                        sp.StandUp();
+                    sp.StandUp();
 
-                        return true;
-                    }
+                    return true;
                 }
             }
+            // AKIDO
 
             return false;
         }
 
         public bool Touch(UUID agentID, UUID objectID)
         {
-            lock (m_avatars)
-            {
-                if (m_avatars.ContainsKey(agentID))
-                    return m_avatars[agentID].Touch(objectID);
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
+                return m_avatars[agentID].Touch(objectID);
 
-                return false;
-            }
+            return false;
+            // AKIDO
         }
 
         public UUID GetOwner(UUID agentID)
         {
-            lock (m_avatars)
-            {
-                NPCAvatar av;
-                if (m_avatars.TryGetValue(agentID, out av))
-                    return av.OwnerID;
-            }
+            // AKIDO
+            NPCAvatar av;
+            if (m_avatars.TryGetValue(agentID, out av))
+                return av.OwnerID;
+            // AKIDO
 
             return UUID.Zero;
         }
 
         public INPC GetNPC(UUID agentID, Scene scene)
         {
-            lock (m_avatars)
-            {
-                if (m_avatars.ContainsKey(agentID))
-                    return m_avatars[agentID];
-                else
-                    return null;
-            }
+            // AKIDO
+            if (m_avatars.ContainsKey(agentID))
+                return m_avatars[agentID];
+            else
+                return null;
+            // AKIDO
         }
 
         public bool DeleteNPC(UUID agentID, Scene scene)
         {
             bool doRemove = false;
             NPCAvatar av;
-            lock (m_avatars)
+            // AKIDO
+            if (m_avatars.TryGetValue(agentID, out av))
             {
-                if (m_avatars.TryGetValue(agentID, out av))
-                {
-                    /*
-                    m_log.DebugFormat("[NPC MODULE]: Found {0} {1} to remove",
-                            agentID, av.Name);
-                    */
-                    doRemove = true;
-                }
+                doRemove = true;
             }
+            // AKIDO
 
             if (doRemove)
             {
                 scene.CloseAgent(agentID, false);
-                lock (m_avatars)
-                {
-                    m_avatars.Remove(agentID);
-                }
+                // AKIDO
+                m_avatars.Remove(agentID);
+                // AKIDO
                 m_log.DebugFormat("[NPC MODULE]: Removed NPC {0} {1}",
                         agentID, av.Name);
                 return true;
@@ -446,20 +422,19 @@ namespace OpenSim.Region.OptionalModules.World.NPC
 
         public bool CheckPermissions(UUID npcID, UUID callerID)
         {
-            lock (m_avatars)
+            // AKIDO
+            NPCAvatar av;
+            if (m_avatars.TryGetValue(npcID, out av))
             {
-                NPCAvatar av;
-                if (m_avatars.TryGetValue(npcID, out av))
-                {
-                    if (npcID == callerID)
-                        return true;
-                    return CheckPermissions(av, callerID);
-                }
-                else
-                {
-                    return false;
-                }
+                if (npcID == callerID)
+                    return true;
+                return CheckPermissions(av, callerID);
             }
+            else
+            {
+                return false;
+            }
+            // AKIDO
         }
 
         /// <summary>

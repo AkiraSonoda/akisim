@@ -29,13 +29,14 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using RegionFlags = OpenMetaverse.RegionFlags;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.Land
 {
@@ -47,7 +48,6 @@ namespace OpenSim.Region.CoreModules.World.Land
         #region Member Variables
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly string LogHeader = "[LAND OBJECT]";
 
         protected const int GROUPMEMBERCACHETIMEOUT = 30000;  // cache invalidation after 30s
 
@@ -62,7 +62,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         protected readonly ScenePermissions m_scenePermissions;
         protected readonly EstateSettings m_estateSettings;
 
-        protected readonly List<SceneObjectGroup> primsOverMe = new List<SceneObjectGroup>();
+        protected readonly RwLockedList<SceneObjectGroup> primsOverMe = new RwLockedList<SceneObjectGroup>(); // AKIDO
         private readonly ExpiringCacheOS<uint, UUID> m_listTransactions = new ExpiringCacheOS<uint, UUID>(30000);
         private readonly object m_listTransactionsLock = new object();
 
@@ -451,8 +451,7 @@ namespace OpenSim.Region.CoreModules.World.Land
 
                 if(parcelMax > m_regionInfo.ObjectCapacity)
                     parcelMax = m_regionInfo.ObjectCapacity;
-
-                //m_log.DebugFormat("Area: {0}, Capacity {1}, Bonus {2}, Parcel {3}", LandData.Area, m_regionInfo.ObjectCapacity, m_regionInfo.RegionSettings.ObjectBonus, parcelMax);
+                
                 return parcelMax;
             }
         }
@@ -476,8 +475,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 // sanity check
                 if(simMax > m_regionInfo.ObjectCapacity)
                     simMax = m_regionInfo.ObjectCapacity;
-                 //m_log.DebugFormat("Simwide Area: {0}, Capacity {1}, SimMax {2}, SimWidePrims {3}",
-                 //    LandData.SimwideArea, m_regionInfo.ObjectCapacity, simMax, LandData.SimwidePrims);
+
                 return simMax;
             }
         }
@@ -1304,9 +1302,6 @@ namespace OpenSim.Region.CoreModules.World.Land
                     land_bitmap[x, y] = set_value;
                 }
             }
-
-            // m_log.DebugFormat("{0} ModifyLandBitmapSquare. startXY=<{1},{2}>, endXY=<{3},{4}>, val={5}, landBitmapSize=<{6},{7}>",
-            //                         LogHeader, start_x, start_y, end_x, end_y, set_value, land_bitmap.GetLength(0), land_bitmap.GetLength(1));
             return land_bitmap;
         }
 
@@ -1322,8 +1317,8 @@ namespace OpenSim.Region.CoreModules.World.Land
                     || bitmap_base.GetLength(1) != bitmap_add.GetLength(1))
             {
                 throw new Exception(
-                    String.Format("{0} MergeLandBitmaps. merging maps not same size. baseSizeXY=<{1},{2}>, addSizeXY=<{3},{4}>",
-                                LogHeader, bitmap_base.GetLength(0), bitmap_base.GetLength(1), bitmap_add.GetLength(0), bitmap_add.GetLength(1))
+                    String.Format("MergeLandBitmaps. merging maps not same size. baseSizeXY=<{0},{1}>, addSizeXY=<{2},{3}>",
+                                bitmap_base.GetLength(0), bitmap_base.GetLength(1), bitmap_add.GetLength(0), bitmap_add.GetLength(1))
                 );
             }
 
@@ -1413,7 +1408,8 @@ namespace OpenSim.Region.CoreModules.World.Land
                         }
                         catch (Exception)   //just in case we've still not taken care of every way the arrays might go out of bounds! ;)
                         {
-                            m_log.DebugFormat("{0} RemapLandBitmap Rotate: Out of Bounds sx={1} sy={2} dx={3} dy={4}", LogHeader, sx, sy, x, y);
+                            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                                "RemapLandBitmap Rotate: Out of Bounds sx={0} sy={1} dx={2} dy={3}", sx, sy, x, y);
                         }
                     }
                 }
@@ -1445,10 +1441,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             int endY = (int)Math.Floor((boundingOrigin.Y + boundingSize.Y) / Constants.LandUnit) + offsetY;
             if (endY > tmpY) endY = tmpY;
             if (endY < 0) endY = 0;
-
-            //m_log.DebugFormat("{0} RemapLandBitmap: inSize=<{1},{2}>, disp=<{3},{4}> rot={5}, offset=<{6},{7}>, boundingStart=<{8},{9}>, boundingEnd=<{10},{11}>, cosR={12}, sinR={13}, outSize=<{14},{15}>", LogHeader,
-            //                            baseX, baseY, dispX, dispY, radianRotation, offsetX, offsetY, startX, startY, endX, endY, cosR, sinR, newX, newY);
-
+            
             isEmptyNow = true;
 
             int dx, dy;
@@ -1470,7 +1463,8 @@ namespace OpenSim.Region.CoreModules.World.Land
                         }
                         catch (Exception)   //just in case we've still not taken care of every way the arrays might go out of bounds! ;)
                         {
-                            m_log.DebugFormat("{0} RemapLandBitmap - Bound & Displace: Out of Bounds sx={1} sy={2} dx={3} dy={4}", LogHeader, x, y, dx, dy);
+                            m_log.ErrorFormat(
+                                "RemapLandBitmap - Bound & Displace: Out of Bounds sx={0} sy={1} dx={2} dy={2}", x, y, dx, dy);
                         }
                     }
                 }
@@ -1499,7 +1493,8 @@ namespace OpenSim.Region.CoreModules.World.Land
             if (baseX != newX || baseY != newY)
             {
                 throw new Exception(
-                    String.Format("{0} RemoveFromLandBitmap: Land bitmaps are not the same size! baseX={1} baseY={2} newX={3} newY={4}", LogHeader, baseX, baseY, newX, newY));
+                    String.Format("RemoveFromLandBitmap: Land bitmaps are not the same size! baseX={0} baseY={1} newX={2} newY={3}",
+                        baseX, baseY, newX, newY));
             }
 
             isEmptyNow = true;
@@ -1584,7 +1579,6 @@ namespace OpenSim.Region.CoreModules.World.Land
                     xLen = (int)(Constants.RegionSize / Constants.LandUnit);
                 }
             }
-            // m_log.DebugFormat("{0} ConvertBytesToLandBitmap: bitmapLen={1}, xLen={2}", LogHeader, bitmapLen, xLen);
 
             byte tempByte;
             int x = 0, y = 0;
@@ -1600,7 +1594,8 @@ namespace OpenSim.Region.CoreModules.World.Land
                     }
                     catch (Exception)
                     {
-                        m_log.DebugFormat("{0} ConvertBytestoLandBitmap: i={1}, x={2}, y={3}", LogHeader, i, x, y);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "ConvertBytestoLandBitmap: i={0}, x={1}, y={2}", i, x, y);
                     }
                     x++;
                     if (x >= xLen)
@@ -1628,7 +1623,7 @@ namespace OpenSim.Region.CoreModules.World.Land
 
         public void DebugLandBitmap(bool[,] landBitmap)
         {
-            m_log.InfoFormat("{0}: Map Key: #=claimed land .=unclaimed land.", LogHeader);
+            m_log.Info("Map Key: #=claimed land .=unclaimed land.");
             for (int y = landBitmap.GetLength(1) - 1; y >= 0; y--)
             {
                 string row = "";
@@ -1636,7 +1631,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 {
                     row += landBitmap[x, y] ? "#" : ".";
                 }
-                m_log.InfoFormat("{0}: {1}", LogHeader, row);
+                m_log.InfoFormat("{0}", row);
             }
         }
 
@@ -1651,34 +1646,36 @@ namespace OpenSim.Region.CoreModules.World.Land
                 List<uint> resultLocalIDs = new List<uint>();
                 try
                 {
-                    lock (primsOverMe)
+                    // AKIDO
+                    primsOverMe.ForEach(delegate(SceneObjectGroup obj) 
                     {
-                        foreach (SceneObjectGroup obj in primsOverMe)
+                        if (obj.LocalId > 0)
                         {
-                            if (obj.LocalId > 0)
+                            if (request_type == LandChannel.LAND_SELECT_OBJECTS_OWNER &&
+                                obj.OwnerID.Equals(LandData.OwnerID))
                             {
-                                if (request_type == LandChannel.LAND_SELECT_OBJECTS_OWNER && obj.OwnerID.Equals(LandData.OwnerID))
-                                {
-                                    resultLocalIDs.Add(obj.LocalId);
-                                }
-                                else if (request_type == LandChannel.LAND_SELECT_OBJECTS_GROUP && obj.GroupID.Equals(LandData.GroupID) && !LandData.GroupID.IsZero())
-                                {
-                                    resultLocalIDs.Add(obj.LocalId);
-                                }
-                                else if (request_type == LandChannel.LAND_SELECT_OBJECTS_OTHER && obj.OwnerID.NotEqual(remote_client.AgentId))
-                                {
-                                    resultLocalIDs.Add(obj.LocalId);
-                                }
-                                else if (request_type == (int)ObjectReturnType.List && returnIDs.Contains(obj.OwnerID))
-                                {
-                                    resultLocalIDs.Add(obj.LocalId);
-                                }
+                                resultLocalIDs.Add(obj.LocalId);
+                            }
+                            else if (request_type == LandChannel.LAND_SELECT_OBJECTS_GROUP &&
+                                     obj.GroupID.Equals(LandData.GroupID) && !LandData.GroupID.IsZero())
+                            {
+                                resultLocalIDs.Add(obj.LocalId);
+                            }
+                            else if (request_type == LandChannel.LAND_SELECT_OBJECTS_OTHER &&
+                                     obj.OwnerID.NotEqual(remote_client.AgentId))
+                            {
+                                resultLocalIDs.Add(obj.LocalId);
+                            }
+                            else if (request_type == (int)ObjectReturnType.List && returnIDs.Contains(obj.OwnerID))
+                            {
+                                resultLocalIDs.Add(obj.LocalId);
                             }
                         }
-                    }
+                    });
+                    // AKIDO
                 } catch (InvalidOperationException)
                 {
-                    m_log.Error("[LAND]: Unable to force select the parcel objects. Arr.");
+                    m_log.Error("Unable to force select the parcel objects. Arr.");
                 }
 
                 remote_client.SendForceClientSelectObjects(resultLocalIDs);
@@ -1700,44 +1697,41 @@ namespace OpenSim.Region.CoreModules.World.Land
                 Dictionary<UUID, int> primCount = new Dictionary<UUID, int>();
                 List<UUID> groups = new List<UUID>();
 
-                lock (primsOverMe)
+                // AKIDO
+                try
                 {
-//                    m_log.DebugFormat(
-//                        "[LAND OBJECT]: Request for SendLandObjectOwners() from {0} with {1} known prims on region",
-//                        remote_client.Name, primsOverMe.Count);
-
-                    try
+                    primsOverMe.ForEach(delegate(SceneObjectGroup obj)
                     {
-                        foreach (SceneObjectGroup obj in primsOverMe)
+                        try
                         {
-                            try
+                            if (!primCount.ContainsKey(obj.OwnerID))
                             {
-                                if (!primCount.ContainsKey(obj.OwnerID))
-                                {
-                                    primCount.Add(obj.OwnerID, 0);
-                                }
+                                primCount.Add(obj.OwnerID, 0);
                             }
-                            catch (NullReferenceException)
-                            {
-                                m_log.Error("[LAND]: " + "Got Null Reference when searching land owners from the parcel panel");
-                            }
-                            try
-                            {
-                                primCount[obj.OwnerID] += obj.PrimCount;
-                            }
-                            catch (KeyNotFoundException)
-                            {
-                                m_log.Error("[LAND]: Unable to match a prim with it's owner.");
-                            }
-                            if (obj.OwnerID.Equals(obj.GroupID) && (!groups.Contains(obj.OwnerID)))
-                                groups.Add(obj.OwnerID);
                         }
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        m_log.Error("[LAND]: Unable to Enumerate Land object arr.");
-                    }
+                        catch (NullReferenceException)
+                        {
+                            m_log.Error("Got Null Reference when searching land owners from the parcel panel");
+                        }
+
+                        try
+                        {
+                            primCount[obj.OwnerID] += obj.PrimCount;
+                        }
+                        catch (KeyNotFoundException)
+                        {
+                            m_log.Error("Unable to match a prim with it's owner.");
+                        }
+
+                        if (obj.OwnerID.Equals(obj.GroupID) && (!groups.Contains(obj.OwnerID)))
+                            groups.Add(obj.OwnerID);
+                    });
                 }
+                catch (InvalidOperationException)
+                {
+                    m_log.Error("Unable to Enumerate Land object arr.");
+                }
+                // AKIDO
 
                 remote_client.SendLandObjectOwners(LandData, groups, primCount);
             }
@@ -1747,26 +1741,24 @@ namespace OpenSim.Region.CoreModules.World.Land
         {
             Dictionary<UUID, int> ownersAndCount = new Dictionary<UUID, int>();
 
-            lock (primsOverMe)
+            // AKIDO
+            try
             {
-                try
+                primsOverMe.ForEach(delegate(SceneObjectGroup obj)
                 {
-
-                    foreach (SceneObjectGroup obj in primsOverMe)
+                    if (!ownersAndCount.ContainsKey(obj.OwnerID))
                     {
-                        if (!ownersAndCount.ContainsKey(obj.OwnerID))
-                        {
-                            ownersAndCount.Add(obj.OwnerID, 0);
-                        }
-                        ownersAndCount[obj.OwnerID] += obj.PrimCount;
+                        ownersAndCount.Add(obj.OwnerID, 0);
                     }
-                }
-                catch (InvalidOperationException)
-                {
-                    m_log.Error("[LAND]: Unable to enumerate land owners. arr.");
-                }
 
+                    ownersAndCount[obj.OwnerID] += obj.PrimCount;
+                });
             }
+            catch (InvalidOperationException)
+            {
+                m_log.Error("Unable to enumerate land owners. arr.");
+            }
+            // AKIDO
             return ownersAndCount;
         }
 
@@ -1776,34 +1768,30 @@ namespace OpenSim.Region.CoreModules.World.Land
 
         public void SellLandObjects(UUID previousOwner)
         {
-            // m_log.DebugFormat(
-            //    "[LAND OBJECT]: Request to sell objects in {0} from {1}", LandData.Name, previousOwner);
-
             if (LandData.IsGroupOwned)
                 return;
 
             IBuySellModule m_BuySellModule = m_scene.RequestModuleInterface<IBuySellModule>();
             if (m_BuySellModule == null)
             {
-                m_log.Error("[LAND OBJECT]: BuySellModule not found");
+                m_log.Error("BuySellModule not found");
                 return;
             }
 
             ScenePresence sp;
             if (!m_scene.TryGetScenePresence(LandData.OwnerID, out sp))
             {
-                m_log.Error("[LAND OBJECT]: New owner is not present in scene");
+                m_log.Error("New owner is not present in scene");
                 return;
             }
 
-            lock (primsOverMe)
+            // AKIDO
+            primsOverMe.ForEach(delegate(SceneObjectGroup obj)
             {
-                foreach (SceneObjectGroup obj in primsOverMe)
-                {
-                    if(m_scenePermissions.CanSellObject(previousOwner,obj, (byte)SaleType.Original))
-                        m_BuySellModule.BuyObject(sp.ControllingClient, UUID.Zero, obj.LocalId, (byte)SaleType.Original, 0);
-                }
-            }
+                if (m_scenePermissions.CanSellObject(previousOwner, obj, (byte)SaleType.Original))
+                    m_BuySellModule.BuyObject(sp.ControllingClient, UUID.Zero, obj.LocalId, (byte)SaleType.Original, 0);
+            });
+            // AKIDO
         }
 
         #endregion
@@ -1820,68 +1808,64 @@ namespace OpenSim.Region.CoreModules.World.Land
 
         public void ReturnLandObjects(uint type, UUID[] owners, UUID[] tasks, IClientAPI remote_client)
         {
-//            m_log.DebugFormat(
-//                "[LAND OBJECT]: Request to return objects in {0} from {1}", LandData.Name, remote_client.Name);
-
             Dictionary<UUID,List<SceneObjectGroup>> returns = new Dictionary<UUID,List<SceneObjectGroup>>();
 
-            lock (primsOverMe)
+            // AKIDO
+            if (type == (uint)ObjectReturnType.Owner)
             {
-                if (type == (uint)ObjectReturnType.Owner)
+                primsOverMe.ForEach(delegate(SceneObjectGroup obj) // AKIDO
                 {
-                    foreach (SceneObjectGroup obj in primsOverMe)
+                    if (obj.OwnerID.Equals(LandData.OwnerID))
+                    {
+                        if (!returns.ContainsKey(obj.OwnerID))
+                            returns[obj.OwnerID] = new List<SceneObjectGroup>();
+                        returns[obj.OwnerID].Add(obj);
+                    }
+                });
+            }
+            else if (type == (uint)ObjectReturnType.Group && !LandData.GroupID.IsZero())
+            {
+                primsOverMe.ForEach(delegate(SceneObjectGroup obj) // AKIDO
+                {
+                    if (obj.GroupID.Equals(LandData.GroupID))
                     {
                         if (obj.OwnerID.Equals(LandData.OwnerID))
-                        {
-                            if (!returns.ContainsKey(obj.OwnerID))
-                                returns[obj.OwnerID] = new List<SceneObjectGroup>();
-                            returns[obj.OwnerID].Add(obj);
-                        }
+                            return;
+                        if (!returns.ContainsKey(obj.OwnerID))
+                            returns[obj.OwnerID] = new List<SceneObjectGroup>();
+                        returns[obj.OwnerID].Add(obj);
                     }
-                }
-                else if (type == (uint)ObjectReturnType.Group && !LandData.GroupID.IsZero())
-                {
-                    foreach (SceneObjectGroup obj in primsOverMe)
-                    {
-                        if (obj.GroupID.Equals(LandData.GroupID))
-                        {
-                            if (obj.OwnerID.Equals(LandData.OwnerID))
-                                continue;
-                            if (!returns.ContainsKey(obj.OwnerID))
-                                returns[obj.OwnerID] = new List<SceneObjectGroup>();
-                            returns[obj.OwnerID].Add(obj);
-                        }
-                    }
-                }
-                else if (type == (uint)ObjectReturnType.Other)
-                {
-                    foreach (SceneObjectGroup obj in primsOverMe)
-                    {
-                        if (obj.OwnerID.NotEqual(LandData.OwnerID) &&
-                            (obj.GroupID.NotEqual(LandData.GroupID) ||
-                            LandData.GroupID.IsZero()))
-                        {
-                            if (!returns.ContainsKey(obj.OwnerID))
-                                returns[obj.OwnerID] = new List<SceneObjectGroup>();
-                            returns[obj.OwnerID].Add(obj);
-                        }
-                    }
-                }
-                else if (type == (uint)ObjectReturnType.List)
-                {
-                    List<UUID> ownerlist = new List<UUID>(owners);
-
-                    foreach (SceneObjectGroup obj in primsOverMe)
-                    {
-                        if (ownerlist.Contains(obj.OwnerID))
-                        {
-                            if (!returns.ContainsKey(obj.OwnerID))
-                                returns[obj.OwnerID] = new List<SceneObjectGroup>();
-                            returns[obj.OwnerID].Add(obj);
-                        }
-                    }
-                }
+                });
             }
+            else if (type == (uint)ObjectReturnType.Other)
+            {
+                primsOverMe.ForEach(delegate(SceneObjectGroup obj) // AKIDO
+                {
+                    if (obj.OwnerID.NotEqual(LandData.OwnerID) &&
+                        (obj.GroupID.NotEqual(LandData.GroupID) ||
+                         LandData.GroupID.IsZero()))
+                    {
+                        if (!returns.ContainsKey(obj.OwnerID))
+                            returns[obj.OwnerID] = new List<SceneObjectGroup>();
+                        returns[obj.OwnerID].Add(obj);
+                    }
+                });
+            }
+            else if (type == (uint)ObjectReturnType.List)
+            {
+                List<UUID> ownerlist = new List<UUID>(owners);
+
+                primsOverMe.ForEach(delegate(SceneObjectGroup obj) // AKIDO
+                {
+                    if (ownerlist.Contains(obj.OwnerID))
+                    {
+                        if (!returns.ContainsKey(obj.OwnerID))
+                            returns[obj.OwnerID] = new List<SceneObjectGroup>();
+                        returns[obj.OwnerID].Add(obj);
+                    }
+                });
+            }
+            // AKIDO
 
             foreach (List<SceneObjectGroup> ol in returns.Values)
             {
@@ -1897,25 +1881,22 @@ namespace OpenSim.Region.CoreModules.World.Land
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetOverMeRecord()
         {
-            lock (primsOverMe)
-                primsOverMe.Clear();
+            // AKIDO
+            primsOverMe.Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddPrimOverMe(SceneObjectGroup obj)
         {
-//            m_log.DebugFormat("[LAND OBJECT]: Adding scene object {0} {1} over {2}", obj.Name, obj.LocalId, LandData.Name);
-
-            lock (primsOverMe)
-                primsOverMe.Add(obj);
+            // AKIDO
+            primsOverMe.Add(obj);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemovePrimFromOverMe(SceneObjectGroup obj)
         {
-            //m_log.DebugFormat("[LAND OBJECT]: Removing scene object {0} {1} from over {2}", obj.Name, obj.LocalId, LandData.Name);
-            lock (primsOverMe)
-                primsOverMe.Remove(obj);
+            // AKIDO
+            primsOverMe.Remove(obj);
         }
 
         #endregion
@@ -1937,7 +1918,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("[LAND OBJECT]: SetMediaUrl error: {0}", e.Message);
+                    m_log.ErrorFormat("SetMediaUrl error: {0}", e.Message);
                     return;
                 }
             }
@@ -1962,7 +1943,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("[LAND OBJECT]: SetMusicUrl error: {0}", e.Message);
+                    m_log.ErrorFormat("SetMusicUrl error: {0}", e.Message);
                     return;
                 }
             }
@@ -2048,7 +2029,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                         presence.ControllingClient.SendAlertMessage("You have been ejected from this land");
                     }
                 }
-                m_log.DebugFormat("[LAND]: Removing entry {0} because it has expired", entry.AgentID);
+                m_log.DebugFormat("Removing entry {0} because it has expired", entry.AgentID);
             }
 
             if (delete.Count > 0)

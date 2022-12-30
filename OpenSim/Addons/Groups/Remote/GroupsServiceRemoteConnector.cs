@@ -47,7 +47,6 @@ namespace OpenSim.Groups
 
         private string m_ServerURI;
         private IServiceAuth m_Auth;
-        private object m_Lock = new object();
 
         public GroupsServiceRemoteConnector(IConfigSource config)
         {
@@ -676,11 +675,11 @@ namespace OpenSim.Groups
             sendData["METHOD"] = method;
 
             string reply = string.Empty;
-            lock (m_Lock)
-                reply = SynchronousRestFormsRequester.MakeRequest("POST",
-                         m_ServerURI + "groups",
-                         ServerUtils.BuildQueryString(sendData),
-                         m_Auth);
+            
+            reply = SynchronousRestFormsRequester.MakeRequest("POST",
+                m_ServerURI + "groups",
+                ServerUtils.BuildQueryString(sendData),
+                m_Auth);
 
             if (reply.Length == 0)
                 return null;

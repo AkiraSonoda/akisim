@@ -162,7 +162,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             m_DebugLogCallbackHandle = null;
             if (BSScene.m_log.IsDebugEnabled && PhysicsScene.PhysicsLogging.Enabled)
             {
-                BSScene.m_log.DebugFormat("{0}: Initialize: Setting debug callback for unmanaged code", BSScene.LogHeader);
+                BSScene.m_log.Debug("Initialize: Setting debug callback for unmanaged code");
                 if (PhysicsScene.PhysicsLogging.Enabled)
                     // The handle is saved in a variable to make sure it doesn't get freed after this call
                     m_DebugLogCallbackHandle = new BSAPICPP.DebugLogCallback(BulletLoggerPhysLog);

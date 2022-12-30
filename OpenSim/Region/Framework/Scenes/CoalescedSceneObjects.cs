@@ -25,10 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using OpenMetaverse;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -50,8 +50,9 @@ namespace OpenSim.Region.Framework.Scenes
         {
             get
             {
-                lock (m_memberObjects)
-                    return m_memberObjects.Count;
+                // AKIDO
+                return m_memberObjects.Count;
+                // AKIDO
             }
         }
 
@@ -67,8 +68,9 @@ namespace OpenSim.Region.Framework.Scenes
         {
             get
             {
-                lock (m_memberObjects)
-                    return new List<SceneObjectGroup>(m_memberObjects);
+                // AKIDO
+                return new List<SceneObjectGroup>(m_memberObjects);
+                // AKIDO
             }
         }
 
@@ -90,7 +92,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// At this point, we need to preserve the order of objects added to the coalescence, since the first
         /// one will end up matching the item name when rerezzed.
         /// </summary>
-        protected List<SceneObjectGroup> m_memberObjects = new List<SceneObjectGroup>();
+        protected RwLockedList<SceneObjectGroup> m_memberObjects = new RwLockedList<SceneObjectGroup>();
 
         public CoalescedSceneObjects(UUID creatorId)
         {
@@ -110,8 +112,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="offset">The offset of the object within the group</param>
         public void Add(SceneObjectGroup obj)
         {
-            lock (m_memberObjects)
-                m_memberObjects.Add(obj);
+            // AKIDO
+            m_memberObjects.Add(obj);
         }
 
         /// <summary>
@@ -121,8 +123,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>true if the object was there to be removed, false if not.</returns>
         public bool Remove(SceneObjectGroup obj)
         {
-            lock (m_memberObjects)
-                return m_memberObjects.Remove(obj);
+            // AKIDO
+            return m_memberObjects.Remove(obj);
         }
 
         /// <summary>

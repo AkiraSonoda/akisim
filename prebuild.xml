@@ -52,6 +52,27 @@
         </Options>
       </Configuration>
     </Project>
+	
+
+	<Project name="ThreadedClasses" path="ThirdParty/ThreadedClasses" type="Library">
+      <Configuration name="Release">
+        <Options>
+          <OutputPath>../../bin/</OutputPath>
+        </Options>
+      </Configuration>
+      <Configuration name="Debug">
+        <Options>
+          <OutputPath>../../bin/</OutputPath>
+        </Options>
+      </Configuration>
+
+      <ReferencePath>../../bin/</ReferencePath>
+      <Files>
+        <Match pattern="*.cs" recurse="true">
+          <Exclude name="obj" pattern="obj"/>
+		</Match>
+      </Files>
+    </Project>
 
     <Project name="OpenSim.Framework" path="OpenSim/Framework" type="Library">
       <Configuration name="Debug">
@@ -77,6 +98,8 @@
       <Reference name="LukeSkywalker.IPNetwork" path ="../../bin"/>
       <Reference name="SmartThreadPool" path ="../../bin"/>
       <Reference name="System.Drawing.Common" path ="../../bin"/>
+      <Reference name="ThreadedClasses"/>
+	  
       <Files>
         <Match pattern="*.cs" recurse="false"/>
         <Match path="Client" pattern="*.cs" recurse="true">
@@ -130,6 +153,7 @@
       <Reference name="OpenMetaverse" path ="../../../bin"/>
       <Reference name="OpenMetaverse.StructuredData" path ="../../../bin"/>
       <Reference name="OpenSim.Framework" path ="../../../bin"/>
+      <Reference name="ThreadedClasses"/>
     </Project>
 
     <Project name="OpenSim.Framework.Servers.HttpServer" path="OpenSim/Framework/Servers/HttpServer" type="Library">
@@ -152,6 +176,7 @@
       <Reference name="XMLRPC" path="../../../../bin/"/>
       <Reference name="log4net" path="../../../../bin/"/>
       <Reference name="SmartThreadPool" path ="../../../../bin"/>
+      <Reference name="ThreadedClasses"/>	  
 
     </Project>
 
@@ -173,6 +198,8 @@
       <Reference name="OpenSim.Framework" path ="../../../bin"/>
       <Reference name="OpenSim.Framework.Servers.HttpServer" path ="../../../bin"/>
       <Reference name="OpenMetaverseTypes" path ="../../../bin"/>
+      <Reference name="ThreadedClasses"/>
+
     </Project>
 
     <Project name="OpenSim.Framework.Serialization" path="OpenSim/Framework/Serialization" type="Library">
@@ -272,6 +299,8 @@
       <Reference name="XMLRPC"/>
       <Reference name="log4net"/>
       <Reference name="Nini"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="false"/>
@@ -301,6 +330,8 @@
       <Reference name="OpenMetaverseTypes"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="false">
@@ -364,6 +395,8 @@
       <Reference name="log4net"/>
       <Reference name="Mono.Addins"/>
       <Reference name="System.Drawing.Common"/>
+      <Reference name="ThreadedClasses" path="../../../bin/"/>
+	  
       <Files>
         <Match pattern="*.cs" recurse="true">
           <Exclude name="obj" pattern="obj"/>
@@ -810,6 +843,7 @@
       <Reference name="OpenSim.Data"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
 
       <Files>
         <Match pattern="*.cs" recurse="true">
@@ -1164,9 +1198,9 @@
 
       <ReferencePath>../../../../../bin/</ReferencePath>
       <Reference name="System.Drawing.Common"/>
-      <Reference name="OpenMetaverse" path="../../../../../bin/"/>
-      <Reference name="OpenMetaverseTypes" path="../../../../../bin/"/>
-      <Reference name="OpenMetaverse.StructuredData" path="../../../../../bin/"/>
+      <Reference name="OpenMetaverse"/>
+      <Reference name="OpenMetaverseTypes"/>
+      <Reference name="OpenMetaverse.StructuredData"/>
       <Reference name="OpenSim.Capabilities"/>
       <Reference name="OpenSim.Region.Framework"/>
       <Reference name="OpenSim.Capabilities.Handlers"/>
@@ -1177,10 +1211,11 @@
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="OpenSim.Region.PhysicsModules.SharedBase"/>
       <Reference name="OpenSim.Services.Interfaces"/>
-      <Reference name="Mono.Addins" path="../../../../../bin/"/>
-      <Reference name="Nini" path="../../../../../bin/"/>
-      <Reference name="log4net" path="../../../../../bin/"/>
-      <Reference name="zlib.net" path="../../../../../bin/"/>
+      <Reference name="Mono.Addins"/>
+      <Reference name="Nini"/>
+      <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="true">
@@ -1340,6 +1375,8 @@
       <Reference name="OpenSim.Data.MySQL"/>
       <Reference name="Ionic.Zip"/>
       <Reference name="MySql.Data"/>
+	  <Reference name="ThreadedClasses"/>	  
+
 
       <!-- For scripting in funny languages by default -->
       <Reference name="XMLRPC"/>
@@ -1405,6 +1442,7 @@
       <Reference name="XMLRPC"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
 
       <Files>
         <Match pattern="*.cs" recurse="true">
@@ -1435,7 +1473,8 @@
       <Reference name="OpenSim.Region.Framework"/>
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="log4net"/>
-
+      <Reference name="ThreadedClasses"/>
+	  
     </Project>
 
     <Project name="OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet" path="OpenSim/Region/PhysicsModules/ConvexDecompositionDotNet" type="Library">
@@ -1619,11 +1658,12 @@
       <Reference name="OpenSim.Region.Framework"/>
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="OpenSim.Region.PhysicsModules.SharedBase"/>
-      <Reference name="OpenSim.Region.PhysicsModule.Meshing" path="../../../../bin/"/>
+      <Reference name="OpenSim.Region.PhysicsModule.Meshing"/>
       <Reference name="OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet"/>
-      <Reference name="Mono.Addins" path="../../../../bin/"/>
-      <Reference name="BulletXNA.dll" path="../../../../bin/"/>
-      <Reference name="log4net.dll" path="../../../../bin/"/>
+      <Reference name="Mono.Addins"/>
+      <Reference name="log4net"/>
+      <Reference name="ThreadedClasses"/>
+	  
 
       <Files>
         <Match pattern="*.cs" recurse="true">
@@ -1866,8 +1906,11 @@
       <Reference name="Nini" path="../../../../../../bin/"/>
       <Reference name="log4net" path="../../../../../../bin/"/>
       <Reference name="SmartThreadPool"/>
+	  <Reference name="ThreadedClasses"/>
 
     </Project>
+
+      <Reference name="ThreadedClasses"/>
 
 
     <!-- YEngine/core XMRengine -->   
@@ -1967,6 +2010,8 @@
       <Reference name="OpenMetaverse"/>
       <Reference name="OpenMetaverseTypes"/>
       <Reference name="OpenMetaverse.StructuredData"/>
+      <Reference name="ThreadedClasses" path="../../../bin/"/>
+	  
 
       <Reference name="OpenSim.Framework"/>
       <Reference name="OpenSim.Framework.Monitoring"/>

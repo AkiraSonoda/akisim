@@ -27,16 +27,15 @@
 
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
 using System.Reflection;
-
 using System.Threading;
 using log4net;
+using ThreadedClasses;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
@@ -54,6 +53,7 @@ using Caps=OpenSim.Framework.Capabilities.Caps;
 using OSDArray=OpenMetaverse.StructuredData.OSDArray;
 using OSDMap=OpenMetaverse.StructuredData.OSDMap;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.WorldMap
 {
@@ -81,13 +81,15 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         private ManualResetEvent m_mapBlockRequestEvent = new ManualResetEvent(false);
         private ObjectJobEngine m_mapItemsRequests;
-        private readonly Dictionary<UUID, Queue<MapBlockRequestData>> m_mapBlockRequests = new Dictionary<UUID, Queue<MapBlockRequestData>>();
+        private readonly RwLockedDictionary<UUID, Queue<MapBlockRequestData>> m_mapBlockRequests = // AKIDO
+            new RwLockedDictionary<UUID, Queue<MapBlockRequestData>>(); // AKIDO
 
-        private readonly List<MapBlockData> cachedMapBlocks = new List<MapBlockData>();
+        private readonly RwLockedList<MapBlockData> cachedMapBlocks = new RwLockedList<MapBlockData>();
+        
         private ExpiringKey<string> m_blacklistedurls = new ExpiringKey<string>(60000);
         private ExpiringKey<ulong> m_blacklistedregions = new ExpiringKey<ulong>(60000);
         private ExpiringCacheOS<ulong, OSDMap> m_cachedRegionMapItemsResponses = new ExpiringCacheOS<ulong, OSDMap>(1000);
-        private readonly HashSet<UUID> m_rootAgents = new HashSet<UUID>();
+        private readonly RwLockedHashSet<UUID> m_rootAgents = new RwLockedHashSet<UUID>(); // AKIDO
 
         private volatile bool m_threadsRunning = false;
 
@@ -237,7 +239,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
             string regionimage = "regionImage" + m_scene.RegionInfo.RegionID.ToString();
             regionimage = regionimage.Replace("-", "");
-            m_log.Info("[WORLD MAP]: JPEG Map location: " + m_scene.RegionInfo.ServerURI + "index.php?method=" + regionimage);
+            m_log.Info("JPEG Map location: " + m_scene.RegionInfo.ServerURI + "index.php?method=" + regionimage);
 
             MainServer.Instance.AddIndexPHPMethodHandler(regionimage, OnHTTPGetMapImage);
             MainServer.Instance.AddSimpleStreamHandler(new SimpleStreamHandler(
@@ -275,7 +277,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         public void OnRegisterCaps(UUID agentID, Caps caps)
         {
-            //m_log.DebugFormat("[WORLD MAP]: OnRegisterCaps: agentID {0} caps {1}", agentID, caps);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("OnRegisterCaps: agentID {0} caps {1}", agentID, caps);
             caps.RegisterSimpleHandler("MapLayer", new SimpleStreamHandler("/" + UUID.Random(), MapLayerRequest));
         }
 
@@ -336,14 +338,16 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         /// <param name="AgentId">AgentID that logged out</param>
         private void ClientLoggedOut(UUID AgentId, Scene scene)
         {
-            lock (m_rootAgents)
-            {
-                m_rootAgents.Remove(AgentId);
-            }
-            lock (m_mapBlockRequestEvent)
-            {
-                m_mapBlockRequests.Remove(AgentId);
-            }
+            
+            // AKIDO
+            if (!m_rootAgents.TryRemove(AgentId)) {
+                m_log.WarnFormat("ClientLoggedOut - m_rootAgents.TryRemove unexpectedly failed" +
+                                 "when removing AgentId: {0}", AgentId);
+            };
+            
+            // AKIDO
+            m_mapBlockRequests.Remove(AgentId);
+            // AKIDO
         }
         #endregion
 
@@ -376,13 +380,11 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         public virtual void HandleMapItemRequest(IClientAPI remoteClient, uint flags,
             uint EstateID, bool godlike, uint itemtype, ulong regionhandle)
         {
-            // m_log.DebugFormat("[WORLD MAP]: Handle MapItem request {0} {1}", regionhandle, itemtype);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Handle MapItem request {0} {1}", regionhandle, itemtype);
 
-            lock (m_rootAgents)
-            {
-                if (!m_rootAgents.Contains(remoteClient.AgentId))
-                    return;
-            }
+            // AKIDO
+            if (!m_rootAgents.Contains(remoteClient.AgentId)) return;
+            // AKIDO
 
             // local or remote request?
             if (regionhandle != 0 && regionhandle != m_regionHandle)
@@ -531,7 +533,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
                     default:
                         // unkown map item type
-                        m_log.DebugFormat("[WORLD MAP]: Unknown MapItem type {0}", itemtype);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unknown MapItem type {0}", itemtype);
                         break;
                 }
             }
@@ -755,7 +757,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         /// <returns></returns>
         private void RequestMapItemsAsync(MapRequestState requestState)
         {
-            // m_log.DebugFormat("[WORLDMAP]: RequestMapItemsAsync; region handle: {0} {1}", regionhandle, itemtype);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("RequestMapItemsAsync - requestState: {0}", requestState);
 
             ulong regionhandle = requestState.regionhandle;
             if (m_blacklistedregions.ContainsKey(regionhandle))
@@ -817,7 +819,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 WebUtil.GlobalExpiringBadURLs.Add(serverURI, 120000);
                 m_blacklistedregions.Add(regionhandle, expireBlackListTime);
                 m_cachedRegionMapItemsResponses.Remove(regionhandle);
-                m_log.DebugFormat("[WORLD MAP]: Access to {0} failed with {1}", httpserver, e);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Access to {0} failed with {1}", httpserver, e);
                 Interlocked.Decrement(ref nAsyncRequests);
                 return;
             }
@@ -845,13 +847,13 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 m_blacklistedregions.Add(regionhandle, expireBlackListTime);
                 m_cachedRegionMapItemsResponses.Remove(regionhandle);
 
-                m_log.WarnFormat("[WORLD MAP]: Blacklisted url {0}", httpserver);
+                m_log.WarnFormat("Blacklisted url {0}", httpserver);
                 Interlocked.Decrement(ref nAsyncRequests);
                 return;
             }
             catch
             {
-                m_log.DebugFormat("[WORLD MAP]: RequestMapItems failed for {0}", httpserver);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("RequestMapItems failed for {0}", httpserver);
                 m_blacklistedregions.Add(regionhandle, expireBlackListTime);
                 m_cachedRegionMapItemsResponses.Remove(regionhandle);
                 Interlocked.Decrement(ref nAsyncRequests);
@@ -868,7 +870,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             }
             catch (Exception ex)
             {
-                m_log.InfoFormat("[WORLD MAP]: exception on parse of RequestMapItems reply from {0}: {1}", httpserver, ex.Message);
+                m_log.InfoFormat("exception on parse of RequestMapItems reply from {0}: {1}", httpserver, ex.Message);
                 m_blacklistedregions.Add(regionhandle, expireBlackListTime);
                 m_cachedRegionMapItemsResponses.Remove(regionhandle);
 
@@ -943,14 +945,14 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                             m_mapBlockRequests[agentID].Count == 0 ))
                     {
                         spamBlocked.Remove(agentID);
-                        m_log.DebugFormat("[WoldMapModule] RequestMapBlocks release spammer {0}", agentID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("RequestMapBlocks release spammer {0}", agentID);
                     }
                     else
                         return;
                 }
                 else
                 {
-                // ugly slow expire spammers
+                    // ugly slow expire spammers
                     if(spamBlocked.Count > 0)
                     {
                         UUID k = UUID.Zero;
@@ -961,18 +963,21 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                                 (!m_mapBlockRequests.ContainsKey(k2) ||
                                 m_mapBlockRequests[k2].Count == 0 ))
                             {
-                                m_log.DebugFormat("[WoldMapModule] RequestMapBlocks release spammer {0}", k2);
+                                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                                    "RequestMapBlocks release spammer {0}", k2);
+                                
                                 k = k2;
                                 expireone = true;
                             }
-                        break; // doing one at a time
+                            break; // doing one at a time
                         }
-                    if(expireone)
-                        spamBlocked.Remove(k);
+                        if(expireone)
+                            spamBlocked.Remove(k);
                     }
                 }
 
-//                m_log.DebugFormat("[WoldMapModule] RequestMapBlocks {0}={1}={2}={3} {4}", minX, minY, maxX, maxY, flag);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "RequestMapBlocks {0}={1}={2}={3} {4}", minX, minY, maxX, maxY, flag);
 
                 MapBlockRequestData req = new MapBlockRequestData()
                 {
@@ -995,7 +1000,8 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 else
                 {
                     spamBlocked[agentID] = now + SPAMBLOCKTIMEms;
-                    m_log.DebugFormat("[WoldMapModule] RequestMapBlocks blocking spammer {0} for {1} s",agentID, SPAMBLOCKTIMEms/1000.0);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                        "RequestMapBlocks blocking spammer {0} for {1} s",agentID, SPAMBLOCKTIMEms/1000.0);
                 }
                 m_mapBlockRequestEvent.Set();
             }
@@ -1177,7 +1183,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             }
 
             byte[] jpeg = null;
-            m_log.Debug("[WORLD MAP]: Sending map image jpeg");
+            m_log.Debug("Sending map image jpeg");
 
             if (myMapImageJPEG.Length == 0)
             {
@@ -1220,7 +1226,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 catch (Exception e)
                 {
                     // Dummy!
-                    m_log.Warn("[WORLD MAP]: Unable to generate Map image" + e.Message);
+                    m_log.Warn("Unable to generate Map image" + e.Message);
                     response.StatusCode = (int)HttpStatusCode.NotFound;
                     return;
                 }
@@ -1279,7 +1285,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 // FIXME: If console region is root then this will be printed by every module.  Currently, there is no
                 // way to prevent this, short of making the entire module shared (which is complete overkill).
                 // One possibility is to return a bool to signal whether the module has completely handled the command
-                m_log.InfoFormat("[WORLD MAP]: Please change to a specific region in order to export its world map");
+                m_log.InfoFormat("Please change to a specific region in order to export its world map");
                 return;
             }
 
@@ -1294,7 +1300,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 exportPath = DEFAULT_WORLD_MAP_EXPORT_PATH;
 
             m_log.InfoFormat(
-                "[WORLD MAP]: Exporting world map for {0} to {1}", m_regionName, exportPath);
+                "Exporting world map for {0} to {1}", m_regionName, exportPath);
 
             // assumed this is 1m less than next grid line
             int regionsView = (int)m_scene.MaxRegionViewDistance;
@@ -1416,7 +1422,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             mapTexture.Dispose();
 
             m_log.InfoFormat(
-                "[WORLD MAP]: Successfully exported world map for {0} to {1}",
+                "Successfully exported world map for {0} to {1}",
                 m_regionName, exportPath);
         }
 
@@ -1552,7 +1558,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 Console.WriteLine("No map image generator available for {0}", m_scene.Name);
                 return;
             }
-            m_log.DebugFormat("[WORLD MAP]: Generating map image for {0}", m_scene.Name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Generating map image for {0}", m_scene.Name);
 
             using (Bitmap mapbmp = m_mapImageGenerator.CreateMapTile())
             {
@@ -1635,7 +1641,8 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         asset.Flags = AssetFlags.Maptile;
 
                         // Store the new one
-                        m_log.DebugFormat("[WORLD MAP]: Storing map image {0} for {1}", asset.ID, m_regionName);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "Storing map image {0} for {1}", asset.ID, m_regionName);
 
                         m_scene.AssetService.Store(asset);
 
@@ -1645,7 +1652,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 }
                 catch (Exception e)
                 {
-                    m_log.Error("[WORLD MAP]: Failed generating terrain map: " + e);
+                    m_log.Error("Failed generating terrain map: " + e);
                 }
             }
 
@@ -1678,21 +1685,25 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         private void MakeRootAgent(ScenePresence avatar)
         {
-            lock (m_rootAgents)
+            // AKIDO
+            if (!m_rootAgents.Contains(avatar.UUID))
             {
-                if (!m_rootAgents.Contains(avatar.UUID))
-                {
-                    m_rootAgents.Add(avatar.UUID);
+                if (!m_rootAgents.TryAdd(avatar.UUID)) {
+                    m_log.WarnFormat("MakeRootAgent - m_rootAgents.TryAdd unexpectedly failed" +
+                                     "when adding avatar.UUID: {0}", avatar.UUID);
                 }
             }
+            // AKIDO
         }
 
         private void MakeChildAgent(ScenePresence avatar)
         {
-            lock (m_rootAgents)
-            {
-                m_rootAgents.Remove(avatar.UUID);
+            // AKIDO
+            if(!m_rootAgents.TryRemove(avatar.UUID)) {
+                m_log.WarnFormat("MakeChildAgent - m_rootAgents.TryRemove unexpectedly failed" +
+                                 "when removing avatar.UUID: {0}", avatar.UUID);
             }
+            // AKIDO
 
             lock (m_mapBlockRequestEvent)
             {
@@ -1746,11 +1757,13 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
             if (!landForSale)
             {
-                m_log.DebugFormat("[WORLD MAP]: Region {0} has no parcels for sale, not generating overlay", m_regionName);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Region {0} has no parcels for sale, not generating overlay", m_regionName);
                 return null;
             }
 
-            m_log.DebugFormat("[WORLD MAP]: Region {0} has parcels for sale, generating overlay", m_regionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Region {0} has parcels for sale, generating overlay", m_regionName);
 
             using (Bitmap overlay = new Bitmap(regionSizeX, regionSizeY))
             {
@@ -1786,7 +1799,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 }
                 catch (Exception e)
                 {
-                    m_log.DebugFormat("[WORLD MAP]: Error creating parcel overlay: " + e.ToString());
+                    m_log.WarnFormat("Error creating parcel overlay: " + e.ToString());
                 }
             }
 

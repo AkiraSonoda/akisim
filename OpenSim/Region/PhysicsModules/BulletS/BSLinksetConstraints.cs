@@ -290,13 +290,19 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             DetailLog("{0},BSLinksetConstraint.RemoveDependencies,removeChildrenForRoot,rID={1},rBody={2}",
                                         child.LocalID, LinksetRoot.LocalID, LinksetRoot.PhysBody.AddrString);
 
-            lock (m_linksetActivityLock)
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
                 // Just undo all the constraints for this linkset. Rebuild at the end of the step.
                 ret = PhysicallyUnlinkAllChildrenFromRoot(LinksetRoot);
                 // Cause the constraints, et al to be rebuilt before the next simulation step.
                 Refresh(LinksetRoot);
             }
+            finally
+            {
+                m_linksetActivityLock.ReleaseWriterLock();
+            }
+
             return ret;
         }
 

@@ -148,8 +148,7 @@ namespace OpenSim.Framework
         /// <returns></returns>
         public Dictionary<UUID, AgentCircuitData> GetAgentCircuits()
         {
-            lock (m_agentCircuits)
-                return new Dictionary<UUID, AgentCircuitData>(m_agentCircuitsByUUID);
+            return new Dictionary<UUID, AgentCircuitData>(m_agentCircuitsByUUID); // AKIDO
         }
 
         public void UpdateAgentData(AgentCircuitData agentData)

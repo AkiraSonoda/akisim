@@ -25,9 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Timers;
 using log4net;
 using Mono.Addins;
 using Nini.Config;
@@ -35,6 +33,8 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO clean
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
@@ -49,7 +49,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         /// </value>
         protected bool m_enabled = false;
 
-        protected readonly List<Scene> m_scenes = new List<Scene>();
+        protected readonly RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
 
         #region Region Module interface
 
@@ -73,8 +73,8 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!m_enabled)
                 return;
 
-            lock (m_scenes)
-                m_scenes.Add(scene);
+            // AKIDO
+            m_scenes.Add(scene);
         }
 
         public virtual void RegionLoaded(Scene scene)
@@ -88,7 +88,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 
                 if (m_TransferModule == null)
                 {
-                    m_log.Error("[INSTANT MESSAGE]: No message transfer module, IM will not work!");
+                    m_log.Error("No message transfer module, IM will not work!");
                     scene.EventManager.OnNewClient -= OnClientConnect;
                     scene.EventManager.OnIncomingInstantMessage -= OnGridInstantMessage;
 
@@ -105,10 +105,8 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!m_enabled)
                 return;
 
-            lock (m_scenes)
-            {
-                m_scenes.Remove(scene);
-            }
+            // AKIDO
+            m_scenes.Remove(scene);
         }
 
         protected virtual void OnClientConnect(IClientAPI client)
@@ -135,13 +133,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         }
 
         #endregion
-/*
-        public virtual void OnViewerInstantMessage(IClientAPI client, GridInstantMessage im)
-        {
-            im.fromAgentName = client.FirstName + " " + client.LastName;
-            OnInstantMessage(client, im);
-        }
-*/
+
         public virtual void OnInstantMessage(IClientAPI client, GridInstantMessage im)
         {
             if (m_TransferModule == null)

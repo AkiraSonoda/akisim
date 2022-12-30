@@ -29,16 +29,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-
 using log4net;
 using Nini.Config;
 using Mono.Addins;
-
 using OpenMetaverse;
-using OpenSim.Region.CoreModules.Framework.InterfaceCommander;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.Serialiser
 {
@@ -48,10 +47,9 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
         private static readonly ILog m_log =
             LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-//        private Commander m_commander = new Commander("export");
-        private List<Scene> m_regions = new List<Scene>();
+        private RwLockedList<Scene> m_regions = new RwLockedList<Scene>(); // AKIDO
         private string m_savedir = "exports";
-        private List<IFileSerialiser> m_serialisers = new List<IFileSerialiser>();
+        private RwLockedList<IFileSerialiser> m_serialisers = new RwLockedList<IFileSerialiser>(); // AKIDO
 
         #region ISharedRegionModule Members
 
@@ -68,30 +66,24 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
                 m_savedir = config.GetString("save_dir", m_savedir);
             }
 
-            m_log.InfoFormat("[Serialiser] Enabled, using save dir \"{0}\"", m_savedir);
+            m_log.InfoFormat("Enabled, using save dir \"{0}\"", m_savedir);
         }
 
         public void PostInitialise()
         {
-            lock (m_serialisers)
-            {
-                m_serialisers.Add(new SerialiseTerrain());
-                m_serialisers.Add(new SerialiseObjects());
-            }
-
-//            LoadCommanderCommands();
+            // AKIDO
+            m_serialisers.Add(new SerialiseTerrain());
+            m_serialisers.Add(new SerialiseObjects());
+            // AKIDO
         }
 
         public void AddRegion(Scene scene)
         {
-//            scene.RegisterModuleCommander(m_commander);
-//            scene.EventManager.OnPluginConsole += EventManager_OnPluginConsole;
             scene.RegisterModuleInterface<IRegionSerialiserModule>(this);
 
-            lock (m_regions)
-            {
-                m_regions.Add(scene);
-            }
+            // AKIDO
+            m_regions.Add(scene);
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -100,10 +92,9 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
 
         public void RemoveRegion(Scene scene)
         {
-            lock (m_regions)
-            {
-                m_regions.Remove(scene);
-            }
+            // AKIDO
+            m_regions.Remove(scene);
+            // AKIDO
         }
 
         public void Close()
@@ -185,13 +176,12 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
                 Directory.CreateDirectory(saveDir);
             }
 
-            lock (m_serialisers)
+            // AKIDO
+            foreach (IFileSerialiser serialiser in m_serialisers)
             {
-                foreach (IFileSerialiser serialiser in m_serialisers)
-                {
-                    results.Add(serialiser.WriteToFile(scene, saveDir));
-                }
+                results.Add(serialiser.WriteToFile(scene, saveDir));
             }
+            // AKIDO
 
             TextWriter regionInfoWriter = new StreamWriter(Path.Combine(saveDir, "README.TXT"));
             regionInfoWriter.WriteLine("Region Name: " + scene.RegionInfo.RegionName);
@@ -212,18 +202,6 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
 
         #endregion
 
-//        private void EventManager_OnPluginConsole(string[] args)
-//        {
-//            if (args[0] == "export")
-//            {
-//                string[] tmpArgs = new string[args.Length - 2];
-//                int i = 0;
-//                for (i = 2; i < args.Length; i++)
-//                    tmpArgs[i - 2] = args[i];
-//
-//                m_commander.ProcessConsoleCommand(args[1], tmpArgs);
-//            }
-//        }
 
         private void InterfaceSaveRegion(Object[] args)
         {
@@ -245,16 +223,6 @@ namespace OpenSim.Region.CoreModules.World.Serialiser
                 SerialiseRegion(region, Path.Combine(m_savedir, region.RegionInfo.RegionID.ToString()));
             }
         }
-
-//        private void LoadCommanderCommands()
-//        {
-//            Command serialiseSceneCommand = new Command("save", CommandIntentions.COMMAND_NON_HAZARDOUS, InterfaceSaveRegion, "Saves the named region into the exports directory.");
-//            serialiseSceneCommand.AddArgument("region-name", "The name of the region you wish to export", "String");
-//
-//            Command serialiseAllScenesCommand = new Command("save-all",CommandIntentions.COMMAND_NON_HAZARDOUS,  InterfaceSaveAllRegions, "Saves all regions into the exports directory.");
-//
-//            m_commander.RegisterCommand("save", serialiseSceneCommand);
-//            m_commander.RegisterCommand("save-all", serialiseAllScenesCommand);
-//        }
+        
     }
 }

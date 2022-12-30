@@ -25,15 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-
 using OpenSim.Framework;
 using OpenSim.Server.Base;
-
 using OpenMetaverse;
 using log4net;
 
@@ -44,7 +39,6 @@ namespace OpenSim.Groups
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private string m_ServerURI;
-        private object m_Lock = new object();
 
         public GroupsServiceHGConnector(string url)
         {
@@ -270,10 +264,9 @@ namespace OpenSim.Groups
             string reply = string.Empty;
             try
             {
-                lock (m_Lock)
-                    reply = SynchronousRestFormsRequester.MakeRequest("POST",
-                         m_ServerURI + "hg-groups",
-                         ServerUtils.BuildQueryString(sendData));
+                reply = SynchronousRestFormsRequester.MakeRequest("POST",
+                    m_ServerURI + "hg-groups",
+                    ServerUtils.BuildQueryString(sendData));
             }
             catch
             {

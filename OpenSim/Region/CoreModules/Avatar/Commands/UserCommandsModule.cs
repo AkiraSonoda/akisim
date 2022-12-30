@@ -26,20 +26,17 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using log4net;
 using Mono.Addins;
-using NDesk.Options;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Console;
-using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatars.Commands
 {
@@ -49,7 +46,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UserCommandsModule")]
     public class UserCommandsModule : ISharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public const string TeleportUserCommandSyntax = "teleport user <first-name> <last-name> <destination>";
 
@@ -59,7 +56,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
         public static Regex WithinRegionDestinationRegex
             = new Regex(@"^(?<x>\d+)/(?<y>\d+)/(?<z>\d+)$", RegexOptions.Compiled);
 
-        private Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
+        private RwLockedDictionary<UUID, Scene> m_scenes = new RwLockedDictionary<UUID, Scene>(); // AKIDO
 
         public string Name { get { return "User Commands Module"; } }
 
@@ -67,25 +64,25 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void Initialise(IConfigSource source)
         {
-//            m_log.DebugFormat("[USER COMMANDS MODULE]: INITIALIZED MODULE");
+//            m_log.DebugFormat("INITIALIZED MODULE");
         }
 
         public void PostInitialise()
         {
-//            m_log.DebugFormat("[USER COMMANDS MODULE]: POST INITIALIZED MODULE");
+//            m_log.DebugFormat("POST INITIALIZED MODULE");
         }
 
         public void Close()
         {
-//            m_log.DebugFormat("[USER COMMANDS MODULE]: CLOSED MODULE");
+//            m_log.DebugFormat("CLOSED MODULE");
         }
 
         public void AddRegion(Scene scene)
         {
-//            m_log.DebugFormat("[USER COMMANDS MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes[scene.RegionInfo.RegionID] = scene;
+            // AKIDO 
+            m_scenes[scene.RegionInfo.RegionID] = scene;
 
             scene.AddCommand(
                 "Users",
@@ -100,33 +97,32 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void RemoveRegion(Scene scene)
         {
-//            m_log.DebugFormat("[USER COMMANDS MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
-            lock (m_scenes)
-                m_scenes.Remove(scene.RegionInfo.RegionID);
+            // AKIDO
+            m_scenes.Remove(scene.RegionInfo.RegionID);
         }
 
         public void RegionLoaded(Scene scene)
         {
-//            m_log.DebugFormat("[USER COMMANDS MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled)  m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
         }
 
         private ScenePresence GetUser(string firstName, string lastName)
         {
             ScenePresence userFound = null;
 
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene scene in m_scenes.Values)
             {
-                foreach (Scene scene in m_scenes.Values)
+                ScenePresence user = scene.GetScenePresence(firstName, lastName);
+                if (user != null && !user.IsChildAgent)
                 {
-                    ScenePresence user = scene.GetScenePresence(firstName, lastName);
-                    if (user != null && !user.IsChildAgent)
-                    {
-                        userFound = user;
-                        break;
-                    }
+                    userFound = user;
+                    break;
                 }
             }
+            // AKIDO
 
             return userFound;
         }

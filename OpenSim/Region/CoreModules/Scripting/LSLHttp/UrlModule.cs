@@ -33,7 +33,6 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Net;
-using System.Net.Sockets;
 using log4net;
 using Mono.Addins;
 using Nini.Config;
@@ -43,6 +42,8 @@ using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 {
@@ -85,9 +86,9 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        protected readonly Dictionary<UUID, UrlData> m_RequestMap = new Dictionary<UUID, UrlData>();
-        protected readonly Dictionary<string, UrlData> m_UrlMap = new Dictionary<string, UrlData>();
-        protected readonly Dictionary<UUID, int> m_countsPerSOG = new Dictionary<UUID, int>();
+        protected readonly RwLockedDictionary<UUID, UrlData> m_RequestMap = new RwLockedDictionary<UUID, UrlData>(); // AKIDO
+        protected readonly RwLockedDictionary<string, UrlData> m_UrlMap = new RwLockedDictionary<string, UrlData>(); // AKIDO
+        protected readonly RwLockedDictionary<UUID, int> m_countsPerSOG = new RwLockedDictionary<UUID, int>(); // AKIDO
 
         protected bool m_enabled = false;
         protected string m_ErrorStr;
@@ -139,15 +140,13 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
             }
             else
             {
-                m_ErrorStr = "[Network] configuration missing, HTTP listener for LSL disabled";
-                m_log.Warn("[URL MODULE]: " + m_ErrorStr);
+                m_log.Warn("[Network] configuration missing, HTTP listener for LSL disabled");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(ExternalHostNameForLSL))
             {
-                m_ErrorStr = "ExternalHostNameForLSL not defined in configuration, HTTP listener for LSL disabled";
-                m_log.Warn("[URL MODULE]: " + m_ErrorStr);
+                m_log.Warn("ExternalHostNameForLSL not defined in configuration, HTTP listener for LSL disabled");
                 return;
             }
 
@@ -155,8 +154,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
             ia = Util.GetHostFromDNS(ExternalHostNameForLSL);
             if (ia == null)
             {
-                m_ErrorStr = "Could not resolve ExternalHostNameForLSL, HTTP listener for LSL disabled";
-                m_log.Warn("[URL MODULE]: " + m_ErrorStr);
+                m_log.Warn("Could not resolve ExternalHostNameForLSL, HTTP listener for LSL disabled");
                 return;
             }
 
@@ -234,7 +232,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                 return urlcode;
             }
 
-            lock (m_UrlMap)
+            lock (m_UrlMap) /* this lock here is for preventing concurrency when checking for Url amount */
             {
                 if (m_UrlMap.Count >= TotalUrls)
                 {
@@ -277,9 +275,9 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 
                 m_HttpServer.AddPollServiceHTTPHandlerVarPath(args);
 
-                //m_log.DebugFormat(
-                //    "[URL MODULE]: Set up incoming request url {0} for {1} in {2} {3}",
-                //     uri, itemID, host.Name, host.LocalId);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Set up incoming request url {0} for {1} in {2} {3}",
+                     uri, itemID, host.Name, host.LocalId);
 
                 engine.PostScriptEvent(itemID, "http_request", new Object[] { urlcode.ToString(), "URL_REQUEST_GRANTED", url + "/"});
             }
@@ -303,7 +301,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                 return urlcode;
             }
 
-            lock (m_UrlMap)
+            lock (m_UrlMap)  /* this lock here is for preventing concurrency when checking for Url amount */
             {
                 if (m_UrlMap.Count >= TotalUrls)
                 {
@@ -345,9 +343,9 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                     = new PollServiceEventArgs(HttpRequestHandler, uri, HasEvents, GetEvents, NoEvents, Drop, urlcode, 25000);
                 m_HttpsServer.AddPollServiceHTTPHandlerVarPath(args);
 
-                //m_log.DebugFormat(
-                //    "[URL MODULE]: Set up incoming secure request url {0} for {1} in {2} {3}",
-                //     uri, itemID, host.Name, host.LocalId);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "Set up incoming secure request url {0} for {1} in {2} {3}",
+                     uri, itemID, host.Name, host.LocalId);
                 // keep ending / because legacy
                 engine.PostScriptEvent(itemID, "http_request", new Object[] { urlcode.ToString(), "URL_REQUEST_GRANTED", url + "/"});
             }
@@ -357,167 +355,156 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 
         public void ReleaseURL(string url)
         {
-            lock (m_UrlMap)
+            // AKIDO
+            UrlData data;
+            url = url.TrimEnd(new char[] { '/' });
+            if (!m_UrlMap.TryGetValue(url, out data))
             {
-                UrlData data;
-                url = url.TrimEnd(new char[]{'/'});
-                if (!m_UrlMap.TryGetValue(url, out data))
-                {
-                    return;
-                }
-
-                lock (m_RequestMap)
-                {
-                    foreach (UUID req in data.requests.Keys)
-                        m_RequestMap.Remove(req);
-                }
-
-//                m_log.DebugFormat(
-//                    "[URL MODULE]: Releasing url {0} for {1} in {2}",
-//                    url, data.itemID, data.hostID);
-
-                RemoveUrl(data);
-                m_UrlMap.Remove(url);
+                return;
             }
+
+            // AKIDO
+            foreach (UUID req in data.requests.Keys)
+                m_RequestMap.Remove(req);
+            // AKIDO
+
+            if (m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Releasing url {0} for {1} in {2}",
+                url, data.itemID, data.hostID);
+
+            RemoveUrl(data);
+            m_UrlMap.Remove(url);
+            // AKIDO
         }
 
         public void HttpContentType(UUID request, string type)
         {
-            lock (m_UrlMap)
+            // AKIDO
+            UrlData urlData;
+            if (m_RequestMap.TryGetValue(request, out urlData) && urlData != null)
             {
-                UrlData urlData;
-                if (m_RequestMap.TryGetValue(request, out urlData) && urlData != null)
-                {
-                    urlData.requests[request].responseType = type;
-                }
-                else
-                {
-                    m_log.Info("[HttpRequestHandler] There is no http-in request with id " + request.ToString());
-                }
+                urlData.requests[request].responseType = type;
             }
+            else
+            {
+                m_log.Info("There is no http-in request with id " + request.ToString());
+            }
+            // AKIDO
         }
 
         public void HttpResponse(UUID request, int status, string body)
         {
-            lock (m_RequestMap)
+            // AKIDO
+            RequestData rd;
+            if (m_RequestMap.TryGetValue(request, out var urlData) && urlData != null)
             {
-                UrlData urlData;
-                RequestData rd;
-                if (m_RequestMap.TryGetValue(request, out urlData) && urlData != null)
+                lock (urlData.requests)
                 {
-                    lock(urlData.requests)
+                    if (urlData.requests.TryGetValue(request, out rd) && rd != null)
                     {
-                        if (urlData.requests.TryGetValue(request, out rd) && rd != null)
+                        if (!rd.responseSent)
                         {
-                            if (!rd.responseSent)
-                            {
-                                string responseBody = body;
+                            string responseBody = body;
 
-                                if (rd.responseType.Equals("text/plain"))
+                            if (rd.responseType.Equals("text/plain"))
+                            {
+                                string value;
+                                if (rd.headers.TryGetValue("user-agent", out value))
                                 {
-                                    string value;
-                                    if (rd.headers.TryGetValue("user-agent", out value))
+                                    if (value != null && value.IndexOf("MSIE") >= 0)
                                     {
-                                        if (value != null && value.IndexOf("MSIE") >= 0)
-                                        {
-                                            // wrap the html escaped response if the target client is IE
-                                            // It ignores "text/plain" if the body is html
-                                            responseBody = "<html>" + System.Web.HttpUtility.HtmlEncode(body) + "</html>";
-                                        }
+                                        // wrap the html escaped response if the target client is IE
+                                        // It ignores "text/plain" if the body is html
+                                        responseBody = "<html>" + System.Web.HttpUtility.HtmlEncode(body) + "</html>";
                                     }
                                 }
-
-                                rd.responseCode = status;
-                                rd.responseBody = responseBody;
-                                //urlData.requests[request].ev.Set();
-                                rd.requestDone = true;
-                                rd.responseSent = true;
                             }
+
+                            rd.responseCode = status;
+                            rd.responseBody = responseBody;
+                            //urlData.requests[request].ev.Set();
+                            rd.requestDone = true;
+                            rd.responseSent = true;
                         }
                     }
                 }
-                else
-                {
-                    m_log.Info("[HttpRequestHandler] There is no http-in request with id " + request.ToString());
-                }
             }
+            else
+            {
+                m_log.Info("There is no http-in request with id " + request.ToString());
+            }
+            // AKIDO
         }
 
         public string GetHttpHeader(UUID requestId, string header)
         {
-            lock (m_RequestMap)
+            // AKIDO
+            if (m_RequestMap.TryGetValue(requestId, out var urlData) && urlData != null)
             {
-                UrlData urlData;
-                if (m_RequestMap.TryGetValue(requestId, out urlData) && urlData != null)
-                {
-                    string value;
-                    if (urlData.requests[requestId].headers.TryGetValue(header, out value))
-                        return value;
-                }
-                else
-                {
-                    m_log.Warn("[HttpRequestHandler] There was no http-in request with id " + requestId);
-                }
+                string value;
+                if (urlData.requests[requestId].headers.TryGetValue(header, out value))
+                    return value;
             }
+            else
+            {
+                m_log.Warn("There was no http-in request with id " + requestId);
+            }
+            // AKIOD
             return string.Empty;
         }
 
         public int GetFreeUrls()
         {
-            lock (m_UrlMap)
-                return TotalUrls - m_UrlMap.Count;
+            // AKIDO
+            return TotalUrls - m_UrlMap.Count;
         }
 
         public void ScriptRemoved(UUID itemID)
         {
-//            m_log.DebugFormat("[URL MODULE]: Removing script {0}", itemID);
+            m_log.DebugFormat("Removing script {0}", itemID);
 
-            lock (m_UrlMap)
+            // AKIDO
+            List<string> removeURLs = new List<string>();
+
+            foreach (KeyValuePair<string, UrlData> url in m_UrlMap)
             {
-                List<string> removeURLs = new List<string>();
-
-                foreach (KeyValuePair<string, UrlData> url in m_UrlMap)
+                if (url.Value.itemID == itemID)
                 {
-                    if (url.Value.itemID == itemID)
-                    {
-                        RemoveUrl(url.Value);
-                        removeURLs.Add(url.Key);
-                        lock (m_RequestMap)
-                        {
-                            foreach (UUID req in url.Value.requests.Keys)
-                                m_RequestMap.Remove(req);
-                        }
-                    }
+                    RemoveUrl(url.Value);
+                    removeURLs.Add(url.Key);
+                    // AKIDO
+                    foreach (UUID req in url.Value.requests.Keys)
+                        m_RequestMap.Remove(req);
+                    // AKIDO
                 }
-
-                foreach (string urlname in removeURLs)
-                    m_UrlMap.Remove(urlname);
             }
+
+            foreach (string urlname in removeURLs)
+                m_UrlMap.Remove(urlname);
+            // AKIDO
         }
 
         public void ObjectRemoved(UUID objectID)
         {
-            lock (m_UrlMap)
+            // AKIDO
+            List<string> removeURLs = new List<string>();
+
+            foreach (KeyValuePair<string, UrlData> url in m_UrlMap)
             {
-                List<string> removeURLs = new List<string>();
-
-                foreach (KeyValuePair<string, UrlData> url in m_UrlMap)
+                if (url.Value.hostID == objectID)
                 {
-                    if (url.Value.hostID == objectID)
-                    {
-                        RemoveUrl(url.Value);
-                        removeURLs.Add(url.Key);
-                        lock (m_RequestMap)
-                        {
-                            foreach (UUID req in url.Value.requests.Keys)
-                                m_RequestMap.Remove(req);
-                        }
-                    }
+                    RemoveUrl(url.Value);
+                    removeURLs.Add(url.Key);
+                    // AKIDO
+                    foreach (UUID req in url.Value.requests.Keys)
+                        m_RequestMap.Remove(req);
+                    // AKIDO
                 }
-
-                foreach (string urlname in removeURLs)
-                    m_UrlMap.Remove(urlname);
             }
+
+            foreach (string urlname in removeURLs)
+                m_UrlMap.Remove(urlname);
+            // AKIDO
         }
 
         protected void RemoveUrl(UrlData data)
@@ -542,14 +529,13 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
             Hashtable response = new Hashtable();
             UrlData url;
             int startTime = 0;
-            lock (m_RequestMap)
-            {
-                if (!m_RequestMap.TryGetValue(requestID, out url))
-                    return response;
-                startTime = url.requests[requestID].startTime;
-            }
+            // AKIDO
+            if (!m_RequestMap.TryGetValue(requestID, out url))
+                return response;
+            startTime = url.requests[requestID].startTime;
+            // AKIDO
 
-            if (System.Environment.TickCount - startTime < 25000)
+            if (Environment.TickCount - startTime < 25000)
                 return response;
 
             //remove from map
@@ -557,10 +543,9 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
             {
                 url.requests.Remove(requestID);
             }
-            lock (m_RequestMap)
-            {
-                m_RequestMap.Remove(requestID);
-            }
+            // AKIDO
+            m_RequestMap.Remove(requestID);
+            // AKIDO
 
             response["int_response_code"] = 500;
             response["str_response_string"] = "Script timeout";
@@ -571,13 +556,10 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 
         protected bool HasEvents(UUID requestID, UUID sessionID)
         {
-            UrlData url=null;
-
-            lock (m_RequestMap)
-            {
-                if (!m_RequestMap.TryGetValue(requestID, out url))
-                    return false;
-            }
+            // AKIDO
+            if (!m_RequestMap.TryGetValue(requestID, out var url))
+                return false;
+            // AKIDO
             lock (url.requests)
             {
                 RequestData rd;
@@ -593,30 +575,25 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 
         protected void Drop(UUID requestID, UUID _)
         {
-            UrlData url = null;
-            lock (m_RequestMap)
+            // AKIDO
+            if (m_RequestMap.TryGetValue(requestID, out var url))
             {
-                if (m_RequestMap.TryGetValue(requestID, out url))
+                m_RequestMap.Remove(requestID);
+                if (url != null)
                 {
-                    m_RequestMap.Remove(requestID);
-                    if(url != null)
-                    {
-                        lock (url.requests)
-                            url.requests.Remove(requestID);
-                    }
+                    lock (url.requests)
+                        url.requests.Remove(requestID);
                 }
             }
+            // AKIDO
         }
 
         protected Hashtable GetEvents(UUID requestID, UUID sessionID)
         {
-            UrlData url = null;
-
-            lock (m_RequestMap)
-            {
-                if (!m_RequestMap.TryGetValue(requestID, out url))
-                    return NoEvents(requestID,sessionID);
-            }
+            // AKIDO
+            if (!m_RequestMap.TryGetValue(requestID, out var url))
+                return NoEvents(requestID, sessionID);
+            // AKIDO
 
             RequestData requestData = null;
             lock (url.requests)
@@ -626,10 +603,9 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                     return NoEvents(requestID, sessionID);
 
                 url.requests.Remove(requestID);
-                lock (m_RequestMap)
-                {
-                    m_RequestMap.Remove(requestID);
-                }
+                // AKIDO
+                m_RequestMap.Remove(requestID);
+                // AKIDO
             }
 
             Hashtable response = new Hashtable();
@@ -728,7 +704,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
 
                     if (!m_UrlMap.TryGetValue(urlkey, out UrlData url))
                     {
-                            //m_log.Warn("[HttpRequestHandler]: http-in request failed; no such url: "+urlkey.ToString());
+                            m_log.Warn("http-in request failed; no such url: "+urlkey);
                             request.InputStream.Dispose();
                             return errorResponse(request, (int)HttpStatusCode.NotFound);
                     }
@@ -790,11 +766,10 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                     {
                         url.requests.Add(requestID, requestData);
                     }
-                    lock (m_RequestMap)
-                    {
-                        //add to request map
-                        m_RequestMap.Add(requestID, url);
-                    }
+                    // AKIDO
+                    //add to request map
+                    m_RequestMap.Add(requestID, url);
+                    // AKIDO
 
                     string requestBody;
                     if (request.InputStream.Length > 0)
@@ -815,7 +790,7 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
                 catch (Exception we)
                 {
                     //Hashtable response = new Hashtable();
-                    m_log.Warn("[HttpRequestHandler]: http-in request failed");
+                    m_log.Warn("http-in request failed");
                     m_log.Warn(we.Message);
                     m_log.Warn(we.StackTrace);
                 }
@@ -834,11 +809,10 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
             if (!m_enabled)
                 return 0;
 
-            lock (m_UrlMap)
-            { 
-                m_countsPerSOG.TryGetValue(groupID, out int count);
-                return count;
-            }
+            // AKIDO 
+            m_countsPerSOG.TryGetValue(groupID, out int count);
+            return count;
+            // AKIDO
         }
     }
 }

@@ -29,16 +29,15 @@ using System;
 using System.Xml;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using OpenMetaverse;
 using Nini.Config;
 using OpenSim.Framework.Servers.HttpServer;
 using log4net;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Framework.Console
 {
@@ -126,8 +125,8 @@ namespace OpenSim.Framework.Console
 
         // The list of sessions we maintain. Unlike other console types,
         // multiple users on the same console are explicitly allowed.
-        protected Dictionary<UUID, ConsoleConnection> m_Connections =
-                new Dictionary<UUID, ConsoleConnection>();
+        protected RwLockedDictionary<UUID, ConsoleConnection> m_Connections = // AKIDO
+                new RwLockedDictionary<UUID, ConsoleConnection>();
 
         // Timer to control expiration of sessions that have been
         // disconnected.
@@ -366,22 +365,21 @@ namespace OpenSim.Framework.Console
             // Remove them.
             List<UUID> expired = new List<UUID>();
 
-            lock (m_Connections)
+            // AKIDO
+            // Mark the expired ones
+            foreach (KeyValuePair<UUID, ConsoleConnection> kvp in m_Connections)
             {
-                // Mark the expired ones
-                foreach (KeyValuePair<UUID, ConsoleConnection> kvp in m_Connections)
-                {
-                    if (System.Environment.TickCount - kvp.Value.last > 500000)
-                        expired.Add(kvp.Key);
-                }
-
-                // Delete them
-                foreach (UUID id in expired)
-                {
-                    m_Connections.Remove(id);
-                    CloseConnection(id);
-                }
+                if (System.Environment.TickCount - kvp.Value.last > 500000)
+                    expired.Add(kvp.Key);
             }
+
+            // Delete them
+            foreach (UUID id in expired)
+            {
+                m_Connections.Remove(id);
+                CloseConnection(id);
+            }
+            // AKIDO
         }
 
         // Start a new session.
@@ -417,10 +415,9 @@ namespace OpenSim.Framework.Console
             UUID sessionID = UUID.Random();
 
             // Add connection to list.
-            lock (m_Connections)
-            {
-                m_Connections[sessionID] = c;
-            }
+            // AKIDO
+            m_Connections[sessionID] = c;
+            // AKIDO
 
             // This call is a CAP. The URL is the authentication.
             string uri = "/ReadResponses/" + sessionID.ToString();
@@ -476,15 +473,13 @@ namespace OpenSim.Framework.Console
             UUID id;
             if (!UUID.TryParse(post["ID"].ToString(), out id))
                 return reply;
-
-            lock (m_Connections)
+            
+            // AKIDO
+            if (m_Connections.Remove(id))
             {
-                if (m_Connections.ContainsKey(id))
-                {
-                    m_Connections.Remove(id);
-                    CloseConnection(id);
-                }
+                CloseConnection(id);
             }
+            // AKIDO
 
             XmlDocument xmldoc = new XmlDocument();
             XmlNode xmlnode = xmldoc.CreateNode(XmlNodeType.XmlDeclaration,
@@ -528,11 +523,10 @@ namespace OpenSim.Framework.Console
                 return reply;
 
             // Find the connection for that ID.
-            lock (m_Connections)
-            {
-                if (!m_Connections.ContainsKey(id))
-                    return reply;
-            }
+            // AKIDO
+            if (!m_Connections.ContainsKey(id))
+                return reply;
+            // AKIDO
 
             // Empty post. Just error out.
             if (post["COMMAND"] == null)
@@ -612,14 +606,9 @@ namespace OpenSim.Framework.Console
         // lines pending.
         protected bool HasEvents(UUID RequestID, UUID sessionID)
         {
-            ConsoleConnection c = null;
-
-            lock (m_Connections)
-            {
-                if (!m_Connections.ContainsKey(sessionID))
-                    return false;
-                c = m_Connections[sessionID];
-            }
+            // AKIDO
+            if (!m_Connections.TryGetValue(sessionID, out ConsoleConnection c))
+                return false;
             c.last = System.Environment.TickCount;
             if (c.lastLineSeen < m_lineNumber)
                 return true;
@@ -630,14 +619,10 @@ namespace OpenSim.Framework.Console
         protected Hashtable GetEvents(UUID RequestID, UUID sessionID)
         {
             // Find the connection that goes with this client.
-            ConsoleConnection c = null;
-
-            lock (m_Connections)
-            {
-                if (!m_Connections.ContainsKey(sessionID))
-                    return NoEvents(RequestID, UUID.Zero);
-                c = m_Connections[sessionID];
-            }
+            
+            // AKIDO
+            if (!m_Connections.TryGetValue(sessionID, out ConsoleConnection c))
+                return NoEvents(RequestID, UUID.Zero);
 
             // If we have nothing to send, send the no events response.
             c.last = System.Environment.TickCount;
@@ -654,13 +639,6 @@ namespace OpenSim.Framework.Console
             xmldoc.AppendChild(xmlnode);
             XmlElement rootElement = xmldoc.CreateElement("", "ConsoleSession",
                     "");
-
-            //if (c.newConnection)
-            //{
-            //    c.newConnection = false;
-            //    Output("+++" + DefaultPrompt);
-            //}
-
             lock (m_Scrollback)
             {
                 long startLine = m_lineNumber - m_Scrollback.Count;

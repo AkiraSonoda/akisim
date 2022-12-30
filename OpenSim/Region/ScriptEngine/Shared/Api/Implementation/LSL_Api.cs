@@ -70,6 +70,8 @@ using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using PrimType = OpenSim.Region.Framework.Scenes.PrimType;
 using RegionFlags = OpenSim.Framework.RegionFlags;
 using RegionInfo = OpenSim.Framework.RegionInfo;
+using ThreadedClasses;
+// AKIDO: clean
 
 #pragma warning disable IDE1006
 
@@ -247,7 +249,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         protected int m_msMaxInCastRay = 40;
         protected static List<CastRayCall> m_castRayCalls = new List<CastRayCall>();
         protected bool m_useMeshCacheInCastRay = true;
-        protected static Dictionary<ulong, FacetedMesh> m_cachedMeshes = new Dictionary<ulong, FacetedMesh>();
+        protected static RwLockedDictionary<ulong, FacetedMesh> m_cachedMeshes = // AKIDO
+            new RwLockedDictionary<ulong, FacetedMesh>();
 
 //        protected Timer m_ShoutSayTimer;
         protected int m_SayShoutCount = 0;
@@ -1738,7 +1741,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public LSL_Integer llGetStatus(int status)
         {
-            // m_log.Debug(m_host.ToString() + " status is " + m_host.GetEffectiveObjectFlags().ToString());
             switch (status)
             {
                 case ScriptBaseClass.STATUS_PHYSICS:
@@ -1944,7 +1946,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 return;
 
             string requestFromIPAddress = m_UrlModule.GetHttpHeader(id, "x-remote-ip");
-            //m_log.Debug("IP from header='" + requestFromIPAddress + "' IP from endpoint='" + logonFromIPAddress + "'");
             if (requestFromIPAddress == null)
                 return;
 
@@ -2801,7 +2802,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 pos = part.OffsetPosition;
             }
 
-            //m_log.DebugFormat("[LSL API]: Returning {0} in GetPartLocalPos()", pos);
             return new LSL_Vector(pos);
         }
 
@@ -3665,8 +3665,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public virtual void llSleep(double sec)
         {
-//            m_log.Info("llSleep snoozing " + sec + "s.");
-
             Sleep((int)(sec * 1000));
         }
 
@@ -12923,7 +12921,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
             catch(Exception)
             {
-                //m_log.Error("[LSL_API]: llRequestSimulatorData" + e.ToString());
                 return ScriptBaseClass.NULL_KEY;
             }
         }
@@ -15567,7 +15564,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                 Vector3 b1 = group.AbsolutePosition + new Vector3(minX, minY, minZ);
                 Vector3 b2 = group.AbsolutePosition + new Vector3(maxX, maxY, maxZ);
-                //m_log.DebugFormat("[LLCASTRAY]: min<{0},{1},{2}>, max<{3},{4},{5}> = hitp<{6},{7},{8}>", b1.X,b1.Y,b1.Z,b2.X,b2.Y,b2.Z,intersection.ipoint.X,intersection.ipoint.Y,intersection.ipoint.Z);
                 if (!(intersection.ipoint.X >= b1.X && intersection.ipoint.X <= b2.X &&
                     intersection.ipoint.Y >= b1.Y && intersection.ipoint.Y <= b2.Y &&
                     intersection.ipoint.Z >= b1.Z && intersection.ipoint.Z <= b2.Z))
@@ -16143,10 +16139,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             if (m_useMeshCacheInCastRay)
                             {
                                 meshKey = part.Shape.GetMeshKey(Vector3.One, (float)(4 << lod));
-                                lock (m_cachedMeshes)
-                                {
-                                    m_cachedMeshes.TryGetValue(meshKey, out mesh);
-                                }
+                                // AKIDO
+                                m_cachedMeshes.TryGetValue(meshKey, out mesh);
+                                // AKIDO
                             }
 
                             // Create mesh if no cached mesh
@@ -16198,11 +16193,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 // Cache mesh if configured
                                 if (m_useMeshCacheInCastRay && mesh != null)
                                 {
-                                    lock(m_cachedMeshes)
-                                    {
-                                        if (!m_cachedMeshes.ContainsKey(meshKey))
-                                            m_cachedMeshes.Add(meshKey, mesh);
-                                    }
+                                    // AKIDO
+                                    if (!m_cachedMeshes.ContainsKey(meshKey))
+                                        m_cachedMeshes.Add(meshKey, mesh);
+                                    // AKIDO
                                 }
                             }
                             // Check mesh for ray hits
@@ -16258,10 +16252,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             FacetedMesh mesh = null;
                             if (m_useMeshCacheInCastRay)
                             {
-                                lock (m_cachedMeshes)
-                                {
-                                    m_cachedMeshes.TryGetValue(meshKey, out mesh);
-                                }
+                                // AKIDO
+                                m_cachedMeshes.TryGetValue(meshKey, out mesh);
+                                // AKIDO
                             }
 
                             // Create mesh if no cached mesh
@@ -16275,11 +16268,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 // Cache mesh if configured
                                 if (m_useMeshCacheInCastRay && mesh != null)
                                 {
-                                    lock(m_cachedMeshes)
-                                    {
-                                        if (!m_cachedMeshes.ContainsKey(meshKey))
-                                            m_cachedMeshes.Add(meshKey, mesh);
-                                    }
+                                    // AKIDO
+                                    if (!m_cachedMeshes.ContainsKey(meshKey))
+                                        m_cachedMeshes.Add(meshKey, mesh);
+                                    // AKIDO
                                 }
                             }
 

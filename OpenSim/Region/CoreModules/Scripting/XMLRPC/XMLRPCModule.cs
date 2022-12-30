@@ -27,7 +27,6 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
 using System.Threading;
@@ -35,13 +34,14 @@ using log4net;
 using Nini.Config;
 using Nwc.XmlRpc;
 using OpenMetaverse;
-using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Mono.Addins;
+using ThreadedClasses;
+// AKIDO: clean
 
 /*****************************************************
  *
@@ -86,17 +86,17 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
         private string m_name = "XMLRPCModule";
 
         // <channel id, RPCChannelInfo>
-        private Dictionary<UUID, RPCChannelInfo> m_openChannels;
-        private Dictionary<UUID, SendRemoteDataRequest> m_pendingSRDResponses;
+        private RwLockedDictionary<UUID, RPCChannelInfo> m_openChannels; // AKIDO
+        private RwLockedDictionary<UUID, SendRemoteDataRequest> m_pendingSRDResponses; // AKIDO
         private int m_remoteDataPort = 0;
         public int Port
         {
             get { return m_remoteDataPort; }
         }
 
-        private Dictionary<UUID, RPCRequestInfo> m_rpcPending;
-        private Dictionary<UUID, RPCRequestInfo> m_rpcPendingResponses;
-        private List<Scene> m_scenes = new List<Scene>();
+        private RwLockedDictionary<UUID, RPCRequestInfo> m_rpcPending;
+        private RwLockedDictionary<UUID, RPCRequestInfo> m_rpcPendingResponses;
+        private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>();
         private int RemoteReplyScriptTimeout = 9000;
         private int RemoteReplyScriptWait = 300;
         private object XMLRPCListLock = new object();
@@ -108,10 +108,10 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
             // We need to create these early because the scripts might be calling
             // But since this gets called for every region, we need to make sure they
             // get called only one time (or we lose any open channels)
-            m_openChannels = new Dictionary<UUID, RPCChannelInfo>();
-            m_rpcPending = new Dictionary<UUID, RPCRequestInfo>();
-            m_rpcPendingResponses = new Dictionary<UUID, RPCRequestInfo>();
-            m_pendingSRDResponses = new Dictionary<UUID, SendRemoteDataRequest>();
+            m_openChannels = new RwLockedDictionary<UUID, RPCChannelInfo>(); // AKIDO
+            m_rpcPending = new RwLockedDictionary<UUID, RPCRequestInfo>(); // AKIDO
+            m_rpcPendingResponses = new RwLockedDictionary<UUID, RPCRequestInfo>(); // AKIDO
+            m_pendingSRDResponses = new RwLockedDictionary<UUID, SendRemoteDataRequest>(); // AKIDO
             if (config.Configs["XMLRPC"] != null)
             {
                 try
@@ -130,9 +130,9 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
             {
                 // Start http server
                 // Attach xmlrpc handlers
-                //                m_log.InfoFormat(
-                //                    "[XML RPC MODULE]: Starting up XMLRPC Server on port {0} for llRemoteData commands.",
-                //                    m_remoteDataPort);
+                m_log.InfoFormat(
+                    "Starting up XMLRPC Server on port {0} for llRemoteData commands.",
+                    m_remoteDataPort);
 
                 IHttpServer httpServer = MainServer.GetHttpServer((uint)m_remoteDataPort);
                 httpServer.AddXmlRPCHandler("llRemoteData", XmlRpcRemoteData);
@@ -216,7 +216,7 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
             // This should no longer happen, but the check is reasonable anyway
             if (null == m_openChannels)
             {
-                m_log.Warn("[XML RPC MODULE]: Attempt to open channel before initialization is complete");
+                m_log.Warn("Attempt to open channel before initialization is complete");
                 return newChannel;
             }
 
@@ -303,7 +303,7 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
             }
             else
             {
-                m_log.Warn("[XML RPC MODULE]: Channel or message_id not found");
+                m_log.Warn("Channel or message_id not found");
             }
         }
 
@@ -364,7 +364,7 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
                 }
                 else
                 {
-                    m_log.Error("[XML RPC MODULE]: UNABLE TO REMOVE COMPLETED REQUEST");
+                    m_log.Error("UNABLE TO REMOVE COMPLETED REQUEST");
                 }
             }
         }
@@ -725,7 +725,7 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
             catch (Exception we)
             {
                 Sdata = we.Message;
-                m_log.Warn("[SendRemoteDataRequest]: Request failed");
+                m_log.WarnFormat("{0} - Request failed",MethodBase.GetCurrentMethod());
                 m_log.Warn(we.StackTrace);
             }
             finally

@@ -43,6 +43,7 @@ using OpenSim.Framework;
 using OpenSim.Region.DataSnapshot.Interfaces;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+// AKIDO: clean
 
 namespace OpenSim.Region.DataSnapshot
 {
@@ -64,7 +65,6 @@ namespace OpenSim.Region.DataSnapshot
 
         //Various internal objects
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        internal object m_syncInit = new object();
         private object m_serializeGen = new object();
 
         //DataServices and networking
@@ -106,54 +106,55 @@ namespace OpenSim.Region.DataSnapshot
             if (!m_configLoaded)
             {
                 m_configLoaded = true;
-                //m_log.Debug("[DATASNAPSHOT]: Loading configuration");
+                //m_log.Debug("Loading configuration");
                 //Read from the config for options
-                lock (m_syncInit)
+                // AKIDO
+                try
                 {
-                    try
+                    m_enabled = config.Configs["DataSnapshot"].GetBoolean("index_sims", m_enabled);
+                    string gatekeeper = Util.GetConfigVarFromSections<string>(config, "GatekeeperURI",
+                        new string[] { "Startup", "Hypergrid", "GridService" }, String.Empty);
+                    // Legacy. Remove soon!
+                    if (string.IsNullOrEmpty(gatekeeper))
                     {
-                        m_enabled = config.Configs["DataSnapshot"].GetBoolean("index_sims", m_enabled);
-                        string gatekeeper = Util.GetConfigVarFromSections<string>(config, "GatekeeperURI",
-                            new string[] { "Startup", "Hypergrid", "GridService" }, String.Empty);
-                        // Legacy. Remove soon!
-                        if (string.IsNullOrEmpty(gatekeeper))
-                        {
-                            IConfig conf = config.Configs["GridService"];
-                            if (conf != null)
-                                gatekeeper = conf.GetString("Gatekeeper", gatekeeper);
-                        }
-                        if (!string.IsNullOrEmpty(gatekeeper))
-                            m_gridinfo.Add("gatekeeperURL", gatekeeper);
-
-                        m_gridinfo.Add(
-                            "name", config.Configs["DataSnapshot"].GetString("gridname", "the lost continent of hippo"));
-
-                        m_exposure_level = config.Configs["DataSnapshot"].GetString("data_exposure", m_exposure_level);
-                        m_exposure_level = m_exposure_level.ToLower();
-                        if(m_exposure_level !="all" && m_exposure_level != "minimum")
-                        {
-                            m_log.ErrorFormat("[DATASNAPSHOT]: unknown data_exposure option: '{0}'. defaulting to minimum",m_exposure_level);
-                            m_exposure_level = "minimum";
-                        }
-
-                        m_period = config.Configs["DataSnapshot"].GetInt("default_snapshot_period", m_period);
-                        m_maxStales = config.Configs["DataSnapshot"].GetInt("max_changes_before_update", m_maxStales);
-                        m_snapsDir = config.Configs["DataSnapshot"].GetString("snapshot_cache_directory", m_snapsDir);
-                        m_listener_port = config.Configs["Network"].GetString("http_listener_port", m_listener_port);
-
-                        m_dataServices = config.Configs["DataSnapshot"].GetString("data_services", m_dataServices);
-                        // New way of spec'ing data services, one per line
-                        AddDataServicesVars(config.Configs["DataSnapshot"]);
-
-                        m_lastUpdate = Environment.TickCount;
+                        IConfig conf = config.Configs["GridService"];
+                        if (conf != null)
+                            gatekeeper = conf.GetString("Gatekeeper", gatekeeper);
                     }
-                    catch (Exception)
+
+                    if (!string.IsNullOrEmpty(gatekeeper))
+                        m_gridinfo.Add("gatekeeperURL", gatekeeper);
+
+                    m_gridinfo.Add(
+                        "name", config.Configs["DataSnapshot"].GetString("gridname", "the lost continent of hippo"));
+
+                    m_exposure_level = config.Configs["DataSnapshot"].GetString("data_exposure", m_exposure_level);
+                    m_exposure_level = m_exposure_level.ToLower();
+                    if (m_exposure_level != "all" && m_exposure_level != "minimum")
                     {
-                        m_log.Warn("[DATASNAPSHOT]: Could not load configuration. DataSnapshot will be disabled.");
-                        m_enabled = false;
-                        return;
+                        m_log.ErrorFormat("unknown data_exposure option: '{0}'. defaulting to minimum",
+                            m_exposure_level);
+                        m_exposure_level = "minimum";
                     }
+
+                    m_period = config.Configs["DataSnapshot"].GetInt("default_snapshot_period", m_period);
+                    m_maxStales = config.Configs["DataSnapshot"].GetInt("max_changes_before_update", m_maxStales);
+                    m_snapsDir = config.Configs["DataSnapshot"].GetString("snapshot_cache_directory", m_snapsDir);
+                    m_listener_port = config.Configs["Network"].GetString("http_listener_port", m_listener_port);
+
+                    m_dataServices = config.Configs["DataSnapshot"].GetString("data_services", m_dataServices);
+                    // New way of spec'ing data services, one per line
+                    AddDataServicesVars(config.Configs["DataSnapshot"]);
+
+                    m_lastUpdate = Environment.TickCount;
                 }
+                catch (Exception)
+                {
+                    m_log.Warn("Could not load configuration. DataSnapshot will be disabled.");
+                    m_enabled = false;
+                    return;
+                }
+                // AKIDO
             }
         }
 
@@ -189,12 +190,13 @@ namespace OpenSim.Region.DataSnapshot
                             m_dataproviders.Add(module);
                             m_snapStore.AddProvider(module);
 
-                            m_log.Debug("[DATASNAPSHOT]: Added new data provider type: " + pluginType.Name);
+                            if(m_log.IsDebugEnabled) m_log.DebugFormat("Added new data provider type: {0}", 
+                                pluginType.Name);
                         }
                     }
                 }
             }
-            m_log.DebugFormat("[DATASNAPSHOT]: Module added to Scene {0}.", scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Module added to Scene {0}.", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
@@ -202,7 +204,7 @@ namespace OpenSim.Region.DataSnapshot
             if (!m_enabled)
                 return;
 
-            m_log.Info("[DATASNAPSHOT]: Region " + scene.RegionInfo.RegionName + " is being removed, removing from indexing");
+            m_log.Info("Region " + scene.RegionInfo.RegionName + " is being removed, removing from indexing");
             Scene restartedScene = SceneForUUID(scene.RegionInfo.RegionID);
 
             m_scenes.Remove(restartedScene);
@@ -358,12 +360,12 @@ namespace OpenSim.Region.DataSnapshot
             }
             catch (XmlException e)
             {
-                m_log.Warn("[DATASNAPSHOT]: XmlException while trying to load snapshot: " + e.ToString());
+                m_log.Warn("XmlException while trying to load snapshot: " + e.ToString());
                 requestedSnap = GetErrorMessage(regionName, e);
             }
             catch (Exception e)
             {
-                m_log.Warn("[DATASNAPSHOT]: Caught unknown exception while trying to load snapshot: " + e.StackTrace);
+                m_log.Warn("Caught unknown exception while trying to load snapshot: " + e.StackTrace);
                 requestedSnap = GetErrorMessage(regionName, e);
             }
             finally
@@ -423,16 +425,16 @@ namespace OpenSim.Region.DataSnapshot
                     }
                     catch (WebException)
                     {
-                        m_log.Warn("[DATASNAPSHOT]: Unable to notify " + url);
+                        m_log.Warn("Unable to notify " + url);
                     }
                     catch (Exception e)
                     {
-                        m_log.Warn("[DATASNAPSHOT]: Ignoring unknown exception " + e.ToString());
+                        m_log.Warn("Ignoring unknown exception " + e.ToString());
                     }
 
                     // This is not quite working, so...
                     // string responseStr = Util.UTF8.GetString(response);
-                    m_log.Info("[DATASNAPSHOT]: data service " + url + " notified. Secret: " + m_Secret);
+                    m_log.Info("data service " + url + " notified. Secret: " + m_Secret);
                 }
             }
         }
@@ -477,7 +479,7 @@ namespace OpenSim.Region.DataSnapshot
 
         public void MakeEverythingStale()
         {
-            m_log.Debug("[DATASNAPSHOT]: Marking all scenes as stale.");
+            m_log.Debug("Marking all scenes as stale.");
             foreach (Scene scene in m_scenes)
             {
                 m_snapStore.ForceSceneStale(scene);

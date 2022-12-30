@@ -30,15 +30,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Xml;
-
 using OpenSim.Framework;
 using OpenSim.Services.Base;
 using OpenSim.Services.Interfaces;
-
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using PermissionMask = OpenSim.Framework.PermissionMask;
+// AKIDO clean
 
 namespace OpenSim.Services.InventoryService
 {
@@ -97,7 +96,7 @@ namespace OpenSim.Services.InventoryService
                 pLibName = libConfig.GetString("LibraryName", pLibName);
             }
 
-            m_log.Debug("[LIBRARY]: Starting library service...");
+            m_log.Debug("Starting library service...");
 
             m_LibraryRootFolder = new InventoryFolderImpl();
             m_LibraryRootFolder.Owner = libOwner;
@@ -139,7 +138,7 @@ namespace OpenSim.Services.InventoryService
         /// <param name="assets"></param>
         protected void LoadLibraries(string librariesControlPath)
         {
-            m_log.InfoFormat("[LIBRARY INVENTORY]: Loading library control file {0}", librariesControlPath);
+            m_log.InfoFormat("Loading library control file {0}", librariesControlPath);
             LoadFromFile(librariesControlPath, "Libraries control", ReadLibraryFromConfig);
         }
 
@@ -182,12 +181,12 @@ namespace OpenSim.Services.InventoryService
             {
                 libraryFolders.Add(folderInfo.ID, folderInfo);
                 parentFolder.AddChildFolder(folderInfo);
-                //m_log.InfoFormat("[LIBRARY INVENTORY]: Adding folder {0} ({1})", folderInfo.name, folderInfo.folderID);
+                //m_log.InfoFormat("Adding folder {0} ({1})", folderInfo.name, folderInfo.folderID);
             }
             else
             {
                 m_log.WarnFormat(
-                    "[LIBRARY INVENTORY]: Couldn't add folder {0} ({1}) since parent folder with ID {2} does not exist!",
+                    "Couldn't add folder {0} ({1}) since parent folder with ID {2} does not exist!",
                     folderInfo.Name, folderInfo.ID, folderInfo.ParentID);
             }
         }
@@ -225,13 +224,13 @@ namespace OpenSim.Services.InventoryService
                 }
                 else
                 {
-                    m_log.WarnFormat("[LIBRARY INVENTORY] Item {1} [{0}] not added, duplicate item", item.ID, item.Name);
+                    m_log.WarnFormat("Item {1} [{0}] not added, duplicate item", item.ID, item.Name);
                 }
             }
             else
             {
                 m_log.WarnFormat(
-                    "[LIBRARY INVENTORY]: Couldn't add item {0} ({1}) since parent folder with ID {2} does not exist!",
+                    "Couldn't add item {0} ({1}) since parent folder with ID {2} does not exist!",
                     item.Name, item.ID, item.Folder);
             }
         }
@@ -259,12 +258,12 @@ namespace OpenSim.Services.InventoryService
                 }
                 catch (XmlException e)
                 {
-                    m_log.ErrorFormat("[LIBRARY INVENTORY]: Error loading {0} : {1}", path, e);
+                    m_log.ErrorFormat("Error loading {0} : {1}", path, e);
                 }
             }
             else
             {
-                m_log.ErrorFormat("[LIBRARY INVENTORY]: {0} file {1} does not exist!", fileDescription, path);
+                m_log.ErrorFormat("{0} file {1} does not exist!", fileDescription, path);
             }
         }
 

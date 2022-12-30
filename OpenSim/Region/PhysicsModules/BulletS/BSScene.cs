@@ -26,9 +26,8 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using OpenSim.Framework;
@@ -40,6 +39,7 @@ using Nini.Config;
 using log4net;
 using OpenMetaverse;
 using Mono.Addins;
+// AKIDO: clean
 
 namespace OpenSim.Region.PhysicsModule.BulletS
 {
@@ -47,7 +47,6 @@ namespace OpenSim.Region.PhysicsModule.BulletS
     public sealed class BSScene : PhysicsScene, IPhysicsParameters, INonSharedRegionModule
     {
         internal static readonly ILog m_log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-        internal static readonly string LogHeader = "[BULLETS SCENE]";
 
         private bool m_Enabled = false;
         private IConfigSource m_Config;
@@ -64,7 +63,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         // If the physics engine is running on a separate thread
         public Thread m_physicsThread;
 
-        public Dictionary<uint, BSPhysObject> PhysObjects;
+        public ConcurrentDictionary<uint, BSPhysObject> PhysObjects;
         public BSShapeCollection Shapes;
 
         // Keeping track of the objects with collisions so we can report begin and end of a collision
@@ -283,7 +282,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             mesher = scene.RequestModuleInterface<IMesher>();
             if (mesher == null)
-                m_log.WarnFormat("{0} No mesher. Things will not work well.", LogHeader);
+                m_log.Warn("No mesher. Things will not work well.");
 
             scene.PhysicsEnabled = true;
         }
@@ -296,7 +295,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             _taintOperations = new List<TaintCallbackEntry>();
             _postTaintOperations = new Dictionary<string, TaintCallbackEntry>();
             _postStepOperations = new List<TaintCallbackEntry>();
-            PhysObjects = new Dictionary<uint, BSPhysObject>();
+            PhysObjects = new ConcurrentDictionary<uint, BSPhysObject>();
             Shapes = new BSShapeCollection(this);
 
             m_simulatedTime = 0f;
@@ -312,7 +311,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             // Only use heightmap terrain implementation if terrain larger than legacy size
             if ((uint)regionExtent.X > Constants.RegionSize || (uint)regionExtent.Y > Constants.RegionSize)
             {
-                m_log.WarnFormat("{0} Forcing terrain implementation to heightmap for large region", LogHeader);
+                m_log.Warn("Forcing terrain implementation to heightmap for large region");
                 BSParam.TerrainImplementation = (float)BSTerrainPhys.TerrainImplementation.Heightmap;
             }
 
@@ -350,7 +349,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             TerrainManager.CreateInitialGroundPlaneAndTerrain();
 
             // Put some informational messages into the log file.
-            m_log.InfoFormat("{0} Linksets implemented with {1}", LogHeader, (BSLinkset.LinksetImplementation)BSParam.LinksetImplementation);
+            m_log.InfoFormat("Linksets implemented with {0}", (BSLinkset.LinksetImplementation)BSParam.LinksetImplementation);
 
             InSimulationTime = false;
             m_initialized = true;
@@ -455,27 +454,17 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                     ret = new BSAPIUnman(engineName, this);
                     break;
                 case "bulletxna":
-                    ret = new BSAPIXNA(engineName, this);
-                    // Disable some features that are not implemented in BulletXNA
-                    m_log.InfoFormat("{0} Disabling some physics features not implemented by BulletXNA", LogHeader);
-                    m_log.InfoFormat("{0}    Disabling ShouldUseBulletHACD", LogHeader);
-                    BSParam.ShouldUseBulletHACD = false;
-                    m_log.InfoFormat("{0}    Disabling ShouldUseSingleConvexHullForPrims", LogHeader);
-                    BSParam.ShouldUseSingleConvexHullForPrims = false;
-                    m_log.InfoFormat("{0}    Disabling ShouldUseGImpactShapeForPrims", LogHeader);
-                    BSParam.ShouldUseGImpactShapeForPrims = false;
-                    m_log.InfoFormat("{0}    Setting terrain implimentation to Heightmap", LogHeader);
-                    BSParam.TerrainImplementation = (float)BSTerrainPhys.TerrainImplementation.Heightmap;
+                    m_log.ErrorFormat("bulletxna removed to concentrate on a single BulletSim variant");
                     break;
             }
 
             if (ret == null)
             {
-                m_log.ErrorFormat("{0} COULD NOT SELECT BULLET ENGINE: '[BulletSim]PhysicsEngine' must be either 'BulletUnmanaged-*' or 'BulletXNA-*'", LogHeader);
+                m_log.Error("COULD NOT SELECT BULLET ENGINE: '[BulletSim]PhysicsEngine' must be either 'BulletUnmanaged-*' or 'BulletXNA-*'");
             }
             else
             {
-                m_log.InfoFormat("{0} Selected bullet engine {1} -> {2}/{3}", LogHeader, engineName, ret.BulletEngineName, ret.BulletEngineVersion);
+                m_log.InfoFormat("Selected bullet engine {0} -> {1}/{2}", engineName, ret.BulletEngineName, ret.BulletEngineVersion);
             }
 
             return ret;
@@ -488,14 +477,12 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             // make sure no stepping happens while we're deleting stuff
             m_initialized = false;
 
-            lock (PhysObjects)
+            foreach (KeyValuePair<uint, BSPhysObject> kvp in PhysObjects) // AKIDO
             {
-                foreach (KeyValuePair<uint, BSPhysObject> kvp in PhysObjects)
-                {
-                    kvp.Value.Destroy();
-                }
-                PhysObjects.Clear();
+                kvp.Value.Destroy();
             }
+
+            PhysObjects.Clear();
 
             // Now that the prims are all cleaned up, there should be no constraints left
             if (Constraints != null)
@@ -529,7 +516,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         public override PhysicsActor AddAvatar(string avName, Vector3 position, Vector3 velocity, Vector3 size, bool isFlying)
         {
-            m_log.ErrorFormat("{0}: CALL TO AddAvatar in BSScene. NOT IMPLEMENTED", LogHeader);
+            m_log.Error("CALL TO AddAvatar in BSScene. NOT IMPLEMENTED");
             return null;
         }
 
@@ -540,8 +527,10 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             if (!m_initialized) return null;
 
             BSCharacter actor = new BSCharacter(localID, avName, this, position, Vector3.Zero, size, footOffset, isFlying);
-            lock (PhysObjects)
-                PhysObjects.Add(localID, actor);
+            if (!PhysObjects.TryAdd(localID, actor)) { // AKIDO
+                m_log.WarnFormat("AddAvatar PhysObjects.TryAdd unexpectedly returned false " +
+                                 "when adding localid {0} actor: {1}", localID, actor);
+            }
 
             // TODO: Remove kludge someday.
             // We must generate a collision for avatars whether they collide or not.
@@ -563,23 +552,25 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             {
                 try
                 {
-                    lock (PhysObjects)
-                        PhysObjects.Remove(bsactor.LocalID);
+                    if (!PhysObjects.TryRemove(bsactor.LocalID, out BSPhysObject bsPhysObject)) { // AKIDO
+                        m_log.WarnFormat("RemoveAvatar PhysObjects.TryRemove() " +
+                                         "unexpectedly failed when removing bsactor.localID: {0}", bsactor.LocalID);
+                    }
                     // Remove kludge someday
                     lock (AvatarsInSceneLock)
                         AvatarsInScene.Remove(bsactor);
                 }
                 catch (Exception e)
                 {
-                    m_log.WarnFormat("{0}: Attempt to remove avatar that is not in physics scene: {1}", LogHeader, e);
+                    m_log.WarnFormat("Attempt to remove avatar that is not in physics scene: {0}", e);
                 }
                 bsactor.Destroy();
                 // bsactor.dispose();
             }
             else
             {
-                m_log.ErrorFormat("{0}: Requested to remove avatar that is not a BSCharacter. ID={1}, type={2}",
-                                            LogHeader, actor.LocalID, actor.GetType().Name);
+                m_log.ErrorFormat("Requested to remove avatar that is not a BSCharacter. ID={0}, type={1}",
+                    actor.LocalID, actor.GetType().Name);
             }
         }
 
@@ -594,18 +585,21 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 // m_log.DebugFormat("{0}: RemovePrim. id={1}/{2}", LogHeader, bsprim.Name, bsprim.LocalID);
                 try
                 {
-                    lock (PhysObjects) PhysObjects.Remove(bsprim.LocalID);
+                    if(!PhysObjects.TryRemove(bsprim.LocalID, out BSPhysObject bsPhysObject)) { // AKIDO
+                        m_log.WarnFormat("RemoveAvatar PhysObjects.TryRemove() " +
+                                         "unexpectedly failed when removing bsprim.localID: {0}", bsprim.LocalID);
+                    }
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("{0}: Attempt to remove prim that is not in physics scene: {1}", LogHeader, e);
+                    m_log.ErrorFormat("Attempt to remove prim that is not in physics scene: {0}", e);
                 }
                 bsprim.Destroy();
                 // bsprim.dispose();
             }
             else
             {
-                m_log.ErrorFormat("{0}: Attempt to remove prim that is not a BSPrim type.", LogHeader);
+                m_log.Error("Attempt to remove prim that is not a BSPrim type.");
             }
         }
 
@@ -619,7 +613,10 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             // DetailLog("{0},BSScene.AddPrimShape,call", localID);
 
             BSPhysObject prim = new BSPrimLinkable(localID, primName, this, position, size, rotation, pbs, isPhysical);
-            lock (PhysObjects) PhysObjects.Add(localID, prim);
+            if (!PhysObjects.TryAdd(localID, prim)) { // AKIDO
+                m_log.WarnFormat("RemoveAvatar PhysObjects.TryAdd() " +
+                                 "unexpectedly failed when adding localID: {0} prim: {1}", localID, prim);
+            }
             return prim;
         }
 
@@ -690,8 +687,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 }
                 catch (Exception e)
                 {
-                    m_log.WarnFormat("{0},PhysicsStep Exception: nTaints={1}, substeps={2}, updates={3}, colliders={4}, e={5}",
-                                LogHeader, numTaints, numSubSteps, updatedEntityCount, collidersCount, e);
+                    m_log.WarnFormat("PhysicsStep Exception: nTaints={0}, substeps={1}, updates={2}, colliders={3}, e={4}",
+                                numTaints, numSubSteps, updatedEntityCount, collidersCount, e);
                     DetailLog("{0},PhysicsStepException,call, nTaints={1}, substeps={2}, updates={3}, colliders={4}",
                                 DetailLogZero, numTaints, numSubSteps, updatedEntityCount, collidersCount);
                     updatedEntityCount = 0;
@@ -723,18 +720,15 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             {
                 if (collidersCount > 0)
                 {
-                    lock (PhysObjects)
+                    for (int ii = 0; ii < collidersCount; ii++) // AKIDO
                     {
-                        for (int ii = 0; ii < collidersCount; ii++)
-                        {
-                            uint cA = m_collisionArray[ii].aID;
-                            uint cB = m_collisionArray[ii].bID;
-                            Vector3 point = m_collisionArray[ii].point;
-                            Vector3 normal = m_collisionArray[ii].normal;
-                            float penetration = m_collisionArray[ii].penetration;
-                            SendCollision(cA, cB, point, normal, penetration);
-                            SendCollision(cB, cA, point, -normal, penetration);
-                        }
+                        uint cA = m_collisionArray[ii].aID;
+                        uint cB = m_collisionArray[ii].bID;
+                        Vector3 point = m_collisionArray[ii].point;
+                        Vector3 normal = m_collisionArray[ii].normal;
+                        float penetration = m_collisionArray[ii].penetration;
+                        SendCollision(cA, cB, point, normal, penetration);
+                        SendCollision(cB, cA, point, -normal, penetration);
                     }
                 }
             }
@@ -745,17 +739,13 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             {
                 if (updatedEntityCount > 0)
                 {
-                    lock (PhysObjects)
+                    for (int ii = 0; ii < updatedEntityCount; ii++) // AKIDO
                     {
-                        for (int ii = 0; ii < updatedEntityCount; ii++)
+                        EntityProperties entprop = m_updateArray[ii];
+                        if (PhysObjects.TryGetValue(entprop.ID, out BSPhysObject pobj))
                         {
-                            EntityProperties entprop = m_updateArray[ii];
-                            BSPhysObject pobj;
-                            if (PhysObjects.TryGetValue(entprop.ID, out pobj))
-                            {
-                                if (pobj.IsInitialized)
-                                    pobj.UpdateProperties(entprop);
-                            }
+                            if (pobj.IsInitialized)
+                                pobj.UpdateProperties(entprop);
                         }
                     }
                 }
@@ -1110,17 +1100,14 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         {
             Dictionary<uint, float> topColliders;
 
-            lock (PhysObjects)
+            foreach (KeyValuePair<uint, BSPhysObject> kvp in PhysObjects)
             {
-                foreach (KeyValuePair<uint, BSPhysObject> kvp in PhysObjects)
-                {
-                    kvp.Value.ComputeCollisionScore();
-                }
-
-                List<BSPhysObject> orderedPrims = new List<BSPhysObject>(PhysObjects.Values);
-                orderedPrims.OrderByDescending(p => p.CollisionScore);
-                topColliders = orderedPrims.Take(25).ToDictionary(p => p.LocalID, p => p.CollisionScore);
+                kvp.Value.ComputeCollisionScore();
             }
+
+            List<BSPhysObject> orderedPrims = new List<BSPhysObject>(PhysObjects.Values);
+            orderedPrims.OrderByDescending(p => p.CollisionScore);
+            topColliders = orderedPrims.Take(25).ToDictionary(p => p.LocalID, p => p.CollisionScore);
 
             return topColliders;
         }
@@ -1309,7 +1296,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("{0}: ProcessTaints: {1}: Exception: {2}", LogHeader, tcbe.ident, e);
+                        m_log.ErrorFormat("ProcessTaints: {0}: Exception: {1}", tcbe.ident, e);
                     }
                 }
                 oldList.Clear();
@@ -1357,7 +1344,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("{0}: ProcessPostTaintTaints: {1}: Exception: {2}", LogHeader, kvp.Key, e);
+                        m_log.ErrorFormat("ProcessPostTaintTaints: {0}: Exception: {1}", kvp.Key, e);
                     }
                 }
                 oldList.Clear();
@@ -1406,7 +1393,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                             TaintedUpdateParameter(parm, objectIDs, val);
                             break;
                         case PhysParameterEntry.APPLY_TO_ALL:
-                            lock (PhysObjects) objectIDs = new List<uint>(PhysObjects.Keys);
+                            objectIDs = new List<uint>(PhysObjects.Keys);
                             TaintedUpdateParameter(parm, objectIDs, val);
                             break;
                         default:

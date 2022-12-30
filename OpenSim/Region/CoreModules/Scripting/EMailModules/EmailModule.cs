@@ -31,7 +31,6 @@ using System.Net.Security;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using log4net;
-using MailKit;
 using MailKit.Net.Smtp;
 using MimeKit;
 using Nini.Config;
@@ -40,6 +39,8 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Mono.Addins;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.EmailModules
 {
@@ -74,11 +75,11 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
         private ParserOptions m_mailParseOptions;
 
         private int m_MaxQueueSize = 50; // maximum size of an object mail queue
-        private Dictionary<UUID, List<Email>> m_MailQueues = new Dictionary<UUID, List<Email>>();
-        private Dictionary<UUID, double> m_LastGetEmailCall = new Dictionary<UUID, double>();
-        private Dictionary<UUID, throttleControlInfo> m_ownerThrottles = new Dictionary<UUID, throttleControlInfo>();
-        private Dictionary<string, throttleControlInfo> m_primAddressThrottles = new Dictionary<string, throttleControlInfo>();
-        private Dictionary<string, throttleControlInfo> m_SMPTAddressThrottles = new Dictionary<string, throttleControlInfo>();
+        private RwLockedDictionary<UUID, List<Email>> m_MailQueues = new RwLockedDictionary<UUID, List<Email>>(); // AKIDO
+        private RwLockedDictionary<UUID, double> m_LastGetEmailCall = new RwLockedDictionary<UUID, double>(); // AKIDO
+        private RwLockedDictionary<UUID, throttleControlInfo> m_ownerThrottles = new RwLockedDictionary<UUID, throttleControlInfo>(); // AKIDO
+        private RwLockedDictionary<string, throttleControlInfo> m_primAddressThrottles = new RwLockedDictionary<string, throttleControlInfo>(); // AKIDO
+        private RwLockedDictionary<string, throttleControlInfo> m_SMPTAddressThrottles = new RwLockedDictionary<string, throttleControlInfo>(); // AKIDO
         private double m_QueueTimeout = 30 * 60; // 15min;
         private double m_nextQueuesExpire;
         private double m_nextOwnerThrottlesExpire;
@@ -107,7 +108,7 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
         private object m_queuesLock = new object();
 
         // Scenes by Region Handle
-        private Dictionary<ulong, Scene> m_Scenes = new Dictionary<ulong, Scene>();
+        private RwLockedDictionary<ulong, Scene> m_Scenes = new RwLockedDictionary<ulong, Scene>(); // AKIDO
 
         private bool m_Enabled = false;
 
@@ -160,7 +161,7 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                     OSHHTPHost hosttmp = new OSHHTPHost(SMTP_SERVER_HOSTNAME, true);
                     if(!hosttmp.IsResolvedHost)
                     {
-                        m_log.ErrorFormat("[EMAIL]: could not resolve SMTP_SERVER_HOSTNAME {0}", SMTP_SERVER_HOSTNAME);
+                        m_log.ErrorFormat("could not resolve SMTP_SERVER_HOSTNAME {0}", SMTP_SERVER_HOSTNAME);
                         return;
                     }
 
@@ -171,7 +172,7 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                     m_HostName = SMTPConfig.GetString("host_domain_header_from", m_HostName);
                     if (!string.IsNullOrEmpty(smtpfrom) && !MailboxAddress.TryParse(m_mailParseOptions, smtpfrom, out SMTP_MAIL_FROM))
                     {
-                        m_log.ErrorFormat("[EMAIL]: Invalid SMTP_SERVER_FROM {0}", smtpfrom);
+                        m_log.ErrorFormat("Invalid SMTP_SERVER_FROM {0}", smtpfrom);
                         return;
                     }
 
@@ -188,20 +189,20 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                 else
                 {
                     m_SMTP_SslPolicyErrorsMask = ~SslPolicyErrors.None;
-                    m_log.Warn("[EMAIL]: SMTP disabled, set enableEmailSMTP to enable");
+                    m_log.Warn("SMTP disabled, set enableEmailSMTP to enable");
                 }
 
                 m_MaxEmailSize = SMTPConfig.GetInt("email_max_size", m_MaxEmailSize);
                 if(m_MaxEmailSize < 256 || m_MaxEmailSize > 1000000)
                 {
-                    m_log.Warn("[EMAIL]: email_max_size out of range [256, 1000000], Changed to default 4096");
+                    m_log.Warn("email_max_size out of range [256, 1000000], Changed to default 4096");
                     m_MaxEmailSize = 4096;
                 }
 
             }
             catch (Exception e)
             {
-                m_log.Error("[EMAIL]: DefaultEmailModule not configured: " + e.Message);
+                m_log.Error("DefaultEmailModule not configured: " + e.Message);
                 return;
             }
 
@@ -222,17 +223,16 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
             if (!m_Enabled)
                 return;
 
-        // It's a go!
-            lock (m_Scenes)
-            {
-                // Claim the interface slot
-                scene.RegisterModuleInterface<IEmailModule>(this);
+            // It's a go!
+            // AKIDO
+            // Claim the interface slot
+            scene.RegisterModuleInterface<IEmailModule>(this);
 
-                // Add to scene list
-                m_Scenes[scene.RegionInfo.RegionHandle] = scene;
-            }
+            // Add to scene list
+            m_Scenes[scene.RegionInfo.RegionHandle] = scene;
+            // AKDIO
 
-            m_log.Info("[EMAIL]: Activated DefaultEmailModule");
+            m_log.Info("Activated DefaultEmailModule");
         }
 
         public void RemoveRegion(Scene scene)
@@ -319,33 +319,31 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
 
         private bool IsLocal(UUID objectID)
         {
-            lock (m_Scenes)
+            // AKIDO
+            foreach (Scene s in m_Scenes.Values)
             {
-                foreach (Scene s in m_Scenes.Values)
-                {
-                    if (s.GetSceneObjectPart(objectID) != null)
-                        return true;
-                }
+                if (s.GetSceneObjectPart(objectID) != null)
+                    return true;
             }
+            // AKIDO
             return false;
         }
 
         private SceneObjectPart findPrim(UUID objectID, out string ObjectRegionName)
         {
-            lock (m_Scenes)
+            // AKIDO
+            foreach (Scene s in m_Scenes.Values)
             {
-                foreach (Scene s in m_Scenes.Values)
+                SceneObjectPart part = s.GetSceneObjectPart(objectID);
+                if (part != null)
                 {
-                    SceneObjectPart part = s.GetSceneObjectPart(objectID);
-                    if (part != null)
-                    {
-                        RegionInfo sri = s.RegionInfo;
-                        ObjectRegionName = sri.RegionName;
-                        ObjectRegionName = ObjectRegionName + " (" + sri.WorldLocX + ", " + sri.WorldLocY + ")";
-                        return part;
-                    }
+                    RegionInfo sri = s.RegionInfo;
+                    ObjectRegionName = sri.RegionName;
+                    ObjectRegionName = ObjectRegionName + " (" + sri.WorldLocX + ", " + sri.WorldLocY + ")";
+                    return part;
                 }
             }
+            // AKIDO
             ObjectRegionName = string.Empty;
             return null;
         }
@@ -388,40 +386,39 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
 
             double now = Util.GetTimeStamp();
             throttleControlInfo tci;
-            lock (m_ownerThrottles)
+            // AKIDO
+            if (m_ownerThrottles.TryGetValue(ownerID, out tci))
             {
-                if (m_ownerThrottles.TryGetValue(ownerID, out tci))
-                {
-                    tci.count += (now - tci.lastTime) * m_MailsFromOwnerRate;
-                    tci.lastTime = now;
-                    if (tci.count > m_MailsFromOwnerPerHour)
-                        tci.count = m_MailsFromOwnerPerHour;
-                    else if (tci.count <= 0)
-                        return;
-                    --tci.count;
-                }
-                else
-                {
-                    tci = new throttleControlInfo
-                    {
-                        lastTime = now,
-                        count = m_MailsFromOwnerPerHour
-                    };
-                    m_ownerThrottles[ownerID] = tci;
-                }
+                tci.count += (now - tci.lastTime) * m_MailsFromOwnerRate;
+                tci.lastTime = now;
+                if (tci.count > m_MailsFromOwnerPerHour)
+                    tci.count = m_MailsFromOwnerPerHour;
+                else if (tci.count <= 0)
+                    return;
+                --tci.count;
             }
+            else
+            {
+                tci = new throttleControlInfo
+                {
+                    lastTime = now,
+                    count = m_MailsFromOwnerPerHour
+                };
+                m_ownerThrottles[ownerID] = tci;
+            }
+            // AKIDO
 
             string addressLower = address.ToLower();
 
             if (!MailboxAddress.TryParse(address, out MailboxAddress mailTo))
             {
-                m_log.ErrorFormat("[EMAIL]: invalid TO email address {0}",address);
+                m_log.ErrorFormat("invalid TO email address {0}",address);
                 return;
             }
 
             if ((subject.Length + body.Length) > m_MaxEmailSize)
             {
-                m_log.Error("[EMAIL]: subject + body larger than limit of " + m_MaxEmailSize + " bytes");
+                m_log.Error("subject + body larger than limit of " + m_MaxEmailSize + " bytes");
                 return;
             }
 
@@ -443,28 +440,27 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                     return;
                 --m_SMTPCount;
 
-                lock (m_SMPTAddressThrottles)
+                // AKIDO
+                if (m_SMPTAddressThrottles.TryGetValue(addressLower, out tci))
                 {
-                    if (m_SMPTAddressThrottles.TryGetValue(addressLower, out tci))
-                    {
-                        tci.count += (now - tci.lastTime) * m_MailsToSMTPAddressRate;
-                        tci.lastTime = now;
-                        if (tci.count > m_MailsToSMTPAddressPerHour)
-                            tci.count = m_MailsToSMTPAddressPerHour;
-                        else if (tci.count <= 0)
-                            return;
-                        --tci.count;
-                    }
-                    else
-                    {
-                        tci = new throttleControlInfo
-                        {
-                            lastTime = now,
-                            count = m_MailsToSMTPAddressPerHour
-                        };
-                        m_SMPTAddressThrottles[addressLower] = tci;
-                    }
+                    tci.count += (now - tci.lastTime) * m_MailsToSMTPAddressRate;
+                    tci.lastTime = now;
+                    if (tci.count > m_MailsToSMTPAddressPerHour)
+                        tci.count = m_MailsToSMTPAddressPerHour;
+                    else if (tci.count <= 0)
+                        return;
+                    --tci.count;
                 }
+                else
+                {
+                    tci = new throttleControlInfo
+                    {
+                        lastTime = now,
+                        count = m_MailsToSMTPAddressPerHour
+                    };
+                    m_SMPTAddressThrottles[addressLower] = tci;
+                }
+                // AKIDO
 
                 // regular email, send it out
                 try
@@ -510,37 +506,36 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
                     }
 
                     //Log
-                    m_log.Info("[EMAIL]: EMail sent to: " + address + " from object: " + objectID.ToString() + "@" + m_HostName);
+                    m_log.Info("EMail sent to: " + address + " from object: " + objectID.ToString() + "@" + m_HostName);
                 }
                 catch (Exception e)
                 {
-                    m_log.Error("[EMAIL]: DefaultEmailModule Exception: " + e.Message);
+                    m_log.Error("DefaultEmailModule Exception: " + e.Message);
                 }
             }
             else
             {
-                lock (m_primAddressThrottles)
+                // AKIDO
+                if (m_primAddressThrottles.TryGetValue(addressLower, out tci))
                 {
-                    if (m_primAddressThrottles.TryGetValue(addressLower, out tci))
-                    {
-                        tci.count += (now - tci.lastTime) * m_MailsToPrimAddressRate;
-                        tci.lastTime = now;
-                        if (tci.count > m_MailsToPrimAddressPerHour)
-                            tci.count = m_MailsToPrimAddressPerHour;
-                        else if (tci.count <= 0)
-                            return;
-                        --tci.count;
-                    }
-                    else
-                    {
-                        tci = new throttleControlInfo
-                        {
-                            lastTime = now,
-                            count = m_MailsToPrimAddressPerHour
-                        };
-                        m_primAddressThrottles[addressLower] = tci;
-                    }
+                    tci.count += (now - tci.lastTime) * m_MailsToPrimAddressRate;
+                    tci.lastTime = now;
+                    if (tci.count > m_MailsToPrimAddressPerHour)
+                        tci.count = m_MailsToPrimAddressPerHour;
+                    else if (tci.count <= 0)
+                        return;
+                    --tci.count;
                 }
+                else
+                {
+                    tci = new throttleControlInfo
+                    {
+                        lastTime = now,
+                        count = m_MailsToPrimAddressPerHour
+                    };
+                    m_primAddressThrottles[addressLower] = tci;
+                }
+                // AKIDO
 
                 // inter object email
                 int indx = address.IndexOf('@');
@@ -583,59 +578,56 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
         {
             double now = Util.GetTimeStamp();
             double lasthour = now - 3600;
-            lock (m_ownerThrottles)
+            // AKIDO
+            if (m_ownerThrottles.Count > 0 && now > m_nextOwnerThrottlesExpire)
             {
-                if (m_ownerThrottles.Count > 0 && now > m_nextOwnerThrottlesExpire)
+                List<UUID> removal = new List<UUID>(m_ownerThrottles.Count);
+                foreach (KeyValuePair<UUID, throttleControlInfo> kpv in m_ownerThrottles)
                 {
-                    List<UUID> removal = new List<UUID>(m_ownerThrottles.Count);
-                    foreach (KeyValuePair<UUID, throttleControlInfo> kpv in m_ownerThrottles)
-                    {
-                        if (kpv.Value.lastTime < lasthour)
-                            removal.Add(kpv.Key);
-                    }
-
-                    foreach (UUID remove in removal)
-                        m_ownerThrottles.Remove(remove);
-
-                    m_nextOwnerThrottlesExpire = now + 3600;
+                    if (kpv.Value.lastTime < lasthour)
+                        removal.Add(kpv.Key);
                 }
-            }
 
-            lock (m_primAddressThrottles)
+                foreach (UUID remove in removal)
+                    m_ownerThrottles.Remove(remove);
+
+                m_nextOwnerThrottlesExpire = now + 3600;
+            }
+            // AKIDO
+
+            // AKIDO
+            if (m_primAddressThrottles.Count > 0 && now > m_nextPrimAddressThrottlesExpire)
             {
-                if (m_primAddressThrottles.Count > 0 && now > m_nextPrimAddressThrottlesExpire)
+                List<string> removal = new List<string>(m_primAddressThrottles.Count);
+                foreach (KeyValuePair<string, throttleControlInfo> kpv in m_primAddressThrottles)
                 {
-                    List<string> removal = new List<string>(m_primAddressThrottles.Count);
-                    foreach (KeyValuePair<string, throttleControlInfo> kpv in m_primAddressThrottles)
-                    {
-                        if (kpv.Value.lastTime < lasthour)
-                            removal.Add(kpv.Key);
-                    }
-
-                    foreach (string remove in removal)
-                        m_primAddressThrottles.Remove(remove);
-
-                    m_nextPrimAddressThrottlesExpire = now + 3600;
+                    if (kpv.Value.lastTime < lasthour)
+                        removal.Add(kpv.Key);
                 }
-            }
 
-            lock (m_SMPTAddressThrottles)
+                foreach (string remove in removal)
+                    m_primAddressThrottles.Remove(remove);
+
+                m_nextPrimAddressThrottlesExpire = now + 3600;
+            }
+            // AKIDO
+
+            // AKIDO
+            if (m_SMPTAddressThrottles.Count > 0 && now > m_nextSMTPAddressThrottlesExpire)
             {
-                if (m_SMPTAddressThrottles.Count > 0 && now > m_nextSMTPAddressThrottlesExpire)
+                List<string> removal = new List<string>(m_SMPTAddressThrottles.Count);
+                foreach (KeyValuePair<string, throttleControlInfo> kpv in m_SMPTAddressThrottles)
                 {
-                    List<string> removal = new List<string>(m_SMPTAddressThrottles.Count);
-                    foreach (KeyValuePair<string, throttleControlInfo> kpv in m_SMPTAddressThrottles)
-                    {
-                        if (kpv.Value.lastTime < lasthour)
-                            removal.Add(kpv.Key);
-                    }
-
-                    foreach (string remove in removal)
-                        m_SMPTAddressThrottles.Remove(remove);
-
-                    m_nextSMTPAddressThrottlesExpire = now + 3600;
+                    if (kpv.Value.lastTime < lasthour)
+                        removal.Add(kpv.Key);
                 }
+
+                foreach (string remove in removal)
+                    m_SMPTAddressThrottles.Remove(remove);
+
+                m_nextSMTPAddressThrottlesExpire = now + 3600;
             }
+            // AKIDO
 
             lock (m_queuesLock)
             {

@@ -26,14 +26,11 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Net;
 using System.IO;
 using System.Timers;
 using System.Drawing;
 using System.Drawing.Imaging;
-
 using log4net;
 using Mono.Addins;
 using Nini.Config;
@@ -43,7 +40,8 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Server.Base;
 using OpenMetaverse;
-using OpenMetaverse.StructuredData;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 {
@@ -63,7 +61,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
         private bool m_enabled = false;
         private IMapImageService m_MapService;
 
-        private Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
+        private RwLockedDictionary<UUID, Scene> m_scenes = new RwLockedDictionary<UUID, Scene>(); // AKIDO
 
         private int m_refreshtime = 0;
         private int m_lastrefresh = 0;
@@ -97,14 +95,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             int refreshminutes = Convert.ToInt32(config.GetString("RefreshTime"));
             if (refreshminutes < 0)
             {
-                m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: Negative refresh time given in config. Module disabled.");
+                m_log.WarnFormat("Negative refresh time given in config. Module disabled.");
                 return;
             }
 
             string service = config.GetString("LocalServiceModule", string.Empty);
             if (service.Length == 0)
             {
-                m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: No service dll given in config. Unable to proceed.");
+                m_log.WarnFormat("No service dll given in config. Unable to proceed.");
                 return;
             }
 
@@ -112,7 +110,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             m_MapService = ServerUtils.LoadPlugin<IMapImageService>(service, args);
             if (m_MapService == null)
             {
-                m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: Unable to load LocalServiceModule from {0}. MapService module disabled. Please fix the configuration.", service);
+                m_log.WarnFormat("Unable to load LocalServiceModule from {0}. MapService module disabled. Please fix the configuration.", service);
                 return;
             }
 
@@ -128,12 +126,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                 m_refreshTimer.Elapsed += new ElapsedEventHandler(HandleMaptileRefresh);
 
 
-                m_log.InfoFormat("[MAP IMAGE SERVICE MODULE]: enabled with refresh time {0} min and service object {1}",
+                m_log.InfoFormat("enabled with refresh time {0} min and service object {1}",
                              refreshminutes, service);
             }
             else
             {
-                m_log.InfoFormat("[MAP IMAGE SERVICE MODULE]: enabled with no refresh and service object {0}", service);
+                m_log.InfoFormat("enabled with no refresh and service object {0}", service);
             }
             m_enabled = true;
         }
@@ -148,8 +146,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 
             // Every shared region module has to maintain an indepedent list of
             // currently running regions
-            lock (m_scenes)
-                m_scenes[scene.RegionInfo.RegionID] = scene;
+            // AKIDO
+            m_scenes[scene.RegionInfo.RegionID] = scene;
 
             // v2 Map generation on startup is now handled by scene to allow bmp to be shared with
             // v1 service and not generate map tiles twice as was previous behavior
@@ -166,8 +164,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             if (! m_enabled)
                 return;
 
-            lock (m_scenes)
-                m_scenes.Remove(scene.RegionInfo.RegionID);
+            // AKIDO
+            m_scenes.Remove(scene.RegionInfo.RegionID);
         }
 
         #endregion ISharedRegionModule
@@ -183,21 +181,20 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             if (m_lastrefresh > 0 && Util.EnvironmentTickCountSubtract(m_lastrefresh) < m_refreshtime)
                 return;
 
-            m_log.DebugFormat("[MAP IMAGE SERVICE MODULE]: map refresh!");
-            lock (m_scenes)
+            m_log.Debug("map refresh!");
+            // AKIDO
+            foreach (IScene scene in m_scenes.Values)
             {
-                foreach (IScene scene in m_scenes.Values)
+                try
                 {
-                    try
-                    {
-                        UploadMapTile(scene);
-                    }
-                    catch (Exception ex)
-                    {
-                        m_log.WarnFormat("[MAP IMAGE SERVICE MODULE]: something bad happened {0}", ex.Message);
-                    }
+                    UploadMapTile(scene);
+                }
+                catch (Exception ex)
+                {
+                    m_log.WarnFormat("something bad happened {0}", ex.Message);
                 }
             }
+            // AKIDO
 
             m_lastrefresh = Util.EnvironmentTickCount();
         }
@@ -224,7 +221,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             }
             else
             {
-            m_log.DebugFormat("{0} Upload {1} maptiles for {2}", LogHeader,
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Upload {1} maptiles for {2}", LogHeader,
                     (mapTile.Width * mapTile.Height) / (Constants.RegionSize * Constants.RegionSize),
                     scene.Name);
 
@@ -249,7 +246,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                                                     scene.RegionInfo.RegionLocY + (yy / Constants.RegionSize),
                                                     scene.Name))
                             {
-                                m_log.DebugFormat("{0} Upload maptileS for {1} aborted!", LogHeader, scene.Name);
+                                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                                    "{0} Upload maptileS for {1} aborted!", LogHeader, scene.Name);
                                 return; // abort rest;
                             }
                         }            
@@ -263,7 +261,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
         ///</summary>
         public void UploadMapTile(IScene scene)
         {
-            m_log.DebugFormat("{0}: upload maptile for {1}", LogHeader, scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "{0}: upload maptile for {1}", LogHeader, scene.RegionInfo.RegionName);
 
             // Create a JPG map tile and upload it to the AddMapTile API
             IMapImageGenerator tileGenerator = scene.RequestModuleInterface<IMapImageGenerator>();
@@ -275,7 +274,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 
             using (Bitmap mapTile = tileGenerator.CreateMapTile())
             {
-                // XXX: The MapImageModule will return a null if the user has chosen not to create map tiles and there
+                // The MapImageModule will return a null if the user has chosen not to create map tiles and there
                 // is no static map tile.
                 if (mapTile == null)
                     return;
@@ -303,7 +302,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             string reason = string.Empty;
             if (!m_MapService.AddMapTile((int)locX, (int)locY, jpgData, scene.RegionInfo.ScopeID, out reason))
             {
-                m_log.DebugFormat("{0} Unable to upload tile image for {1} at {2}-{3}: {4}", LogHeader,
+                m_log.WarnFormat("{0} Unable to upload tile image for {1} at {2}-{3}: {4}", LogHeader,
                     regionName, locX, locY, reason);
                 return false;
             }
