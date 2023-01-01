@@ -2175,7 +2175,6 @@ namespace OpenSim.Region.Framework.Scenes
                 }
                 
                 bool flying = ((m_AgentControlFlags & ACFlags.AGENT_CONTROL_FLY) != 0);
-
                 Vector3 look = Lookat;
                 look.Z = 0f;
                 look.Normalize();
@@ -2616,6 +2615,8 @@ namespace OpenSim.Region.Framework.Scenes
             State = agentData.State;
 
             #endregion Inputs
+            //if (oldState != State)
+            //    SendAgentTerseUpdate(this);
             
             if ((allFlags & ACFlags.AGENT_CONTROL_STAND_UP) != 0)
                 StandUp();
@@ -2625,8 +2626,10 @@ namespace OpenSim.Region.Framework.Scenes
 
             ACFlags flags = RemoveIgnoredControls(allFlags, IgnoredControls);
             m_AgentControlFlags = flags;
-
             // Raycast from the avatar's head to the camera to see if there's anything blocking the view
+            // this exclude checks may not be complete
+            if (agentData.NeedsCameraCollision)
+                checkCameraCollision();
             // this exclude checks may not be complete
             if (agentData.NeedsCameraCollision)
                 checkCameraCollision();
@@ -2643,6 +2646,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 Rotation = agentData.BodyRotation;
 
+                //m_log.DebugFormat("[SCENE PRESENCE]: Initial body rotation {0} for {1}", agentData.BodyRotation, Name);
                 bool update_movementflag = false;
                 bool DCFlagKeyPressed = false;
 
@@ -2936,7 +2940,6 @@ namespace OpenSim.Region.Framework.Scenes
                     tmpAgentControlFlags |= (uint)Dir_ControlFlags.DIR_CONTROL_FLAG_LEFT;
                 else if (LocalVectorToTarget3D.Y < 0) //MoveRight
                     tmpAgentControlFlags |= (uint)Dir_ControlFlags.DIR_CONTROL_FLAG_RIGHT;
-               
                 updated = LocalVectorToTarget3D.Z != 0;
                 updated |= tmpAgentControlFlags != 0;
                 
@@ -3940,6 +3943,16 @@ namespace OpenSim.Region.Framework.Scenes
             if (++NeedInitialData < 6) // needs fix if update rate changes on heartbeat
                return;
             
+            /*
+            if(!GotAttachmentsData)
+            {
+                if(++NeedInitialData == 300) // 30s in current heartbeat
+                    m_log.WarnFormat("[ScenePresence({0}] slow attachment assets transfer for {1}", Scene.Name, Name);
+            }
+            else if((m_teleportFlags & TeleportFlags.ViaHGLogin) != 0)
+                m_log.WarnFormat("[ScenePresence({0}] got hg attachment assets transfer for {1}, cntr = {2}", Scene.Name, Name, NeedInitialData);
+            */
+
             NeedInitialData = -1;
 
             bool selfappearance = (flags & 4) != 0;
@@ -4490,7 +4503,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (t >= 0 && t < rinfo.RegionSizeY)
                     return;
             }
-            
+
             if (!CrossToNewRegion() && m_requestedSitTargetID == 0)
             {
                 // we don't have entity transfer module
@@ -5398,7 +5411,9 @@ namespace OpenSim.Region.Framework.Scenes
 
             return validated;
         }
+
         
+
         // send attachments to a client without filters except for huds
         // for now they are checked in several places down the line...
         public void SendAttachmentsToAgentNF(ScenePresence p)
@@ -6774,6 +6789,7 @@ namespace OpenSim.Region.Framework.Scenes
             p.ControllingClient.SendKillObject(ids);
         }
         
+
         public void SendViewTo(ScenePresence p)
         {
             SendAvatarDataToAgentNF(p);

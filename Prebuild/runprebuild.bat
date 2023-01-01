@@ -1,6 +1,6 @@
 
 
-rem Prebuild.exe /target VS2010 
+rem Prebuild.exe /target VS2022 
 
 @ECHO OFF
 
@@ -16,10 +16,10 @@ rem ## Default "configuration" choice ((r)elease, (d)ebug)
 set configuration=d
 
 rem ## Default Visual Studio edition
-set vstudio=2010
+set vstudio=2022
 
 rem ## Default Framework
-set framework=4_0
+set framework=4_8
 
 rem ## Default architecture (86 (for 32bit), 64)
 :CheckArch
@@ -37,15 +37,15 @@ rem ## Determine native framework
 set framework=4_5
 for /f "tokens=4-5 delims=. " %%i in ('ver') do set VERSION=%%i.%%j
 if %version% == 10.0 (
-	set framework=4_5
+	set framework=4_8
 	echo Windows 10
 )
 if %version% == 6.3 (
-	set framework=4_5
+	set framework=4_8
 	echo Windows 8.1 or Server 2012 R2
 )
 if %version% == 6.2 (
-	set framework=4_5
+	set framework=4_8
 	echo Windows 8 or Server 2012
 )
 if %version% == 6.1 (
@@ -107,7 +107,7 @@ echo "%configuration%" isn't a valid choice!
 goto configuration
 
 :framework
-set /p framework="Choose your .NET framework (4_0 or 4_5)? [%framework%]: "
+set /p framework="Choose your .NET framework (4_0 or 4_8)? [%framework%]: "
 if %framework%==4_0 goto final
 if %framework%==4_5 goto final
 echo "%framework%" isn't a valid choice!
@@ -120,8 +120,8 @@ echo.
 echo.
 
 
-if %framework%==4_5 set %vstudio%=2012
+if %framework%==4_8 set %vstudio%=2022
 
 echo Calling Prebuild for target %vstudio% with framework %framework%...
-Prebuild.exe /target vs%vstudio% /targetframework v%framework% /conditionals ISWIN;NET_%framework%
+..\bin\Prebuild.exe /target vs%vstudio% /targetframework v%framework% /conditionals ISWIN;NET_%framework%
 

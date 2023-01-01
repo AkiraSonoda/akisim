@@ -79,12 +79,14 @@ namespace OpenSim.Framework
             {
                 return m_childFolders.AddIfNotExists(folderID, delegate()
                 {
-                    InventoryFolderImpl subFold = new InventoryFolderImpl();
-                    subFold.Name = folderName;
-                    subFold.ID = folderID;
-                    subFold.Type = (short)type;
-                    subFold.ParentID = this.ID;
-                    subFold.Owner = Owner;
+                    InventoryFolderImpl subFold = new InventoryFolderImpl()
+                    {
+                        Name = folderName,
+                        ID = folderID,
+                        Type = (short)type,
+                        ParentID = this.ID,
+                        Owner = Owner
+                    };
                     return subFold;
                 });
             }
@@ -125,7 +127,7 @@ namespace OpenSim.Framework
         {
             // AKIDO
             m_childFolders.TryGetValue(folderID, out InventoryFolderImpl folder);
-            return folder;
+                return folder;
             // AKIDO
         }
 
@@ -141,7 +143,7 @@ namespace OpenSim.Framework
             // AKIDO
             m_childFolders.Remove(folderID, out InventoryFolderImpl removedFolder);
             // AKIDO
-            return removedFolder;
+                    return removedFolder;
         }
 
         /// <summary>
@@ -268,7 +270,6 @@ namespace OpenSim.Framework
             {
                 return e.Value;
             }
-
             return null;
         }
 

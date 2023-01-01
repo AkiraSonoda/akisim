@@ -81,9 +81,9 @@
         </Match>
       </Files>
     </Project>
-	
 
-	<Project name="ThreadedClasses" path="ThirdParty/ThreadedClasses" type="Library">
+
+    <Project name="ThreadedClasses" path="ThirdParty/ThreadedClasses" type="Library">
       <Configuration name="Release">
         <Options>
           <OutputPath>../../bin/</OutputPath>

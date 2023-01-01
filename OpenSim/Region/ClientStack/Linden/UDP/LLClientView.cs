@@ -6997,6 +6997,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             Utils.UInt16ToBytes(0x7fff, data, pos); pos += 2;
 
             // Rotation
+            // Rotation
             // tpvs can only see rotations around Z in some cases
             Quaternion rotation = presence.Rotation;
             if (!presence.Flying && !presence.IsSatOnObject)
@@ -7032,8 +7033,8 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
         protected unsafe void CreateAvatartImprovedTerseBlock(ScenePresence presence, ref byte* data)
         {
-            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
-            //     "Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
+            //m_log.DebugFormat(
+            //    "[LLCLIENTVIEW]: Sending terse update to {0} with position {1} in {2}", Name, presence.OffsetPosition, m_scene.Name);
 
             //object block size
             *data++ = 60;
@@ -7044,6 +7045,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
             // Avatar/CollisionPlane
             *data++ = 1;
+            //m_log.DebugFormat("CollisionPlane: {0}",collisionPlane);
             if (presence.CollisionPlane.IsZero())
                 Vector4.UnitW.ToBytes(data);
             else
@@ -13519,7 +13521,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Received transfer request for {0} in {1} type {2} by {3}",
                 requestID, taskID, (SourceType)sourceType, Name);
-
             //Note, the bool returned from the below function is useless since it is always false.
             m_assetService.Get(requestID.ToString(), transferRequest, AssetReceived);
 
