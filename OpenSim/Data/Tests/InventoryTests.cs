@@ -48,7 +48,8 @@ namespace OpenSim.Data.Tests
     public class MySqlInventoryTests : InventoryTests<MySqlConnection, MySQLInventoryData>
     {
     }
-
+    
+    [TestFixture(typeof(MySqlConnection), typeof(MySQLInventoryData))]
     public class InventoryTests<TConn, TInvStore> : BasicDataServiceTest<TConn, TInvStore>
         where TConn : DbConnection, new()
         where TInvStore : class, IInventoryDataPlugin, new()
