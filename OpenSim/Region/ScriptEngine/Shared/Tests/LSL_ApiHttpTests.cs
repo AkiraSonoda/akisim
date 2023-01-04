@@ -98,6 +98,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
             BaseHttpServer server = new BaseHttpServer(port);
             MainServer.AddHttpServer(server);
             MainServer.Instance = server;
+            MainServer.DebugLevel = 6;
 
             server.Start();
 
@@ -119,7 +120,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
         }
 
         [Test]
-        public void TestLlReleaseUrl()
+        public void Test2LlReleaseUrl()
         {
             TestHelpers.InMethod();
 
@@ -175,7 +176,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
         }
 
         [Test]
-        public void TestLlRequestUrl()
+        public void Test1LlRequestUrl()
         {
             TestHelpers.InMethod();
 
