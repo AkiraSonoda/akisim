@@ -26,19 +26,18 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using Mono.Addins;
-
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Connectors.Hypergrid;
-
+using ThreadedClasses;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+// AKIDO clean
 
 namespace OpenSim.Region.CoreModules.Avatar.Lure
 {
@@ -48,14 +47,15 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
         private static readonly ILog m_log = LogManager.GetLogger(
                 MethodBase.GetCurrentMethod().DeclaringType);
 
-        private readonly List<Scene> m_scenes = new List<Scene>();
+        private readonly RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
 
         private IMessageTransferModule m_TransferModule = null;
         private bool m_Enabled = false;
 
         private GridInfo m_thisGridInfo;
 
-        private readonly ExpiringCacheOS<UUID, GridInstantMessage> m_PendingLures = new ExpiringCacheOS<UUID, GridInstantMessage>(3600000);
+        private readonly ThreadedClasses.ExpiringCache<UUID, GridInstantMessage> m_PendingLures = // AKIDO
+            new ThreadedClasses.ExpiringCache<UUID, GridInstantMessage>(3600);
 
         public void Initialise(IConfigSource config)
         {
@@ -73,14 +73,13 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
             if (!m_Enabled)
                 return;
 
-            lock (m_scenes)
-            {
-                m_scenes.Add(scene);
-                if(m_thisGridInfo == null)
-                    m_thisGridInfo = scene.SceneGridInfo;
-                scene.EventManager.OnIncomingInstantMessage += OnIncomingInstantMessage;
-                scene.EventManager.OnNewClient += OnNewClient;
-            }
+            // AKIDO
+            m_scenes.Add(scene);
+            if (m_thisGridInfo == null)
+                m_thisGridInfo = scene.SceneGridInfo;
+            scene.EventManager.OnIncomingInstantMessage += OnIncomingInstantMessage;
+            scene.EventManager.OnNewClient += OnNewClient;
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -95,7 +94,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
 
                 if (m_TransferModule == null)
                 {
-                    m_log.Error("[LURE MODULE]: No message transfer module, lures will not work!");
+                    m_log.Error("No message transfer module, lures will not work!");
 
                     m_Enabled = false;
                     m_scenes.Clear();
@@ -110,12 +109,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
             if (!m_Enabled)
                 return;
 
-            lock (m_scenes)
-            {
-                m_scenes.Remove(scene);
-                scene.EventManager.OnNewClient -= OnNewClient;
-                scene.EventManager.OnIncomingInstantMessage -= OnIncomingInstantMessage;
-            }
+            // AKIDO
+            m_scenes.Remove(scene);
+            scene.EventManager.OnNewClient -= OnNewClient;
+            scene.EventManager.OnIncomingInstantMessage -= OnIncomingInstantMessage;
+            // AKIDO
         }
 
         void OnNewClient(IClientAPI client)
@@ -160,10 +158,13 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
             {
                 UUID sessionID = new UUID(im.imSessionID);
 
-                if (!m_PendingLures.Contains(sessionID))
+                if (!m_PendingLures.ContainsKey(sessionID))
                 {
-                    m_log.DebugFormat("[HG LURE MODULE]: RequestTeleport sessionID={0}, regionID={1}, message={2}", im.imSessionID, im.RegionID, im.message);
-                    m_PendingLures.Add(sessionID, im, 7200000); // 2 hours
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                        "RequestTeleport sessionID={0}, regionID={1}, message={2}", 
+                        im.imSessionID, im.RegionID, im.message);
+                    
+                    m_PendingLures.Add(sessionID, im, 7200); // 2 hours
                 }
 
                 // Forward. We do this, because the IM module explicitly rejects
@@ -188,7 +189,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
 
             message += "@" + m_thisGridInfo.GateKeeperURLNoEndSlash;
 
-            m_log.DebugFormat("[HG LURE MODULE]: TP invite with message {0}", message);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("TP invite with message {0}", message);
 
             UUID sessionID = UUID.Random();
 
@@ -199,8 +200,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
                     Array.Empty<byte>(), true);
             m.RegionID = client.Scene.RegionInfo.RegionID.Guid;
 
-            m_log.DebugFormat("[HG LURE MODULE]: RequestTeleport sessionID={0}, regionID={1}, message={2}", m.imSessionID, m.RegionID, m.message);
-            m_PendingLures.Add(sessionID, m, 7200000); // 2 hours
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "RequestTeleport sessionID={0}, regionID={1}, message={2}", 
+                m.imSessionID, m.RegionID, m.message);
+            
+            m_PendingLures.Add(sessionID, m, 7200); // 2 hours
 
             if (m_TransferModule != null)
             {
@@ -221,7 +225,8 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
                 Lure(client, teleportFlags, im);
             }
             else
-                m_log.DebugFormat("[HG LURE MODULE]: pending lure {0} not found", lureID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "pending lure {0} not found", lureID);
 
         }
 
@@ -240,7 +245,10 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
                     string url = parts[parts.Length - 1]; // the last part
                     if (m_thisGridInfo.IsLocalGrid(url, true) == 0)
                     {
-                        m_log.DebugFormat("[HG LURE MODULE]: Luring agent to grid {0} region {1} position {2}", url, im.RegionID, im.Position);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "Luring agent to grid {0} region {1} position {2}", 
+                            url, im.RegionID, im.Position);
+                        
                         GatekeeperServiceConnector gConn = new GatekeeperServiceConnector();
                         GridRegion gatekeeper = new GridRegion();
                         gatekeeper.ServerURI = url;
@@ -265,7 +273,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Lure
                         }
                         else
                         {
-                            m_log.InfoFormat("[HG LURE MODULE]: Lure failed: {0}", message);
+                            m_log.InfoFormat("Lure failed: {0}", message);
                             client.SendAgentAlertMessage(message, true);
                         }
                     }

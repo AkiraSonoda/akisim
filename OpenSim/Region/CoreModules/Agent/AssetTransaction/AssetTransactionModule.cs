@@ -35,6 +35,8 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Mono.Addins;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 {
@@ -42,7 +44,7 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
     public class AssetTransactionModule : INonSharedRegionModule,
             IAgentAssetTransactions
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType); // AKIDO
 
         protected Scene m_Scene;
         private bool m_dumpAssetsToFile = false;
@@ -51,8 +53,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <summary>
         /// Each agent has its own singleton collection of transactions
         /// </summary>
-        private Dictionary<UUID, AgentAssetTransactions> AgentTransactions =
-            new Dictionary<UUID, AgentAssetTransactions>();
+        private RwLockedDictionary<UUID, AgentAssetTransactions> AgentTransactions = // AKIDO
+            new RwLockedDictionary<UUID, AgentAssetTransactions>();
 
         #region Region Module interface
 
@@ -111,19 +113,10 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <returns></returns>
         private AgentAssetTransactions GetUserTransactions(UUID userID)
         {
-            lock (AgentTransactions)
+            return AgentTransactions.GetOrAddIfNotExists(userID, delegate()
             {
-                if (!AgentTransactions.ContainsKey(userID))
-                {
-                    AgentAssetTransactions transactions =
-                            new AgentAssetTransactions(userID, m_Scene,
-                            m_dumpAssetsToFile);
-
-                    AgentTransactions.Add(userID, transactions);
-                }
-
-                return AgentTransactions[userID];
-            }
+                return new AgentAssetTransactions(userID, m_Scene, m_dumpAssetsToFile);
+            });
         }
 
         /// <summary>
@@ -134,12 +127,10 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         /// <param name="userID"></param>
         public void RemoveAgentAssetTransactions(UUID userID)
         {
-            // m_log.DebugFormat("Removing agent asset transactions structure for agent {0}", userID);
-
-            lock (AgentTransactions)
-            {
-                AgentTransactions.Remove(userID);
-            }
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Removing agent asset transactions structure for agent {0}", userID);
+            
+            AgentTransactions.Remove(userID);
         }
 
         /// <summary>
@@ -163,8 +154,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 string description, string name, sbyte invType,
                 sbyte type, byte wearableType, uint nextOwnerMask)
         {
-//            m_log.DebugFormat(
-//                "[TRANSACTIONS MANAGER] Called HandleItemCreationFromTransaction with item {0}", name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "HandleItemCreationFromTransaction with item {0}", name);
 
             AgentAssetTransactions transactions = GetUserTransactions(remoteClient.AgentId);
 
@@ -188,9 +179,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         public void HandleItemUpdateFromTransaction(IClientAPI remoteClient,
                 UUID transactionID, InventoryItemBase item)
         {
-//            m_log.DebugFormat(
-//                "[ASSET TRANSACTION MODULE]: Called HandleItemUpdateFromTransaction with item {0}",
-//                item.Name);
+            if(m_log.IsDebugEnabled)  m_log.DebugFormat(
+                "HandleItemUpdateFromTransaction with item {0}", item.Name);
 
             AgentAssetTransactions transactions = GetUserTransactions(remoteClient.AgentId);
 
@@ -213,9 +203,9 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         public void HandleTaskItemUpdateFromTransaction(
             IClientAPI remoteClient, SceneObjectPart part, UUID transactionID, TaskInventoryItem item)
         {
-//            m_log.DebugFormat(
-//                "[ASSET TRANSACTION MODULE]: Called HandleTaskItemUpdateFromTransaction with item {0} in {1} for {2} in {3}",
-//                item.Name, part.Name, remoteClient.Name, m_Scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "HandleTaskItemUpdateFromTransaction with item {0} in {1} for {2} in {3}",
+                item.Name, part.Name, remoteClient.Name, m_Scene.RegionInfo.RegionName);
 
             AgentAssetTransactions transactions =
                     GetUserTransactions(remoteClient.AgentId);
@@ -237,9 +227,9 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
                 UUID assetID, UUID transactionID, sbyte type, byte[] data,
                 bool storeLocal, bool tempFile)
         {
-//            m_log.DebugFormat(
-//                "[ASSET TRANSACTION MODULE]: HandleUDPUploadRequest - assetID: {0}, transaction {1}, type {2}, storeLocal {3}, tempFile {4}, data.Length {5}",
-//                assetID, transactionID, type, storeLocal, tempFile, data.Length);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "HandleUDPUploadRequest - assetID: {0}, transaction {1}, type {2}, storeLocal {3}, tempFile {4}, data.Length {5}",
+                assetID, transactionID, type, storeLocal, tempFile, data.Length);
 
             if (((AssetType)type == AssetType.Texture ||
                 (AssetType)type == AssetType.Sound ||
@@ -290,9 +280,8 @@ namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
         public void HandleXfer(IClientAPI remoteClient, ulong xferID,
                 uint packetID, byte[] data)
         {
-//            m_log.Debug("xferID: " + xferID + "  packetID: " + packetID + "  data length " + data.Length);
+            if(m_log.IsDebugEnabled) m_log.Debug("HandleXfer - xferID: " + xferID + "  packetID: " + packetID + "  data length " + data.Length);
             AgentAssetTransactions transactions = GetUserTransactions(remoteClient.AgentId);
-
             transactions.HandleXfer(xferID, packetID, data);
         }
 

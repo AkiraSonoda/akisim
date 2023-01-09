@@ -29,6 +29,7 @@ using System;
 using System.Collections.Generic;
 using OpenMetaverse;
 using OpenSim.Framework;
+using ThreadedClasses;
 
 namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 {
@@ -42,12 +43,13 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         {
             get
             {
-                lock (DataserverRequests)
-                    return DataserverRequests.Count;
+                // AKIDO
+                return DataserverRequests.Count;
             }
         }
 
-        private Dictionary<string, DataserverRequest> DataserverRequests =  new Dictionary<string, DataserverRequest>();
+        private RwLockedDictionary<string, DataserverRequest> DataserverRequests =  
+            new RwLockedDictionary<string, DataserverRequest>();
 
         public Dataserver(AsyncCommandManager CmdManager)
         {
@@ -116,55 +118,53 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         // temporary don't use
         public UUID RegisterRequest(uint localID, UUID itemID, string identifier, Action<string> action)
         {
-            lock (DataserverRequests)
+            // AKIDO
+            if (DataserverRequests.ContainsKey(identifier))
+                return UUID.Zero;
+
+            DataserverRequest ds = new DataserverRequest()
             {
-                if (DataserverRequests.ContainsKey(identifier))
-                    return UUID.Zero;
+                localID = localID,
+                itemID = itemID,
 
-                DataserverRequest ds = new DataserverRequest()
-                {
-                    localID = localID,
-                    itemID = itemID,
+                ID = UUID.Random(),
+                handle = identifier,
 
-                    ID = UUID.Random(),
-                    handle = identifier,
+                startTime = DateTime.UtcNow,
+                action = action
+            };
 
-                    startTime = DateTime.UtcNow,
-                    action = action
-                };
+            DataserverRequests[identifier] = ds;
+            if (action != null)
+                m_WorkPool.Enqueue(identifier);
 
-                DataserverRequests[identifier] = ds;
-                if (action != null)
-                    m_WorkPool.Enqueue(identifier);
-
-                return ds.ID;
-            }
+            return ds.ID;
+            // AKIDO
         }
 
         public UUID RegisterRequest(uint localID, UUID itemID, Action<string> action)
         {
-            lock (DataserverRequests)
+            // AKIDO
+            string identifier = UUID.Random().ToString();
+
+            DataserverRequest ds = new DataserverRequest()
             {
-                string identifier = UUID.Random().ToString();
+                localID = localID,
+                itemID = itemID,
 
-                DataserverRequest ds = new DataserverRequest()
-                {
-                    localID = localID,
-                    itemID = itemID,
+                ID = UUID.Random(),
+                handle = identifier,
 
-                    ID = UUID.Random(),
-                    handle = identifier,
+                startTime = DateTime.MaxValue,
+                action = action
+            };
 
-                    startTime = DateTime.MaxValue,
-                    action = action
-                };
+            DataserverRequests[identifier] = ds;
+            if (action != null)
+                m_WorkPool.Enqueue(identifier);
 
-                DataserverRequests[identifier] = ds;
-                if (action != null)
-                    m_WorkPool.Enqueue(identifier);
-
-                return ds.ID;
-            }
+            return ds.ID;
+            // AKIDO
         }
 
         public void ProcessActions(object st)
@@ -174,11 +174,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                 return;
 
             DataserverRequest ds = null;
-            lock (DataserverRequests)
-            {
-                if (!DataserverRequests.TryGetValue(id, out ds))
-                    return;
-            }
+            // AKIDO
+            if (!DataserverRequests.TryGetValue(id, out ds))
+                return;
+            // AKIDO
 
             if (ds == null || ds.action == null)
                 return;
@@ -190,22 +189,20 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 
             ds.action = null;
 
-            lock (DataserverRequests)
-            {
-                DataserverRequests.Remove(id);
-            }
+            // AKIDO
+            DataserverRequests.Remove(id);
+            // AKIDO
         }
 
         //legacy ?
         public void DataserverReply(string identifier, string reply)
         {
             DataserverRequest ds;
-            lock (DataserverRequests)
-            {
-                if (!DataserverRequests.TryGetValue(identifier, out ds))
-                    return;
-                DataserverRequests.Remove(identifier);
-            }
+            // AKIDO
+            if (!DataserverRequests.TryGetValue(identifier, out ds))
+                return;
+            DataserverRequests.Remove(identifier);
+            // AKIDO
 
             m_CmdManager.m_ScriptEngine.PostObjectEvent(ds.localID,
                     new EventParams("dataserver", new Object[]

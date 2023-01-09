@@ -53,6 +53,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.Remoting.Lifetime;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -70,6 +71,8 @@ using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using PrimType = OpenSim.Region.Framework.Scenes.PrimType;
 using RegionFlags = OpenSim.Framework.RegionFlags;
 using RegionInfo = OpenSim.Framework.RegionInfo;
+using ThreadedClasses;
+// AKIDO: clean
 
 #pragma warning disable IDE1006
 
@@ -247,7 +250,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         protected int m_msMaxInCastRay = 40;
         protected static List<CastRayCall> m_castRayCalls = new List<CastRayCall>();
         protected bool m_useMeshCacheInCastRay = true;
-        protected static Dictionary<ulong, FacetedMesh> m_cachedMeshes = new Dictionary<ulong, FacetedMesh>();
+        protected static RwLockedDictionary<ulong, FacetedMesh> m_cachedMeshes = // AKIDO
+            new RwLockedDictionary<ulong, FacetedMesh>();
 
 //        protected Timer m_ShoutSayTimer;
         protected int m_SayShoutCount = 0;
@@ -656,13 +660,20 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public List<ScenePresence> GetLinkAvatars(int linkType)
         {
+            if (m_host == null)
+                return new List<ScenePresence>();
+
+            return GetLinkAvatars(linkType, m_host.ParentGroup);
+
+        }
+
+        public List<ScenePresence> GetLinkAvatars(int linkType, SceneObjectGroup sog)
+        {
             List<ScenePresence> ret = new List<ScenePresence>();
-            if (m_host == null || m_host.ParentGroup == null || m_host.ParentGroup.IsDeleted)
+            if (sog == null || sog.IsDeleted)
                 return ret;
 
-            //            List<ScenePresence> avs = m_host.ParentGroup.GetLinkedAvatars();
-            // this needs check
-            List<ScenePresence> avs = m_host.ParentGroup.GetSittingAvatars();
+            List<ScenePresence> avs = sog.GetSittingAvatars();
             switch (linkType)
             {
                 case ScriptBaseClass.LINK_SET:
@@ -684,15 +695,15 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                     if (linkType < 0)
                         return ret;
 
-                    int partCount = m_host.ParentGroup.GetPartCount();
+                    int partCount = sog.GetPartCount();
 
-                    if (linkType <= partCount)
+                    linkType -= partCount;
+                    if (linkType <= 0)
                     {
                         return ret;
                     }
                     else
                     {
-                        linkType = linkType - partCount;
                         if (linkType > avs.Count)
                         {
                             return ret;
@@ -1747,7 +1758,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public LSL_Integer llGetStatus(int status)
         {
-            // m_log.Debug(m_host.ToString() + " status is " + m_host.GetEffectiveObjectFlags().ToString());
             switch (status)
             {
                 case ScriptBaseClass.STATUS_PHYSICS:
@@ -1953,7 +1963,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 return;
 
             string requestFromIPAddress = m_UrlModule.GetHttpHeader(id, "x-remote-ip");
-            //m_log.Debug("IP from header='" + requestFromIPAddress + "' IP from endpoint='" + logonFromIPAddress + "'");
             if (requestFromIPAddress == null)
                 return;
 
@@ -2810,7 +2819,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 pos = part.OffsetPosition;
             }
 
-            //m_log.DebugFormat("[LSL API]: Returning {0} in GetPartLocalPos()", pos);
             return new LSL_Vector(pos);
         }
 
@@ -3675,8 +3683,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public virtual void llSleep(double sec)
         {
-//            m_log.Info("llSleep snoozing " + sec + "s.");
-
             Sleep((int)(sec * 1000));
         }
 
@@ -3845,6 +3851,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 if ((effectivePerms & (uint)PermissionMask.Transfer) == 0)
                     return;
 
+                UUID permsgranter = m_item.PermsGranter;
+                int permsmask = m_item.PermsMask;
+
                 grp.SetOwner(target.UUID, target.ControllingClient.ActiveGroupId);
 
                 if (World.Permissions.PropagatePermissions())
@@ -3857,6 +3866,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                     }
                     grp.InvalidateEffectivePerms();
                 }
+
+                m_item.PermsMask = permsmask;
+                m_item.PermsGranter = permsgranter;
 
                 grp.RootPart.ObjectSaleType = 0;
                 grp.RootPart.SalePrice = 10;
@@ -4638,28 +4650,70 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
         public LSL_Key llGetLinkKey(int linknum)
         {
-            if(linknum < 0)
+            if (linknum < 0)
             {
                 if (linknum == ScriptBaseClass.LINK_THIS)
                     return m_host.UUID.ToString();
                 return ScriptBaseClass.NULL_KEY;
             }
 
+            SceneObjectGroup sog = m_host.ParentGroup;
             if (linknum < 2)
-                return m_host.ParentGroup.RootPart.UUID.ToString();
+                return sog.RootPart.UUID.ToString();
 
-            SceneObjectPart part = m_host.ParentGroup.GetLinkNumPart(linknum);
+            SceneObjectPart part = sog.GetLinkNumPart(linknum);
             if (part != null)
             {
                 return part.UUID.ToString();
             }
             else
             {
-                if (linknum > m_host.ParentGroup.PrimCount)
+                if (linknum > sog.PrimCount)
                 {
-                    linknum -= m_host.ParentGroup.PrimCount + 1;
+                    linknum -= sog.PrimCount + 1;
 
-                    List<ScenePresence> avatars = GetLinkAvatars(ScriptBaseClass.LINK_SET);
+                    List<ScenePresence> avatars = GetLinkAvatars(ScriptBaseClass.LINK_SET, sog);
+                    if (avatars.Count > linknum)
+                    {
+                        return avatars[linknum].UUID.ToString();
+                    }
+                }
+                return ScriptBaseClass.NULL_KEY;
+            }
+        }
+
+        public LSL_Key llObjectGetLinkKey(LSL_Key objectid, int linknum)
+        {
+            if(!UUID.TryParse(objectid, out UUID oID))
+                return ScriptBaseClass.NULL_KEY;
+
+            if (!World.TryGetSceneObjectPart(oID, out SceneObjectPart sop))
+                return ScriptBaseClass.NULL_KEY;
+
+            if (linknum < 0)
+            {
+                if (linknum == ScriptBaseClass.LINK_THIS)
+                    return sop.UUID.ToString();
+                return ScriptBaseClass.NULL_KEY;
+            }
+
+            SceneObjectGroup sog = sop.ParentGroup;
+
+            if (linknum < 2)
+                return sog.RootPart.UUID.ToString();
+
+            SceneObjectPart part = sog.GetLinkNumPart(linknum);
+            if (part != null)
+            {
+                return part.UUID.ToString();
+            }
+            else
+            {
+                if (linknum > sog.PrimCount)
+                {
+                    linknum -= sog.PrimCount + 1;
+
+                    List<ScenePresence> avatars = GetLinkAvatars(ScriptBaseClass.LINK_SET, sog);
                     if (avatars.Count > linknum)
                     {
                         return avatars[linknum].UUID.ToString();
@@ -8197,6 +8251,17 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         public LSL_String llSHA1String(string src)
         {
             return Util.SHA1Hash(src, Encoding.UTF8).ToLower();
+        }
+
+        public LSL_String llSHA256String(LSL_String input)
+        {
+            // Create a SHA256   
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                // ComputeHash - returns byte array
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
+                return Util.bytesToHexString(bytes, true);
+            }
         }
 
         protected ObjectShapePacket.ObjectDataBlock SetPrimitiveBlockShapeParams(SceneObjectPart part, int holeshape, LSL_Vector cut, float hollow, LSL_Vector twist, byte profileshape, byte pathcurve)
@@ -12873,7 +12938,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             }
             catch(Exception)
             {
-                //m_log.Error("[LSL_API]: llRequestSimulatorData" + e.ToString());
                 return ScriptBaseClass.NULL_KEY;
             }
         }
@@ -14754,21 +14818,19 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                             break;
                         case ScriptBaseClass.OBJECT_VELOCITY:
-                            Vector3 vel = Vector3.Zero;
+                            Vector3 vel;
 
                             if (obj.ParentGroup.IsAttachment)
                             {
                                 ScenePresence sp = World.GetScenePresence(obj.ParentGroup.AttachedAvatar);
-
-                                if (sp != null)
-                                    vel = sp.GetWorldVelocity();
+                                vel = sp != null ? sp.GetWorldVelocity() : Vector3.Zero;
                             }
                             else
                             {
                                 vel = obj.Velocity;
                             }
 
-                            ret.Add(vel);
+                            ret.Add(new LSL_Vector(vel));
                             break;
                         case ScriptBaseClass.OBJECT_OWNER:
                             ret.Add(new LSL_String(obj.OwnerID.ToString()));
@@ -15527,7 +15589,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
 
                 Vector3 b1 = group.AbsolutePosition + new Vector3(minX, minY, minZ);
                 Vector3 b2 = group.AbsolutePosition + new Vector3(maxX, maxY, maxZ);
-                //m_log.DebugFormat("[LLCASTRAY]: min<{0},{1},{2}>, max<{3},{4},{5}> = hitp<{6},{7},{8}>", b1.X,b1.Y,b1.Z,b2.X,b2.Y,b2.Z,intersection.ipoint.X,intersection.ipoint.Y,intersection.ipoint.Z);
                 if (!(intersection.ipoint.X >= b1.X && intersection.ipoint.X <= b2.X &&
                     intersection.ipoint.Y >= b1.Y && intersection.ipoint.Y <= b2.Y &&
                     intersection.ipoint.Z >= b1.Z && intersection.ipoint.Z <= b2.Z))
@@ -16103,10 +16164,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             if (m_useMeshCacheInCastRay)
                             {
                                 meshKey = part.Shape.GetMeshKey(Vector3.One, (float)(4 << lod));
-                                lock (m_cachedMeshes)
-                                {
-                                    m_cachedMeshes.TryGetValue(meshKey, out mesh);
-                                }
+                                // AKIDO
+                                m_cachedMeshes.TryGetValue(meshKey, out mesh);
+                                // AKIDO
                             }
 
                             // Create mesh if no cached mesh
@@ -16158,11 +16218,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 // Cache mesh if configured
                                 if (m_useMeshCacheInCastRay && mesh != null)
                                 {
-                                    lock(m_cachedMeshes)
-                                    {
-                                        if (!m_cachedMeshes.ContainsKey(meshKey))
-                                            m_cachedMeshes.Add(meshKey, mesh);
-                                    }
+                                    // AKIDO
+                                    if (!m_cachedMeshes.ContainsKey(meshKey))
+                                        m_cachedMeshes.Add(meshKey, mesh);
+                                    // AKIDO
                                 }
                             }
                             // Check mesh for ray hits
@@ -16218,10 +16277,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                             FacetedMesh mesh = null;
                             if (m_useMeshCacheInCastRay)
                             {
-                                lock (m_cachedMeshes)
-                                {
-                                    m_cachedMeshes.TryGetValue(meshKey, out mesh);
-                                }
+                                // AKIDO
+                                m_cachedMeshes.TryGetValue(meshKey, out mesh);
+                                // AKIDO
                             }
 
                             // Create mesh if no cached mesh
@@ -16235,11 +16293,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 // Cache mesh if configured
                                 if (m_useMeshCacheInCastRay && mesh != null)
                                 {
-                                    lock(m_cachedMeshes)
-                                    {
-                                        if (!m_cachedMeshes.ContainsKey(meshKey))
-                                            m_cachedMeshes.Add(meshKey, mesh);
-                                    }
+                                    // AKIDO
+                                    if (!m_cachedMeshes.ContainsKey(meshKey))
+                                        m_cachedMeshes.Add(meshKey, mesh);
+                                    // AKIDO
                                 }
                             }
 

@@ -28,7 +28,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
 using log4net;
 using Mono.Addins;
 using Nini.Config;
@@ -38,6 +37,8 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Scenes;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Framework
 {
@@ -47,7 +48,7 @@ namespace OpenSim.Region.CoreModules.Framework
         private static readonly ILog m_log = LogManager.GetLogger(
                 MethodBase.GetCurrentMethod().DeclaringType);
 
-        private readonly List<Scene> m_scenes = new List<Scene>();
+        private readonly RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
         private JobEngine m_processorJobEngine;
 
         #region ISharedRegionModule
@@ -60,12 +61,11 @@ namespace OpenSim.Region.CoreModules.Framework
 
         public void AddRegion(Scene scene)
         {
-            lock (m_scenes)
-            {
-                m_scenes.Add(scene);
-                scene.RegisterModuleInterface<IServiceThrottleModule>(this);
-                scene.EventManager.OnNewClient += OnNewClient;
-            }
+            // AKIDO
+            m_scenes.Add(scene);
+            scene.RegisterModuleInterface<IServiceThrottleModule>(this);
+            scene.EventManager.OnNewClient += OnNewClient;
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -74,11 +74,10 @@ namespace OpenSim.Region.CoreModules.Framework
 
         public void RemoveRegion(Scene scene)
         {
-            lock (m_scenes)
-            {
-                m_scenes.Remove(scene);
-                scene.EventManager.OnNewClient -= OnNewClient;
-            }
+            // AKIDO
+            m_scenes.Remove(scene);
+            scene.EventManager.OnNewClient -= OnNewClient;
+            // AKIDO
         }
 
         public void PostInitialise()

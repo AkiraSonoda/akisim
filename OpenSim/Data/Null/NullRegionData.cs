@@ -26,34 +26,33 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using OpenMetaverse;
-using OpenSim.Framework;
-using OpenSim.Data;
 using System.Reflection;
 using log4net;
+using ThreadedClasses;
+
 using RegionFlags = OpenSim.Framework.RegionFlags;
 
 namespace OpenSim.Data.Null
 {
     public class NullRegionData : IRegionData
     {
-        private static NullRegionData Instance = null;
+        private static NullRegionData Instance;
 
         /// <summary>
         /// Should we use the static instance for all invocations?
         /// </summary>
         private bool m_useStaticInstance = true;
 
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        Dictionary<UUID, RegionData> m_regionData = new Dictionary<UUID, RegionData>();
+        RwLockedDictionary<UUID, RegionData> m_regionData = new RwLockedDictionary<UUID, RegionData>(); // AKIDO
 
         public NullRegionData(string connectionString, string realm)
         {
-//            m_log.DebugFormat(
-//                "[NULL REGION DATA]: Constructor got connectionString {0}, realm {1}", connectionString, realm);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Constructor got connectionString {0}, realm {1}", connectionString, realm);
 
             // The !static connection string is a hack so that regression tests can use this module without a high degree of fragility
             // in having to deal with the static reference in the once-loaded NullRegionData class.
@@ -73,14 +72,13 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.GetSpecific(regionName, scopeID);
 
-             lock (m_regionData)
+            // AKIDO
+            foreach (RegionData r in m_regionData.Values)
             {
-                foreach (RegionData r in m_regionData.Values)
-                {
-                    if(r.RegionName.Equals(regionName, StringComparison.InvariantCultureIgnoreCase))
-                        return r;
-                }
+                if (r.RegionName.Equals(regionName, StringComparison.InvariantCultureIgnoreCase))
+                    return r;
             }
+            // AKIDO
 
             return null;
         }
@@ -90,7 +88,7 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.Get(regionName, scopeID);
 
-            // m_log.DebugFormat("[NULL REGION DATA]: Getting region {0}, scope {1}", regionName, scopeID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Getting region {0}, scope {1}", regionName, scopeID);
 
             string cleanName = regionName.ToLower();
 
@@ -119,26 +117,24 @@ namespace OpenSim.Data.Null
 
             Matcher queryMatch;
             if (wildcardPrefix && wildcardSuffix)
-                queryMatch = delegate(string s) { return s.Contains(cleanName); };
+                queryMatch = s => s.Contains(cleanName); // AKIDO
             else if (wildcardSuffix)
-                queryMatch = delegate(string s) { return s.StartsWith(cleanName); };
+                queryMatch = s => s.StartsWith(cleanName); // AKIDO
             else if (wildcardPrefix)
-                queryMatch = delegate(string s) { return s.EndsWith(cleanName); };
+                queryMatch = s => s.EndsWith(cleanName); // AKIDO
             else
-                queryMatch = delegate(string s) { return s.Equals(cleanName); };
+                queryMatch = s => s.Equals(cleanName); // AKIDO
 
             // Find region data
             List<RegionData> ret = new List<RegionData>();
 
-            lock (m_regionData)
+            // AKIDO
+            foreach (RegionData r in m_regionData.Values)
             {
-                foreach (RegionData r in m_regionData.Values)
-                {
-                    // m_log.DebugFormat("[NULL REGION DATA]: comparing {0} to {1}", cleanName, r.RegionName.ToLower());
-                    if (queryMatch(r.RegionName.ToLower()))
-                        ret.Add(r);
-                }
+                if (queryMatch(r.RegionName.ToLower()))
+                    ret.Add(r);
             }
+            // AKIDO
 
             if (ret.Count > 0)
                 return ret;
@@ -153,18 +149,17 @@ namespace OpenSim.Data.Null
 
             RegionData ret = null;
 
-            lock (m_regionData)
+            // AKIDO
+            foreach (RegionData r in m_regionData.Values)
             {
-                foreach (RegionData r in m_regionData.Values)
+                if (posX >= r.posX && posX < r.posX + r.sizeX
+                                   && posY >= r.posY && posY < r.posY + r.sizeY)
                 {
-                    if (posX >= r.posX && posX < r.posX + r.sizeX
-                        && posY >= r.posY && posY < r.posY + r.sizeY)
-                    {
-                        ret = r;
-                        break;
-                    }
+                    ret = r;
+                    break;
                 }
             }
+            // AKIDO
 
             return ret;
         }
@@ -174,11 +169,10 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.Get(regionID, scopeID);
 
-            lock (m_regionData)
-            {
-                if (m_regionData.ContainsKey(regionID))
-                    return m_regionData[regionID];
-            }
+            // AKIDO
+            if (m_regionData.ContainsKey(regionID))
+                return m_regionData[regionID];
+            // AKIDO
 
             return null;
         }
@@ -190,15 +184,14 @@ namespace OpenSim.Data.Null
 
             List<RegionData> ret = new List<RegionData>();
 
-            lock (m_regionData)
+            // AKIDO
+            foreach (RegionData r in m_regionData.Values)
             {
-                foreach (RegionData r in m_regionData.Values)
-                {
-                    if (r.posX + r.sizeX > startX && r.posX <= endX
-                         && r.posY + r.sizeX > startY && r.posY <= endY)
-                         ret.Add(r);
-                }
+                if (r.posX + r.sizeX > startX && r.posX <= endX
+                                              && r.posY + r.sizeX > startY && r.posY <= endY)
+                    ret.Add(r);
             }
+            // AKIDO
 
             return ret;
         }
@@ -208,13 +201,12 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.Store(data);
 
-//            m_log.DebugFormat(
-//                "[NULL REGION DATA]: Storing region {0} {1}, scope {2}", data.RegionName, data.RegionID, data.ScopeID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Storing region {0} {1}, scope {2}", data.RegionName, data.RegionID, data.ScopeID);
 
-            lock (m_regionData)
-            {
-                m_regionData[data.RegionID] = data;
-            }
+            // AKIDO
+            m_regionData[data.RegionID] = data;
+            // AKIDO
 
             return true;
         }
@@ -224,13 +216,12 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.SetDataItem(regionID, item, value);
 
-            lock (m_regionData)
-            {
-                if (!m_regionData.ContainsKey(regionID))
-                    return false;
+            // AKIDO
+            if (!m_regionData.ContainsKey(regionID))
+                return false;
 
-                m_regionData[regionID].Data[item] = value;
-            }
+            m_regionData[regionID].Data[item] = value;
+            // AKIDO
 
             return true;
         }
@@ -240,15 +231,14 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.Delete(regionID);
 
-//            m_log.DebugFormat("[NULL REGION DATA]: Deleting region {0}", regionID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Deleting region {0}", regionID);
 
-            lock (m_regionData)
-            {
-                if (!m_regionData.ContainsKey(regionID))
-                    return false;
+            // AKIDO
+            if (!m_regionData.ContainsKey(regionID))
+                return false;
 
-                m_regionData.Remove(regionID);
-            }
+            m_regionData.Remove(regionID);
+            // AKIDO
 
             return true;
         }
@@ -285,14 +275,13 @@ namespace OpenSim.Data.Null
 
             List<RegionData> ret = new List<RegionData>();
 
-            lock (m_regionData)
+            // AKIDO
+            foreach (RegionData r in m_regionData.Values)
             {
-                foreach (RegionData r in m_regionData.Values)
-                {
-                    if ((Convert.ToInt32(r.Data["flags"]) & regionFlags) != 0)
-                        ret.Add(r);
-                }
+                if ((Convert.ToInt32(r.Data["flags"]) & regionFlags) != 0)
+                    ret.Add(r);
             }
+            // AKIDO
 
             return ret;
         }

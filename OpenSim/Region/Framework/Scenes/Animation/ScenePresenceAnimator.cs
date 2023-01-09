@@ -843,6 +843,8 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         {
             if (m_scenePresence.IsChildAgent)
                 return;
+            
+            // m_log.DebugFormat("Sending animation pack to client: {0}", client.Name);
 
             UUID[] animIDs;
             int[] sequenceNums;
@@ -857,10 +859,10 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// </summary>
         public void SendAnimPack()
         {
-            //m_log.Debug("Sending animation pack to all");
-
             if (m_scenePresence.IsChildAgent)
                 return;
+            
+            // m_log.Debug("Sending animation pack to all");
 
             UUID[] animIDs;
             int[] sequenceNums;

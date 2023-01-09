@@ -26,17 +26,14 @@
  */
 
 using System;
-using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Timers;
 using System.Net;
 using log4net;
 using NDesk.Options;
@@ -129,9 +126,9 @@ namespace OpenSim
             if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
                 Util.InitThreadPool(stpMinThreads, stpMaxThreads);
 
-            m_log.Info("[OPENSIM MAIN]: Using async_call_method " + Util.FireAndForgetMethod);
+            m_log.Info("Using async_call_method " + Util.FireAndForgetMethod);
 
-            m_log.InfoFormat("[OPENSIM MAIN] Running GC in {0} mode", GCSettings.IsServerGC ? "server":"workstation");
+            m_log.InfoFormat("Running GC in {0} mode", GCSettings.IsServerGC ? "server":"workstation");
         }
 
         /// <summary>
@@ -142,12 +139,7 @@ namespace OpenSim
             m_log.Info("====================================================================");
             m_log.Info("========================= STARTING OPENSIM =========================");
             m_log.Info("====================================================================");
-
-            //m_log.InfoFormat("[OPENSIM MAIN]: GC Is Server GC: {0}", GCSettings.IsServerGC.ToString());
-            // http://msdn.microsoft.com/en-us/library/bb384202.aspx
-            //GCSettings.LatencyMode = GCLatencyMode.Batch;
-            //m_log.InfoFormat("[OPENSIM MAIN]: GC Latency Mode: {0}", GCSettings.LatencyMode.ToString());
-
+            
             if (m_gui) // Driven by external GUI
             {
                 m_console = new CommandConsole("Region");

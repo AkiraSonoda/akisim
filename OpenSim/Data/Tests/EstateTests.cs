@@ -55,7 +55,9 @@ namespace OpenSim.Data.Tests
     public class MySqlEstateTests : EstateTests<MySqlConnection, MySQLEstateStore>
     {
     }
-
+    
+    [TestFixture(typeof(SqliteConnection), typeof(SQLiteEstateStore))]
+    [TestFixture(typeof(MySqlConnection), typeof(MySQLEstateStore))] 
     public class EstateTests<TConn, TEstateStore> : BasicDataServiceTest<TConn, TEstateStore>
         where TConn : DbConnection, new()
         where TEstateStore : class, IEstateDataStore, new()

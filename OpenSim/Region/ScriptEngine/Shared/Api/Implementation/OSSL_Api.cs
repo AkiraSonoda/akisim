@@ -58,6 +58,7 @@ using LSL_String = OpenSim.Region.ScriptEngine.Shared.LSL_Types.LSLString;
 using LSL_Vector = OpenSim.Region.ScriptEngine.Shared.LSL_Types.Vector3;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 using TPFlags = OpenSim.Framework.Constants.TeleportFlags;
+// AKIDO: clean
 
 #pragma warning disable IDE1006
 
@@ -187,7 +188,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 if (m_osslconfig.GetBoolean("AllowOSFunctions", true))
                 {
                     m_OSFunctionsEnabled = true;
-                    // m_log.Warn("[OSSL] OSSL FUNCTIONS ENABLED");
+                    m_log.Info("OSSL FUNCTIONS ENABLED");
                 }
 
                 m_PermissionErrortoOwner = m_osslconfig.GetBoolean("PermissionErrorToOwner", m_PermissionErrortoOwner);
@@ -424,7 +425,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 }
                             }
                             if (error)
-                                m_log.WarnFormat("[OSSLENABLE]: error parsing line Allow_{0} = {1}", function, ownerPerm);
+                                m_log.WarnFormat("error parsing line Allow_{0} = {1}", function, ownerPerm);
                         }
                         error = false;
                         if (!string.IsNullOrWhiteSpace(creatorPerm))
@@ -449,7 +450,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 }
                             }
                             if (error)
-                                m_log.WarnFormat("[OSSLENABLE]: error parsing line Creators_{0} = {1}", function, creatorPerm);
+                                m_log.WarnFormat("error parsing line Creators_{0} = {1}", function, creatorPerm);
                         }
                         // both empty fallback as disabled
                     }
@@ -2201,7 +2202,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             if(sceneOG.IsAttachment)
                 return;
 
-            if (sceneOG.OwnerID != m_host.OwnerID)
+            if (sceneOG.OwnerID.NotEqual(m_host.OwnerID))
                 return;
 
             // harakiri check
@@ -2323,9 +2324,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 for (int count = 0; count < NotecardCache.GetLines(assetID); count++)
                 {
                     string line = NotecardCache.GetLine(assetID, count) + "\n";
-
-    //                m_log.DebugFormat("[OSSL]: From notecard {0} loading line {1}", notecardNameOrUuid, line);
-
                     notecardData.Append(line);
                 }
 
@@ -2521,9 +2519,9 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                         }
                     }
                 }
-                catch (Exception /*e*/)
+                catch (Exception e)
                 {
-                    // m_log.Warn("[osAvatarName2Key] UserAgentServiceConnector - Unable to connect to destination grid ", e);
+                    m_log.Warn("UserAgentServiceConnector - Unable to connect to destination grid ", e);
                 }
             }
 
@@ -4249,41 +4247,40 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         public void ForceAttachToAvatarFromInventory(UUID avatarId, string itemName, int attachmentPoint)
         {
             IAttachmentsModule attachmentsModule = m_ScriptEngine.World.AttachmentsModule;
-
-            if (attachmentsModule == null)
+            if (attachmentsModule is null)
                 return;
 
             InitLSL();
 
             TaskInventoryItem item = m_host.Inventory.GetInventoryItem(itemName);
-
-            if (item == null)
+            if (item is null)
             {
-                m_LSL_Api.llSay(0, string.Format("Could not find object '{0}'", itemName));
+                m_LSL_Api?.llSay(0, string.Format("Could not find object '{0}'", itemName));
                 throw new Exception(String.Format("The inventory item '{0}' could not be found", itemName));
             }
 
             if (item.InvType != (int)InventoryType.Object)
             {
-                // FIXME: Temporary null check for regression tests since they dont' have the infrastructure to set
-                // up the api reference.
-                if (m_LSL_Api != null)
-                   m_LSL_Api.llSay(0, string.Format("Unable to attach, item '{0}' is not an object.", itemName));
-
+                m_LSL_Api?.llSay(0, string.Format("Unable to attach, item '{0}' is not an object.", itemName));
                 throw new Exception(String.Format("The inventory item '{0}' is not an object", itemName));
             }
 
-            ScenePresence sp = World.GetScenePresence(avatarId);
+            if ((item.Flags & (uint)InventoryItemFlags.ObjectHasMultipleItems) != 0)
+            {
+                m_LSL_Api?.llSay(0, string.Format("Unable to attach coalesced object, item '{0}' ", itemName));
+                throw new Exception(String.Format("The inventory item '{0}' is a coalesced object", itemName));
+            }
 
-            if (sp == null)
+            ScenePresence sp = World.GetScenePresence(avatarId);
+            if (sp is null)
                 return;
 
             InventoryItemBase newItem = World.MoveTaskInventoryItem(sp.UUID, UUID.Zero, m_host, item.ItemID, out string message);
 
-            if (newItem == null)
+            if (newItem is null)
             {
                 m_log.ErrorFormat(
-                    "[OSSL API]: Could not create user inventory item {0} for {1}, attach point {2} in {3}: {4}",
+                    "Could not create user inventory item {0} for {1}, attach point {2} in {3}: {4}",
                     itemName, m_host.Name, attachmentPoint, World.Name, message);
                 m_LSL_Api.llSay(0, message);
                 return;

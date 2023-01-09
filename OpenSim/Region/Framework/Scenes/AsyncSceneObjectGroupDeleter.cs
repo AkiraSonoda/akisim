@@ -28,12 +28,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-//using System.Reflection;
+using System.Reflection;
 using System.Threading;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -52,7 +53,8 @@ namespace OpenSim.Region.Framework.Scenes
     /// </summary>
     public class AsyncSceneObjectGroupDeleter
     {
-        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        
         /// <value>
         /// Is the deleter currently enabled?
         /// </value>
@@ -125,7 +127,7 @@ namespace OpenSim.Region.Framework.Scenes
                 while (m_inventoryDeletes.TryDequeue(out DeleteToInventoryHolder x))
                 {
                     //  m_log.DebugFormat(
-                    //  "[ASYNC DELETER]: Sending object to user's inventory, action {1}, count {2}, {0} item(s) remaining.",
+                    //  "Sending object to user's inventory, action {1}, count {2}, {0} item(s) remaining.",
                     //  left, x.action, x.objectGroups.Count);
                     try
                     {
@@ -143,14 +145,12 @@ namespace OpenSim.Region.Framework.Scenes
                             count = 0;
                         }
                     }
-                    catch
-                    // catch (Exception e)
+                    catch (Exception e)
                     {
-                        //m_log.ErrorFormat(
-                        //    "[ASYNC OBJECT DELETER]: Exception background sending object: {0}{1}", e.Message, e.StackTrace);
+                        m_log.ErrorFormat(
+                            "Exception background sending object: {0}{1}", e.Message, e.StackTrace);
                     }
                 }
-                // m_log.Debug("[ASYNC DELETER]: No objects left in inventory send queue.");
                 m_running = false;
             }
         }

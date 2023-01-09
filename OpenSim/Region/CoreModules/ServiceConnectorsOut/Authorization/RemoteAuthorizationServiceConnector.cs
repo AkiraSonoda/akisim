@@ -31,12 +31,12 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Nini.Config;
-using OpenSim.Framework;
 using OpenSim.Services.Connectors;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
+using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
 {
@@ -49,7 +49,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         private bool m_Enabled = false;
-        private List<Scene> m_scenes = new List<Scene>();
+        private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
 
         public Type ReplaceableInterface
         {
@@ -72,7 +72,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
                     IConfig authorizationConfig = source.Configs["AuthorizationService"];
                     if (authorizationConfig == null)
                     {
-                        m_log.Info("[REMOTE AUTHORIZATION CONNECTOR]: AuthorizationService missing from OpenSim.ini");
+                        m_log.Info("AuthorizationService missing from OpenSim.ini");
                         return;
                     }
 
@@ -80,7 +80,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
 
                     base.Initialise(source);
 
-                    m_log.Info("[REMOTE AUTHORIZATION CONNECTOR]: Remote authorization enabled");
+                    m_log.Info("Remote authorization enabled");
                 }
             }
         }
@@ -115,7 +115,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
             if (!m_Enabled)
                 return;
 
-            m_log.InfoFormat("[REMOTE AUTHORIZATION CONNECTOR]: Enabled remote authorization for region {0}", scene.RegionInfo.RegionName);
+            m_log.InfoFormat("Enabled remote authorization for region {0}", scene.RegionInfo.RegionName);
 
         }
 
@@ -123,23 +123,22 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
              string userID, string firstName, string lastName, string regionID, out string message)
         {
             m_log.InfoFormat(
-                "[REMOTE AUTHORIZATION CONNECTOR]: IsAuthorizedForRegion checking {0} for region {1}", userID, regionID);
+                "IsAuthorizedForRegion checking {0} for region {1}", userID, regionID);
 
             bool isAuthorized = true;
             message = String.Empty;
 
             // get the scene this call is being made for
             Scene scene = null;
-            lock (m_scenes)
+            // AKIDO
+            foreach (Scene nextScene in m_scenes)
             {
-                foreach (Scene nextScene in m_scenes)
+                if (nextScene.RegionInfo.RegionID.ToString() == regionID)
                 {
-                    if (nextScene.RegionInfo.RegionID.ToString() == regionID)
-                    {
-                        scene = nextScene;
-                    }
+                    scene = nextScene;
                 }
             }
+            // AKIDO
 
             if (scene != null)
             {
@@ -162,7 +161,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization
             else
             {
                 m_log.ErrorFormat(
-                    "[REMOTE AUTHORIZATION CONNECTOR] IsAuthorizedForRegion, can't find scene to match region id of {0}",
+                    "IsAuthorizedForRegion, can't find scene to match region id of {0}",
                     regionID);
             }
 

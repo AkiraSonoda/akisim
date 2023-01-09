@@ -29,15 +29,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Reflection;
 using System.Threading;
 using log4net;
-using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
-using OpenSim.Services.Interfaces;
 
 // using OpenSim.Region.Framework.Interfaces;
 
@@ -68,7 +65,7 @@ namespace OpenSim.Framework.Capabilities
         private ConcurrentDictionary<string, PollServiceEventArgs> m_pollServiceHandlers
             = new ConcurrentDictionary<string, PollServiceEventArgs>();
 
-        private Dictionary<string, string> m_externalCapsHandlers = new Dictionary<string, string>();
+        private ConcurrentDictionary<string, string> m_externalCapsHandlers = new ConcurrentDictionary<string, string>();
 
         private IHttpServer m_httpListener;
         private UUID m_agentID;
@@ -117,7 +114,7 @@ namespace OpenSim.Framework.Capabilities
 
         public Dictionary<string, string> ExternalCapsHandlers
         {
-            get { return m_externalCapsHandlers; }
+            get { return new Dictionary<string, string>(m_externalCapsHandlers); }
         }
 
         [Flags]
@@ -185,26 +182,28 @@ namespace OpenSim.Framework.Capabilities
         /// <param name="handler"></param>
         public void RegisterHandler(string capName, IRequestHandler handler)
         {
-            //m_log.DebugFormat("[CAPS]: Registering handler for \"{0}\": path {1}", capName, handler.Path);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering handler for \"{0}\": path {1}", capName, handler.Path);
             m_capsHandlers[capName] = handler;
         }
 
         public void RegisterSimpleHandler(string capName, ISimpleStreamHandler handler, bool addToListener = true)
         {
-            //m_log.DebugFormat("[CAPS]: Registering handler for \"{0}\": path {1}", capName, handler.Path);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering handler for \"{0}\": path {1}", capName, handler.Path);
             m_capsHandlers.AddSimpleHandler(capName, handler, addToListener);
         }
 
         public void RegisterPollHandler(string capName, PollServiceEventArgs pollServiceHandler)
         {
-//            m_log.DebugFormat(
-//                "[CAPS]: Registering handler with name {0}, url {1} for {2}",
-//                capName, pollServiceHandler.Url, m_agentID, m_regionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Registering handler with name {0}, url {1} for {2}, region {3}",
+                capName, pollServiceHandler.Url, m_agentID, m_regionName);
 
             if(!m_pollServiceHandlers.TryAdd(capName, pollServiceHandler))
             {
                 m_log.ErrorFormat(
-                    "[CAPS]: Handler with name {0} already registered (ulr {1}, agent {2}, region {3}",
+                    "Handler with name {0} already registered (ulr {1}, agent {2}, region {3}",
                     capName, pollServiceHandler.Url, m_agentID, m_regionName);
                 return;
             }
@@ -234,7 +233,11 @@ namespace OpenSim.Framework.Capabilities
         /// <param name="url"></param>
         public void RegisterHandler(string capsName, string url)
         {
-            m_externalCapsHandlers.Add(capsName, url);
+            // AKIDO
+            if (!m_externalCapsHandlers.TryAdd(capsName, url)) {
+                m_log.WarnFormat("RegisterHandler - m_externalCapsHandlers.TryAdd unexpectedly failed" +
+                                 "when adding capsName: {0} url: {1}", capsName, url);
+            }
         }
 
         /// <summary>
@@ -280,17 +283,17 @@ namespace OpenSim.Framework.Capabilities
                     if (!requestedCaps.Contains(kvp.Key))
                         continue;
 
-                        string hostName = m_httpListenerHostName;
-                        uint port = (MainServer.Instance == null) ? 0 : MainServer.Instance.Port;
-                        string protocol = "http";
+                    string hostName = m_httpListenerHostName;
+                    uint port = (MainServer.Instance == null) ? 0 : MainServer.Instance.Port;
+                    string protocol = "http";
 
-                        if (MainServer.Instance.UseSSL)
-                        {
-                            hostName = MainServer.Instance.SSLCommonName;
-                            port = MainServer.Instance.SSLPort;
-                            protocol = "https";
-                        }
-                        caps[kvp.Key] = string.Format("{0}://{1}:{2}{3}", protocol, hostName, port, kvp.Value.Url);
+                    if (MainServer.Instance.UseSSL)
+                    {
+                        hostName = MainServer.Instance.SSLCommonName;
+                        port = MainServer.Instance.SSLPort;
+                        protocol = "https";
+                    }
+                    caps[kvp.Key] = string.Format("{0}://{1}:{2}{3}", protocol, hostName, port, kvp.Value.Url);
                 }
             }
 

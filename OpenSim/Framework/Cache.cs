@@ -27,7 +27,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Reflection;
+using log4net;
 using OpenMetaverse;
+using ThreadedClasses;
 
 namespace OpenSim.Framework
 {
@@ -199,16 +203,18 @@ namespace OpenSim.Framework
     //
     public class Cache
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType); // AKIDO
+        
         /// <summary>
         /// Must only be accessed under lock.
         /// </summary>
-        private List<CacheItemBase> m_Index = new List<CacheItemBase>();
+        private RwLockedList<CacheItemBase> m_Index = new RwLockedList<CacheItemBase>(); // AKIDO
 
         /// <summary>
         /// Must only be accessed under m_Index lock.
         /// </summary>
-        private Dictionary<string, CacheItemBase> m_Lookup =
-            new Dictionary<string, CacheItemBase>();
+        private ConcurrentDictionary<string, CacheItemBase> m_Lookup = // AKIDO
+            new ConcurrentDictionary<string, CacheItemBase>();
 
         private CacheStrategy m_Strategy;
         private CacheMedium m_Medium;
@@ -299,7 +305,7 @@ namespace OpenSim.Framework
         //
         public int Count
         {
-            get { lock (m_Index) { return m_Index.Count; } }
+            get {  return m_Index.Count;  }
         }
 
         // Maximum number of items this cache will hold
@@ -312,26 +318,21 @@ namespace OpenSim.Framework
 
         private void SetSize(int newSize)
         {
-            lock (m_Index)
+            int target = newSize;
+            if (m_Strategy == CacheStrategy.Aggressive)
+                target = (int)(newSize * 0.9);
+
+            if (Count > target)
             {
-                int target = newSize;
-                if(m_Strategy == CacheStrategy.Aggressive)
-                    target = (int)(newSize * 0.9);
-
-                if(Count > target)
-                {
-                    m_Index.Sort(new SortLRUrev());
-
-                    m_Index.RemoveRange(newSize, Count - target);
-
-                    m_Lookup.Clear();
-
-                    foreach (CacheItemBase item in m_Index)
-                        m_Lookup[item.uuid] = item;
-                }
-                m_Size = newSize;
-
+                m_Index.Sort(new SortLRUrev());
+                m_Index.RemoveRange(newSize, Count - target);
+                m_Lookup.Clear();
+                foreach (CacheItemBase item in m_Index)
+                    m_Lookup[item.uuid] = item;
             }
+
+            m_Size = newSize;
+
         }
 
         public TimeSpan DefaultTTL
@@ -346,22 +347,19 @@ namespace OpenSim.Framework
         {
             CacheItemBase item = null;
 
-            lock (m_Index)
+            if (m_Lookup.ContainsKey(index))
+                item = m_Lookup[index];
+
+            if (item == null)
             {
-                if (m_Lookup.ContainsKey(index))
-                    item = m_Lookup[index];
-
-                if (item == null)
-                {
-                    Expire(true);
-                    return null;
-                }
-
-                item.hits++;
-                item.lastUsed = DateTime.UtcNow;
-
                 Expire(true);
+                return null;
             }
+
+            item.hits++;
+            item.lastUsed = DateTime.UtcNow;
+
+            Expire(true);
 
             return item;
         }
@@ -394,14 +392,11 @@ namespace OpenSim.Framework
             {
                 if((m_Flags & CacheFlags.CacheMissing) != 0)
                 {
-                    lock (m_Index)
+                    CacheItemBase missing = new CacheItemBase(index);
+                    if (!m_Index.Contains(missing))
                     {
-                        CacheItemBase missing = new CacheItemBase(index);
-                        if (!m_Index.Contains(missing))
-                        {
-                            m_Index.Add(missing);
-                            m_Lookup[index] = missing;
-                        }
+                        m_Index.Add(missing);
+                        m_Lookup[index] = missing;
                     }
                 }
                 return null;
@@ -417,8 +412,7 @@ namespace OpenSim.Framework
         {
             CacheItemBase item;
 
-            lock (m_Index)
-                item = m_Index.Find(d);
+            item = m_Index.Find(d);
 
             if (item == null)
                 return null;
@@ -453,36 +447,33 @@ namespace OpenSim.Framework
                 Object[] parameters)
         {
             CacheItemBase item;
+            Expire(false);
 
-            lock (m_Index)
+            if (m_Index.Contains(new CacheItemBase(index)))
             {
-                Expire(false);
-
-                if (m_Index.Contains(new CacheItemBase(index)))
+                if ((m_Flags & CacheFlags.AllowUpdate) != 0)
                 {
-                    if ((m_Flags & CacheFlags.AllowUpdate) != 0)
-                    {
-                        item = GetItem(index);
+                    item = GetItem(index);
 
-                        item.hits++;
-                        item.lastUsed = DateTime.UtcNow;
-                        if (m_DefaultTTL.Ticks != 0)
-                            item.expires = DateTime.UtcNow + m_DefaultTTL;
+                    item.hits++;
+                    item.lastUsed = DateTime.UtcNow;
+                    if (m_DefaultTTL.Ticks != 0)
+                        item.expires = DateTime.UtcNow + m_DefaultTTL;
 
-                        item.Store(data);
-                    }
-                    return;
+                    item.Store(data);
                 }
 
-                item = (CacheItemBase)Activator.CreateInstance(container,
-                        parameters);
-
-                if (m_DefaultTTL.Ticks != 0)
-                    item.expires = DateTime.UtcNow + m_DefaultTTL;
-
-                m_Index.Add(item);
-                m_Lookup[index] = item;
+                return;
             }
+
+            item = (CacheItemBase)Activator.CreateInstance(container,
+                parameters);
+
+            if (m_DefaultTTL.Ticks != 0)
+                item.expires = DateTime.UtcNow + m_DefaultTTL;
+
+            m_Index.Add(item);
+            m_Lookup[index] = item;
 
             item.Store(data);
         }
@@ -513,7 +504,10 @@ namespace OpenSim.Framework
                             item.expires <= now)
                     {
                         m_Index.Remove(item);
-                        m_Lookup.Remove(item.uuid);
+                        bool success = m_Lookup.TryRemove(item.uuid, out CacheItemBase cib); // AKIDO
+                        if (!success) {
+                            m_log.WarnFormat("Cache m_Lookup TryRemove failed for item.uuid: {0}", item.uuid);
+                        }
                     }
                 }
             }
@@ -541,7 +535,10 @@ namespace OpenSim.Framework
                             if (doExpire(i.uuid))
                             {
                                 m_Index.Remove(i);
-                                m_Lookup.Remove(i.uuid);
+                                bool success = m_Lookup.TryRemove(i.uuid, out CacheItemBase cib); // AKIDO
+                                if (!success) {
+                                    m_log.WarnFormat("Cache m_Lookup TryRemove failed for CacheItemBase: {0}", i.uuid);
+                                }
                             }
                         }
                     }
@@ -564,24 +561,22 @@ namespace OpenSim.Framework
 
         public void Invalidate(string uuid)
         {
-            lock (m_Index)
-            {
-                if (!m_Lookup.ContainsKey(uuid))
-                    return;
+            if (!m_Lookup.ContainsKey(uuid))
+                return;
 
-                CacheItemBase item = m_Lookup[uuid];
-                m_Lookup.Remove(uuid);
-                m_Index.Remove(item);
+            CacheItemBase item = m_Lookup[uuid];
+            bool success = m_Lookup.TryRemove(uuid, out CacheItemBase cib); // AKIDO
+            if (!success) {
+                m_log.WarnFormat("Cache m_Lookup TryRemove failed for CacheItemBase: {0}", uuid);
             }
+
+            m_Index.Remove(item);
         }
 
         public void Clear()
         {
-            lock (m_Index)
-            {
-                m_Index.Clear();
-                m_Lookup.Clear();
-            }
+            m_Index.Clear();
+            m_Lookup.Clear();
         }
     }
 }

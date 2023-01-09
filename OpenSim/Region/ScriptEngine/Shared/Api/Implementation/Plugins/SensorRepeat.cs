@@ -26,15 +26,13 @@
  */
 
 using System;
-using System.Reflection;
 using System.Collections.Generic;
 using OpenMetaverse;
 using OpenSim.Framework;
-using log4net;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Region.ScriptEngine.Shared;
-using OpenSim.Region.ScriptEngine.Shared.Api;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 {
@@ -87,9 +85,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         }
 
         private INPCModule m_npcModule;
-
-        private readonly object SenseLock = new object();
-
+        
         private const int AGENT = 1;
         private const int AGENT_BY_USERNAME = 0x10;
         private const int NPC = 0x20;
@@ -132,7 +128,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
         ///
         /// Always lock SenseRepeatListLock when updating this list.
         /// </remarks>
-        private List<SensorInfo> SenseRepeaters = new List<SensorInfo>();
+        private RwLockedList<SensorInfo> SenseRepeaters = new RwLockedList<SensorInfo>();
         private readonly object SenseRepeatListLock = new object();
 
         public void SetSenseRepeatEvent(uint m_localID, UUID m_itemID,
@@ -169,53 +165,39 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 
         private void AddSenseRepeater(SensorInfo senseRepeater)
         {
-            lock (SenseRepeatListLock)
-            {
-                List<SensorInfo> newSenseRepeaters = new List<SensorInfo>(SenseRepeaters)
-                {
-                    senseRepeater
-                };
-                SenseRepeaters = newSenseRepeaters;
-            }
+            // AKIDO
+            SenseRepeaters.Add(senseRepeater);
         }
-
+    
         public void UnSetSenseRepeaterEvents(uint m_localID, UUID m_itemID)
         {
             // Remove from timer
-            lock (SenseRepeatListLock)
+            // AKIDO
+            foreach (SensorInfo ts in SenseRepeaters)
             {
-                List<SensorInfo> newSenseRepeaters = new List<SensorInfo>();
-                foreach (SensorInfo ts in SenseRepeaters)
+                if (ts.localID != m_localID || ts.itemID != m_itemID)
                 {
-                    if (ts.localID != m_localID || ts.itemID != m_itemID)
-                    {
-                        newSenseRepeaters.Add(ts);
-                    }
+                    SenseRepeaters.Remove(ts);
                 }
-
-                SenseRepeaters = newSenseRepeaters;
             }
+            // AKIDO
         }
 
         public void CheckSenseRepeaterEvents()
         {
             // Go through all timers
-
-            List<SensorInfo> curSensors;
-            lock(SenseRepeatListLock)
-                curSensors = SenseRepeaters;
-
-            DateTime now = DateTime.UtcNow;
-            foreach (SensorInfo ts in curSensors)
+            // AKIDO
+            SenseRepeaters.ForEach(delegate(SensorInfo ts)
             {
                 // Time has passed?
-                if (ts.next < now)
+                if (ts.next.ToUniversalTime() < DateTime.Now.ToUniversalTime())
                 {
-                    SensorSweep(ts);
                     // set next interval
-                    ts.next = now.AddSeconds(ts.interval);
+                    ts.next = DateTime.Now.ToUniversalTime().AddSeconds(ts.interval);
+                    SensorSweep(ts);
                 }
-            }
+            });
+            // AKIDO
         }
 
         public void SenseOnce(uint m_localID, UUID m_itemID,
@@ -262,61 +244,61 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                 sensedEntities.AddRange(doObjectSensor(ts));
             }
 
-            lock (SenseLock)
+            // AKIDO
+            if (sensedEntities.Count == 0)
             {
-                if (sensedEntities.Count == 0)
+                // send a "no_sensor"
+                // Add it to queue
+                m_CmdManager.m_ScriptEngine.PostScriptEvent(ts.itemID,
+                    new EventParams("no_sensor", new Object[0],
+                        new DetectParams[0]));
+            }
+            else
+            {
+                // Sort the list to get everything ordered by distance
+                sensedEntities.Sort();
+                int count = sensedEntities.Count;
+                int idx;
+                List<DetectParams> detected = new List<DetectParams>();
+                for (idx = 0; idx < count; idx++)
                 {
-                    // send a "no_sensor"
-                    // Add it to queue
+                    try
+                    {
+                        DetectParams detect = new DetectParams
+                        {
+                            Key = sensedEntities[idx].itemID
+                        };
+                        detect.Populate(m_CmdManager.m_ScriptEngine.World);
+                        detected.Add(detect);
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore errors, the object has been deleted or the avatar has gone and
+                        // there was a problem in detect.Populate so nothing added to the list
+                    }
+
+                    if (detected.Count == maximumToReturn)
+                        break;
+                }
+
+                if (detected.Count == 0)
+                {
+                    // To get here with zero in the list there must have been some sort of problem
+                    // like the object being deleted or the avatar leaving to have caused some
+                    // difficulty during the Populate above so fire a no_sensor event
                     m_CmdManager.m_ScriptEngine.PostScriptEvent(ts.itemID,
-                            new EventParams("no_sensor", new Object[0],
+                        new EventParams("no_sensor", new Object[0],
                             new DetectParams[0]));
                 }
                 else
                 {
-                    // Sort the list to get everything ordered by distance
-                    sensedEntities.Sort();
-                    int count = sensedEntities.Count;
-                    int idx;
-                    List<DetectParams> detected = new List<DetectParams>();
-                    for (idx = 0; idx < count; idx++)
-                    {
-                        try
-                        {
-                            DetectParams detect = new DetectParams
-                            {
-                                Key = sensedEntities[idx].itemID
-                            };
-                            detect.Populate(m_CmdManager.m_ScriptEngine.World);
-                            detected.Add(detect);
-                        }
-                        catch (Exception)
-                        {
-                            // Ignore errors, the object has been deleted or the avatar has gone and
-                            // there was a problem in detect.Populate so nothing added to the list
-                        }
-                        if (detected.Count == maximumToReturn)
-                            break;
-                    }
-
-                    if (detected.Count == 0)
-                    {
-                        // To get here with zero in the list there must have been some sort of problem
-                        // like the object being deleted or the avatar leaving to have caused some
-                        // difficulty during the Populate above so fire a no_sensor event
-                        m_CmdManager.m_ScriptEngine.PostScriptEvent(ts.itemID,
-                                new EventParams("no_sensor", new Object[0],
-                                new DetectParams[0]));
-                    }
-                    else
-                    {
-                        m_CmdManager.m_ScriptEngine.PostScriptEvent(ts.itemID,
-                                new EventParams("sensor",
-                                new Object[] {new LSL_Types.LSLInteger(detected.Count) },
-                                detected.ToArray()));
-                    }
+                    m_CmdManager.m_ScriptEngine.PostScriptEvent(ts.itemID,
+                        new EventParams("sensor",
+                            new Object[] { new LSL_Types.LSLInteger(detected.Count) },
+                            detected.ToArray()));
                 }
             }
+            // AKIDO
         }
 
         private List<SensedEntity> doObjectSensor(SensorInfo ts)
@@ -521,7 +503,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
             Action<ScenePresence> senseEntity = new Action<ScenePresence>(presence =>
             {
 //                m_log.DebugFormat(
-//                    "[SENSOR REPEAT]: Inspecting scene presence {0}, type {1} on sensor sweep for {2}, type {3}",
+//                    "Inspecting scene presence {0}, type {1} on sensor sweep for {2}, type {3}",
 //                    presence.Name, presence.PresenceType, ts.name, ts.type);
 
                 if ((ts.type & NPC) == 0 && presence.PresenceType == PresenceType.Npc)
@@ -530,7 +512,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                     if (npcData == null || !npcData.SenseAsAgent)
                     {
 //                        m_log.DebugFormat(
-//                            "[SENSOR REPEAT]: Discarding NPC {0} from agent sense sweep for script item id {1}",
+//                            "Discarding NPC {0} from agent sense sweep for script item id {1}",
 //                            presence.Name, ts.itemID);
                         return;
                     }
@@ -548,7 +530,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                         if (npcData != null && npcData.SenseAsAgent)
                         {
 //                            m_log.DebugFormat(
-//                                "[SENSOR REPEAT]: Discarding NPC {0} from non-agent sense sweep for script item id {1}",
+//                                "Discarding NPC {0} from non-agent sense sweep for script item id {1}",
 //                                presence.Name, ts.itemID);
                             return;
                         }

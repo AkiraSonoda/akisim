@@ -29,25 +29,24 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using log4net;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-
-using OpenSim.Framework;
-
-using Animation = OpenSim.Framework.Animation;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes.Animation
 {
     [Serializable]
     public class AnimationSet
     {
-        //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private OpenSim.Framework.Animation m_implicitDefaultAnimation = new OpenSim.Framework.Animation();
         private OpenSim.Framework.Animation m_defaultAnimation = new OpenSim.Framework.Animation();
         private readonly List<OpenSim.Framework.Animation> m_animations = new List<OpenSim.Framework.Animation>();
-
+        private ReaderWriterLock m_AnimationsLock = new ReaderWriterLock(); // AKIDO
+        
         public OpenSim.Framework.Animation DefaultAnimation
         {
             get { return m_defaultAnimation; }
@@ -73,11 +72,19 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         {
             if (m_defaultAnimation.AnimID.Equals(animID))
                 return true;
-
-            for (int i = 0; i < m_animations.Count; ++i)
+            
+            m_AnimationsLock.AcquireReaderLock(-1);
+            try
             {
-                if (m_animations[i].AnimID.Equals(animID))
-                    return true;
+                for (int i = 0; i < m_animations.Count; ++i)
+                {
+                    if (m_animations[i].AnimID.Equals(animID))
+                        return true;
+                }
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseReaderLock();
             }
 
             return false;
@@ -85,13 +92,25 @@ namespace OpenSim.Region.Framework.Scenes.Animation
 
         public bool Add(UUID animID, int sequenceNum, UUID objectID)
         {
-            lock (m_animations)
+            m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
-                if (!HasAnimation(animID))
+                bool hasAnimation = false;
+                for (int i = 0; i < m_animations.Count; ++i)
+                {
+                    if (m_animations[i].AnimID == animID)
+                        hasAnimation = true;
+                }
+                
+                if (!hasAnimation)
                 {
                     m_animations.Add(new OpenSim.Framework.Animation(animID, sequenceNum, objectID));
                     return true;
                 }
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseWriterLock();
             }
             return false;
         }
@@ -106,7 +125,8 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// </param>
         public bool Remove(UUID animID, bool allowNoDefault)
         {
-            lock (m_animations)
+            m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
                 if (m_defaultAnimation.AnimID.Equals(animID))
                 {
@@ -127,13 +147,25 @@ namespace OpenSim.Region.Framework.Scenes.Animation
                     }
                 }
             }
+            finally
+            {
+                m_AnimationsLock.ReleaseWriterLock();
+            }
             return false;
         }
 
         public void Clear()
         {
             ResetDefaultAnimation();
-            m_animations.Clear();
+            m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
+            try
+            {
+                m_animations.Clear();
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseWriterLock();
+            }
         }
 
         /// <summary>
@@ -168,9 +200,9 @@ namespace OpenSim.Region.Framework.Scenes.Animation
         /// </summary>
         public bool TrySetDefaultAnimation(string anim, int sequenceNum, UUID objectID)
         {
-            //m_log.DebugFormat(
-            //    "[ANIMATION SET]: Setting default animation {0}, sequence number {1}, object id {2}",
-            //    anim, sequenceNum, objectID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Setting default animation {0}, sequence number {1}, object id {2}",
+                anim, sequenceNum, objectID);
 
             if (DefaultAvatarAnimations.AnimsUUIDbyName.TryGetValue(anim, out UUID id))
             {
@@ -181,7 +213,8 @@ namespace OpenSim.Region.Framework.Scenes.Animation
 
         public void GetAnimationIDsArray(out UUID[] animIDs)
         {
-            lock (m_animations)
+            m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
                 int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1;
 
@@ -198,11 +231,16 @@ namespace OpenSim.Region.Framework.Scenes.Animation
                     animIDs[j] = m_animations[i].AnimID;
                 }
             }
+            finally
+            {
+                m_AnimationsLock.ReleaseWriterLock();
+            }
         }
 
         public void GetArrays(out UUID[] animIDs, out int[] sequenceNums, out UUID[] objectIDs)
         {
-            lock (m_animations)
+            m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
                 int j = m_defaultAnimation.AnimID.IsZero() ? 0 : 1;
 
@@ -225,21 +263,33 @@ namespace OpenSim.Region.Framework.Scenes.Animation
                     objectIDs[j] = m_animations[i].ObjectID;
                 }
             }
+            finally
+            {
+                m_AnimationsLock.ReleaseWriterLock();
+            }
         }
 
         public OpenSim.Framework.Animation[] ToArray()
         {
-            OpenSim.Framework.Animation[] theArray = null;
+            m_AnimationsLock.AcquireReaderLock(-1); // AKIDO
             try
             {
-                theArray = m_animations.ToArray();
-            }
-            catch
-            {
-                return new OpenSim.Framework.Animation[0];
-            }
+                OpenSim.Framework.Animation[] theArray = null;
+                try
+                {
+                    theArray = m_animations.ToArray();
+                }
+                catch
+                {
+                    return new OpenSim.Framework.Animation[0];
+                }
 
-            return theArray;
+                return theArray;
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseReaderLock();
+            }
         }
 
         public int FromArray(OpenSim.Framework.Animation[] theArray)
@@ -262,10 +312,17 @@ namespace OpenSim.Region.Framework.Scenes.Animation
             OSDArray ret = new OSDArray();
             ret.Add(DefaultAnimation.PackUpdateMessage());
             ret.Add(ImplicitDefaultAnimation.PackUpdateMessage());
-
-            foreach (OpenSim.Framework.Animation anim in m_animations)
-                ret.Add(anim.PackUpdateMessage());
-
+            
+            m_AnimationsLock.AcquireReaderLock(-1); // AKIDO
+            try
+            {
+                foreach (OpenSim.Framework.Animation anim in m_animations)
+                    ret.Add(anim.PackUpdateMessage());
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseReaderLock();
+            }
             return ret;
         }
 
@@ -281,9 +338,17 @@ namespace OpenSim.Region.Framework.Scenes.Animation
             {
                 m_implicitDefaultAnimation = new OpenSim.Framework.Animation((OSDMap)pArray[1]);
             }
-            for (int ii = 2; ii < pArray.Count; ii++)
+            m_AnimationsLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
-                m_animations.Add(new OpenSim.Framework.Animation((OSDMap)pArray[ii]));
+                for (int ii = 2; ii < pArray.Count; ii++)
+                {
+                    m_animations.Add(new OpenSim.Framework.Animation((OSDMap)pArray[ii]));
+                }
+            }
+            finally
+            {
+                m_AnimationsLock.ReleaseWriterLock();
             }
         }
 
@@ -351,14 +416,22 @@ namespace OpenSim.Region.Framework.Scenes.Animation
             {
                 buff.Append(",anims=");
                 bool firstTime = true;
-                foreach (OpenSim.Framework.Animation anim in m_animations)
+                m_AnimationsLock.AcquireReaderLock(-1);
+                try
                 {
-                    if (!firstTime)
-                        buff.Append(",");
-                    buff.Append("<");
-                    buff.Append(anim.ToString());
-                    buff.Append(">");
-                    firstTime = false;
+                    foreach (OpenSim.Framework.Animation anim in m_animations)
+                    {
+                        if (!firstTime)
+                            buff.Append(",");
+                        buff.Append("<");
+                        buff.Append(anim.ToString());
+                        buff.Append(">");
+                        firstTime = false;
+                    }
+                }
+                finally
+                {
+                    m_AnimationsLock.ReleaseReaderLock();
                 }
             }
             return buff.ToString();

@@ -25,16 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
-using log4net;
 using OpenMetaverse;
-using OpenSim.Framework;
-using OpenSim.Data;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Data.Null
 {
@@ -42,16 +36,15 @@ namespace OpenSim.Data.Null
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private Dictionary<UUID, XGroup> m_groups = new Dictionary<UUID, XGroup>();
+        private RwLockedDictionary<UUID, XGroup> m_groups = new RwLockedDictionary<UUID, XGroup>(); // AKIDO
 
         public NullXGroupData(string connectionString, string realm) {}
 
         public bool StoreGroup(XGroup group)
         {
-            lock (m_groups)
-            {
-                m_groups[group.groupID] = group.Clone();
-            }
+            // AKIDO
+            m_groups[group.groupID] = group.Clone();
+            // AKIDO
 
             return true;
         }
@@ -60,9 +53,10 @@ namespace OpenSim.Data.Null
         {
             XGroup group = null;
 
-            lock (m_groups)
-                m_groups.TryGetValue(groupID, out group);
-
+            // AKIDO
+            m_groups.TryGetValue(groupID, out group);
+            // AKIDO
+            
             return group;
         }
 
@@ -70,17 +64,17 @@ namespace OpenSim.Data.Null
         {
             Dictionary<UUID, XGroup> groupsClone = new Dictionary<UUID, XGroup>();
 
-            lock (m_groups)
-                foreach (XGroup group in m_groups.Values)
-                    groupsClone[group.groupID] = group.Clone();
+            // AKIDO
+            foreach (XGroup group in m_groups.Values)
+                groupsClone[group.groupID] = group.Clone();
 
             return groupsClone;
         }
 
         public bool DeleteGroup(UUID groupID)
         {
-            lock (m_groups)
-                return m_groups.Remove(groupID);
+            // AKIDO
+            return m_groups.Remove(groupID);
         }
     }
 }

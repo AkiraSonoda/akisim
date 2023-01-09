@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
+using ThreadedClasses;
 
 namespace OpenSim.Framework.Capabilities
 {
@@ -40,8 +41,11 @@ namespace OpenSim.Framework.Capabilities
     /// </summary>
     public class CapsHandlers
     {
-        private Dictionary<string, IRequestHandler> m_capsHandlers = new Dictionary<string, IRequestHandler>();
-        private ConcurrentDictionary<string, ISimpleStreamHandler> m_capsSimpleHandlers = new ConcurrentDictionary<string, ISimpleStreamHandler>();
+        private RwLockedDictionary<string, IRequestHandler> m_capsHandlers = // AKIDO
+            new RwLockedDictionary<string, IRequestHandler>(); 
+        private ConcurrentDictionary<string, ISimpleStreamHandler> m_capsSimpleHandlers = 
+            new ConcurrentDictionary<string, ISimpleStreamHandler>();
+        
         private IHttpServer m_httpListener;
         private string m_httpListenerHostName;
         private uint m_httpListenerPort;
@@ -56,7 +60,7 @@ namespace OpenSim.Framework.Capabilities
         /// <param name="httpListenerHostname">host name of the HTTP server</param>
         /// <param name="httpListenerPort">HTTP port</param>
         public CapsHandlers(IHttpServer httpListener, string httpListenerHostname, uint httpListenerPort)
-           {
+        {
             m_httpListener = httpListener;
             m_httpListenerHostName = httpListenerHostname;
             m_httpListenerPort = httpListenerPort;
@@ -73,17 +77,16 @@ namespace OpenSim.Framework.Capabilities
         /// handler to be removed</param>
         public void Remove(string capsName)
         {
-            lock (m_capsHandlers)
+            // AKIDO
+            if (m_capsHandlers.ContainsKey(capsName))
             {
-                if(m_capsHandlers.ContainsKey(capsName))
-                {
-                    m_httpListener.RemoveStreamHandler("POST", m_capsHandlers[capsName].Path);
-                    m_httpListener.RemoveStreamHandler("PUT", m_capsHandlers[capsName].Path);
-                    m_httpListener.RemoveStreamHandler("GET", m_capsHandlers[capsName].Path);
-                    m_httpListener.RemoveStreamHandler("DELETE", m_capsHandlers[capsName].Path);
-                    m_capsHandlers.Remove(capsName);
-                }
+                m_httpListener.RemoveStreamHandler("POST", m_capsHandlers[capsName].Path);
+                m_httpListener.RemoveStreamHandler("PUT", m_capsHandlers[capsName].Path);
+                m_httpListener.RemoveStreamHandler("GET", m_capsHandlers[capsName].Path);
+                m_httpListener.RemoveStreamHandler("DELETE", m_capsHandlers[capsName].Path);
+                m_capsHandlers.Remove(capsName);
             }
+            // AKIDO
             if(m_capsSimpleHandlers.TryRemove(capsName, out ISimpleStreamHandler hdr))
             {
                 m_httpListener.RemoveSimpleStreamHandler(hdr.Path);
@@ -100,9 +103,9 @@ namespace OpenSim.Framework.Capabilities
 
         public bool ContainsCap(string cap)
         {
-            lock (m_capsHandlers)
-                if (m_capsHandlers.ContainsKey(cap))
-                    return true;
+            // AKIOD
+            if (m_capsHandlers.ContainsKey(cap))
+                return true;
             return m_capsSimpleHandlers.ContainsKey(cap);
         }
 
@@ -119,28 +122,27 @@ namespace OpenSim.Framework.Capabilities
         {
             get
             {
-                lock (m_capsHandlers)
-                    return m_capsHandlers[idx];
+                // AKIDO
+                return m_capsHandlers[idx];
             }
 
             set
             {
-                lock (m_capsHandlers)
+                // AKIDO
+                if (m_capsHandlers.ContainsKey(idx))
                 {
-                    if (m_capsHandlers.ContainsKey(idx))
-                    {
-                        m_httpListener.RemoveStreamHandler("POST", m_capsHandlers[idx].Path);
-                        m_httpListener.RemoveStreamHandler("PUT", m_capsHandlers[idx].Path);
-                        m_httpListener.RemoveStreamHandler("GET", m_capsHandlers[idx].Path);
-                        m_httpListener.RemoveStreamHandler("DELETE", m_capsHandlers[idx].Path);
-                        m_capsHandlers.Remove(idx);
-                    }
-
-                    if (null == value) return;
-
-                    m_capsHandlers[idx] = value;
-                    m_httpListener.AddStreamHandler(value);
+                    m_httpListener.RemoveStreamHandler("POST", m_capsHandlers[idx].Path);
+                    m_httpListener.RemoveStreamHandler("PUT", m_capsHandlers[idx].Path);
+                    m_httpListener.RemoveStreamHandler("GET", m_capsHandlers[idx].Path);
+                    m_httpListener.RemoveStreamHandler("DELETE", m_capsHandlers[idx].Path);
+                    m_capsHandlers.Remove(idx);
                 }
+
+                if (null == value) return;
+
+                m_capsHandlers[idx] = value;
+                m_httpListener.AddStreamHandler(value);
+                // AKIDO
             }
         }
 
@@ -152,13 +154,12 @@ namespace OpenSim.Framework.Capabilities
         {
             get
             {
-                lock (m_capsHandlers)
-                {
-                    string[] __keys = new string[m_capsHandlers.Keys.Count + m_capsSimpleHandlers.Keys.Count];
-                    m_capsHandlers.Keys.CopyTo(__keys, 0);
-                    m_capsSimpleHandlers.Keys.CopyTo(__keys, m_capsHandlers.Keys.Count);
-                    return __keys;
-                }
+                // AKIDO
+                string[] __keys = new string[m_capsHandlers.Keys.Count + m_capsSimpleHandlers.Keys.Count];
+                m_capsHandlers.Keys.CopyTo(__keys, 0);
+                m_capsSimpleHandlers.Keys.CopyTo(__keys, m_capsHandlers.Keys.Count);
+                return __keys;
+                // AKIDO
             }
         }
 
@@ -176,35 +177,34 @@ namespace OpenSim.Framework.Capabilities
 
             if (requestedCaps == null)
             {
-                lock (m_capsHandlers)
-                {
-                    foreach (KeyValuePair<string, ISimpleStreamHandler> kvp in m_capsSimpleHandlers)
-                        caps[kvp.Key] = baseUrl + kvp.Value.Path;
-                    foreach (KeyValuePair<string, IRequestHandler> kvp in m_capsHandlers)
-                        caps[kvp.Key] = baseUrl + kvp.Value.Path;
-                }
+                // AKIDO
+                foreach (KeyValuePair<string, ISimpleStreamHandler> kvp in m_capsSimpleHandlers)
+                    caps[kvp.Key] = baseUrl + kvp.Value.Path;
+                foreach (KeyValuePair<string, IRequestHandler> kvp in m_capsHandlers)
+                    caps[kvp.Key] = baseUrl + kvp.Value.Path;
+                // AKIDO    
                 return caps;
             }
 
-            lock (m_capsHandlers)
+            // AKIDO
+            for (int i = 0; i < requestedCaps.Count; ++i)
             {
-                for(int i = 0; i < requestedCaps.Count; ++i)
-                {
-                    string capsName = requestedCaps[i];
-                    if (excludeSeed && "SEED" == capsName)
-                        continue;
+                string capsName = requestedCaps[i];
+                if (excludeSeed && "SEED" == capsName)
+                    continue;
 
-                    if (m_capsSimpleHandlers.TryGetValue(capsName, out ISimpleStreamHandler shdr))
-                    {
-                        caps[capsName] = baseUrl + shdr.Path;
-                        continue;
-                    }
-                    if (m_capsHandlers.TryGetValue(capsName, out IRequestHandler chdr))
-                    {
-                        caps[capsName] = baseUrl + chdr.Path;
-                    }
+                if (m_capsSimpleHandlers.TryGetValue(capsName, out ISimpleStreamHandler shdr))
+                {
+                    caps[capsName] = baseUrl + shdr.Path;
+                    continue;
+                }
+
+                if (m_capsHandlers.TryGetValue(capsName, out IRequestHandler chdr))
+                {
+                    caps[capsName] = baseUrl + chdr.Path;
                 }
             }
+            // AKIDO
 
             return caps;
         }
@@ -217,8 +217,8 @@ namespace OpenSim.Framework.Capabilities
         /// </returns>
         public Dictionary<string, IRequestHandler> GetCapsHandlers()
         {
-            lock (m_capsHandlers)
-                return new Dictionary<string, IRequestHandler>(m_capsHandlers);
+            // AKIDO
+            return new Dictionary<string, IRequestHandler>(m_capsHandlers);
         }
     }
 }

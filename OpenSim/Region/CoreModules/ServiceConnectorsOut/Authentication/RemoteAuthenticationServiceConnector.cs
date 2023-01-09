@@ -34,6 +34,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication
 {
@@ -68,7 +69,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication
                     IConfig userConfig = source.Configs["AuthenticationService"];
                     if (userConfig == null)
                     {
-                        m_log.Error("[AUTH CONNECTOR]: AuthenticationService missing from OpenSim.ini");
+                        m_log.Error("AuthenticationService missing from OpenSim.ini");
                         return;
                     }
 
@@ -76,7 +77,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication
 
                     base.Initialise(source);
 
-                    m_log.Info("[AUTH CONNECTOR]: Remote Authentication enabled");
+                    m_log.Info("Remote Authentication enabled");
                 }
             }
         }

@@ -30,7 +30,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
-using System.Text;
+using ThreadedClasses;
 using log4net;
 using Nini.Config;
 using Mono.Addins;
@@ -41,6 +41,7 @@ using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Caps=OpenSim.Framework.Capabilities.Caps;
+// AKIDO: clean
 
 namespace OpenSim.Region.ClientStack.Linden
 {
@@ -67,10 +68,11 @@ namespace OpenSim.Region.ClientStack.Linden
 
         protected Scene m_scene;
 
-        private Dictionary<UUID, int> m_ids = new Dictionary<UUID, int>();
+        private RwLockedDictionary<UUID, int> m_ids = new RwLockedDictionary<UUID, int>(); // AKIDO
 
-        private Dictionary<UUID, Queue<byte[]>> queues = new Dictionary<UUID, Queue<byte[]>>();
-        private Dictionary<UUID, UUID> m_AvatarQueueUUIDMapping = new Dictionary<UUID, UUID>();
+        private RwLockedDictionary<UUID, ThreadedClasses.BlockingQueue<byte[]>> queues = 
+            new RwLockedDictionary<UUID, ThreadedClasses.BlockingQueue<byte[]>>(); // AKIDO
+        private RwLockedDictionary<UUID, UUID> m_AvatarQueueUUIDMapping = new RwLockedDictionary<UUID, UUID>();
 
         #region INonSharedRegionModule methods
         public virtual void Initialise(IConfigSource config)
@@ -156,13 +158,12 @@ namespace OpenSim.Region.ClientStack.Linden
         {
             MainConsole.Instance.Output("Events in Scene {0} agents queues :", m_scene.Name);
 
-            lock (queues)
+            // AKIDO
+            queues.ForEach(delegate(KeyValuePair<UUID, ThreadedClasses.BlockingQueue<byte[]>> kvp)
             {
-                foreach (KeyValuePair<UUID, Queue<byte[]>> kvp in queues)
-                {
-                    MainConsole.Instance.Output("    {0}  {1}", kvp.Key, kvp.Value.Count);
-                }
-            }
+                MainConsole.Instance.Output("    {0}  {1}", kvp.Key, kvp.Value.Count);
+            });
+            // AKIDO
         }
 
         /// <summary>
@@ -172,21 +173,19 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         private Queue<byte[]> TryGetQueue(UUID agentId)
         {
-            lock (queues)
-            {
-                if (queues.TryGetValue(agentId, out Queue<byte[]> queue))
-                    return queue;
-
-                if (DebugLevel > 0)
-                    m_log.DebugFormat(
-                       "[EVENTQUEUE]: Adding new queue for agent {0} in region {1}",
-                       agentId, m_scene.RegionInfo.RegionName);
-
-                queue = new Queue<byte[]>();
-                queues[agentId] = queue;
-
+            // AKIDO
+            if (queues.TryGetValue(agentId, out ThreadedClasses.BlockingQueue<byte[]> queue))
                 return queue;
-            }
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Adding new queue for agent {0} in region {1}",
+                agentId, m_scene.RegionInfo.RegionName);
+
+            queue = new ThreadedClasses.BlockingQueue<byte[]>();
+            queues[agentId] = queue;
+
+            return queue;
+            // AKIDO
         }
 
         /// <summary>
@@ -197,19 +196,20 @@ namespace OpenSim.Region.ClientStack.Linden
         /// <returns></returns>
         private Queue<byte[]> GetQueue(UUID agentId)
         {
-            lock (queues)
-            {
-                if (queues.TryGetValue(agentId, out  Queue<byte[]> queue))
-                    return queue;
-                return null;
-            }
+            // AKIDO
+            if (queues.TryGetValue(agentId, out ThreadedClasses.BlockingQueue<byte[]> queue))
+                return queue;
+            return null;
+            // AKIDO
         }
 
         #region IEventQueue Members
         //legacy 
         public bool Enqueue(OSD data, UUID avatarID)
         {
-            //m_log.DebugFormat("[EVENTQUEUE]: Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            
             try
             {
                 Queue<byte[]> queue = GetQueue(avatarID);
@@ -222,51 +222,24 @@ namespace OpenSim.Region.ClientStack.Linden
                 else
                 {
                     m_log.WarnFormat(
-                            "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} in region {1}",
-                            avatarID, m_scene.Name);
+                        "(Enqueue) No queue found for agent {0} in region {1}",
+                        avatarID, m_scene.Name);
                 }
             }
             catch (NullReferenceException e)
             {
-                m_log.Error("[EVENTQUEUE] Caught exception: " + e);
+                m_log.Error("Caught exception: " + e);
                 return false;
             }
             return true;
         }
 
-        //legacy
-        /*
-        public bool Enqueue(string ev, UUID avatarID)
-        {
-            //m_log.DebugFormat("[EVENTQUEUE]: Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
-            try
-            {
-                Queue<byte[]> queue = GetQueue(avatarID);
-                if (queue != null)
-                {
-                    byte[] evData = Util.UTF8NBGetbytes(ev);
-                    lock (queue)
-                        queue.Enqueue(evData);
-                }
-                else
-                {
-                    m_log.WarnFormat(
-                            "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} in region {1}",
-                            avatarID,  m_scene.Name);
-                }
-            }
-            catch (NullReferenceException e)
-            {
-                m_log.Error("[EVENTQUEUE] Caught exception: " + e);
-                return false;
-            }
-            return true;
-        }
-        */
 
         public bool Enqueue(byte[] evData, UUID avatarID)
         {
-            //m_log.DebugFormat("[EVENTQUEUE]: Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            
             try
             {
                 Queue<byte[]> queue = GetQueue(avatarID);
@@ -278,13 +251,13 @@ namespace OpenSim.Region.ClientStack.Linden
                 else
                 {
                     m_log.WarnFormat(
-                            "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} in region {1}",
-                            avatarID, m_scene.Name);
+                        "(Enqueue) No queue found for agent {0} in region {1}",
+                        avatarID, m_scene.Name);
                 }
             }
             catch (NullReferenceException e)
             {
-                m_log.Error("[EVENTQUEUE] Caught exception: " + e);
+                m_log.Error("Caught exception: " + e);
                 return false;
             }
             return true;
@@ -292,7 +265,9 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public bool Enqueue(osUTF8 o, UUID avatarID)
         {
-            //m_log.DebugFormat("[EVENTQUEUE]: Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Enqueuing event for {0} in region {1}", avatarID, m_scene.RegionInfo.RegionName);
+            
             try
             {
                 Queue<byte[]> queue = GetQueue(avatarID);
@@ -304,13 +279,13 @@ namespace OpenSim.Region.ClientStack.Linden
                 else
                 {
                     m_log.WarnFormat(
-                            "[EVENTQUEUE]: (Enqueue) No queue found for agent {0} in region {1}",
-                            avatarID, m_scene.Name);
+                        "(Enqueue) No queue found for agent {0} in region {1}",
+                        avatarID, m_scene.Name);
                 }
             }
             catch (NullReferenceException e)
             {
-                m_log.Error("[EVENTQUEUE] Caught exception: " + e);
+                m_log.Error("Caught exception: " + e);
                 return false;
             }
             return true;
@@ -320,20 +295,21 @@ namespace OpenSim.Region.ClientStack.Linden
 
         private void ClientClosed(UUID agentID, Scene scene)
         {
-            //m_log.DebugFormat("[EVENTQUEUE]: Closed client {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Closed client {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
 
-            lock (queues)
-            {
-                queues.Remove(agentID);
+            // AKIDO
+            queues.Remove(agentID);
 
-                lock (m_AvatarQueueUUIDMapping)
-                    m_AvatarQueueUUIDMapping.Remove(agentID);
+            // AKIDO
+            m_AvatarQueueUUIDMapping.Remove(agentID);
 
-                lock (m_ids)
-                    m_ids.Remove(agentID);
-            }
+            // AKIDO
+            m_ids.Remove(agentID);
+            // AKIDO
 
-            // m_log.DebugFormat("[EVENTQUEUE]: Deleted queues for {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Deleted queues for {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
 
         }
 
@@ -350,83 +326,76 @@ namespace OpenSim.Region.ClientStack.Linden
         {
             // Register an event queue for the client
 
-            if (DebugLevel > 0)
-                m_log.DebugFormat(
-                    "[EVENTQUEUE]: OnRegisterCaps: agentID {0} caps {1} region {2}",
-                    agentID, caps, m_scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat(
+                "OnRegisterCaps: agentID {0} caps {1} region {2}",
+                agentID, caps, m_scene.RegionInfo.RegionName);
 
             UUID eventQueueGetUUID;
-            Queue<Byte[]> queue = null;
+            ThreadedClasses.BlockingQueue<Byte[]> queue = null;
 
-            lock (queues)
+            // AKIDO
+            queues.TryGetValue(agentID, out queue);
+
+            if (queue == null)
             {
-                queues.TryGetValue(agentID, out queue);
+                queue = new ThreadedClasses.BlockingQueue<byte[]>();
+                queues[agentID] = queue;
 
-                if (queue == null)
+                // AKIDO
+                eventQueueGetUUID = UUID.Random();
+                m_AvatarQueueUUIDMapping[agentID] = eventQueueGetUUID;
+                // AKIDO
+                if (m_ids.ContainsKey(agentID))
+                    m_ids[agentID]++;
+                else
                 {
-                    queue = new Queue<byte[]>();
-                    queues[agentID] = queue;
+                    Random rnd = new Random(Environment.TickCount);
+                    m_ids[agentID] = rnd.Next(30000000);
+                }
+                // AKIDO
+                // AKIDO
+            }
+            else
+            {
+                queue.Enqueue(null);
 
-                    lock (m_AvatarQueueUUIDMapping)
+                // reuse or not to reuse
+                // AKIDO
+                // Its reuse caps path not queues those are been reused already
+                if (m_AvatarQueueUUIDMapping.ContainsKey(agentID))
+                {
+                    m_log.DebugFormat("Found Existing UUID!");
+                    eventQueueGetUUID = m_AvatarQueueUUIDMapping[agentID];
+                    // AKIDO
+                    // change to negative numbers so they are changed at end of sending first marker
+                    // old data on a queue may be sent on a response for a new caps
+                    // but at least will be sent with coerent IDs
+                    if (m_ids.ContainsKey(agentID))
+                        m_ids[agentID] = -m_ids[agentID];
+                    else
                     {
-                        eventQueueGetUUID = UUID.Random();
-                        m_AvatarQueueUUIDMapping[agentID] = eventQueueGetUUID;
-                        lock (m_ids)
-                        {
-                            if (m_ids.ContainsKey(agentID))
-                                m_ids[agentID]++;
-                            else
-                            {
-                                Random rnd = new Random(Environment.TickCount);
-                                m_ids[agentID] = rnd.Next(30000000);
-                            }
-                        }
+                        Random rnd = new Random(Environment.TickCount);
+                        m_ids[agentID] = -rnd.Next(30000000);
                     }
+                    // AKIDO
                 }
                 else
                 {
-                    queue.Enqueue(null);
-
-                    // reuse or not to reuse
-                    lock (m_AvatarQueueUUIDMapping)
+                    eventQueueGetUUID = UUID.Random();
+                    m_AvatarQueueUUIDMapping[agentID] = eventQueueGetUUID;
+                    // AKIDO
+                    if (m_ids.ContainsKey(agentID))
+                        m_ids[agentID]++;
+                    else
                     {
-                        // Its reuse caps path not queues those are been reused already
-                        if (m_AvatarQueueUUIDMapping.ContainsKey(agentID))
-                        {
-                            m_log.DebugFormat("[EVENTQUEUE]: Found Existing UUID!");
-                            eventQueueGetUUID = m_AvatarQueueUUIDMapping[agentID];
-                            lock (m_ids)
-                            {
-                                // change to negative numbers so they are changed at end of sending first marker
-                                // old data on a queue may be sent on a response for a new caps
-                                // but at least will be sent with coerent IDs
-                                if (m_ids.ContainsKey(agentID))
-                                    m_ids[agentID] = -m_ids[agentID];
-                                else
-                                {
-                                    Random rnd = new Random(Environment.TickCount);
-                                    m_ids[agentID] = -rnd.Next(30000000);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            eventQueueGetUUID = UUID.Random();
-                            m_AvatarQueueUUIDMapping[agentID] = eventQueueGetUUID;
-                            lock (m_ids)
-                            {
-                                if (m_ids.ContainsKey(agentID))
-                                    m_ids[agentID]++;
-                                else
-                                {
-                                    Random rnd = new Random(Environment.TickCount);
-                                    m_ids.Add(agentID, rnd.Next(30000000));
-                                }
-                            }
-                        }
+                        Random rnd = new Random(Environment.TickCount);
+                        m_ids.Add(agentID, rnd.Next(30000000));
                     }
+                    // AKIDO
                 }
+                // AKIDO
             }
+            // AKIDO
 
             caps.RegisterPollHandler(
                 "EventQueueGet",
@@ -440,11 +409,11 @@ namespace OpenSim.Region.ClientStack.Linden
             {
                 lock (queue)
                 {
-                    //m_log.WarnFormat("POLLED FOR EVENTS BY {0} in {1} -- {2}", agentID, m_scene.RegionInfo.RegionName, queue.Count);
+                    // m_log.WarnFormat("POLLED FOR EVENTS BY {0} in {1} -- {2}", agentID, m_scene.RegionInfo.RegionName, queue.Count);
                     return queue.Count > 0;
                 }
             }
-            //m_log.WarnFormat("POLLED FOR EVENTS BY {0} unknown agent", agentID);
+            // m_log.WarnFormat("POLLED FOR EVENTS BY {0} unknown agent", agentID);
             return true;
         }
 
@@ -457,7 +426,7 @@ namespace OpenSim.Region.ClientStack.Linden
             if (element is OSDMap)
             {
                 OSDMap ev = (OSDMap)element;
-                m_log.DebugFormat(
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "Eq OUT {0,-30} to {1,-20} {2,-20}",
                     ev["message"], m_scene.GetScenePresence(agentId).Name, m_scene.Name);
             }
@@ -491,8 +460,8 @@ namespace OpenSim.Region.ClientStack.Linden
                 if (queue.Count == 0)
                     return NoEvents(requestID, pAgentId);
 
-                lock (m_ids)
-                    thisID = m_ids[pAgentId];
+                // AKIDO
+                thisID = m_ids[pAgentId];
 
                 if (thisID < 0)
                 {
@@ -518,8 +487,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 }
             }
 
-            lock (m_ids)
-            {
+            // AKIDO
                 if (element == null && negativeID)
                 {
                     Random rnd = new Random(Environment.TickCount);
@@ -527,7 +495,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 }
                 else
                     m_ids[pAgentId] = thisID + 1;
-            }
+            // AKIDO
 
             if (totalSize == 0)
                 return NoEvents(requestID, pAgentId);

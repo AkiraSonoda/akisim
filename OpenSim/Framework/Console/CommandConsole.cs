@@ -37,6 +37,8 @@ using System.Threading;
 using log4net;
 using OpenSim.Framework;
 using Nini.Config;
+using ThreadedClasses;
+// AKIDO: clear
 
 namespace OpenSim.Framework.Console
 {
@@ -96,7 +98,8 @@ namespace OpenSim.Framework.Console
         /// <summary>
         /// Commands organized by module
         /// </summary>
-        private Dictionary<string, List<CommandInfo>> m_modulesCommands = new Dictionary<string, List<CommandInfo>>();
+        private RwLockedDictionary<string, List<CommandInfo>> m_modulesCommands = // AKIDO
+            new RwLockedDictionary<string, List<CommandInfo>>();
 
         /// <summary>
         /// Get help for the given help string
@@ -142,14 +145,13 @@ namespace OpenSim.Framework.Console
         {
             List<string> help = new List<string>();
 
-            lock (m_modulesCommands)
+            // AKIDO
+            foreach (List<CommandInfo> commands in m_modulesCommands.Values)
             {
-                foreach (List<CommandInfo> commands in m_modulesCommands.Values)
-                {
-                    var ourHelpText = commands.ConvertAll(c => string.Format("{0} - {1}", c.help_text, c.long_help));
-                    help.AddRange(ourHelpText);
-                }
+                var ourHelpText = commands.ConvertAll(c => string.Format("{0} - {1}", c.help_text, c.long_help));
+                help.AddRange(ourHelpText);
             }
+            // AKIDO
 
             help.Sort();
 
@@ -220,56 +222,34 @@ namespace OpenSim.Framework.Console
         /// <returns>true if there was the module existed, false otherwise.</returns>
         private bool TryCollectModuleHelp(string moduleName, List<string> helpText)
         {
-            lock (m_modulesCommands)
+            // AKIDO
+            foreach (string key in m_modulesCommands.Keys)
             {
-                foreach (string key in m_modulesCommands.Keys)
+                // Allow topic help requests to succeed whether they are upper or lowercase.
+                if (moduleName.ToLower() == key.ToLower())
                 {
-                    // Allow topic help requests to succeed whether they are upper or lowercase.
-                    if (moduleName.ToLower() == key.ToLower())
-                    {
-                        List<CommandInfo> commands = m_modulesCommands[key];
-                        var ourHelpText = commands.ConvertAll(c => string.Format("{0} - {1}", c.help_text, c.long_help));
-                        ourHelpText.Sort();
-                        helpText.AddRange(ourHelpText);
+                    List<CommandInfo> commands = m_modulesCommands[key];
+                    var ourHelpText = commands.ConvertAll(c => string.Format("{0} - {1}", c.help_text, c.long_help));
+                    ourHelpText.Sort();
+                    helpText.AddRange(ourHelpText);
 
-                        return true;
-                    }
+                    return true;
                 }
-
-                return false;
             }
+
+            return false;
+            // AKIDO
         }
 
         private List<string> CollectModulesHelp(Dictionary<string, object> dict)
         {
-            lock (m_modulesCommands)
-            {
-                List<string> helpText = new List<string>(m_modulesCommands.Keys);
-                helpText.Sort();
-                return helpText;
-            }
+            // AKIDO
+            List<string> helpText = new List<string>(m_modulesCommands.Keys);
+            helpText.Sort();
+            return helpText;
+            // AKIDO
         }
-
-//        private List<string> CollectHelp(Dictionary<string, object> dict)
-//        {
-//            List<string> result = new List<string>();
-//
-//            foreach (KeyValuePair<string, object> kvp in dict)
-//            {
-//                if (kvp.Value is Dictionary<string, Object>)
-//                {
-//                    result.AddRange(CollectHelp((Dictionary<string, Object>)kvp.Value));
-//                }
-//                else
-//                {
-//                    if (((CommandInfo)kvp.Value).long_help != String.Empty)
-//                        result.Add(((CommandInfo)kvp.Value).help_text+" - "+
-//                                ((CommandInfo)kvp.Value).long_help);
-//                }
-//            }
-//            return result;
-//        }
-
+        
         /// <summary>
         /// Add a command to those which can be invoked from the console.
         /// </summary>
@@ -339,22 +319,21 @@ namespace OpenSim.Framework.Console
             current[String.Empty] = info;
 
             // Now add command to modules dictionary
-            lock (m_modulesCommands)
+            // AKIDO
+            List<CommandInfo> commands;
+            if (m_modulesCommands.ContainsKey(module))
             {
-                List<CommandInfo> commands;
-                if (m_modulesCommands.ContainsKey(module))
-                {
-                    commands = m_modulesCommands[module];
-                }
-                else
-                {
-                    commands = new List<CommandInfo>();
-                    m_modulesCommands[module] = commands;
-                }
+                commands = m_modulesCommands[module];
+            }
+            else
+            {
+                commands = new List<CommandInfo>();
+                m_modulesCommands[module] = commands;
+            }
 
 //                m_log.DebugFormat("[COMMAND CONSOLE]: Adding to category {0} command {1}", module, command);
-                commands.Add(info);
-            }
+            commands.Add(info);
+            // AKIDO
         }
 
         public string[] FindNextOption(string[] cmd, bool term)

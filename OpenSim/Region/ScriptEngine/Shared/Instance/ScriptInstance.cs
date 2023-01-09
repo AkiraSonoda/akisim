@@ -28,31 +28,20 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Runtime.Remoting;
-using System.Runtime.Remoting.Lifetime;
-using System.Security.Policy;
 using System.Text;
 using System.Threading;
-using System.Xml;
 using OpenMetaverse;
 using log4net;
-using Nini.Config;
-using Amib.Threading;
 using OpenSim.Framework;
-using OpenSim.Region.CoreModules;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Region.Framework.Interfaces;
-using OpenSim.Region.ScriptEngine.Shared;
 using OpenSim.Region.ScriptEngine.Shared.Api;
-using OpenSim.Region.ScriptEngine.Shared.Api.Runtime;
 using OpenSim.Region.ScriptEngine.Shared.ScriptBase;
 using OpenSim.Region.ScriptEngine.Shared.CodeTools;
 using OpenSim.Region.ScriptEngine.Interfaces;
-
 using System.Diagnostics; //for [DebuggerNonUserCode]
+// AKIDO: clean
 
 namespace OpenSim.Region.ScriptEngine.Shared.Instance
 {
@@ -314,7 +303,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             catch (Exception e)
             {
                 m_log.ErrorFormat(
-                    "[SCRIPT INSTANCE]: Not starting script {0} (id {1}) in part {2} (id {3}) in object {4} in {5}.  Error initializing script instance.  Exception {6}{7}",
+                    "Not starting script {0} (id {1}) in part {2} (id {3}) in object {4} in {5}.  Error initializing script instance.  Exception {6}{7}",
                     ScriptTask.Name, ScriptTask.ItemID, Part.Name, Part.UUID, Part.ParentGroup.Name, Engine.World.Name, e.Message, e.StackTrace);
 
                 return false;
@@ -381,7 +370,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 catch (Exception e)
                 {
                     m_log.ErrorFormat(
-                        "[SCRIPT INSTANCE]: Not starting script {0} (id {1}) in part {2} (id {3}) in object {4} in {5}.  Unable to load script state file {6}.  XML is {7}.  Exception {8}{9}",
+                        "Not starting script {0} (id {1}) in part {2} (id {3}) in object {4} in {5}.  Unable to load script state file {6}.  XML is {7}.  Exception {8}{9}",
                         ScriptTask.Name, ScriptTask.ItemID, Part.Name, Part.UUID, Part.ParentGroup.Name, Engine.World.Name, savedState, xml, e.Message, e.StackTrace);
                 }
             }
@@ -397,7 +386,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             }
             catch
             {
-                m_log.ErrorFormat("[SCRIPT INSTANCE]: failed to SetScriptEvents {0}", ItemID);
+                m_log.ErrorFormat("failed to SetScriptEvents {0}", ItemID);
             }
 
             return true;
@@ -519,7 +508,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             {
                 m_log.Warn(
                     string.Format(
-                        "[SCRIPT INSTANCE]: Could not delete script state {0} for script {1} (id {2}) in part {3} (id {4}) in object {5} in {6}.  Exception  ",
+                        "Could not delete script state {0} for script {1} (id {2}) in part {3} (id {4}) in object {5} in {6}.  Exception  ",
                         savedState, ScriptTask.Name, ScriptTask.ItemID, Part.Name, Part.UUID, Part.ParentGroup.Name, Engine.World.Name),
                     e);
             }
@@ -563,7 +552,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
         {
             if (DebugLevel >= 1)
                 m_log.DebugFormat(
-                    "[SCRIPT INSTANCE]: Stopping script {0} {1} in {2} {3} with timeout {4} {5} {6}",
+                    "Stopping script {0} {1} in {2} {3} with timeout {4} {5} {6}",
                     ScriptName, ItemID, PrimName, ObjectID, timeout, m_InSelfDelete, DateTime.Now.Ticks);
 
             IScriptWorkItem workItem;
@@ -608,7 +597,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                 {
                     if (DebugLevel >= 1)
                         m_log.DebugFormat(
-                            "[SCRIPT INSTANCE]: Co-operatively stopping script {0} {1} in {2} {3}",
+                            "Co-operatively stopping script {0} {1} in {2} {3}",
                             ScriptName, ItemID, PrimName, ObjectID);
 
                     // This will terminate the event on next handle check by the script.
@@ -620,7 +609,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                     {
                         if (DebugLevel >= 1)
                             m_log.DebugFormat(
-                                "[SCRIPT INSTANCE]: Co-operatively stopped script {0} {1} in {2} {3}",
+                                "Co-operatively stopped script {0} {1} in {2} {3}",
                                 ScriptName, ItemID, PrimName, ObjectID);
 
                         return true;
@@ -642,7 +631,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             if (!m_InSelfDelete)
             {
                 m_log.DebugFormat(
-                    "[SCRIPT INSTANCE]: Aborting unstopped script {0} {1} in prim {2}, localID {3}, timeout was {4} ms",
+                    "Aborting unstopped script {0} {1} in prim {2}, localID {3}, timeout was {4} ms",
                     ScriptName, ItemID, PrimName, LocalID, timeout);
 
                 workItem.Abort();
@@ -896,7 +885,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
 
             if (DebugLevel >= 2)
                 m_log.DebugFormat(
-                    "[SCRIPT INSTANCE]: Processing event {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}",
+                    "Processing event {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}",
                     data.EventName,
                     ScriptName,
                     Part.Name,
@@ -914,7 +903,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
 
                 if (DebugLevel >= 1)
                     m_log.DebugFormat(
-                        "[SCRIPT INSTANCE]: Changing state to {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}",
+                        "Changing state to {0} for {1}/{2}({3})/{4}({5}) @ {6}/{7}",
                         State,
                         ScriptName,
                         Part.Name,
@@ -1017,7 +1006,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                                                            Part.AbsolutePosition,
                                                            Part.Name, Part.UUID, false);
                                     m_log.Debug(string.Format(
-                                        "[SCRIPT ERROR]: {0} (at event {1}, part {2} {3} at {4} in {5}",
+                                        "{0} (at event {1}, part {2} {3} at {4} in {5}",
                                         e.InnerException.Message,
                                         data.EventName,
                                         PrimName,
@@ -1041,7 +1030,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
 
 
                                     m_log.Debug(string.Format(
-                                        "[SCRIPT ERROR]: Runtime error in script {0} (event {1}), part {2} {3} at {4} in {5} ",
+                                        "Runtime error in script {0} (event {1}), part {2} {3} at {4} in {5} ",
                                         ScriptName,
                                         data.EventName,
                                         PrimName,
@@ -1069,7 +1058,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                         {
                             if (DebugLevel >= 1)
                                 m_log.DebugFormat(
-                                    "[SCRIPT INSTANCE]: Script {0}.{1} in event {2}, state {3} stopped co-operatively.",
+                                    "Script {0}.{1} in event {2}, state {3} stopped co-operatively.",
                                     PrimName, ScriptName, data.EventName, State);
                         }
                     }
@@ -1086,7 +1075,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
 
                 if ((EventsProcessed % 100000) == 0 && DebugLevel > 0)
                 {
-                    m_log.DebugFormat("[SCRIPT INSTANCE]: Script \"{0}\" (Object \"{1}\" {2} @ {3}.{4}, Item ID {5}, Asset {6}) in event {7}: processed {8:n0} script events",
+                    m_log.DebugFormat("Script \"{0}\" (Object \"{1}\" {2} @ {3}.{4}, Item ID {5}, Asset {6}) in event {7}: processed {8:n0} script events",
                                     ScriptTask.Name,
                                     Part.ParentGroup.Name, Part.ParentGroup.UUID, Part.ParentGroup.AbsolutePosition, Part.ParentGroup.Scene.Name,
                                     ScriptTask.ItemID, ScriptTask.AssetID, data.EventName, EventsProcessed);

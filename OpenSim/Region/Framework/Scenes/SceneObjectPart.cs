@@ -35,6 +35,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
 using log4net;
+using ThreadedClasses;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
 using OpenSim.Framework;
@@ -42,6 +43,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Region.PhysicsModules.SharedBase;
 using PermissionMask = OpenSim.Framework.PermissionMask;
+// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -303,7 +305,8 @@ namespace OpenSim.Region.Framework.Scenes
 
         private int m_scriptAccessPin;
 
-        private Dictionary<UUID, scriptEvents> m_scriptEvents = new Dictionary<UUID, scriptEvents>();
+        private RwLockedDictionary<UUID, scriptEvents> m_scriptEvents = // AKIDO
+            new RwLockedDictionary<UUID, scriptEvents>(); // AKIDO
         private Quaternion m_sitTargetOrientation = Quaternion.Identity;
         private Vector3 m_sitTargetPosition;
         private string m_sitAnimation = "SIT";
@@ -373,15 +376,6 @@ namespace OpenSim.Region.Framework.Scenes
 
         #endregion Fields
 
-//        ~SceneObjectPart()
-//        {
-//            Console.WriteLine(
-//                "[SCENE OBJECT PART]: Destructor called for {0}, local id {1}, parent {2} {3}",
-//                Name, LocalId, ParentGroup.Name, ParentGroup.LocalId);
-//            m_log.DebugFormat(
-//                "[SCENE OBJECT PART]: Destructor called for {0}, local id {1}, parent {2} {3}",
-//                Name, LocalId, ParentGroup.Name, ParentGroup.LocalId);
-//        }
 
         #region Constructors
 
@@ -818,7 +812,7 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("[SCENEOBJECTPART]: GROUP POSITION. {0}", e);
+                        m_log.ErrorFormat("GROUP POSITION. {0}", e);
                     }
                 }
             }
@@ -924,14 +918,12 @@ namespace OpenSim.Region.Framework.Scenes
                         if (_parentID == 0)
                         {
                             actor.Orientation = value;
-                            //m_log.Info("[PART]: RO1:" + actor.Orientation.ToString());
                         }
                         else
                         {
                             // Child prim we have to calculate it's world rotationwel
                             Quaternion resultingrotation = GetWorldRotation();
                             actor.Orientation = resultingrotation;
-                            //m_log.Info("[PART]: RO2:" + actor.Orientation.ToString());
                         }
 
                         if (ParentGroup != null && ParentGroup.Scene != null && ParentGroup.Scene.PhysicsScene != null)
@@ -940,7 +932,7 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                     catch (Exception ex)
                     {
-                        m_log.Error("[SCENEOBJECTPART]: ROTATIONOFFSET" + ex.Message);
+                        m_log.Error("ROTATIONOFFSET" + ex.Message);
                     }
                 }
             }
@@ -1087,14 +1079,6 @@ namespace OpenSim.Region.Framework.Scenes
             get { return m_linkNum; }
             set
             {
-//                if (ParentGroup != null)
-//                {
-//                    m_log.DebugFormat(
-//                        "[SCENE OBJECT PART]: Setting linknum of {0}@{1} to {2} from {3}",
-//                        Name, AbsolutePosition, value, m_linkNum);
-//                    Util.PrintCallStack();
-//                }
-
                 m_linkNum = value;
             }
         }
@@ -1226,7 +1210,6 @@ namespace OpenSim.Region.Framework.Scenes
             get { return m_createSelected; }
             set
             {
-//                m_log.DebugFormat("[SOP]: Setting CreateSelected to {0} for {1} {2}", value, Name, UUID);
                 m_createSelected = value;
             }
         }
@@ -1264,7 +1247,6 @@ namespace OpenSim.Region.Framework.Scenes
             set
             {
                 m_sitTargetOrientation = value;
-//                m_log.DebugFormat("[SCENE OBJECT PART]: Set sit target orientation {0} for {1} {2}", m_sitTargetOrientation, Name, LocalId);
             }
         }
 
@@ -1274,7 +1256,6 @@ namespace OpenSim.Region.Framework.Scenes
             set
             {
                 m_sitTargetPosition = value;
-//                m_log.DebugFormat("[SCENE OBJECT PART]: Set sit target position to {0} for {1} {2}", m_sitTargetPosition, Name, LocalId);
             }
         }
 
@@ -1418,7 +1399,6 @@ namespace OpenSim.Region.Framework.Scenes
             get { return m_flags; }
             set
             {
-                //m_log.DebugFormat("[SOP]: Setting flags for {0} {1} to {2}", UUID, Name, value);
                 m_flags = value & ~(PrimFlags.Touch | PrimFlags.Money | PrimFlags.AllowInventoryDrop);
             }
         }
@@ -1930,13 +1910,11 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if ((m_flags & flag) == 0)
             {
-                //m_log.Debug("Adding flag: " + ((PrimFlags) flag).ToString());
                 m_flags |= flag;
 
                 if (flag == PrimFlags.TemporaryOnRez)
                     ResetExpire();
             }
-            // m_log.Debug("Aprev: " + prevflag.ToString() + " curr: " + Flags.ToString());
         }
 
         public void AddNewParticleSystem(Primitive.ParticleSystem pSystem, bool expire)
@@ -2158,7 +2136,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (userExposed)
                 dupe.UUID = UUID.Random();
 
-            dupe.m_scriptEvents = new Dictionary<UUID, scriptEvents>();
+            dupe.m_scriptEvents = new RwLockedDictionary<UUID, scriptEvents>();
 
             dupe.PhysActor = null;
 
@@ -2233,9 +2211,7 @@ namespace OpenSim.Region.Framework.Scenes
             dupe.PseudoCRC = (int)(DateTime.UtcNow.Ticks);
 
             ParentGroup.Scene.EventManager.TriggerOnSceneObjectPartCopy(dupe, this, userExposed);
-
-//            m_log.DebugFormat("[SCENE OBJECT PART]: Clone of {0} {1} finished", Name, UUID);
-
+            
             return dupe;
         }
 
@@ -2944,7 +2920,7 @@ namespace OpenSim.Region.Framework.Scenes
             // Note: This is only being called on the root prim at this time.
 
             m_log.ErrorFormat(
-                "[SCENE OBJECT PART]: Physical object {0}, localID {1} went out of bounds at {2} in {3}.  Stopping at {4} and making non-physical.",
+                "Physical object {0}, localID {1} went out of bounds at {2} in {3}.  Stopping at {4} and making non-physical.",
                 Name, LocalId, pos, ParentGroup.Scene.Name, AbsolutePosition);
 
             RemFlag(PrimFlags.Physics);
@@ -2975,31 +2951,28 @@ namespace OpenSim.Region.Framework.Scenes
             // PrimFlags prevflag = Flags;
             if ((m_flags & flag) != 0)
             {
-                //m_log.Debug("Removing flag: " + ((PrimFlags)flag).ToString());
                 m_flags &= ~flag;
             }
-            //m_log.Debug("prev: " + prevflag.ToString() + " curr: " + Flags.ToString());
-            //ScheduleFullUpdate();
         }
 
         public void RemoveScriptEvents(UUID scriptid)
         {
-            lock (m_scriptEvents)
+            // AKIDO
+            if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
             {
-                if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
-                {
-                    if((ev & (scriptEvents.anyTarget)) != 0 && ParentGroup != null)
-                            ParentGroup.RemoveScriptTargets(scriptid);
+                if ((ev & (scriptEvents.anyTarget)) != 0 && ParentGroup != null)
+                    ParentGroup.RemoveScriptTargets(scriptid);
                     if ((AggregatedScriptEvents & scriptEvents.email) != 0)
                     {
                         IEmailModule scriptEmail = ParentGroup.Scene.RequestModuleInterface<IEmailModule>();
                         if (scriptEmail != null)
                             scriptEmail.RemovePartMailBox(UUID);
                     }
-                    m_scriptEvents.Remove(scriptid);
-                    aggregateScriptEvents();
-                }
+
+                m_scriptEvents.Remove(scriptid);
+                aggregateScriptEvents();
             }
+            // AKIDO
         }
 
         public void RemoveScriptTargets(UUID scriptid)
@@ -3092,7 +3065,6 @@ namespace OpenSim.Region.Framework.Scenes
                 scale.Y = Utils.Clamp(scale.Y, minsize, maxsize);
                 scale.Z = Utils.Clamp(scale.Z, minsize, maxsize);
             }
-//            m_log.DebugFormat("[SCENE OBJECT PART]: Resizing {0} {1} to {2}", Name, LocalId, scale);
 
             Scale = scale;
 
@@ -3122,7 +3094,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (APIDStrength <= 0)
             {
-                m_log.WarnFormat("[SceneObjectPart] Invalid rotation strength {0}",APIDStrength);
+                m_log.WarnFormat("Invalid rotation strength {0}",APIDStrength);
                 return;
             }
 
@@ -3945,9 +3917,6 @@ namespace OpenSim.Region.Framework.Scenes
         public void SetGroup(UUID groupID, IClientAPI client)
         {
             // Scene.AddNewPrims() calls with client == null so can't use this.
-            // m_log.DebugFormat(
-            //      "[SCENE OBJECT PART]: Setting group for {0} to {1} for {2}",
-            //      Name, groupID, OwnerID);
 
             ++PseudoCRC;
             GroupID = groupID;
@@ -3989,19 +3958,16 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="events"></param>
         public void SetScriptEvents(UUID scriptid, ulong events)
         {
-            //            m_log.DebugFormat(
-            //                "[SCENE OBJECT PART]: Set script events for script with id {0} on {1}/{2} to {3} in {4}",
-            //                scriptid, Name, ParentGroup.Name, events, ParentGroup.Scene.Name);
             // scriptEvents oldparts;
-            lock (m_scriptEvents)
+            // AKIDO
+            if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
             {
-                if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
-                {
-                    if (ev == (scriptEvents)events)
-                        return;
-                }
-                m_scriptEvents[scriptid] = (scriptEvents) events;
+                if (ev == (scriptEvents)events)
+                    return;
             }
+
+            m_scriptEvents[scriptid] = (scriptEvents)events;
+            // AKIDO
             aggregateScriptEvents();
         }
 
@@ -4315,8 +4281,6 @@ namespace OpenSim.Region.Framework.Scenes
             // Get our plane normals
             for (int i = 0; i < 6; i++)
             {
-                //m_log.Info("[FACECALCULATION]: FaceA[" + i + "]=" + FaceA[i] + " FaceB[" + i + "]=" + FaceB[i] + " FaceC[" + i + "]=" + FaceC[i] + " FaceD[" + i + "]=" + FaceD[i]);
-
                 // Our Plane direction
                 AmBa = FaceA[i] - FaceB[i];
                 AmBb = FaceB[i] - FaceC[i];
@@ -4325,8 +4289,6 @@ namespace OpenSim.Region.Framework.Scenes
 
                 // normalize the cross product to get the normal.
                 normals[i] = cross / cross.Length();
-
-                //m_log.Info("[NORMALS]: normals[ " + i + "]" + normals[i].ToString());
                 //distance[i] = (normals[i].X * AmBa.X + normals[i].Y * AmBa.Y + normals[i].Z * AmBa.Z) * -1;
             }
 
@@ -4442,9 +4404,6 @@ namespace OpenSim.Region.Framework.Scenes
                         result.HitTF = true;
                         result.ipoint = q;
                         result.face = i;
-                        //m_log.Info("[FACE]:" + i.ToString());
-                        //m_log.Info("[POINT]: " + q.ToString());
-                        //m_log.Info("[DIST]: " + distance2.ToString());
                         if (faceCenters)
                         {
                             result.normal = AAfacenormals[i] * AXrot;
@@ -4767,8 +4726,6 @@ namespace OpenSim.Region.Framework.Scenes
                 ParentGroup.HasGroupChanged = true;
                 ScheduleFullUpdate();
             }
-
-//            m_log.DebugFormat("[SCENE OBJECT PART]: Updated PrimFlags on {0} {1} to {2}", Name, LocalId, Flags);
         }
 
         /// <summary>
@@ -4803,7 +4760,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("[SCENE]: caught exception meshing object {0}. Object set to phantom. e={1}", m_uuid, e);
+                m_log.ErrorFormat("caught exception meshing object {0}. Object set to phantom. e={1}", m_uuid, e);
                 pa = null;
             }
 
@@ -5201,13 +5158,12 @@ namespace OpenSim.Region.Framework.Scenes
             AggregatedScriptEvents = 0;
 
             // Aggregate script events
-            lock (m_scriptEvents)
+            // AKIDO
+            foreach (scriptEvents s in m_scriptEvents.Values)
             {
-                foreach (scriptEvents s in m_scriptEvents.Values)
-                {
-                    AggregatedScriptEvents |= s;
-                }
+                AggregatedScriptEvents |= s;
             }
+            // AKIDO
 
             uint objectflagupdate = 0;
             if ((AggregatedScriptEvents & scriptEvents.anytouch) != 0 )
@@ -5240,8 +5196,6 @@ namespace OpenSim.Region.Framework.Scenes
             }
             else
             {
-//                m_log.DebugFormat(
-//                    "[SCENE OBJECT PART]: Scheduling part {0} {1} for full update in aggregateScriptEvents()", Name, LocalId);
                 UpdatePhysicsSubscribedEvents();
                 ScheduleFullUpdate();
             }
@@ -5438,7 +5392,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             catch (Exception ex)
             {
-                m_log.Error("[Physics] " + ex);
+                m_log.Error("Exception in UpdateLookAt" + ex);
             }
         }
 

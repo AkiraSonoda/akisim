@@ -26,23 +26,19 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.IO;
 using System.Reflection;
-using System.Threading;
-
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors.Hypergrid;
-
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
 using Mono.Addins;
-
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement
 {
@@ -59,7 +55,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         protected bool m_Enabled;
-        protected List<Scene> m_Scenes = new List<Scene>();
+        protected RwLockedList<Scene> m_Scenes = new RwLockedList<Scene>();
 
         protected IServiceThrottleModule m_ServiceThrottle;
         protected IUserAccountService m_userAccountService = null;
@@ -105,7 +101,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             {
                 m_Enabled = true;
                 Init(config);
-                m_log.DebugFormat("[USER MANAGEMENT MODULE]: {0} is enabled", Name);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} is enabled", Name);
             }
         }
 
@@ -128,10 +124,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         {
             if (m_Enabled)
             {
-                lock (m_Scenes)
-                {
-                    m_Scenes.Add(scene);
-                }
+                m_Scenes.Add(scene);
                 if(m_thisGridInfo == null)
                     m_thisGridInfo = scene.SceneGridInfo;
                 scene.RegisterModuleInterface<IUserManagement>(this);
@@ -146,10 +139,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             if (m_Enabled)
             {
                 scene.UnregisterModuleInterface<IUserManagement>(this);
-                lock (m_Scenes)
-                {
-                    m_Scenes.Remove(scene);
-                }
+                m_Scenes.Remove(scene);
             }
         }
 
@@ -174,10 +164,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         public virtual void Close()
         {
             m_Enabled = false;
-            lock (m_Scenes)
-            {
-                m_Scenes.Clear();
-            }
+            m_Scenes.Clear();
             m_thisGridInfo = null;
             Dispose(false);
         }
@@ -189,7 +176,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         protected virtual void EventManager_OnPrimsLoaded(Scene s)
         {
             // let's sniff all the user names referenced by objects in the scene
-            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Caching creators' data from {0} ({1} objects)...", s.RegionInfo.RegionName, s.GetEntities().Length);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Caching creators' data from {0} ({1} objects)...", 
+                s.RegionInfo.RegionName, s.GetEntities().Length);
+            
             s.ForEachSOG(delegate(SceneObjectGroup sog) { CacheCreators(sog); });
         }
 
@@ -209,9 +199,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         protected virtual void HandleUUIDNameRequest(UUID uuid, IClientAPI client)
         {
-//            m_log.DebugFormat(
-//                "[USER MANAGEMENT MODULE]: Handling request for name binding of UUID {0} from {1}",
-//                uuid, remote_client.Name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Handling request for name binding of UUID {0} from {1}",
+                uuid, client.Name);
+            
             if(!m_Enabled || m_Scenes.Count <= 0)
                 return;
 
@@ -247,7 +238,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         {
             //EventManager.TriggerAvatarPickerRequest();
 
-            m_log.DebugFormat("[USER MANAGEMENT MODULE]: HandleAvatarPickerRequest for {0}", query);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("HandleAvatarPickerRequest for {0}", query);
             List<UserData> users = GetUserData(query, 500, 1);
             client.SendAvatarPickerReply(RequestID, users);
         }
@@ -330,7 +321,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         protected virtual void CacheCreators(SceneObjectGroup sog)
         {
-            //m_log.DebugFormat("[USER MANAGEMENT MODULE]: processing {0} {1}; {2}", sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
+            m_log.InfoFormat(
+                "CacheCreators - processing Name: {0}, CreatorID: {1}, CreatorDate: {2}", 
+                sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
+            
             AddCreatorUser(sog.RootPart.CreatorID, sog.RootPart.CreatorData);
 
             foreach (SceneObjectPart sop in sog.Parts)
@@ -518,7 +512,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             }
                         }
                         else
-                            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
                     }
                 }
             }
@@ -651,7 +645,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             }
                         }
                         else
-                            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
                     }
                 }
             }
@@ -767,7 +761,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             }
                         }
                         else
-                            m_log.DebugFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
                     }
                 }
             }
@@ -843,7 +837,6 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 string homeuri = userdata.HomeURL.ToLower();
                 if (!WebUtil.GlobalExpiringBadURLs.ContainsKey(homeuri))
                 {
-                    //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Requested url type {0} for {1}", serverType, userID);
                     UserAgentServiceConnector uConn = new UserAgentServiceConnector(homeuri);
                     try
                     {
@@ -851,13 +844,13 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch(System.Net.WebException e)
                     {
-                        m_log.DebugFormat("[USER MANAGEMENT MODULE]: GetServerURLs call failed {0}", e.Message);
+                        m_log.WarnFormat("GetServerURLs call failed {0}", e.Message);
                         WebUtil.GlobalExpiringBadURLs.Add(homeuri, BADURLEXPIRE * 1000);
                         userdata.ServerURLs = new Dictionary<string, object>();
                     }
                     catch (Exception e)
                     {
-                        m_log.Debug("[USER MANAGEMENT MODULE]: GetServerURLs call failed ", e);
+                        m_log.Warn("GetServerURLs call failed ", e);
                         userdata.ServerURLs = new Dictionary<string, object>();
                     }
 
@@ -913,7 +906,6 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 string homeurl = userdata.HomeURL.ToLower();
                 if(!WebUtil.GlobalExpiringBadURLs.ContainsKey(homeurl))
                 {
-                    //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Requested url type {0} for {1}", serverType, userID);
                     UserAgentServiceConnector uConn = new UserAgentServiceConnector(homeurl);
                     try
                     {
@@ -921,7 +913,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch (System.Net.WebException e)
                     {
-                        m_log.DebugFormat("[USER MANAGEMENT MODULE]: GetServerURLs call failed {0}", e.Message);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("GetServerURLs call failed {0}", e.Message);
                         userdata.ServerURLs = new Dictionary<string, object>();
                         userdata.LastWebFail = Util.GetTimeStamp();
                         WebUtil.GlobalExpiringBadURLs.Add(homeurl, BADURLEXPIRE * 1000);
@@ -929,7 +921,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch (Exception e)
                     {
-                        m_log.Debug("[USER MANAGEMENT MODULE]: GetServerURLs call failed ", e);
+                        if(m_log.IsDebugEnabled) m_log.Debug("GetServerURLs call failed ", e);
                         userdata.ServerURLs = new Dictionary<string, object>();
                         userdata.LastWebFail = Util.GetTimeStamp();
                         recentFail = true;
@@ -1054,7 +1046,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
                     }
                     else
-                        m_log.DebugFormat("[USER MANAGEMENT MODULE]: Unable to parse UUI {0}", uInfo.UserID);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
                 }
                 userdata.HasGridUserTried = true;
             }
@@ -1112,7 +1104,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public virtual void AddUser(UUID uuid, string first, string last, string homeURL)
         {
-            //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            //     "Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
 
             UserData oldUser;
             if (m_userCacheByID.TryGetValue(uuid, out oldUser))
@@ -1121,7 +1114,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 {
                     if (!homeURL.Equals(oldUser.HomeURL) && m_DisplayChangingHomeURI)
                     {
-                        m_log.DebugFormat("[USER MANAGEMENT MODULE]: Different HomeURI for {0} {1} ({2}): {3} and {4}",
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                            "Different HomeURI for {0} {1} ({2}): {3} and {4}",
                             first, last, uuid.ToString(), homeURL, oldUser.HomeURL);
                     }
                     /* no update needed */
@@ -1169,7 +1163,8 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public virtual void AddCreatorUser(UUID id, string creatorData)
         {
-            // m_log.InfoFormat("[USER MANAGEMENT MODULE]: Adding user with id {0}, creatorData {1}", id, creatorData);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Adding user with id {0}, creatorData {1}", id, creatorData);
 
             if(string.IsNullOrEmpty(creatorData))
                 return;

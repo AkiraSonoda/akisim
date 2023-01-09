@@ -25,20 +25,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
-
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
 using Mono.Addins;
-
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.Profile
 {
@@ -50,7 +48,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Profile
         //
         // Module vars
         //
-        private List<Scene> m_Scenes = new List<Scene>();
+        private RwLockedList<Scene> m_Scenes = new RwLockedList<Scene>(); // AKIDO
         private bool m_Enabled = false;
 
         #region ISharedRegionModule
@@ -60,7 +58,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Profile
             if(config.Configs["UserProfiles"] != null)
                 return;
 
-            m_log.DebugFormat("[PROFILE MODULE]: Basic Profile Module enabled");
+            m_log.Debug("Basic Profile Module enabled");
             m_Enabled = true;
         }
 
@@ -69,16 +67,12 @@ namespace OpenSim.Region.CoreModules.Avatar.Profile
             if (!m_Enabled)
                 return;
 
-            lock (m_Scenes)
-            {
-                if (!m_Scenes.Contains(scene))
-                {
-                    m_Scenes.Add(scene);
-                    // Hook up events
-                    scene.EventManager.OnNewClient += OnNewClient;
-                    scene.RegisterModuleInterface<IProfileModule>(this);
-                }
-            }
+            // AKIDO
+            m_Scenes.Add(scene);
+            // Hook up events
+            scene.EventManager.OnNewClient += OnNewClient;
+            scene.RegisterModuleInterface<IProfileModule>(this);
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -92,10 +86,8 @@ namespace OpenSim.Region.CoreModules.Avatar.Profile
             if (!m_Enabled)
                 return;
 
-            lock (m_Scenes)
-            {
-                m_Scenes.Remove(scene);
-            }
+            // AKIDO
+            m_Scenes.Remove(scene);
         }
 
         public void PostInitialise()

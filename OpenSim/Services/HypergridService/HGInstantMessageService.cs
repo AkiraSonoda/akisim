@@ -27,16 +27,15 @@
 
 using System;
 using System.Reflection;
-
 using OpenSim.Framework;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors.InstantMessage;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OpenSim.Server.Base;
-
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
+// AKIDO: clean
 
 namespace OpenSim.Services.HypergridService
 {
@@ -81,13 +80,13 @@ namespace OpenSim.Services.HypergridService
 
                 string gridService = serverConfig.GetString("GridService", string.Empty);
                 if (string.IsNullOrEmpty(gridService))
-                    throw new Exception("[HG IM SERVICE]: GridService not set in [HGInstantMessageService]");
+                    throw new Exception("GridService not set in [HGInstantMessageService]");
                 string presenceService = serverConfig.GetString("PresenceService", string.Empty);
                 if (string.IsNullOrEmpty(presenceService))
-                    throw new Exception("[HG IM SERVICE]: PresenceService not set in [HGInstantMessageService]");
+                    throw new Exception("PresenceService not set in [HGInstantMessageService]");
                 string userAgentService = serverConfig.GetString("UserAgentService", string.Empty);
                 if (string.IsNullOrEmpty(userAgentService))
-                    m_log.WarnFormat("[HG IM SERVICE]: UserAgentService not set in [HGInstantMessageService]");
+                    m_log.WarnFormat("UserAgentService not set in [HGInstantMessageService]");
 
                 object[] args = new object[] { config };
                 try
@@ -96,7 +95,7 @@ namespace OpenSim.Services.HypergridService
                 }
                 catch
                 {
-                    throw new Exception("[HG IM SERVICE]: Unable to load GridService");
+                    throw new Exception("Unable to load GridService");
                 }
 
                 try
@@ -105,7 +104,7 @@ namespace OpenSim.Services.HypergridService
                 }
                 catch
                 {
-                    throw new Exception("[HG IM SERVICE]: Unable to load PresenceService");
+                    throw new Exception("Unable to load PresenceService");
                 }
 
                 try
@@ -114,7 +113,7 @@ namespace OpenSim.Services.HypergridService
                 }
                 catch
                 {
-                    m_log.WarnFormat("[HG IM SERVICE]: Unable to load PresenceService");
+                    m_log.WarnFormat("Unable to load PresenceService");
                 }
 
                 m_InGatekeeper = serverConfig.GetBoolean("InGatekeeper", false);
@@ -122,7 +121,7 @@ namespace OpenSim.Services.HypergridService
                 IConfig cnf = config.Configs["Messaging"];
                 if (cnf == null)
                 {
-                    m_log.Debug("[HG IM SERVICE]: Starting (without [MEssaging])");
+                    m_log.Debug("Starting (without [MEssaging])");
                     return;
                 }
 
@@ -131,26 +130,27 @@ namespace OpenSim.Services.HypergridService
 
                 if (m_InGatekeeper)
                 {
-                    m_log.Debug("[HG IM SERVICE]: Starting In Robust GateKeeper");
+                    m_log.Debug("Starting In Robust GateKeeper");
 
                     string offlineIMService = cnf.GetString("OfflineIMService", string.Empty);
                     if (offlineIMService != string.Empty)
                         m_OfflineIMService = ServerUtils.LoadPlugin<IOfflineIMService>(offlineIMService, args);
                 }
                 else
-                    m_log.Debug("[HG IM SERVICE]: Starting");
+                    m_log.Debug("Starting");
             }
         }
 
         public bool IncomingInstantMessage(GridInstantMessage im)
         {
-//            m_log.DebugFormat("[HG IM SERVICE]: Received message from {0} to {1}", im.fromAgentID, im.toAgentID);
-//            UUID toAgentID = new UUID(im.toAgentID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "Received message from {0} to {1}", im.fromAgentID, im.toAgentID);
+            
+            UUID toAgentID = new UUID(im.toAgentID);
 
             bool success = false;
             if (m_IMSimConnector != null)
             {
-                //m_log.DebugFormat("[XXX] SendIMToRegion local im connector");
                 success = m_IMSimConnector.SendInstantMessage(im);
             }
             else
@@ -166,7 +166,8 @@ namespace OpenSim.Services.HypergridService
 
         public bool OutgoingInstantMessage(GridInstantMessage im, string url, bool foreigner)
         {
-//            m_log.DebugFormat("[HG IM SERVICE]: Sending message from {0} to {1}@{2}", im.fromAgentID, im.toAgentID, url);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Sending message from {0} to {1}@{2}", 
+                im.fromAgentID, im.toAgentID, url);
             return TrySendInstantMessage(im, url, true, foreigner);
         }
 
@@ -197,7 +198,6 @@ namespace OpenSim.Services.HypergridService
                 {
                     if (!p.RegionID.IsZero())
                     {
-                        //m_log.DebugFormat("[XXX]: Found presence in {0}", p.RegionID);
                         // stupid service does not cache region, even in region code
                         if(m_RegionsCache.TryGetValue(p.RegionID, out url))
                             break;
@@ -216,29 +216,30 @@ namespace OpenSim.Services.HypergridService
             if (string.IsNullOrEmpty(url) && !foreigner && m_UserAgentService != null)
             {
                 // Let's check with the UAS if the user is elsewhere in HG
-                m_log.DebugFormat("[HG IM SERVICE]: User is not present. Checking location with User Agent service");
+                if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                    "User is not present. Checking location with User Agent service");
+                
                 try
                 {
                     url = m_UserAgentService.LocateUser(toAgentID);
                 }
                 catch (Exception e)
                 {
-                    m_log.Warn("[HG IM SERVICE]: LocateUser call failed ", e);
+                    m_log.Warn("LocateUser call failed ", e);
                     url = string.Empty;
                 }
             }
 
             if (string.IsNullOrEmpty(url))
             {
-                m_log.DebugFormat("[HG IM SERVICE]: Unable to locate user {0}", toAgentID);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to locate user {0}", toAgentID);
                 return false;
             }
 
             // check if we've tried this before..
             if (!string.IsNullOrEmpty(foreignerkurl) && url.Equals(foreignerkurl, StringComparison.InvariantCultureIgnoreCase))
             {
-                // m_log.Error("[GRID INSTANT MESSAGE]: Unable to deliver an instant message");
-                m_log.DebugFormat("[HG IM SERVICE]: Unable to send to user {0}, at {1}", toAgentID, foreignerkurl);
+                m_log.WarnFormat("Unable to send to user {0}, at {1}", toAgentID, foreignerkurl);
                 return false;
             }
 
@@ -294,7 +295,6 @@ namespace OpenSim.Services.HypergridService
                 }
             }
 
-            //m_log.DebugFormat("[HG IM SERVICE]: Message saved");
             return m_OfflineIMService.StoreMessage(im, out string reason);
         }
     }

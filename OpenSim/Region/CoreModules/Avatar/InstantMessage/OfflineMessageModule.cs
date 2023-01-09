@@ -32,10 +32,10 @@ using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.Servers;
-using OpenSim.Framework.Client;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using ThreadedClasses;
+// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
@@ -53,7 +53,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 
         private bool enabled = true;
         private bool m_UseNewAvnCode = false;
-        private List<Scene> m_SceneList = new List<Scene>();
+        private RwLockedList<Scene> m_SceneList = new RwLockedList<Scene>();
         private string m_RestURL = String.Empty;
         IMessageTransferModule m_TransferModule = null;
         private bool m_ForwardOfflineGroupMessages = true;
@@ -77,7 +77,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             m_RestURL = cnf.GetString("OfflineMessageURL", "");
             if (m_RestURL.Length == 0)
             {
-                m_log.Error("[OFFLINE MESSAGING] Module was enabled, but no URL is given, disabling");
+                m_log.Error("Module was enabled, but no URL is given, disabling");
                 enabled = false;
                 return;
             }
@@ -91,12 +91,10 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!enabled)
                 return;
 
-            lock (m_SceneList)
-            {
-                m_SceneList.Add(scene);
-
-                scene.EventManager.OnNewClient += OnNewClient;
-            }
+            // AKIDO
+            m_SceneList.Add(scene);
+            scene.EventManager.OnNewClient += OnNewClient;
+            // AKIDO
         }
 
         public void RegionLoaded(Scene scene)
@@ -114,7 +112,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     enabled = false;
                     m_SceneList.Clear();
 
-                    m_log.Error("[OFFLINE MESSAGING] No message transfer module is enabled. Diabling offline messages");
+                    m_log.Error("No message transfer module is enabled. Diabling offline messages");
                 }
                 m_TransferModule.OnUndeliveredMessage += UndeliveredMessage;
             }
@@ -125,10 +123,9 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!enabled)
                 return;
 
-            lock (m_SceneList)
-            {
-                m_SceneList.Remove(scene);
-            }
+            // AKIDO
+            m_SceneList.Remove(scene);
+            
         }
 
         public void PostInitialise()
@@ -136,7 +133,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!enabled)
                 return;
 
-            m_log.Debug("[OFFLINE MESSAGING] Offline messages enabled");
+            m_log.Debug("Offline messages enabled");
         }
 
         public string Name
@@ -194,7 +191,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             }
             else
             {
-                m_log.DebugFormat("[OFFLINE MESSAGING]: Retrieving stored messages for {0}", client.AgentId);
+                m_log.DebugFormat("Retrieving stored messages for {0}", client.AgentId);
 
                 List<GridInstantMessage> msglist
                     = SynchronousRestObjectRequester.MakeRequest<UUID, List<GridInstantMessage>>(
@@ -273,7 +270,8 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                         case 0: // Normal
                             break;
                         case 1: // Only once per user
-                           if (m_repliesSent.ContainsKey(client) && m_repliesSent[client].Contains(new UUID(im.toAgentID)))
+                            if (m_repliesSent.ContainsKey(client) &&
+                                m_repliesSent[client].Contains(new UUID(im.toAgentID)))
                                 sendReply = false;
                             else
                             {
@@ -281,6 +279,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                                     m_repliesSent[client] = new List<UUID>();
                                 m_repliesSent[client].Add(new UUID(im.toAgentID));
                             }
+
                             break;
                     }
 

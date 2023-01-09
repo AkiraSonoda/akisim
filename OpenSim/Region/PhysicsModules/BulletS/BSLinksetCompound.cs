@@ -102,13 +102,19 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             // When rebuilding, it is possible to set properties that would normally require a rebuild.
             //    If already rebuilding, don't request another rebuild.
             //    If a linkset with just a root prim (simple non-linked prim) don't bother rebuilding.
-            lock (m_linksetActivityLock)
+            m_linksetActivityLock.AcquireWriterLock(-1); // AKIDO
+            try
             {
                 if (!RebuildScheduled && !Rebuilding && HasAnyChildren)
                 {
                     InternalScheduleRebuild(requestor);
                 }
             }
+            finally
+            {
+                m_linksetActivityLock.ReleaseWriterLock();
+            }
+
         }
 	
         // Must be called with m_linksetActivityLock or race conditions will haunt you.
