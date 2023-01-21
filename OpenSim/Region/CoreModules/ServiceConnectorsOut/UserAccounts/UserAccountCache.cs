@@ -24,13 +24,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using System;
 using System.Reflection;
-using System.Collections.Generic;
-using OpenSim.Framework;
 using OpenSim.Services.Interfaces;
 using OpenMetaverse;
 using log4net;
+
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
 {
@@ -40,40 +38,13 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
         private const int CACHE_EXPIRATION_SECONDS = 3600; // 1 hour!
         private const int CACHE_NULL_EXPIRATION_SECONDS = 600; // 10minutes
 
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod()?.DeclaringType);
 
         //5min expire checks
-        private ExpiringCacheOS<UUID, UserAccount> m_UUIDCache = new ExpiringCacheOS<UUID, UserAccount>(300000);
-        private ExpiringCacheOS<string, UserAccount> m_NameCache = new ExpiringCacheOS<string, UserAccount>(300000);
+        private ThreadedClasses.ExpiringCache<UUID, UserAccount> m_UUIDCache = new ThreadedClasses.ExpiringCache<UUID, UserAccount>(300000);
+        private ThreadedClasses.ExpiringCache<string, UserAccount> m_NameCache = new ThreadedClasses.ExpiringCache<string, UserAccount>(300000);
         private readonly object accessLock = new object();
 
-        public UserAccountCache()
-        {
-        }
-
-        ~UserAccountCache()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        private bool disposed;
-        private void Dispose(bool disposing)
-        {
-            if (!disposed)
-            {
-                disposed = true;
-                m_UUIDCache.Dispose();
-                m_NameCache.Dispose();
-                m_UUIDCache = null;
-                m_NameCache = null;
-            }
-        }
 
         public void Cache(UUID userID, UserAccount account)
         {
@@ -102,8 +73,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
             {
                 if (m_UUIDCache.TryGetValue(userID, out UserAccount account))
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Account {0} {1} found in cache", account.FirstName, account.LastName);
+                    if(m_log.IsDebugEnabled) {
+                        if ( account !=null ) {
+                            m_log.DebugFormat(
+                            "Account {0} {1} found in cache", account.FirstName, account.LastName);
+                        }
+                    }
                     inCache = true;
                     return account;
                 }
