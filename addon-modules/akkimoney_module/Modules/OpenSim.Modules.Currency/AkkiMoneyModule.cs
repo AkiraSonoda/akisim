@@ -446,6 +446,7 @@ namespace OpenSim.Modules.Currency {
 		//
 		public bool MoveMoney(UUID fromUser, UUID toUser, int amount, MoneyTransactionType type, string text)
 		{
+			throw new NotImplementedException();
 		}
 
 		public int UploadCharge {
