@@ -331,7 +331,8 @@ namespace OpenSim.Region.Framework.Scenes
         protected IGroupsModule m_groupsModule;
 
         private Dictionary<string, string> m_extraSettings;
-
+        
+        
         /// <summary>
         /// Current scene frame number
         /// </summary>
@@ -1024,7 +1025,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 m_strictAccessControl = startupConfig.GetBoolean("StrictAccessControl", m_strictAccessControl);
                 m_seeIntoBannedRegion = startupConfig.GetBoolean("SeeIntoBannedRegion", m_seeIntoBannedRegion);
-
+                
                 string[] possibleMapConfigSections = new string[] { "Map", "Startup" };
 
                 m_generateMaptiles
@@ -1083,10 +1084,7 @@ namespace OpenSim.Region.Framework.Scenes
                         m_BannedViewers.Add(viewer.Trim().ToLower());
                     }
                 }
-
-                // AKIDO
-                m_useWrongSitTarget = startupConfig.GetBoolean("UseWrongSitTarget", m_useWrongSitTarget);
-
+                
                 FrameTime                 = startupConfig.GetFloat( "FrameTime", FrameTime);
                 FrameTimeWarnPercent      = startupConfig.GetInt( "FrameTimeWarnPercent", FrameTimeWarnPercent);
                 FrameTimeCritPercent      = startupConfig.GetInt( "FrameTimeCritPercent", FrameTimeCritPercent);
