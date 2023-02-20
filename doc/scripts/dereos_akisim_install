@@ -46,7 +46,7 @@ mozroots --import --sync
 # Das geschieht mit dieser Befehlskette. Wenn der Prozess
 # noch am laufen ist, wird die Variable "running" einen Inhalt haben
 # ansonsten wird sie leer sein. 
-running=`ps ax|grep $SCREENID|grep -v grep|grep -v "dereos_freaki_install"`
+running=`ps ax|grep $SCREENID|grep -v grep|grep -v "dereos_akisim_install"`
 
 echo $running
 
@@ -77,7 +77,7 @@ mkdir $SCREENID
 # in das neu erstellte Simulatoren Verzeichnis
 if [ "$test_version" != "" ] ; then
 	cp -r /home/opensim/$test_version/bin "$OSINS/$SCREENID"
-	echo $test_version > $OSINS/$SCREENID/bin/.version
+    #echo $test_version > $OSINS/$SCREENID/bin/.version
 fi
 	
 # Das Regions Verzeichnis im "bin" des neuen Simulators löschen
