@@ -383,7 +383,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             if(m_log.IsDebugEnabled) m_log.DebugFormat("Handle MapItem request {0} {1}", regionhandle, itemtype);
 
             // AKIDO
-            if (!m_rootAgents.Contains(remoteClient.AgentId)) return;
+            // if (!m_rootAgents.Contains(remoteClient.AgentId)) return;
             // AKIDO
 
             // local or remote request?
