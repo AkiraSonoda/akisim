@@ -100,5 +100,5 @@ if [ "$test_version" != "" ] ; then
   cp $OSINS/$test_version/doc/dereos/ini/OpenSim.ini $OSINS/$SCREENID/bin
   cp $OSINS/$test_version/doc/dereos/ini/config-include/GridCommon.ini $OSINS/$SCREENID/bin/config-include
   cp $OSINS/$test_version/doc/dereos/ini/config-include/FlotsamCache.ini $OSINS/$SCREENID/bin/config-include
-  cp $OSINS/$test_version/doc/dereos/ini/config-include/osslEnable.ini $OSINS/$SCREENID/bin/osslEnable.ini
+  cp $OSINS/$test_version/doc/dereos/ini/config-include/osslEnable.ini $OSINS/$SCREENID/bin/config-include
 fi
