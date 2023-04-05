@@ -2365,6 +2365,12 @@ namespace OpenSim.Region.Framework.Scenes
                 AddRestoredSceneObject(group, true, true);
                 SceneObjectPart rootPart = group.GetPart(group.UUID);
                 rootPart.Flags &= ~(PrimFlags.Scripted | PrimFlags.CreateSelected);
+                
+                // AKIDO
+                if ((rootPart.Flags & PrimFlags.Physics) == PrimFlags.Physics)
+                {
+                    m_log.InfoFormat("Physical Object found: {0} Name: {1} position: {2} ", rootPart.GroupID, rootPart.Name, rootPart.GroupPosition );
+                }
 
                 rootPart.TrimPermissions();
                 group.InvalidateDeepEffectivePerms();

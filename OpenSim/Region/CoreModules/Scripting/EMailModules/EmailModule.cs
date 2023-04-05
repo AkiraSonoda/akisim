@@ -229,7 +229,7 @@ namespace OpenSim.Region.CoreModules.Scripting.EmailModules
             scene.RegisterModuleInterface<IEmailModule>(this);
 
             // Add to scene list
-            m_Scenes[scene.RegionInfo.RegionHandle] = scene;
+                m_Scenes[scene.RegionInfo.RegionHandle] = scene;
             // AKDIO
 
             m_log.Info("Activated DefaultEmailModule");

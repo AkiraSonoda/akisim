@@ -87,8 +87,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
         public void ForEachActor(Action<BSActor> act)
         {
             foreach (KeyValuePair<string, BSActor> kvp in m_actors) // AKIDO
-                act(kvp.Value);
-        }
+                    act(kvp.Value);
+            }
 
         public void Enable(bool enabl)
         {

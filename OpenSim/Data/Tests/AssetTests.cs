@@ -55,6 +55,8 @@ namespace OpenSim.Data.Tests
     {
     }
 
+    [TestFixture(typeof(SqliteConnection), typeof(SQLiteAssetData))]
+    [TestFixture(typeof(MySqlConnection), typeof(MySQLAssetData))] 
     public class AssetTests<TConn, TAssetData> : BasicDataServiceTest<TConn, TAssetData>
         where TConn : DbConnection, new()
         where TAssetData : AssetDataBase, new()

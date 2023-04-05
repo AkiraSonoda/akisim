@@ -2962,12 +2962,12 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 if ((ev & (scriptEvents.anyTarget)) != 0 && ParentGroup != null)
                     ParentGroup.RemoveScriptTargets(scriptid);
-                if ((AggregatedScriptEvents & scriptEvents.email) != 0)
-                {
-                    IEmailModule scriptEmail = ParentGroup.Scene.RequestModuleInterface<IEmailModule>();
-                    if (scriptEmail != null)
-                        scriptEmail.RemovePartMailBox(UUID);
-                }
+                    if ((AggregatedScriptEvents & scriptEvents.email) != 0)
+                    {
+                        IEmailModule scriptEmail = ParentGroup.Scene.RequestModuleInterface<IEmailModule>();
+                        if (scriptEmail != null)
+                            scriptEmail.RemovePartMailBox(UUID);
+                    }
 
                 m_scriptEvents.Remove(scriptid);
                 aggregateScriptEvents();

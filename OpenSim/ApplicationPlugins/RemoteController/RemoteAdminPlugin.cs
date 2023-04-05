@@ -1211,9 +1211,9 @@ namespace OpenSim.ApplicationPlugins.RemoteController
                     account.PrincipalID);
             }
             catch
-            {
-                responseData["avatar_uuid"] = UUID.Zero.ToString();
-                throw;
+                {
+                    responseData["avatar_uuid"] = UUID.Zero.ToString();
+                    throw;
             }
 
             m_log.Info("[RADMIN]: CreateUser: request complete");

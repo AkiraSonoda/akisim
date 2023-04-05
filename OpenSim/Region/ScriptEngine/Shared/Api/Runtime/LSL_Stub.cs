@@ -518,6 +518,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
             return m_LSL_Functions.llGetHTTPHeader(request_id, header);
         }
 
+        public LSL_String llGetInventoryAcquireTime(string item)
+        {
+            return m_LSL_Functions.llGetInventoryAcquireTime(item);
+        }
+
         public LSL_Key llGetInventoryCreator(string item)
         {
             return m_LSL_Functions.llGetInventoryCreator(item);
@@ -561,6 +566,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_Key llGetLinkKey(int linknum)
         {
             return m_LSL_Functions.llGetLinkKey(linknum);
+        }
+
+        public LSL_Key llGetObjectLinkKey(LSL_Key objectid, int linknum)
+        {
+            return m_LSL_Functions.llGetObjectLinkKey(objectid, linknum); ;
         }
 
         public LSL_String llGetLinkName(int linknum)
@@ -1151,6 +1161,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_String llSHA1String(string src)
         {
             return m_LSL_Functions.llSHA1String(src);
+        }
+
+        public LSL_String llSHA256String(LSL_String src)
+        {
+            return m_LSL_Functions.llSHA256String(src);
         }
 
         public void llMessageLinked(int linknum, int num, string str, string id)
@@ -2196,6 +2211,36 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public LSL_Integer llHash(LSL_String s)
         {
             return m_LSL_Functions.llHash(s);
+        }
+
+        public LSL_String llReplaceSubString(LSL_String src, LSL_String pattern, LSL_String replacement, int count)
+        {
+            return m_LSL_Functions.llReplaceSubString(src, pattern, replacement, count);
+        }
+
+        public void llLinkAdjustSoundVolume(LSL_Integer linknumber, LSL_Float volume)
+        {
+            m_LSL_Functions.llLinkAdjustSoundVolume(linknumber, volume);
+        }
+
+        public void llLinkStopSound(LSL_Integer linknumber)
+        {
+            m_LSL_Functions.llLinkStopSound(linknumber);
+        }
+
+        public void llLinkPlaySound(LSL_Integer linknumber, string sound, double volume)
+        {
+            m_LSL_Functions.llLinkPlaySound(linknumber, sound, volume);
+        }
+
+        public void llLinkSetSoundQueueing(int linknumber, int queue)
+        {
+            m_LSL_Functions.llLinkSetSoundQueueing(linknumber, queue);
+        }
+
+        public void llLinkSetSoundRadius(int linknumber, double radius)
+        {
+            m_LSL_Functions.llLinkSetSoundRadius(linknumber, radius);
         }
     }
 }

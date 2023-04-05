@@ -1409,10 +1409,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             {
                 return "";
             }
-            drawList += "FillPolygon " + x.GetLSLStringItem(0) + "," + y.GetLSLStringItem(0);
+            drawList += "FillPolygon " + x.GetStringItem(0) + "," + y.GetStringItem(0);
             for (int i = 1; i < x.Length; i++)
             {
-                drawList += "," + x.GetLSLStringItem(i) + "," + y.GetLSLStringItem(i);
+                drawList += "," + x.GetStringItem(i) + "," + y.GetStringItem(i);
             }
             drawList += "; ";
             return drawList;
@@ -1426,10 +1426,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             {
                 return "";
             }
-            drawList += "Polygon " + x.GetLSLStringItem(0) + "," + y.GetLSLStringItem(0);
+            drawList += "Polygon " + x.GetStringItem(0) + "," + y.GetStringItem(0);
             for (int i = 1; i < x.Length; i++)
             {
-                drawList += "," + x.GetLSLStringItem(i) + "," + y.GetLSLStringItem(i);
+                drawList += "," + x.GetStringItem(i) + "," + y.GetStringItem(i);
             }
             drawList += "; ";
             return drawList;
@@ -1836,7 +1836,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             for (int idx = 0; idx < rules.Length;)
             {
                 int code = rules.GetLSLIntegerItem(idx++);
-                string arg = rules.GetLSLStringItem(idx++);
+                string arg = rules.GetStringItem(idx++);
                 switch (code)
                 {
                     case ScriptBaseClass.PARCEL_DETAILS_NAME:
@@ -2202,7 +2202,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             if(sceneOG.IsAttachment)
                 return;
 
-            if (sceneOG.OwnerID != m_host.OwnerID)
+            if (sceneOG.OwnerID.NotEqual(m_host.OwnerID))
                 return;
 
             // harakiri check
@@ -2240,7 +2240,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             StringBuilder notecardData = new StringBuilder();
 
             for (int i = 0; i < contents.Length; i++)
-                notecardData.Append((string)(contents.GetLSLStringItem(i) + "\n"));
+                notecardData.Append(contents.GetStringItem(i) + "\n");
 
             SaveNotecard(notecardName, "Script generated notecard", notecardData.ToString(), false);
         }
@@ -4247,38 +4247,37 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         public void ForceAttachToAvatarFromInventory(UUID avatarId, string itemName, int attachmentPoint)
         {
             IAttachmentsModule attachmentsModule = m_ScriptEngine.World.AttachmentsModule;
-
-            if (attachmentsModule == null)
+            if (attachmentsModule is null)
                 return;
 
             InitLSL();
 
             TaskInventoryItem item = m_host.Inventory.GetInventoryItem(itemName);
-
-            if (item == null)
+            if (item is null)
             {
-                m_LSL_Api.llSay(0, string.Format("Could not find object '{0}'", itemName));
+                m_LSL_Api?.llSay(0, string.Format("Could not find object '{0}'", itemName));
                 throw new Exception(String.Format("The inventory item '{0}' could not be found", itemName));
             }
 
             if (item.InvType != (int)InventoryType.Object)
             {
-                // FIXME: Temporary null check for regression tests since they dont' have the infrastructure to set
-                // up the api reference.
-                if (m_LSL_Api != null)
-                   m_LSL_Api.llSay(0, string.Format("Unable to attach, item '{0}' is not an object.", itemName));
-
+                m_LSL_Api?.llSay(0, string.Format("Unable to attach, item '{0}' is not an object.", itemName));
                 throw new Exception(String.Format("The inventory item '{0}' is not an object", itemName));
             }
 
-            ScenePresence sp = World.GetScenePresence(avatarId);
+            if ((item.Flags & (uint)InventoryItemFlags.ObjectHasMultipleItems) != 0)
+            {
+                m_LSL_Api?.llSay(0, string.Format("Unable to attach coalesced object, item '{0}' ", itemName));
+                throw new Exception(String.Format("The inventory item '{0}' is a coalesced object", itemName));
+            }
 
-            if (sp == null)
+            ScenePresence sp = World.GetScenePresence(avatarId);
+            if (sp is null)
                 return;
 
             InventoryItemBase newItem = World.MoveTaskInventoryItem(sp.UUID, UUID.Zero, m_host, item.ItemID, out string message);
 
-            if (newItem == null)
+            if (newItem is null)
             {
                 m_log.ErrorFormat(
                     "Could not create user inventory item {0} for {1}, attach point {2} in {3}: {4}",
