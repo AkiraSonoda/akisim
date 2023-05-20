@@ -1659,12 +1659,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
         private UUID GetRequestingAgentID(IClientAPI client)
         {
-            UUID requestingAgentID = UUID.Zero;
-            if (client != null)
-            {
-                requestingAgentID = client.AgentId;
-            }
-            return requestingAgentID;
+            return client is null ? UUID.Zero : client.AgentId;
         }
     }
 

@@ -47,7 +47,7 @@ namespace OpenSim.Server
         private static readonly ILog m_log = LogManager.GetLogger( MethodBase.GetCurrentMethod().DeclaringType);
 
         protected static HttpServerBase m_Server = null;
-        protected static List<IServiceConnector> m_ServiceConnectors = new List<IServiceConnector>();
+        protected static List<IServiceConnector> m_ServiceConnectors = new();
 
         protected static PluginLoader loader;
         private static bool m_NoVerifyCertChain = false;
@@ -82,7 +82,7 @@ namespace OpenSim.Server
                 using(StreamReader readFile = File.OpenText(fileName))
                 {
                     string currentLine;
-                    while ((currentLine = readFile.ReadLine()) != null)
+                    while ((currentLine = readFile.ReadLine()) is not null)
                     {
                         m_log.InfoFormat("[!]" + currentLine);
                     }
@@ -102,6 +102,8 @@ namespace OpenSim.Server
             ServicePointManager.UseNagleAlgorithm = false;
             ServicePointManager.ServerCertificateValidationCallback = ValidateServerCertificate;
 
+            WebUtil.SetupHTTPClients(m_NoVerifyCertChain, m_NoVerifyCertHostname, null, 32);
+            
             m_Server = new HttpServerBase("R.O.B.U.S.T.", args);
 
             string registryLocation;
@@ -127,7 +129,7 @@ namespace OpenSim.Server
             IConfig servicesConfig = m_Server.Config.Configs["ServiceList"];
             if (servicesConfig != null)
             {
-                List<string> servicesList = new List<string>();
+                List<string> servicesList = new();
                 if (!string.IsNullOrEmpty(connList))
                     servicesList.Add(connList);
 
@@ -140,6 +142,29 @@ namespace OpenSim.Server
 
                 connList = string.Join(",", servicesList.ToArray());
             }
+
+            // temporay set the platform dependent System.Drawing.Common.dll
+            string targetdll = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                        "System.Drawing.Common.dll");
+            string src = targetdll + (Util.IsWindows() ? ".win" : ".linux");
+            try
+            {
+                if (!File.Exists(targetdll))
+                    File.Copy(src, targetdll);
+                else
+                {
+                    FileInfo targetInfo = new(targetdll);
+                    FileInfo srcInfo = new(src);
+                    if (targetInfo.Length != srcInfo.Length)
+                        File.Copy(src, targetdll, true);
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.Error("Failed to copy System.Drawing.Common.dll for current platform" + e.Message);
+                throw;
+            }
+
 
             string[] conns = connList.Split(new char[] {',', ' ', '\n', '\r', '\t'});
 
@@ -213,8 +238,7 @@ namespace OpenSim.Server
 
             int res = m_Server.Run();
 
-            if(m_Server != null)
-                m_Server.Shutdown();
+            m_Server?.Shutdown();
 
             Util.StopThreadPool();
 

@@ -77,24 +77,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// Controls whether information is logged about each outbound packet immediately before it is sent.  For debug purposes.
         /// </summary>
         /// <remarks>Any level above 0 will turn on logging.</remarks>
-        public int ThrottleDebugLevel
-        {
-            get
-            {
-                return m_throttleDebugLevel;
-            }
-
-            set
-            {
-                m_throttleDebugLevel = value;
-/*
-                m_throttleClient.DebugLevel = m_throttleDebugLevel;
-                foreach (TokenBucket tb in m_throttleCategories)
-                    tb.DebugLevel = m_throttleDebugLevel;
- */
-            }
-        }
-        private int m_throttleDebugLevel;
+        public int ThrottleDebugLevel { get; set; }
 
         /// <summary>Fired when updated networking stats are produced for this client</summary>
         public event PacketStats OnPacketStats;
@@ -111,13 +94,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <summary>Circuit code that this client is connected on</summary>
         public readonly uint CircuitCode;
         /// <summary>Sequence numbers of packets we've received (for duplicate checking)</summary>
-        public IncomingPacketHistoryCollection PacketArchive = new IncomingPacketHistoryCollection(1024);
+        public IncomingPacketHistoryCollection PacketArchive = new(1024);
 
         /// <summary>Packets we have sent that need to be ACKed by the client</summary>
-        public UnackedPacketCollection NeedAcks = new UnackedPacketCollection();
+        public UnackedPacketCollection NeedAcks = new();
 
         /// <summary>ACKs that are queued up, waiting to be sent to the client</summary>
-        public DoubleLocklessQueue<uint> PendingAcks = new DoubleLocklessQueue<uint>();
+        public DoubleLocklessQueue<uint> PendingAcks = new();
 
         public int AckStalls;
 
@@ -163,7 +146,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         private double m_nextOnQueueEmpty = 0;
 
         /// <summary>Throttle bucket for this agent's connection</summary>
-        private AdaptiveTokenBucket m_throttleClient;
+        private readonly AdaptiveTokenBucket m_throttleClient;
         public AdaptiveTokenBucket FlowThrottle
         {
             get { return m_throttleClient; }
@@ -172,22 +155,22 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <summary>Throttle buckets for each packet category</summary>
         private readonly TokenBucket[] m_throttleCategories;
         /// <summary>Outgoing queues for throttled packets</summary>
-        private DoubleLocklessQueue<OutgoingPacket>[] m_packetOutboxes = new DoubleLocklessQueue<OutgoingPacket>[THROTTLE_CATEGORY_COUNT];
+        private readonly DoubleLocklessQueue<OutgoingPacket>[] m_packetOutboxes = new DoubleLocklessQueue<OutgoingPacket>[THROTTLE_CATEGORY_COUNT];
         /// <summary>A container that can hold one packet for each outbox, used to store
         /// dequeued packets that are being held for throttling</summary>
-        private OutgoingPacket[] m_nextPackets = new OutgoingPacket[THROTTLE_CATEGORY_COUNT];
+        private readonly OutgoingPacket[] m_nextPackets = new OutgoingPacket[THROTTLE_CATEGORY_COUNT];
         /// <summary>A reference to the LLUDPServer that is managing this client</summary>
         private readonly LLUDPServer m_udpServer;
 
         /// <summary>Caches packed throttle information</summary>
         private byte[] m_packedThrottles;
 
-        private int m_defaultRTO = 1000; // 1sec is the recommendation in the RFC
-        private int m_maxRTO = 3000;
-        private int m_minRTO = 250;
+        private readonly int m_defaultRTO = 1000; // 1sec is the recommendation in the RFC
+        private readonly int m_maxRTO = 3000;
+        private readonly int m_minRTO = 250;
 
-        private float m_burstTime;
-        private int m_maxRate;
+        private readonly float m_burstTime;
+        private readonly int m_maxRate;
 
         public double m_lastStartpingTimeMS;
         public int m_pingMS;
@@ -204,7 +187,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             }
         }
 
-        private ClientInfo m_info = new ClientInfo();
+        private readonly ClientInfo m_info = new();
 
         /// <summary>
         /// Default constructor
@@ -571,7 +554,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <returns>True if any packets were sent, otherwise false</returns>
         public bool DequeueOutgoing()
         {
-//            if (m_deliverPackets == false) return false;
+            //if (m_deliverPackets == false) return false;
 
             OutgoingPacket packet;
             DoubleLocklessQueue<OutgoingPacket> queue;
@@ -582,9 +565,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             // do resends
 
             packet = m_nextPackets[0];
-            if (packet != null)
+            if (packet is not null)
             {
-                if (packet.Buffer != null)
+                if (packet.Buffer is not null)
                 {
                     if (m_throttleCategories[0].RemoveTokens(packet.Buffer.DataLength))
                     {
@@ -600,13 +583,13 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             else
             {
                 queue = m_packetOutboxes[0];
-                if (queue != null)
+                if (queue is not null)
                 {
                     if(queue.Dequeue(out packet))
                     {
                         // A packet was pulled off the queue. See if we have
                         // enough tokens in the bucket to send it out
-                        if (packet.Buffer != null)
+                        if (packet.Buffer is not null)
                         {
                             if (m_throttleCategories[0].RemoveTokens(packet.Buffer.DataLength))
                             {
@@ -639,9 +622,9 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 //queueDebugOutput += m_packetOutboxes[i].Count + " ";  // Serious debug business
 
                 packet = m_nextPackets[i];
-                if (packet != null)
+                if (packet is not null)
                 {
-                    if(packet.Buffer == null)
+                    if(packet.Buffer is null)
                     {
                         if (m_packetOutboxes[i].Count < 5)
                             emptyCategories |= CategoryToFlag(i);
@@ -667,7 +650,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                     queue = m_packetOutboxes[i];
                     if(queue.Dequeue(out packet))
                     {
-                        if (packet.Buffer == null)
+                        if (packet.Buffer is null)
                         {
                             // packet canceled elsewhere (by a ack for example)
                             if (queue.Count < 5)
@@ -731,7 +714,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         /// <param name="categories">Throttle categories to fire the callback for</param>
         private void BeginFireQueueEmpty(ThrottleOutPacketTypeFlags categories)
         {
-            if (!QueueEmptyRunning && HasUpdates(categories) && OnQueueEmpty != null)
+            if (!QueueEmptyRunning && HasUpdates(categories) && OnQueueEmpty is not null)
             {
                 double start = Util.GetTimeStampMS();
                 if (start < m_nextOnQueueEmpty)
@@ -778,7 +761,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         public void FireQueueEmpty(object o)
         {
             QueueEmpty callback = OnQueueEmpty;
-            if (callback != null)
+            if (callback is not null)
             {
                 ThrottleOutPacketTypeFlags categories = (ThrottleOutPacketTypeFlags)o;
                 try { callback(categories); }
@@ -832,7 +815,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
 
     public class DoubleLocklessQueue<T> : OpenSim.Framework.LocklessQueue<T>
     {
-        OpenSim.Framework.LocklessQueue<T> highQueue = new OpenSim.Framework.LocklessQueue<T>();
+        readonly OpenSim.Framework.LocklessQueue<T> highQueue = new();
 
         public override int Count
         {

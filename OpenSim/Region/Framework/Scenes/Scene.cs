@@ -46,6 +46,7 @@ using Timer = System.Timers.Timer;
 using TPFlags = OpenSim.Framework.Constants.TeleportFlags;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using PermissionMask = OpenSim.Framework.PermissionMask;
+using System.Runtime.CompilerServices;
 // AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
@@ -474,7 +475,7 @@ namespace OpenSim.Region.Framework.Scenes
 
 
         private readonly Timer m_mapGenerationTimer = new();
-        private bool m_generateMaptiles;
+        private readonly bool m_generateMaptiles;
 
         protected int m_lastHealth = -1;
         protected int m_lastUsers = -1;
@@ -863,10 +864,8 @@ namespace OpenSim.Region.Framework.Scenes
             #endregion Region Settings
 
             //Bind Storage Manager functions to some land manager functions for this scene
-            EventManager.OnLandObjectAdded +=
-                new EventManager.LandObjectAdded(simDataService.StoreLandObject);
-            EventManager.OnLandObjectRemoved +=
-                new EventManager.LandObjectRemoved(simDataService.RemoveLandObject);
+            EventManager.OnLandObjectAdded += new EventManager.LandObjectAdded(simDataService.StoreLandObject);
+            EventManager.OnLandObjectRemoved += new EventManager.LandObjectRemoved(simDataService.RemoveLandObject);
 
              RegisterDefaultSceneEvents();
 
@@ -1122,8 +1121,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (restartConfig is not null)
             {
                 string markerPath = restartConfig.GetString("MarkerPath", String.Empty);
-
-                if (markerPath != String.Empty)
+                if (!string.IsNullOrEmpty(markerPath))
                 {
                     string path = Path.Combine(markerPath, RegionInfo.RegionID.ToString() + ".started");
                     try
@@ -1155,8 +1153,7 @@ namespace OpenSim.Region.Framework.Scenes
             //
             // Out of memory
             // Operating system has killed the plugin
-            m_sceneGraph.UnRecoverableError
-                += () =>
+            m_sceneGraph.UnRecoverableError += () =>
             {
                 m_log.ErrorFormat("Restarting region {0} due to unrecoverable physics crash", Name);
                 RestartNow();
@@ -1227,38 +1224,33 @@ namespace OpenSim.Region.Framework.Scenes
 
                 if(SceneGridInfo is not null)
                 {
-                    OSD osdtmp;
-                    string tmp;
-                    if (!fm.TryGetOpenSimExtraFeature("GridName", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("GridName"))
                     {
-                        tmp = SceneGridInfo.GridName;
-                        if (!string.IsNullOrEmpty(tmp))
-                            fm.AddOpenSimExtraFeature("GridName", tmp);
+                        if (!string.IsNullOrEmpty(SceneGridInfo.GridName))
+                            fm.AddOpenSimExtraFeature("GridName", SceneGridInfo.GridName);
                     }
 
-                    if (!fm.TryGetOpenSimExtraFeature("GridNick", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("GridNick"))
                     {
-                        tmp = SceneGridInfo.GridNick;
-                        if (!string.IsNullOrEmpty(tmp))
-                            fm.AddOpenSimExtraFeature("GridNick", tmp);
+                        if (!string.IsNullOrEmpty(SceneGridInfo.GridNick))
+                            fm.AddOpenSimExtraFeature("GridNick", SceneGridInfo.GridNick);
                     }
 
-                    if (!fm.TryGetOpenSimExtraFeature("GridURL", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("GridURL"))
                     {
-                        tmp = SceneGridInfo.GridUrl;
-                        fm.AddOpenSimExtraFeature("GridURL", tmp);
+                        fm.AddOpenSimExtraFeature("GridURL", SceneGridInfo.GridUrl);
                     }
 
-                    if (!fm.TryGetOpenSimExtraFeature("GridURLAlias", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("GridURLAlias"))
                     {
                         string[] alias = SceneGridInfo.GridUrlAlias;
                         if(alias is not null && alias.Length > 0)
                         {
                             StringBuilder sb = osStringBuilderCache.Acquire();
                             int i = 0;
-                            for(; i < alias.Length - 1; ++i)
+                            while(i < alias.Length - 1)
                             {
-                                sb.Append(alias[i]);
+                                sb.Append(alias[i++]);
                                 sb.Append(',');
                             }
                             sb.Append(alias[i]);
@@ -1268,25 +1260,22 @@ namespace OpenSim.Region.Framework.Scenes
                             fm.AddOpenSimExtraFeature("GridURLAlias", string.Empty);
                     }
 
-                    if (!fm.TryGetOpenSimExtraFeature("search-server-url", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("search-server-url"))
                     {
-                        tmp = SceneGridInfo.SearchURL;
-                        if (!string.IsNullOrEmpty(tmp))
-                            fm.AddOpenSimExtraFeature("search-server-url", tmp);
+                        if (!string.IsNullOrEmpty(SceneGridInfo.SearchURL))
+                            fm.AddOpenSimExtraFeature("search-server-url", SceneGridInfo.SearchURL);
                     }
 
-                    if (!fm.TryGetOpenSimExtraFeature("destination-guide-url", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("destination-guide-url"))
                     {
-                        tmp = SceneGridInfo.DestinationGuideURL;
-                        if (!string.IsNullOrEmpty(tmp))
-                            fm.AddOpenSimExtraFeature("destination-guide-url", tmp);
+                        if (!string.IsNullOrEmpty(SceneGridInfo.DestinationGuideURL))
+                            fm.AddOpenSimExtraFeature("destination-guide-url", SceneGridInfo.DestinationGuideURL);
                     }
 
-                    if (!fm.TryGetOpenSimExtraFeature("currency-base-uri", out osdtmp))
+                    if (!fm.OpenSimExtraFeatureContains("currency-base-uri"))
                     {
-                        tmp = SceneGridInfo.EconomyURL;
-                        if (!string.IsNullOrEmpty(tmp))
-                            fm.AddOpenSimExtraFeature("currency-base-uri", tmp);
+                        if (!string.IsNullOrEmpty(SceneGridInfo.EconomyURL))
+                            fm.AddOpenSimExtraFeature("currency-base-uri", SceneGridInfo.EconomyURL);
                     }
                 }
             }
@@ -1294,7 +1283,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         protected virtual void RegisterDefaultSceneEvents()
         {
-//            m_eventManager.OnSignificantClientMovement += HandleOnSignificantClientMovement;
+            //m_eventManager.OnSignificantClientMovement += HandleOnSignificantClientMovement;
         }
 
         public override string GetSimulatorVersion()
@@ -1808,7 +1797,7 @@ namespace OpenSim.Region.Framework.Scenes
                             {
                                 string markerPath = restartConfig.GetString("MarkerPath", String.Empty);
 
-                                if (markerPath != String.Empty)
+                                if (!string.IsNullOrEmpty(markerPath))
                                 {
                                     string path = Path.Combine(markerPath, RegionInfo.RegionID.ToString() + ".ready");
                                     try
@@ -1845,9 +1834,7 @@ namespace OpenSim.Region.Framework.Scenes
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat(
-                        "Failed on region {0} with exception {1}{2}",
-                        RegionInfo.RegionName, e.Message, e.StackTrace);
+                    m_log.Error($"Failed on region {Name}: {e.Message}:{e.StackTrace}");
                 }
 
                 EventManager.TriggerRegionHeartbeatEnd(this);
@@ -2800,8 +2787,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if ((part.AggregatedScriptEvents & scriptEvents.email) != 0)
                 {
                     IEmailModule imm = RequestModuleInterface<IEmailModule>();
-                    if (imm is not null)
-                        imm.RemovePartMailBox(part.UUID);
+                    imm?.RemovePartMailBox(part.UUID);
                 }
                 if (part.PhysActor is not null)
                 {
@@ -3719,10 +3705,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                     if (!isChildAgent)
                     {
-                        if (AttachmentsModule is not null)
-                        {
-                            AttachmentsModule.DeRezAttachments(avatar);
-                        }
+                        AttachmentsModule?.DeRezAttachments(avatar);
 
                         ForEachClient(
                             delegate(IClientAPI client)
@@ -3734,10 +3717,7 @@ namespace OpenSim.Region.Framework.Scenes
                     }
 
                     // It's possible for child agents to have transactions if changes are being made cross-border.
-                    if (AgentTransactionsModule is not null)
-                    {
-                        AgentTransactionsModule.RemoveAgentAssetTransactions(agentID);
-                    }
+                    AgentTransactionsModule?.RemoveAgentAssetTransactions(agentID);
                     m_log.Debug("The avatar has left the building");
                 }
                 catch (Exception e)
@@ -4083,8 +4063,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (vialogin)
                 {
                     IUserAccountCacheModule cache = RequestModuleInterface<IUserAccountCacheModule>();
-                    if (cache is not null)
-                        cache.Remove(acd.AgentID);
+                    cache?.Remove(acd.AgentID);
                 }
 
                 m_authenticateHandler.AddNewCircuit(acd);
@@ -4166,10 +4145,7 @@ namespace OpenSim.Region.Framework.Scenes
                 CacheUserName(null, acd);
             }
 
-            if (m_capsModule is not null)
-            {
-                m_capsModule.ActivateCaps(acd.circuitcode);
-            }
+            m_capsModule?.ActivateCaps(acd.circuitcode);
 
             return true;
         }
@@ -4290,6 +4266,8 @@ namespace OpenSim.Region.Framework.Scenes
         protected virtual bool AuthorizeUser(AgentCircuitData agent, bool bypassAccessControl, out string reason)
         {
             reason = string.Empty;
+            if(agent.AgentID.Equals(Constants.servicesGodAgentID))
+                return false;
 
             if (!m_strictAccessControl)
                 return true;
@@ -4469,7 +4447,7 @@ Label_GroupsDone:
                             sp.Name, sp.UUID, Name);
                     return false;
                 }
-                if (cAgentData.SessionID != sp.ControllingClient.SessionId)
+                if (cAgentData.SessionID.NotEqual(sp.ControllingClient.SessionId))
                 {
                     m_log.WarnFormat(
                         "Attempt to update agent {0} with diferent session id {1} != {2}",
@@ -4658,11 +4636,9 @@ Label_GroupsDone:
                     }
 
                     // need to try this again, bc client close may had not done it
-                    if (m_authenticateHandler is not null)
-                        m_authenticateHandler.RemoveCircuit(agentID);
+                    m_authenticateHandler?.RemoveCircuit(agentID);
                     m_clientManager.Remove(agentID);
-                    if (m_capsModule is not null)
-                        m_capsModule.RemoveCaps(agentID, 0);
+                    m_capsModule?.RemoveCaps(agentID, 0);
 
                     return ret;
                 }
@@ -4839,16 +4815,13 @@ Label_GroupsDone:
         public void HandleObjectPermissionsUpdate(IClientAPI controller, UUID agentID, UUID sessionID, byte field, uint localId, uint mask, byte set)
         {
             // Check for spoofing..  since this is permissions we're talking about here!
-            if ((controller.SessionId == sessionID) && (controller.AgentId == agentID))
+            if (controller.SessionId.Equals(sessionID) && controller.AgentId.Equals(agentID))
             {
                 // Tell the object to do permission update
                 if (localId != 0)
                 {
                     SceneObjectGroup chObjectGroup = GetGroupByPrim(localId);
-                    if (chObjectGroup is not null)
-                    {
-                        chObjectGroup.UpdatePermissions(agentID, field, localId, mask, set);
-                    }
+                    chObjectGroup?.UpdatePermissions(agentID, field, localId, mask, set);
                 }
             }
         }
@@ -4938,10 +4911,16 @@ Label_GroupsDone:
         #endregion
 
         #region Script Engine
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool LSLScriptDanger(SceneObjectPart part, Vector3 pos)
         {
+            ILandObject parcel = LandChannel.GetLandObject(pos);
+            return LSLScriptDanger(part, parcel);
+        }
 
-            ILandObject parcel = LandChannel.GetLandObject(pos.X, pos.Y);
+        public bool LSLScriptDanger(SceneObjectPart part, ILandObject parcel)
+        {
             if (parcel is null)
                 return true;
             
@@ -5393,69 +5372,10 @@ Label_GroupsDone:
 
         // Get terrain height at the specified <x,y> location.
         // Presumes the underlying implementation is a heightmap which is a 1m grid.
-        // Finds heightmap grid points before and after the point and
-        //    does a linear approximation of the height at this intermediate point.
+     
         public float GetGroundHeight(float x, float y)
         {
-            int ix;
-            int iy;
-            float dx;
-            float dy;
-
-            // make position fit into array
-            if (x < 0)
-            {
-                ix = 0;
-                dx = 0;
-            }
-            else if (x < Heightmap.Width - 1)
-            {
-                ix = (int)x;
-                dx = x - ix;
-            }
-            else // out world use external height
-            {
-                ix = Heightmap.Width - 2;
-                dx = 0;
-            }
-            if (y < 0)
-            {
-                iy = 0;
-                dy = 0;
-            }
-            else if (y < Heightmap.Height - 1)
-            {
-                iy = (int)y;
-                dy = y - iy;
-            }
-            else
-            {
-                iy = Heightmap.Height - 2;
-                dy = 0;
-            }
-
-            float h1;
-            float h2;
-            float h0 = Heightmap[ix, iy]; // 0,0 vertice
-
-            if (dy > dx)
-            {
-                ++iy;
-                h2 = Heightmap[ix, iy]; // 0,1 vertice
-                h1 = (h2 - h0) * dy; // 0,1 vertice minus 0,0
-                ++ix;
-                h2 = (Heightmap[ix, iy] - h2) * dx; // 1,1 vertice minus 0,1
-            }
-            else
-            {
-                ++ix;
-                h2 = Heightmap[ix, iy]; // vertice 1,0
-                h1 = (h2 - h0) * dx; // 1,0 vertice minus 0,0
-                ++iy;
-                h2 = (Heightmap[ix, iy] - h2) * dy; // 1,1 vertice minus 1,0
-            }
-         
-            return h0 + h1 + h2;
+           return Heightmap.GetHeight(x, y);
         }
 
         private void CheckHeartbeat()
@@ -5740,8 +5660,7 @@ Label_GroupsDone:
         private void RegenerateMaptile()
         {
             IWorldMapModule mapModule = RequestModuleInterface<IWorldMapModule>();
-            if (mapModule is not null)
-                mapModule.GenerateMaptile();
+            mapModule?.GenerateMaptile();
         }
         
         public void ThreadAlive(int threadCode)

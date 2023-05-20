@@ -144,6 +144,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         LSL_Vector llGetGeometricCenter();
          LSL_Float llGetGMTclock();
         LSL_String llGetHTTPHeader(LSL_Key request_id, string header);
+        LSL_String llGetInventoryAcquireTime(string item);
            LSL_Key llGetInventoryCreator(string item);
            LSL_Key llGetInventoryKey(string name);
         LSL_String llGetInventoryName(int type, int number);
@@ -153,7 +154,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
            LSL_Key llGetKey();
            LSL_Key llGetLandOwnerAt(LSL_Vector pos);
            LSL_Key llGetLinkKey(int linknum);
-           LSL_Key llObjectGetLinkKey(LSL_Key objectid, int linknum);
+           LSL_Key llGetObjectLinkKey(LSL_Key objectid, int linknum);
         LSL_String llGetLinkName(int linknum);
        LSL_Integer llGetLinkNumber();
        LSL_Integer llGetLinkNumberOfSides(int link);
@@ -247,6 +248,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
            LSL_Key llList2Key(LSL_List src, int index);
           LSL_List llList2List(LSL_List src, int start, int end);
           LSL_List llList2ListStrided(LSL_List src, int start, int end, int stride);
+          LSL_List llList2ListSlice(LSL_List src, int start, int end, int stride, int stride_index);
       LSL_Rotation llList2Rot(LSL_List src, int index);
         LSL_String llList2String(LSL_List src, int index);
         LSL_Vector llList2Vector(LSL_List src, int index);
@@ -254,10 +256,12 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
               void llListenControl(int number, int active);
               void llListenRemove(int number);
        LSL_Integer llListFindList(LSL_List src, LSL_List test);
+       LSL_Integer llListFindStrided(LSL_List src, LSL_List test, LSL_Integer lstart, LSL_Integer lend, LSL_Integer lstride);
           LSL_List llListInsertList(LSL_List dest, LSL_List src, int start);
           LSL_List llListRandomize(LSL_List src, int stride);
           LSL_List llListReplaceList(LSL_List dest, LSL_List src, int start, int end);
           LSL_List llListSort(LSL_List src, int stride, int ascending);
+          LSL_List llListSortStrided(LSL_List src, int stride, int stride_index, int ascending);
          LSL_Float llListStatistics(int operation, LSL_List src);
               void llLoadURL(string avatar_id, string message, string url);
          LSL_Float llLog(double val);
@@ -485,5 +489,15 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
          LSL_String llChar(LSL_Integer unicode);
         LSL_Integer llOrd(LSL_String s, LSL_Integer index);
         LSL_Integer llHash(LSL_String s);
+         LSL_String llReplaceSubString(LSL_String src, LSL_String pattern, LSL_String replacement, int count);
+
+               void llLinkAdjustSoundVolume(LSL_Integer linknumber, LSL_Float volume);
+               void llLinkStopSound(LSL_Integer linknumber);
+               void llLinkPlaySound(LSL_Integer linknumber, string sound, double volume);
+               void llLinkSetSoundQueueing(int linknumber, int queue);
+               void llLinkSetSoundRadius(int linknumber, double radius);
+
+         LSL_Vector llLinear2sRGB(LSL_Vector src);
+         LSL_Vector llsRGB2Linear(LSL_Vector src);
     }
 }

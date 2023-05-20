@@ -308,7 +308,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 
             // If this is an object sense by key try to get it directly
             // rather than getting a list to scan through
-            if (!ts.keyID.IsZero())
+            if (ts.keyID.IsNotZero())
             {
                 m_CmdManager.m_ScriptEngine.World.Entities.TryGetValue(ts.keyID, out EntityBase e);
                 if (e == null)
@@ -606,7 +606,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 
             // If this is an avatar sense by key try to get them directly
             // rather than getting a list to scan through
-            if (!ts.keyID.IsZero())
+            if (ts.keyID.IsNotZero())
             {
                 // Try direct lookup by UUID
                 if (!m_CmdManager.m_ScriptEngine.World.TryGetScenePresence(ts.keyID, out ScenePresence sp))

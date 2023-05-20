@@ -243,6 +243,8 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         string osSetFontSize(string drawList, int fontSize);
         string osSetPenSize(string drawList, int penSize);
         string osSetPenColor(string drawList, string color);
+        string osSetPenColor(string drawList, LSL_Types.Vector3 color);
+        string osSetPenColor(string drawList, LSL_Types.Vector3 color, LSL_Float alpha);
         string osSetPenColour(string drawList, string colour); // Deprecated
         string osSetPenCap(string drawList, string direction, string type);
         string osDrawImage(string drawList, int width, int height, string imageUrl);
@@ -598,5 +600,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Interfaces
         LSL_Integer osAvatarType(LSL_Key avkey);
         LSL_Integer osAvatarType(LSL_String sFirstName, LSL_String sLastName);
         void osListSortInPlace(LSL_List src, LSL_Integer stride, LSL_Integer ascending);
+        void osListSortInPlaceStrided(LSL_List src, LSL_Integer stride, LSL_Integer stride_index, LSL_Integer ascending);
+        LSL_List osGetParcelDetails(LSL_Key id, LSL_List param);
+        LSL_List osGetParcelIDs();
+        LSL_Key osGetParcelID();
+        LSL_List osOldList2ListStrided(LSL_List src, int start, int end, int stride);
     }
 }

@@ -667,7 +667,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (m_dupeInProgress || IsDeleted)
                     triggerScriptEvent = false;
                 else
-                    triggerScriptEvent = m_rootPart.GroupPosition != val;
+                    triggerScriptEvent = !m_rootPart.GroupPosition.ApproxEquals(val, 1e-3f);
 
                 m_rootPart.GroupPosition = val;
 
@@ -3028,7 +3028,20 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>null if no child part with that linknum or child part</returns>
         public SceneObjectPart GetLinkNumPart(int linknum)
         {
-            SceneObjectPart[] parts = m_parts.GetArray();
+            if (linknum < 0)
+                return null;
+            if (linknum < 2)
+                return RootPart;
+
+            Span<SceneObjectPart> parts = m_parts.GetArray().AsSpan();
+            SceneObjectPart sop;
+            if (linknum <= parts.Length)
+            {
+                sop = parts[linknum - 1];
+                if (sop.LinkNum == linknum)
+                    return sop;
+            }
+
             for (int i = 0; i < parts.Length; i++)
             {
                 if (parts[i].LinkNum == linknum)
@@ -3383,6 +3396,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (linkPartPa is not null)
             {
                 m_scene.PhysicsScene.RemovePrim(linkPartPa);
+                m_scene.RemovePhysicalPrim(1);
                 linkPart.PhysActor = null;
             }
 
@@ -5120,6 +5134,18 @@ namespace OpenSim.Region.Framework.Scenes
         public int GetSittingAvatarsCount()
         {
             return m_sittingAvatars.Count; // AKIDO
+        }
+
+        public ScenePresence GetLinkSitingAvatar(int linknumber)
+        {
+            lock(m_parts)
+                linknumber -= (m_parts.Count + 1);
+            lock (m_sittingAvatars)
+            {
+                if (linknumber < m_sittingAvatars.Count && linknumber >= 0)
+                    return  m_sittingAvatars[linknumber];
+            }
+            return null;
         }
 
         public override string ToString()
