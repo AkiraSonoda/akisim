@@ -42,6 +42,7 @@ using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using OpenSim.Services.Interfaces;
 using ThreadedClasses;
 // AKIDO: clean
+using System.Net.Http;
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
@@ -591,9 +592,11 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             ArrayList SendParams = new ArrayList();
             SendParams.Add(xmlrpcdata);
             XmlRpcRequest GridReq = new XmlRpcRequest("grid_instant_message", SendParams);
+            HttpClient hclient = null;
             try
             {
-                XmlRpcResponse GridResp = GridReq.Send(reginfo.ServerURI, 3000);
+                hclient = WebUtil.GetNewGlobalHttpClient(10000);
+                XmlRpcResponse GridResp = GridReq.Send(reginfo.ServerURI, hclient);
                 Hashtable responseData = (Hashtable)GridResp.Value;
                 if (responseData.ContainsKey("success"))
                 {
@@ -611,9 +614,13 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     return false;
                 }
             }
-            catch (WebException e)
+            catch (Exception e)
             {
                 m_log.ErrorFormat("Error sending message to {0} : {1}",  reginfo.ServerURI.ToString(), e.Message);
+            }
+            finally
+            {
+                hclient?.Dispose();
             }
 
             return false;

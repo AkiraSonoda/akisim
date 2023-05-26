@@ -724,30 +724,44 @@ namespace OpenSim.Region.CoreModules.World.Land
             if (m_estateSettings.TaxFree) // region access control only
                 return false;
 
-            if (IsBannedFromLand(avatar))
-            {
+            if (m_scenePermissions.IsAdministrator(avatar))
+                return false;
+
+            if (m_estateSettings.IsEstateManagerOrOwner(avatar))
+                return false;
+
+            if (avatar.Equals(LandData.OwnerID))
+                return false;
+
+            if (IsBannedFromLand_inner(avatar))
                 return true;
-            }
-            else if (IsRestrictedFromLand(avatar))
-            {
+
+            if (IsRestrictedFromLand_inner(avatar))
                 return true;
-            }
+
             return false;
         }
 
         public bool CanBeOnThisLand(UUID avatar, float posHeight)
         {
-            if (m_estateSettings.TaxFree) // region access control only
+            if (m_estateSettings.TaxFree) // estate access only
+                return false;
+
+            if (m_scenePermissions.IsAdministrator(avatar))
                 return true;
 
-            if (posHeight < m_scene.LandChannel.BanLineSafeHeight && IsBannedFromLand(avatar))
-            {
+            if (m_estateSettings.IsEstateManagerOrOwner(avatar))
+                return true;
+
+            if (avatar.Equals(LandData.OwnerID))
+                return true;
+
+            if (posHeight < m_scene.LandChannel.BanLineSafeHeight && IsBannedFromLand_inner(avatar))
                 return false;
-            }
-            else if (IsRestrictedFromLand(avatar))
-            {
+
+            else if (IsRestrictedFromLand_inner(avatar))
                 return false;
-            }
+
             return true;
         }
 
@@ -806,6 +820,11 @@ namespace OpenSim.Region.CoreModules.World.Land
             if (avatar.Equals(LandData.OwnerID))
                 return false;
 
+            return IsBannedFromLand_inner(avatar);
+        }
+
+        private bool IsBannedFromLand_inner(UUID avatar)
+        {
             if ((LandData.Flags & (uint) ParcelFlags.UseBanList) > 0)
             {
                 int now = Util.UnixTimeSinceEpoch();
@@ -823,6 +842,20 @@ namespace OpenSim.Region.CoreModules.World.Land
             if (m_estateSettings.TaxFree) // estate access only
                 return false;
 
+            if (m_scenePermissions.IsAdministrator(avatar))
+                return false;
+
+            if (m_estateSettings.IsEstateManagerOrOwner(avatar))
+                return false;
+
+            if (avatar.Equals(LandData.OwnerID))
+                return false;
+
+            return IsRestrictedFromLand_inner(avatar);
+        }
+
+        private bool IsRestrictedFromLand_inner(UUID avatar)
+        {
             if ((LandData.Flags & (uint) ParcelFlags.UseAccessList) == 0)
             {
                 bool adults = m_estateSettings.DoDenyMinors &&
@@ -848,15 +881,6 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 return false;
             }
-
-            if (m_scenePermissions.IsAdministrator(avatar))
-                return false;
-
-            if (m_estateSettings.IsEstateManagerOrOwner(avatar))
-                return false;
-
-            if (avatar.Equals(LandData.OwnerID))
-                return false;
 
             if (HasGroupAccess(avatar))
                 return false;

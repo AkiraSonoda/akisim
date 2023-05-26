@@ -842,7 +842,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     {
                         userdata.ServerURLs = uConn.GetServerURLs(userID);
                     }
-                    catch(System.Net.WebException e)
+                    catch (System.Net.Http.HttpRequestException e)
                     {
                         m_log.WarnFormat("GetServerURLs call failed {0}", e.Message);
                         WebUtil.GlobalExpiringBadURLs.Add(homeuri, BADURLEXPIRE * 1000);
@@ -911,7 +911,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     {
                         userdata.ServerURLs = uConn.GetServerURLs(userID);
                     }
-                    catch (System.Net.WebException e)
+                    catch (System.Net.Http.HttpRequestException e)
                     {
                         if(m_log.IsDebugEnabled) m_log.DebugFormat("GetServerURLs call failed {0}", e.Message);
                         userdata.ServerURLs = new Dictionary<string, object>();

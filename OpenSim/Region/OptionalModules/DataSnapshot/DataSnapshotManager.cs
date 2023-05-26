@@ -44,6 +44,7 @@ using OpenSim.Region.DataSnapshot.Interfaces;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 // AKIDO: clean
+using System.Net.Http;
 
 namespace OpenSim.Region.DataSnapshot
 {
@@ -423,7 +424,7 @@ namespace OpenSim.Region.DataSnapshot
                             reply.Read(response, 0, 1024);
                         }
                     }
-                    catch (WebException)
+                    catch (HttpRequestException)
                     {
                         m_log.Warn("Unable to notify " + url);
                     }
