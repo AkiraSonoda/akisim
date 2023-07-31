@@ -3549,20 +3549,19 @@ namespace OpenSim.Region.Framework.Scenes
                         newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                     }
 
-
+                    newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
                
                     // AKIDO
                     // SitTarget Compatibility Workaround 
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("WrongSitTargetEnabled: {0}", m_scene.m_useWrongSitTarget);
                     if (m_scene.m_useWrongSitTarget) {
-                        if (part.CreationDate > 1320537600) { // 06/11/2011 0:0:0
-                            newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
-                        } else {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Part CerationDate: {0} < 1320537600 ?", part.CreationDate);
+                        if (part.CreationDate < 1320537600) { // 06/11/2011 0:0:0
                             newPos = sitTargetPos + OLD_SIT_TARGET_ADJUSTMENT;
-                        }
-                    } else {
-                        newPos = sitTargetPos + SIT_TARGET_ADJUSTMENT - sitOffset;
+                        } 
                     }
-                    newPos = sitTargetPos + sitOffset + SIT_TARGET_ADJUSTMENT;
+                    
+                    
                     if (part.IsRoot)
                     {
                         newRot = sitTargetOrient;

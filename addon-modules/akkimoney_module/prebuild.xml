@@ -16,25 +16,25 @@
       <Reference name="System.Xml"/>
       <Reference name="System.Drawing"/>
       <Reference name="System.Runtime.Remoting"/>
-      <Reference name="Mono.Security.dll"/>
-      <Reference name="Nini.dll" path="../../../bin/"/>
-      <Reference name="log4net.dll" path="../../../bin/"/>
-      <Reference name="XMLRPC.dll" path="../../../bin/"/>
-      <Reference name="Mono.Addins.dll" path="../../../bin/"/>
-      <Reference name="OpenMetaverseTypes.dll" path="../../../bin/"/>
-      <Reference name="OpenMetaverse.dll" path="../../../bin/"/>
-      <Reference name="HttpServer.dll" path="../../../bin/"/>
-      <Reference name="OpenSim.Region.Framework" path="../../../bin/"/>
-      <Reference name="OpenSim.Framework" path="../../../bin/"/>
-      <Reference name="OpenSim.Framework.Console" path="../../../bin/"/>
-      <Reference name="OpenSim.Framework.Servers" path="../../../bin/"/>
-      <Reference name="OpenSim.Framework.Servers.HttpServer" path="../../../bin/"/>
-      <Reference name="OpenSim.Services.Interfaces" path="../../../bin/"/>
-      <Reference name="OpenSim.Server.Base" path="../../../bin/"/>
-      <Reference name="OpenSim.Data" path="../../../bin/"/>
-      <Reference name="RestSharp.dll" path="../../../bin/"/>
+      <Reference name="Nini.dll"/>
+      <Reference name="log4net.dll"/>
+      <Reference name="XMLRPC.dll"/>
+      <Reference name="Mono.Addins.dll"/>
+      <Reference name="OpenMetaverseTypes.dll"/>
+      <Reference name="OpenMetaverse.dll"/>
+      <Reference name="OpenSim.Region.Framework"/>
+      <Reference name="OpenSim.Framework"/>
+      <Reference name="OpenSim.Framework.Console"/>
+      <Reference name="OpenSim.Framework.Servers"/>
+      <Reference name="OpenSim.Framework.Servers.HttpServer"/>
+      <Reference name="OpenSim.Services.Interfaces"/>
+      <Reference name="OpenSim.Server.Base"/>
+      <Reference name="OpenSim.Data"/>
+      <Reference name="RestSharp.dll"/>
 
       <Files>
-        <Match pattern="*.cs" recurse="true"/>
+        <Match pattern="*.cs" recurse="true">
+         <Exclude name="obj" pattern="obj"/>
+        </Match>
       </Files>
 </Project>

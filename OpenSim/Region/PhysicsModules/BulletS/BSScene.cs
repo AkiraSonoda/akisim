@@ -722,6 +722,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                 {
                     for (int ii = 0; ii < collidersCount; ii++) // AKIDO
                     {
+                        if(collidersCount > m_collisionArray.Length)
+                            collidersCount = m_collisionArray.Length;
                         uint cA = m_collisionArray[ii].aID;
                         uint cB = m_collisionArray[ii].bID;
                         Vector3 point = m_collisionArray[ii].point;
