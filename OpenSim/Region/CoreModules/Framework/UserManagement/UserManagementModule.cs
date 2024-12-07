@@ -124,7 +124,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         {
             if (m_Enabled)
             {
-                m_Scenes.Add(scene);
+                // AKIDO remove lock
+
+                    m_Scenes.Add(scene);
+                // AKIDO end remove lock
                 if(m_thisGridInfo == null)
                     m_thisGridInfo = scene.SceneGridInfo;
                 scene.RegisterModuleInterface<IUserManagement>(this);
@@ -139,7 +142,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             if (m_Enabled)
             {
                 scene.UnregisterModuleInterface<IUserManagement>(this);
-                m_Scenes.Remove(scene);
+                // AKIDO remove lock
+
+                    m_Scenes.Remove(scene);
+                // AKIDO end remove lock
             }
         }
 
@@ -164,7 +170,10 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         public virtual void Close()
         {
             m_Enabled = false;
-            m_Scenes.Clear();
+            // AKIDO remove lock
+
+                m_Scenes.Clear();
+            // AKIDO end remove lock
             m_thisGridInfo = null;
             Dispose(false);
         }
@@ -273,7 +282,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         public virtual List<UserData> GetUserData(string query, int page_size, int page_number)
         {
              if(m_Scenes.Count <= 0 || m_userAccountService == null)
-                return new List<UserData>();;
+                return new List<UserData>();
 
             var users = new List<UserData>();
             var found = new HashSet<UUID>();
@@ -432,7 +441,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 {
                     if (userdata.HasGridUserTried)
                     {
-                        ret[uuid] = userdata.FirstName + " " + userdata.LastName; ;
+                        ret[uuid] = userdata.FirstName + " " + userdata.LastName;
                         continue;
                     }
                     untried[uuid] = userdata;
@@ -842,7 +851,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     {
                         userdata.ServerURLs = uConn.GetServerURLs(userID);
                     }
-                    catch(System.Net.WebException e)
+                    catch (System.Net.Http.HttpRequestException e)
                     {
                         m_log.WarnFormat("GetServerURLs call failed {0}", e.Message);
                         WebUtil.GlobalExpiringBadURLs.Add(homeuri, BADURLEXPIRE * 1000);
@@ -911,7 +920,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     {
                         userdata.ServerURLs = uConn.GetServerURLs(userID);
                     }
-                    catch (System.Net.WebException e)
+                    catch (System.Net.Http.HttpRequestException e)
                     {
                         if(m_log.IsDebugEnabled) m_log.DebugFormat("GetServerURLs call failed {0}", e.Message);
                         userdata.ServerURLs = new Dictionary<string, object>();

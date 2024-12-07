@@ -27,6 +27,7 @@
 using System;
 using System.Collections;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using log4net;
 using Mono.Addins;
@@ -94,11 +95,12 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!m_Enabled)
                 return;
 
-            // AKIDO
-            m_log.Debug("Message transfer module active");
-            scene.RegisterModuleInterface<IMessageTransferModule>(this);
-            m_Scenes.Add(scene);
-            // AKIDO
+            // AKIDO remove lock
+
+                m_log.Debug("Message transfer module active");
+                scene.RegisterModuleInterface<IMessageTransferModule>(this);
+                m_Scenes.Add(scene);
+            // AKIDO end remove lock
         }
 
         public virtual void PostInitialise()
@@ -118,9 +120,10 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             if (!m_Enabled)
                 return;
 
-            // AKIDO
-            m_Scenes.Remove(scene);
-            
+            // AKIDO remove lock
+
+                m_Scenes.Remove(scene);
+            // AKIDO end remove lock
         }
 
         public virtual void Close()
@@ -480,24 +483,25 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             PresenceInfo upd = null;
             bool lookupAgent = false;
 
-            // AKIDO
-            if (m_UserRegionMap.TryGetValue(toAgentID, out UUID _regionID))
+            lock (m_UserRegionMap) // TODO check if a removal is possible
             {
-                upd = new PresenceInfo();
-                upd.RegionID = _regionID;
+                if (m_UserRegionMap.ContainsKey(toAgentID))
+                {
+                    upd = new PresenceInfo();
+                    upd.RegionID = m_UserRegionMap[toAgentID];
 
-                // We need to compare the current regionhandle with the previous region handle
-                // or the recursive loop will never end because it will never try to lookup the agent again
-                if (prevRegionID == upd.RegionID)
+                    // We need to compare the current regionhandle with the previous region handle
+                    // or the recursive loop will never end because it will never try to lookup the agent again
+                    if (prevRegionID == upd.RegionID)
+                    {
+                        lookupAgent = true;
+                    }
+                }
+                else
                 {
                     lookupAgent = true;
                 }
             }
-            else
-            {
-                lookupAgent = true;
-            }
-            // AKIDO
 
             // Are we needing to look-up an agent?
             if (lookupAgent)
@@ -551,9 +555,17 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     if (imresult)
                     {
                         // IM delivery successful, so store the Agent's location in our local cache.
-                        // AKIDO
-                        m_UserRegionMap[toAgentID] = upd.RegionID;
-                        // AKIDO
+                        lock (m_UserRegionMap) // TODO chek if removal is possible
+                        {
+                            if (m_UserRegionMap.ContainsKey(toAgentID))
+                            {
+                                m_UserRegionMap[toAgentID] = upd.RegionID;
+                            }
+                            else
+                            {
+                                m_UserRegionMap.Add(toAgentID, upd.RegionID);
+                            }
+                        }
                         result(true);
                     }
                     else
@@ -591,9 +603,11 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             ArrayList SendParams = new ArrayList();
             SendParams.Add(xmlrpcdata);
             XmlRpcRequest GridReq = new XmlRpcRequest("grid_instant_message", SendParams);
+            HttpClient hclient = null;
             try
             {
-                XmlRpcResponse GridResp = GridReq.Send(reginfo.ServerURI, 3000);
+                hclient = WebUtil.GetNewGlobalHttpClient(10000);
+                XmlRpcResponse GridResp = GridReq.Send(reginfo.ServerURI, hclient);
                 Hashtable responseData = (Hashtable)GridResp.Value;
                 if (responseData.ContainsKey("success"))
                 {
@@ -611,14 +625,42 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     return false;
                 }
             }
-            catch (WebException e)
+            catch (Exception e)
             {
                 m_log.ErrorFormat("Error sending message to {0} : {1}",  reginfo.ServerURI.ToString(), e.Message);
+            }
+            finally
+            {
+                hclient?.Dispose();
             }
 
             return false;
         }
         
+        /// <summary>
+        /// Get ulong region handle for region by it's Region UUID.
+        /// We use region handles over grid comms because there's all sorts of free and cool caching.
+        /// </summary>
+        /// <param name="regionID">UUID of region to get the region handle for</param>
+        /// <returns></returns>
+//        private virtual ulong getLocalRegionHandleFromUUID(UUID regionID)
+//        {
+//            ulong returnhandle = 0;
+//
+//            lock (m_Scenes)
+//            {
+//                foreach (Scene sn in m_Scenes)
+//                {
+//                    if (sn.RegionInfo.RegionID == regionID)
+//                    {
+//                        returnhandle = sn.RegionInfo.RegionHandle;
+//                        break;
+//                    }
+//                }
+//            }
+//            return returnhandle;
+//        }
+
         /// <summary>
         /// Takes a GridInstantMessage and converts it into a Hashtable for XMLRPC
         /// </summary>

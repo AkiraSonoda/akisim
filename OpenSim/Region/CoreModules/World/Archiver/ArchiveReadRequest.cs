@@ -29,6 +29,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Xml;
@@ -38,11 +39,13 @@ using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Serialization;
 using OpenSim.Framework.Serialization.External;
+using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Land;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Services.Interfaces;
+using System.Threading;
 using ThreadedClasses;
 
 // AKIDO: clean
@@ -131,12 +134,12 @@ namespace OpenSim.Region.CoreModules.World.Archiver
        /// <value>
         /// original oar region size. not using Constants.RegionSize
         /// </value>
-        protected Vector3 m_incomingRegionSize = new Vector3(256f, 256f, float.MaxValue);
+        protected Vector3 m_incomingRegionSize = new(256f, 256f, float.MaxValue);
 
         /// <value>
         /// Center around which to apply the rotation relative to the original oar position
         /// </value>
-        protected Vector3 m_rotationCenter = new Vector3(128f, 128f, 0f);
+        protected Vector3 m_rotationCenter = new(128f, 128f, 0f);
 
         /// <value>
         /// Corner 1 of a bounding cuboid which specifies which objects we load from the oar
@@ -146,7 +149,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <value>
         /// Size of a bounding cuboid which specifies which objects we load from the oar
         /// </value>
-        protected Vector3 m_boundingSize = new Vector3(Constants.MaximumRegionSize, Constants.MaximumRegionSize, float.MaxValue);
+        protected Vector3 m_boundingSize = new(Constants.MaximumRegionSize, Constants.MaximumRegionSize, float.MaxValue);
 
         protected bool m_noObjects = false;
         protected bool m_boundingBox = false;
@@ -162,10 +165,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         {
             get
             {
-                if (m_UserMan == null)
-                {
-                    m_UserMan = m_rootScene.RequestModuleInterface<IUserManagement>();
-                }
+                m_UserMan ??= m_rootScene.RequestModuleInterface<IUserManagement>();
                 return m_UserMan;
             }
         }
@@ -175,9 +175,9 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// </summary>
         private RwLockedDictionary<UUID, bool> m_validGroupUuids = new RwLockedDictionary<UUID, bool>();
 
-        private IGroupsModule m_groupsModule;
+        private readonly IGroupsModule m_groupsModule;
 
-        private IAssetService m_assetService = null;
+        private readonly IAssetService m_assetService = null;
 
         private UUID m_defaultUser;
 
@@ -294,10 +294,10 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         private void loadNeededAssets(assetfileInfo[] assetsFiles, int count, ref int successfulAssetRestores,
             ref int failedAssetRestores, ref int skipedAssetRestores)
         {
-            List<string> ids = new List<string>(count);
-            List<UUID> uuids = new List<UUID>(count);
-            List<sbyte> types = new List<sbyte>(count);
-            List<byte[]> datas = new List<byte[]>(count);
+            List<string> ids = new(count);
+            List<UUID> uuids = new(count);
+            List<sbyte> types = new(count);
+            List<byte[]> datas = new(count);
 
             for (int i = 0; i < count; ++i)
             {
@@ -307,7 +307,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 assetsFiles[i].path = null;
                 assetsFiles[i].data = null;
 
-                string filename = assetPath.Substring(ArchiveConstants.ASSETS_PATH.Length);
+                string filename = assetPath[ArchiveConstants.ASSETS_PATH.Length..];
                 int indx = filename.LastIndexOf(ArchiveConstants.ASSET_EXTENSION_SEPARATOR);
                 if (indx < 32)
                 {
@@ -317,7 +317,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     failedAssetRestores++;
                     continue;
                 }
-                string extension = filename.Substring(indx);
+                string extension = filename[indx..];
                 if (ArchiveConstants.EXTENSION_TO_ASSET_TYPE.TryGetValue(extension, out sbyte ext))
                 {
                     string id = filename.Remove(indx);
@@ -336,7 +336,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             bool[] exits = m_assetService.AssetsExist(ids.ToArray());
             ids.Clear();
 
-            if (exits == null)
+            if (exits is null)
             {
                 m_log.Error("asset service AssetsExists failed");
                 failedAssetRestores += uuids.Count;
@@ -388,32 +388,32 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             // We dearchive all the scenes at once, because the files in the TAR archive might be mixed.
             // Therefore, we have to keep track of the dearchive context of all the scenes.
-            Dictionary<UUID, DearchiveContext> sceneContexts = new Dictionary<UUID, DearchiveContext>();
+            Dictionary<UUID, DearchiveContext> sceneContexts = new();
 
             string fullPath = "NONE";
             TarArchiveReader archive = null;
             byte[] data;
-            TarArchiveReader.TarEntryType entryType;
             assetfileInfo[] assetsFiles = new assetfileInfo[32];
             int assetsFilesCount = 0;
             try
             {
                 FindAndLoadControlFile(out archive, out dearchivedScenes);
 
-                while ((data = archive.ReadEntry(out fullPath, out entryType)) != null)
+                while ((data = archive.ReadEntry(out fullPath, out TarArchiveReader.TarEntryType entryType)) is not null)
                 {
+                    //m_log.DebugFormat(
+                    //    "[ARCHIVER]: Successfully read {0} ({1} bytes)", filePath, data.Length);
+
                     if (TarArchiveReader.TarEntryType.TYPE_DIRECTORY == entryType)
                         continue;
 
                     // Find the scene that this file belongs to
 
-                    Scene scene;
-                    string filePath;
-                    if (!dearchivedScenes.GetRegionFromPath(fullPath, out scene, out filePath))
+                    if (!dearchivedScenes.GetRegionFromPath(fullPath, out Scene scene, out string filePath))
                         continue;   // this file belongs to a region that we're not loading
 
                     DearchiveContext sceneContext = null;
-                    if (scene != null)
+                    if (scene is not null)
                     {
                         if (!sceneContexts.TryGetValue(scene.RegionInfo.RegionID, out sceneContext))
                         {
@@ -424,36 +424,43 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
                     // Process the file
 
-                    if (filePath.StartsWith(ArchiveConstants.OBJECTS_PATH) && !m_noObjects)
+                    if (filePath.StartsWith(ArchiveConstants.OBJECTS_PATH))
                     {
-                        sceneContext.SerialisedSceneObjects.Add(Encoding.UTF8.GetString(data));
+                        if(!m_noObjects)
+                            sceneContext.SerialisedSceneObjects.Add(Encoding.UTF8.GetString(data));
                     }
-                    else if (filePath.StartsWith(ArchiveConstants.ASSETS_PATH) && !m_skipAssets)
+                    else if (filePath.StartsWith(ArchiveConstants.ASSETS_PATH))
                     {
-                        assetfileInfo asf = new assetfileInfo
+                        if(!m_skipAssets)
                         {
-                            path = filePath,
-                            data = data
-                        };
+                            assetfileInfo asf = new()
+                            {
+                                path = filePath,
+                                data = data
+                            };
 
-                        assetsFiles[assetsFilesCount++] = asf;
-                        if (assetsFilesCount == 32)
-                        {
-                            loadNeededAssets(assetsFiles, assetsFilesCount, ref successfulAssetRestores, ref failedAssetRestores, ref skippedAssetRestores);
-                            assetsFilesCount = 0;
+                            assetsFiles[assetsFilesCount++] = asf;
+                            if (assetsFilesCount == 32)
+                            {
+                                loadNeededAssets(assetsFiles, assetsFilesCount, ref successfulAssetRestores, ref failedAssetRestores, ref skippedAssetRestores);
+                                assetsFilesCount = 0;
+                            }
                         }
                     }
-                    else if (filePath.StartsWith(ArchiveConstants.TERRAINS_PATH) && (!m_merge || m_mergeTerrain))
+                    else if (filePath.StartsWith(ArchiveConstants.TERRAINS_PATH))
                     {
-                        LoadTerrain(scene, filePath, data);
+                        if(!m_merge || m_mergeTerrain)
+                            LoadTerrain(scene, filePath, data);
                     }
-                    else if (!m_merge && filePath.StartsWith(ArchiveConstants.SETTINGS_PATH))
+                    else if (filePath.StartsWith(ArchiveConstants.SETTINGS_PATH))
                     {
-                        LoadRegionSettings(scene, filePath, data, dearchivedScenes);
+                        if(!m_merge)
+                            LoadRegionSettings(scene, filePath, data, dearchivedScenes);
                     }
-                    else if (filePath.StartsWith(ArchiveConstants.LANDDATA_PATH) && (!m_merge || m_mergeParcels))
+                    else if (filePath.StartsWith(ArchiveConstants.LANDDATA_PATH))
                     {
-                        sceneContext.SerialisedParcels.Add(Encoding.UTF8.GetString(data));
+                        if(!m_merge || m_mergeParcels)
+                            sceneContext.SerialisedParcels.Add(Encoding.UTF8.GetString(data));
                     }
                     else if (filePath == ArchiveConstants.CONTROL_FILE_PATH)
                     {
@@ -463,30 +470,31 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
                 if (assetsFilesCount > 0)
                     loadNeededAssets(assetsFiles, assetsFilesCount, ref successfulAssetRestores, ref failedAssetRestores, ref skippedAssetRestores);
+
+                //m_log.Debug("[ARCHIVER]: Reached end of archive");
             }
             catch (Exception e)
             {
-                m_log.Error(
-                    String.Format("Aborting load with error in archive file {0} ", fullPath), e);
-                m_errorMessage += e.ToString();
+                m_log.Error($"Aborting load with error in archive file {fullPath}: {e.Message}");
+                m_errorMessage += e.Message;
                 m_rootScene.EventManager.TriggerOarFileLoaded(m_requestId, new List<UUID>(), m_errorMessage);
                 return;
             }
             finally
             {
-                if (archive != null)
+                if (archive is not null)
                     archive.Close();
             }
 
             if (!m_skipAssets)
             {
-                m_log.InfoFormat("  Restored {0} assets", successfulAssetRestores + skippedAssetRestores);
-                m_log.InfoFormat("    Skipped {0} asset uploads", skippedAssetRestores);
+                m_log.Info($"Restored {successfulAssetRestores + skippedAssetRestores} assets");
+                m_log.Info($" Skipped {skippedAssetRestores} asset uploads");
 
                 if (failedAssetRestores > 0)
                 {
-                    m_log.ErrorFormat("    Failed to load {0} assets", failedAssetRestores);
-                    m_errorMessage += String.Format("Failed to load {0} assets", failedAssetRestores);
+                    m_log.Error($"Failed to load {failedAssetRestores} assets");
+                    m_errorMessage += $"Failed to load {failedAssetRestores} assets";
                 }
             }
 
@@ -508,13 +516,13 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     // Inform any interested parties that the region has changed. We waited until now so that all
                     // of the region's objects will be loaded when we send this notification.
                     IEstateModule estateModule = sceneContext.Scene.RequestModuleInterface<IEstateModule>();
-                    if (estateModule != null)
+                    if (estateModule is not null)
                         estateModule.TriggerRegionInfoChange();
                 }
                 catch (Exception e)
                 {
                     m_log.Error("Error loading parcels or objects ", e);
-                    m_errorMessage += e.ToString();
+                    m_errorMessage += e.Message;
                     m_rootScene.EventManager.TriggerOarFileLoaded(m_requestId, new List<UUID>(), m_errorMessage);
                     return;
                 }
@@ -539,7 +547,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                         sceneContext.SceneObjects.Clear();
                     }
                     m_log.Info("Start scripts done");
-                }, null, string.Format("ReadArchiveStartScripts (request {0})", m_requestId));
+                }, null, $"ReadArchiveStartScripts (request {m_requestId})");
             }
 
             m_log.InfoFormat("Successfully loaded archive");
@@ -562,12 +570,10 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             archive = new TarArchiveReader(m_loadStream);
             dearchivedScenes = new DearchiveScenesInfo();
 
-            string filePath;
             byte[] data;
-            TarArchiveReader.TarEntryType entryType;
             bool firstFile = true;
 
-            while ((data = archive.ReadEntry(out filePath, out entryType)) != null)
+            while ((data = archive.ReadEntry(out string filePath, out TarArchiveReader.TarEntryType entryType)) is not null)
             {
                 if (TarArchiveReader.TarEntryType.TYPE_DIRECTORY == entryType)
                     continue;
@@ -577,7 +583,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     LoadControlFile(filePath, data, dearchivedScenes);
 
                     // Find which scenes are available in the simulator
-                    ArchiveScenesGroup simulatorScenes = new ArchiveScenesGroup();
+                    ArchiveScenesGroup simulatorScenes = new();
                     SceneManager.Instance.ForEachScene(delegate(Scene scene2)
                     {
                         simulatorScenes.AddScene(scene2);
@@ -593,7 +599,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                         {
                             m_loadStream.Seek(0, SeekOrigin.Begin);
                         }
-                        else if (m_loadPath != null)
+                        else if (m_loadPath is not null)
                         {
                             archive.Close();
                             archive = null;
@@ -627,7 +633,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             m_log.InfoFormat("Loading {0} scene objects.  Please wait.", serialisedSceneObjects.Count);
 
             // Convert rotation to radians
-            double rotation = Math.PI * m_rotation / 180f;
+            double rotation = MathF.PI * m_rotation / 180f;
 
             OpenMetaverse.Quaternion rot = OpenMetaverse.Quaternion.CreateFromAxisAngle(0, 0, 1, (float)rotation);
 
@@ -635,7 +641,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             IRegionSerialiserModule serialiser = scene.RequestModuleInterface<IRegionSerialiserModule>();
             int sceneObjectsLoadedCount = 0;
-            Vector3 boundingExtent = new Vector3(m_boundingOrigin.X + m_boundingSize.X, m_boundingOrigin.Y + m_boundingSize.Y, m_boundingOrigin.Z + m_boundingSize.Z);
+            Vector3 boundingExtent = new(m_boundingOrigin.X + m_boundingSize.X, m_boundingOrigin.Y + m_boundingSize.Y, m_boundingOrigin.Z + m_boundingSize.Z);
 
             int mergeskip = 0;
             foreach (string serialisedSceneObject in serialisedSceneObjects)
@@ -664,8 +670,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     {
                         //fix the rotation center to the middle of the incoming region now as it's otherwise hopelessly confusing on varRegions
                         //as it only works with objects and terrain (using old Merge method) and not parcels
-                        m_rotationCenter.X = m_incomingRegionSize.X / 2;
-                        m_rotationCenter.Y = m_incomingRegionSize.Y / 2;
+                        m_rotationCenter.X = m_incomingRegionSize.X * 0.5f;
+                        m_rotationCenter.Y = m_incomingRegionSize.Y * 0.5f;
 
                         // Rotate the object
                         sceneObject.RootPart.RotationOffset = rot * sceneObject.GroupRotation;
@@ -770,7 +776,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     if (!ResolveUserUuid(scene, part.CreatorID))
                         part.CreatorID = m_defaultUser;
                 }
-                if (UserManager != null)
+                if (UserManager is not null)
                     UserManager.AddCreatorUser(part.CreatorID, part.CreatorData);
 
                 if (!(ResolveUserUuid(scene, part.OwnerID) || ResolveGroupUuid(part.OwnerID)))
@@ -810,7 +816,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                                 kvp.Value.CreatorID = m_defaultUser;
                         }
 
-                        if (UserManager != null)
+                        if (UserManager is not null)
                             UserManager.AddCreatorUser(kvp.Value.CreatorID, kvp.Value.CreatorData);
 
                         if (!ResolveGroupUuid(kvp.Value.GroupID))
@@ -836,14 +842,13 @@ namespace OpenSim.Region.CoreModules.World.Archiver
 
             // Reload serialized parcels
             m_log.InfoFormat("Loading {0} parcels.  Please wait.", serialisedParcels.Count);
-            List<LandData> landData = new List<LandData>();
-            ILandObject landObject = scene.RequestModuleInterface<ILandObject>();
+            List<LandData> landData = new();
+            ILandObject landObject;
             List<ILandObject> parcels;
-            Vector3 parcelDisp = new Vector3(m_displacement.X, m_displacement.Y, 0f);
-            Vector2 displacement = new Vector2(m_displacement.X, m_displacement.Y);
-            Vector2 boundingOrigin = new Vector2(m_boundingOrigin.X, m_boundingOrigin.Y);
-            Vector2 boundingSize = new Vector2(m_boundingSize.X, m_boundingSize.Y);
-            Vector2 regionSize = new Vector2(scene.RegionInfo.RegionSizeX, scene.RegionInfo.RegionSizeY);
+            Vector2 displacement = new(m_displacement.X, m_displacement.Y);
+            Vector2 boundingOrigin = new(m_boundingOrigin.X, m_boundingOrigin.Y);
+            Vector2 boundingSize = new(m_boundingSize.X, m_boundingSize.Y);
+            Vector2 regionSize = new(scene.RegionInfo.RegionSizeX, scene.RegionInfo.RegionSizeY);
 
             // Gather any existing parcels before we add any more. Later as we add parcels we can check if the new parcel
             // data overlays any of the old data, and we can modify and remove (if empty) the old parcel so that there's no conflict
@@ -855,14 +860,15 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             {
                 LandData parcel = LandDataSerializer.Deserialize(serialisedParcel);
                 bool overrideRegionSize = true;  //use the src land parcel data size not the dst region size
-                bool isEmptyNow;
 
                 // create a new LandObject that we can use to manipulate the incoming source parcel data
                 // this is ok, but just beware that some of the LandObject functions (that we haven't used here) still
                 // assume we're always using the destination region size
-                LandData ld = new LandData();
-                landObject = new LandObject(ld, scene);
-                landObject.LandData = parcel;
+                LandData ld = new();
+                landObject = new LandObject(ld, scene)
+                {
+                    LandData = parcel
+                };
 
                 bool[,] srcLandBitmap = landObject.ConvertBytesToLandBitmap(overrideRegionSize);
                 if (landObject.IsLandBitmapEmpty(srcLandBitmap))
@@ -871,14 +877,20 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                         parcel.Name, parcel.GlobalID, parcel.LocalID);
                     continue;
                 }
+                //m_log.DebugFormat("[ARCHIVER]: Showing claimed land for source parcel: {0} with GlobalID: {1} LocalID: {2}.",
+                //   parcel.Name, parcel.GlobalID, parcel.LocalID);
+                //landObject.DebugLandBitmap(srcLandBitmap);
 
-                bool[,] dstLandBitmap = landObject.RemapLandBitmap(srcLandBitmap, displacement, m_rotation, boundingOrigin, boundingSize, regionSize, out isEmptyNow);
+                bool[,] dstLandBitmap = landObject.RemapLandBitmap(srcLandBitmap, displacement, m_rotation, boundingOrigin, boundingSize, regionSize, out bool isEmptyNow);
                 if (isEmptyNow)
                 {
                     m_log.WarnFormat("Not adding destination parcel {0} with GlobalID: {1} LocalID: {2} because, after applying rotation, bounding and displacement, it has no claimed land.",
                         parcel.Name, parcel.GlobalID, parcel.LocalID);
                     continue;
                 }
+                //m_log.DebugFormat("[ARCHIVER]: Showing claimed land for destination parcel: {0} with GlobalID: {1} LocalID: {2} after applying rotation, bounding and displacement.",
+                //    parcel.Name, parcel.GlobalID, parcel.LocalID);
+                //landObject.DebugLandBitmap(dstLandBitmap);
 
                 landObject.LandBitmap = dstLandBitmap;
                 parcel.Bitmap = landObject.ConvertLandBitmapToBytes();
@@ -892,7 +904,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     //and if so modify or lose the existing parcels
                     for (int i = 0; i < parcels.Count; i++)
                     {
-                        if (parcels[i] != null)
+                        if (parcels[i] is not null)
                         {
                             bool[,] modLandBitmap = parcels[i].ConvertBytesToLandBitmap(overrideRegionSize);
                             modLandBitmap = parcels[i].RemoveFromLandBitmap(modLandBitmap, dstLandBitmap, out isEmptyNow);
@@ -933,7 +945,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                         parcel.OwnerID = m_rootScene.RegionInfo.EstateSettings.EstateOwner;
                 }
 
-                List<LandAccessEntry> accessList = new List<LandAccessEntry>();
+                List<LandAccessEntry> accessList = new();
                 foreach (LandAccessEntry entry in parcel.ParcelAccessList)
                 {
                     if (ResolveUserUuid(scene, entry.AgentID))
@@ -942,8 +954,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 }
                 parcel.ParcelAccessList = accessList;
 
-                if (m_debug) m_log.DebugFormat("Adding parcel {0}, local id {1}, owner {2}, group {3}, isGroupOwned {4}, area {5}",
-                                                    parcel.Name, parcel.LocalID, parcel.OwnerID, parcel.GroupID, parcel.IsGroupOwned, parcel.Area);
+                if (m_debug)
+                    m_log.Debug($"Adding parcel {parcel.Name}, local id {parcel.LocalID}, owner {parcel.OwnerID}, group {parcel.GroupID}, isGroupOwned {parcel.IsGroupOwned}, area {parcel.Area}");
 
                 landData.Add(parcel);
             }
@@ -957,7 +969,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                 int j = 0;
                 for (int i = 0; i < parcels.Count; i++) //if merging then we need to also add back in any existing parcels
                 {
-                    if (parcels[i] != null)
+                    if (parcels[i] is not null)
                     {
                         landData.Add(parcels[i].LandData);
                         j++;
@@ -978,13 +990,18 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <returns></returns>
         private bool ResolveUserUuid(Scene scene, UUID uuid)
         {
-            // AKIDO
-            return m_validUserUuids.GetOrAddIfNotExists(uuid, delegate()
-            {
-                UserAccount account = scene.UserAccountService.GetUserAccount(scene.RegionInfo.ScopeID, uuid);
-                return account != null;
-            });
-            // AKIDO
+            // AKIDO remove lock
+
+                if (!m_validUserUuids.ContainsKey(uuid))
+                {
+                    // Note: we call GetUserAccount() inside the lock because this UserID is likely
+                    // to occur many times, and we only want to query the users service once.
+                    UserAccount account = scene.UserAccountService.GetUserAccount(scene.RegionInfo.ScopeID, uuid);
+                    m_validUserUuids.Add(uuid, account is not null);
+                }
+
+                return m_validUserUuids[uuid];
+            // AKIDO end remove lock
         }
 
         /// <summary>
@@ -994,14 +1011,26 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <returns></returns>
         private bool ResolveGroupUuid(UUID uuid)
         {
-            if (m_groupsModule == null) // AKIDO
-            {
-                return false;
-            }
-            return m_validGroupUuids.GetOrAddIfNotExists(uuid, delegate()
-            {
-                return (m_groupsModule.GetGroupRecord(uuid) != null);
-            });
+            // AKIDO remove lock
+
+                if (!m_validGroupUuids.ContainsKey(uuid))
+                {
+                    bool exists;
+                    if (m_groupsModule is null)
+                    {
+                        exists = false;
+                    }
+                    else
+                    {
+                        // Note: we call GetGroupRecord() inside the lock because this GroupID is likely
+                        // to occur many times, and we only want to query the groups service once.
+                        exists = (m_groupsModule.GetGroupRecord(uuid) is not null);
+                    }
+                    m_validGroupUuids.Add(uuid, exists);
+                }
+
+                return m_validGroupUuids[uuid];
+            // AKIDO end remove lock
         }
 
         private bool TryUploadAsset(UUID assetID, sbyte assetType, byte[] data)
@@ -1019,16 +1048,18 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                         return true;
                     });
 
-                if (data == null)
+                if (data is null)
                     return false;
             }
 
-            AssetBase asset = new AssetBase(assetID, string.Empty, assetType, UUID.Zero.ToString());
-            asset.Data = data;
+            //m_log.DebugFormat("[ARCHIVER]: Importing asset {0}, type {1}", uuid, assetType);
+            AssetBase asset = new(assetID, string.Empty, assetType, UUID.Zero.ToString())
+            {
+                Data = data
+            };
 
-            //m_assetService.Store(asset);
-            //return true; // not right
-            return !string.IsNullOrEmpty(m_assetService.Store(asset));
+            m_assetService.Store(asset);
+            return true; // not right
         }
 
         /// <summary>
@@ -1044,21 +1075,19 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         private bool LoadRegionSettings(Scene scene, string settingsPath, byte[] data, DearchiveScenesInfo dearchivedScenes)
         {
             RegionSettings loadedRegionSettings;
-            ViewerEnvironment regionEnv = null;
+            ViewerEnvironment regionEnv;
             try
             {
                 loadedRegionSettings = RegionSettingsSerializer.Deserialize(data, out regionEnv, scene.RegionInfo.EstateSettings);
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat(
-                    "Could not parse region settings file {0}.  Ignoring.  Exception was {1}",
-                    settingsPath, e);
+                m_log.Error($"Could not parse region settings file {settingsPath}.  Ignoring.  Exception was {e.Message}");
                 return false;
             }
 
             IEnvironmentModule mEnv = scene.RequestModuleInterface<IEnvironmentModule>();
-            if(mEnv != null)
+            if(mEnv is not null)
             {
                 mEnv.StoreOnRegion(regionEnv);
                 mEnv.WindlightRefresh(0);
@@ -1094,6 +1123,10 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             currentRegionSettings.TerrainTexture2 = loadedRegionSettings.TerrainTexture2;
             currentRegionSettings.TerrainTexture3 = loadedRegionSettings.TerrainTexture3;
             currentRegionSettings.TerrainTexture4 = loadedRegionSettings.TerrainTexture4;
+            currentRegionSettings.TerrainPBR1 = loadedRegionSettings.TerrainPBR1;
+            currentRegionSettings.TerrainPBR2 = loadedRegionSettings.TerrainPBR2;
+            currentRegionSettings.TerrainPBR3 = loadedRegionSettings.TerrainPBR3;
+            currentRegionSettings.TerrainPBR4 = loadedRegionSettings.TerrainPBR4;
             currentRegionSettings.UseEstateSun = loadedRegionSettings.UseEstateSun;
             currentRegionSettings.WaterHeight = loadedRegionSettings.WaterHeight;
             currentRegionSettings.TelehubObject = loadedRegionSettings.TelehubObject;
@@ -1110,7 +1143,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             scene.EstateDataServiceSafe?.StoreEstateSettings(scene.RegionInfo.EstateSettings);
 
             IEstateModule estateModule = scene.RequestModuleInterface<IEstateModule>();
-            if (estateModule != null)
+            if (estateModule is not null)
                 estateModule.sendRegionHandshakeToAll();
 
             return true;
@@ -1128,18 +1161,17 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         private bool LoadTerrain(Scene scene, string terrainPath, byte[] data)
         {
             ITerrainModule terrainModule = scene.RequestModuleInterface<ITerrainModule>();
-            using (MemoryStream ms = new MemoryStream(data))
+            using MemoryStream ms = new(data);
+
+            if (!m_displacement.IsZero() || m_rotation != 0f || m_boundingBox)
             {
-               if (!m_displacement.IsZero() || m_rotation != 0f || m_boundingBox)
-                {
-                    Vector2 boundingOrigin = new Vector2(m_boundingOrigin.X, m_boundingOrigin.Y);
-                    Vector2 boundingSize = new Vector2(m_boundingSize.X, m_boundingSize.Y);
-                    terrainModule.LoadFromStream(terrainPath, m_displacement, m_rotation, boundingOrigin, boundingSize, ms); ;
-                }
-                else
-                {
-                    terrainModule.LoadFromStream(terrainPath, ms);
-                }
+                Vector2 boundingOrigin = new(m_boundingOrigin.X, m_boundingOrigin.Y);
+                Vector2 boundingSize = new(m_boundingSize.X, m_boundingSize.Y);
+                terrainModule.LoadFromStream(terrainPath, m_displacement, m_rotation, boundingOrigin, boundingSize, ms);
+            }
+            else
+            {
+                terrainModule.LoadFromStream(terrainPath, ms);
             }
 
             m_log.DebugFormat("Restored terrain {0}", terrainPath);
@@ -1155,10 +1187,12 @@ namespace OpenSim.Region.CoreModules.World.Archiver
         /// <param name="dearchivedScenes"></param>
         public DearchiveScenesInfo LoadControlFile(string path, byte[] data, DearchiveScenesInfo dearchivedScenes)
         {
-            XmlNamespaceManager nsmgr = new XmlNamespaceManager(new NameTable());
-            XmlParserContext context = new XmlParserContext(null, nsmgr, null, XmlSpace.None);
-            XmlTextReader xtr = new XmlTextReader(Encoding.ASCII.GetString(data), XmlNodeType.Document, context);
-            xtr.DtdProcessing = DtdProcessing.Ignore;
+            XmlNamespaceManager nsmgr = new(new NameTable());
+            XmlParserContext context = new(null, nsmgr, null, XmlSpace.None);
+            XmlTextReader xtr = new(Encoding.ASCII.GetString(data), XmlNodeType.Document, context)
+            {
+                DtdProcessing = DtdProcessing.Ignore
+            };
 
             // Loaded metadata will be empty if no information exists in the archive
             dearchivedScenes.LoadedCreationDateTime = 0;
@@ -1179,17 +1213,14 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                         if (majorVersion > MAX_MAJOR_VERSION)
                         {
                             throw new Exception(
-                                string.Format(
-                                    "The OAR you are trying to load has major version number of {0} but this version of OpenSim can only load OARs with major version number {1} and below",
-                                    majorVersion, MAX_MAJOR_VERSION));
+                                $"The OAR you are trying to load has major version number of {majorVersion} but this version can only load OARs with major version number {MAX_MAJOR_VERSION} and below");
                         }
 
                         m_log.InfoFormat("Loading OAR with version {0}", version);
                     }
                     else if (xtr.Name.ToString() == "datetime")
                     {
-                        int value;
-                        if (Int32.TryParse(xtr.ReadElementContentAsString(), out value))
+                        if (Int32.TryParse(xtr.ReadElementContentAsString(), out int value))
                             dearchivedScenes.LoadedCreationDateTime = value;
                     }
                     else if (xtr.Name.ToString() == "row")
@@ -1214,9 +1245,8 @@ namespace OpenSim.Region.CoreModules.World.Archiver
                     }
                     else if (xtr.Name.ToString() == "size_in_meters")
                     {
-                        Vector3 value;
-                        string size = "<" + xtr.ReadElementContentAsString() + ",0>";
-                        if (Vector3.TryParse(size, out value))
+                        string size = $"<{xtr.ReadElementContentAsString()},0>";
+                        if (Vector3.TryParse(size, out Vector3 value))
                         {
                             m_incomingRegionSize = value;
                             if(multiRegion)
@@ -1240,7 +1270,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             }
 
             ControlFileLoaded = true;
-            if(xtr != null)
+            if(xtr is not null)
                 xtr.Close();
 
             return dearchivedScenes;

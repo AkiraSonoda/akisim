@@ -318,21 +318,26 @@ namespace OpenSim.Framework
 
         private void SetSize(int newSize)
         {
-            int target = newSize;
-            if (m_Strategy == CacheStrategy.Aggressive)
-                target = (int)(newSize * 0.9);
+            // AKIDO remove lock
 
-            if (Count > target)
-            {
-                m_Index.Sort(new SortLRUrev());
-                m_Index.RemoveRange(newSize, Count - target);
-                m_Lookup.Clear();
-                foreach (CacheItemBase item in m_Index)
-                    m_Lookup[item.uuid] = item;
-            }
+                int target = newSize;
+                if(m_Strategy == CacheStrategy.Aggressive)
+                    target = (int)(newSize * 0.9);
 
-            m_Size = newSize;
+                if(Count > target)
+                {
+                    m_Index.Sort(new SortLRUrev());
 
+                    m_Index.RemoveRange(newSize, Count - target);
+
+                    m_Lookup.Clear();
+
+                    foreach (CacheItemBase item in m_Index)
+                        m_Lookup[item.uuid] = item;
+                }
+                m_Size = newSize;
+
+            // AKIDO end remove lock
         }
 
         public TimeSpan DefaultTTL
@@ -345,23 +350,20 @@ namespace OpenSim.Framework
         //
         protected virtual CacheItemBase GetItem(string index)
         {
-            CacheItemBase item = null;
 
-            if (m_Lookup.ContainsKey(index))
-                item = m_Lookup[index];
+            // AKIDO remove lock
 
-            if (item == null)
-            {
+                if(m_Lookup.TryGetValue(index, out  CacheItemBase item))
+                {
+                    item.hits++;
+                    item.lastUsed = DateTime.UtcNow;
+                    Expire(true);
+                    return item;
+                }
+
                 Expire(true);
                 return null;
-            }
-
-            item.hits++;
-            item.lastUsed = DateTime.UtcNow;
-
-            Expire(true);
-
-            return item;
+            // AKIDO end remove lock
         }
 
         // Get an item from cache. Do not try to fetch from source if not
@@ -392,12 +394,15 @@ namespace OpenSim.Framework
             {
                 if((m_Flags & CacheFlags.CacheMissing) != 0)
                 {
-                    CacheItemBase missing = new CacheItemBase(index);
-                    if (!m_Index.Contains(missing))
-                    {
-                        m_Index.Add(missing);
-                        m_Lookup[index] = missing;
-                    }
+                    // AKIDO remove lock
+
+                        CacheItemBase missing = new CacheItemBase(index);
+                        if (!m_Index.Contains(missing))
+                        {
+                            m_Index.Add(missing);
+                            m_Lookup[index] = missing;
+                        }
+                    // AKIDO end remove lock
                 }
                 return null;
             }
@@ -412,7 +417,8 @@ namespace OpenSim.Framework
         {
             CacheItemBase item;
 
-            item = m_Index.Find(d);
+            //AKIDO remove lock
+                item = m_Index.Find(d);
 
             if (item == null)
                 return null;
@@ -447,33 +453,36 @@ namespace OpenSim.Framework
                 Object[] parameters)
         {
             CacheItemBase item;
-            Expire(false);
 
-            if (m_Index.Contains(new CacheItemBase(index)))
-            {
-                if ((m_Flags & CacheFlags.AllowUpdate) != 0)
+            // AKIDO remove lock
+
+                Expire(false);
+
+                if (m_Index.Contains(new CacheItemBase(index)))
                 {
-                    item = GetItem(index);
+                    if ((m_Flags & CacheFlags.AllowUpdate) != 0)
+                    {
+                        item = GetItem(index);
 
-                    item.hits++;
-                    item.lastUsed = DateTime.UtcNow;
-                    if (m_DefaultTTL.Ticks != 0)
-                        item.expires = DateTime.UtcNow + m_DefaultTTL;
+                        item.hits++;
+                        item.lastUsed = DateTime.UtcNow;
+                        if (m_DefaultTTL.Ticks != 0)
+                            item.expires = DateTime.UtcNow + m_DefaultTTL;
 
-                    item.Store(data);
+                        item.Store(data);
+                    }
+                    return;
                 }
 
-                return;
-            }
+                item = (CacheItemBase)Activator.CreateInstance(container,
+                        parameters);
 
-            item = (CacheItemBase)Activator.CreateInstance(container,
-                parameters);
+                if (m_DefaultTTL.Ticks != 0)
+                    item.expires = DateTime.UtcNow + m_DefaultTTL;
 
-            if (m_DefaultTTL.Ticks != 0)
-                item.expires = DateTime.UtcNow + m_DefaultTTL;
-
-            m_Index.Add(item);
-            m_Lookup[index] = item;
+                m_Index.Add(item);
+                m_Lookup[index] = item;
+            // AKIDO end remove lock
 
             item.Store(data);
         }
@@ -504,7 +513,7 @@ namespace OpenSim.Framework
                             item.expires <= now)
                     {
                         m_Index.Remove(item);
-                        bool success = m_Lookup.TryRemove(item.uuid, out CacheItemBase cib); // AKIDO
+                        bool success = m_Lookup.TryRemove(item.uuid, out CacheItemBase cib); // AKIDO beccause m_Lookup is a ConcurrencyDictionary, we need to ensure the removal is successful
                         if (!success) {
                             m_log.WarnFormat("Cache m_Lookup TryRemove failed for item.uuid: {0}", item.uuid);
                         }
@@ -535,9 +544,9 @@ namespace OpenSim.Framework
                             if (doExpire(i.uuid))
                             {
                                 m_Index.Remove(i);
-                                bool success = m_Lookup.TryRemove(i.uuid, out CacheItemBase cib); // AKIDO
+                                bool success = m_Lookup.TryRemove(i.uuid, out CacheItemBase cib); // AKIDO beccause m_Lookup is a ConcurrencyDictionary, we need to ensure the removal is successful
                                 if (!success) {
-                                    m_log.WarnFormat("Cache m_Lookup TryRemove failed for CacheItemBase: {0}", i.uuid);
+                                    m_log.WarnFormat("Cache m_Lookup TryRemove failed for item.uuid: {0}", i.uuid);
                                 }
                             }
                         }
@@ -561,22 +570,24 @@ namespace OpenSim.Framework
 
         public void Invalidate(string uuid)
         {
-            if (!m_Lookup.ContainsKey(uuid))
-                return;
+            // AKIDO remove lock
 
-            CacheItemBase item = m_Lookup[uuid];
-            bool success = m_Lookup.TryRemove(uuid, out CacheItemBase cib); // AKIDO
-            if (!success) {
-                m_log.WarnFormat("Cache m_Lookup TryRemove failed for CacheItemBase: {0}", uuid);
-            }
-
-            m_Index.Remove(item);
+                if (m_Lookup.TryGetValue(uuid, out CacheItemBase item))
+                    m_Index.Remove(item);
+                bool success = m_Lookup.TryRemove(uuid, out CacheItemBase cib); // AKIDO beccause m_Lookup is a ConcurrencyDictionary, we need to ensure the removal is successful
+                if (!success) {
+                    m_log.WarnFormat("Cache m_Lookup TryRemove failed for CacheItemBase: {0}", uuid);
+                }
+            // AKIDO end remove lock
         }
 
         public void Clear()
         {
-            m_Index.Clear();
-            m_Lookup.Clear();
+            // AKIDO remove lock
+
+                m_Index.Clear();
+                m_Lookup.Clear();
+            // AKIDO end remove lock
         }
     }
 }

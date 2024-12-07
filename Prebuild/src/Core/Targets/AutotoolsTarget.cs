@@ -166,7 +166,6 @@ namespace Prebuild.Core.Targets
         Kernel m_Kernel;
         XmlDocument autotoolsDoc;
         XmlUrlResolver xr;
-        System.Security.Policy.Evidence e;
         readonly Dictionary<string, SystemPackage> assemblyPathToPackage = new Dictionary<string, SystemPackage>();
         readonly Dictionary<string, string> assemblyFullNameToPath = new Dictionary<string, string>();
         readonly Dictionary<string, SystemPackage> packagesHash = new Dictionary<string, SystemPackage>();
@@ -202,21 +201,17 @@ namespace Prebuild.Core.Targets
         private void transformToFile(string filename, XsltArgumentList argList, string nodeName)
         {
             // Create an XslTransform for this file
-            XslTransform templateTransformer =
-                new XslTransform();
+            XslTransform templateTransformer = new XslTransform();
 
             // Load up the template
-            XmlNode templateNode =
-                autotoolsDoc.SelectSingleNode(nodeName + "/*");
-            templateTransformer.Load(templateNode.CreateNavigator(), xr, e);
-
+            XmlNode templateNode = autotoolsDoc.SelectSingleNode(nodeName + "/*");
+            //templateTransformer.Load(templateNode.CreateNavigator(), xr, e);
+            templateTransformer.Load(templateNode.CreateNavigator(), xr);
             // Create a writer for the transformed template
-            XmlTextWriter templateWriter =
-                new XmlTextWriter(filename, null);
+            XmlTextWriter templateWriter = new XmlTextWriter(filename, null);
 
             // Perform transformation, writing the file
-            templateTransformer.Transform
-                (m_Kernel.CurrentDoc, argList, templateWriter, xr);
+            templateTransformer.Transform(m_Kernel.CurrentDoc, argList, templateWriter, xr);
         }
 
         static string NormalizeAsmName(string name)
@@ -639,7 +634,8 @@ namespace Prebuild.Core.Targets
             {
                 string source = Path.Combine(project.FullPath, filename);
                 string dest = Path.Combine(projectDir, filename);
-
+                
+                /*
                 if (filename.Contains("AssemblyInfo.cs"))
                 {
                     // If we've got an AssemblyInfo.cs, pull the version number from it
@@ -683,7 +679,7 @@ namespace Prebuild.Core.Targets
                     }
 
                 }
-
+                */
                 // Tell the user if there's a problem copying the file
                 try
                 {
@@ -714,7 +710,7 @@ namespace Prebuild.Core.Targets
             for (int refNum = 0; refNum < project.References.Count; refNum++)
             {
                 ReferenceNode refr = project.References[refNum];
-                Assembly refAssembly = Assembly.LoadWithPartialName(refr.Name);
+                Assembly refAssembly = Assembly.Load(refr.Name);
 
                 /* Determine which pkg-config (.pc) file refers to
                    this assembly */
@@ -972,9 +968,7 @@ namespace Prebuild.Core.Targets
             RunInitialization();
 
             const string streamName = "autotools.xml";
-            string fqStreamName = String.Format("Prebuild.data.{0}",
-                                                streamName
-                                                );
+            string fqStreamName = String.Format("Prebuild.data.{0}", streamName );
 
             // Retrieve stream for the autotools template XML
             Stream autotoolsStream = Assembly.GetExecutingAssembly()
@@ -982,7 +976,6 @@ namespace Prebuild.Core.Targets
 
             if (autotoolsStream == null)
             {
-
                 /* 
                  * try without the default namespace prepended, in
                  * case prebuild.exe assembly was compiled with
@@ -995,9 +988,7 @@ namespace Prebuild.Core.Targets
                 {
                     string errStr =
                       String.Format("Could not find embedded resource file:\n" +
-                                    "'{0}' or '{1}'",
-                                    streamName, fqStreamName
-                                    );
+                                    "'{0}' or '{1}'", streamName, fqStreamName );
 
                     m_Kernel.Log.Write(errStr);
 
@@ -1008,9 +999,6 @@ namespace Prebuild.Core.Targets
             // Create an XML URL Resolver with default credentials
             xr = new System.Xml.XmlUrlResolver();
             xr.Credentials = CredentialCache.DefaultCredentials;
-
-            // Create a default evidence - no need to limit access
-            e = new System.Security.Policy.Evidence();
 
             // Load the autotools XML
             autotoolsDoc = new XmlDocument();

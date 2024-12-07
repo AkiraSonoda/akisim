@@ -52,17 +52,17 @@
     ;# {BaseHostname} {} {BaseHostname} {"example.com" "127.0.0.1"} "127.0.0.1"
     BaseHostname = "127.0.0.1"
 
-    ;# {BaseURL} {} {BaseURL} {"http://${Const|BaseHostname}} "http://${Const|BaseHostname}"
+    ;# {BaseURL} {} {BaseURL} {"http://${Const|BaseHostname"}} "http://${Const|BaseHostname}"
     BaseURL = http://${Const|BaseHostname}
 
     ; If you run a grid, several services should not be availble to world, access to them should be blocked on firewall
     ; PrivatePort should closed at the firewall.
 
     ;# {PublicPort} {} {PublicPort} {8002 9000} "9000"
-	; in case of a standalone this needs to match the parameter http_listener_port in section [Network] below
-	; in that case the default is 9000
+    ; in case of a standalone this needs to match the parameter http_listener_port in section [Network] below
+    ; in that case the default is 9000
     PublicPort = "9000"
-	; for a region on a grid, the grid services public port should be used, normal default is 8002
+    ; for a region on a grid, the grid services public port should be used, normal default is 8002
     ;PublicPort = "8002"
 
     ; you can also have them on a diferent url / IP
@@ -108,7 +108,6 @@
     ;; However, this will only log crashes within OpenSimulator that cause the
     ;; entire program to exit
     ;; It will not log crashes caused by virtual machine failures, which
-    ;; includes mono and ODE failures.
     ;; You will need to capture these native stack traces by recording the
     ;; session log itself.
     ; save_crashes = false
@@ -242,10 +241,6 @@
 
     ;; Select a mesher here.
     ;;
-    ;; Meshmerizer properly handles complex prims by using triangle meshes.
-    ;; Note that only the ODE physics engine currently deals with meshed
-    ;; prims in a satisfactory way.
-
     ;# {meshing} {} {Select mesher} {Meshmerizer ZeroMesher} Meshmerizer
     ;; ZeroMesher is faster but leaves the physics engine to model the mesh
     ;; using the basic shapes that it supports.
@@ -264,14 +259,13 @@
     ;; It continues to provide a workable physics implementation.  It does not currently support varregions.
     ;; basicphysics effectively does not model physics at all, making all objects phantom.
     ;; Default is BulletSim
-    ; physics = OpenDynamicsEngine
     ; physics = BulletSim
     ; physics = basicphysics
     ; physics = POS
     ;; alternative OpenDynamicsEngine engine. ubODEMeshmerizer meshing above MUST be selected also
     ; physics = ubODE
 
-    ; ubODE and  OpenDynamicsEngine does allocate a lot of memory on stack. On linux you may need to increase its limit
+    ; ubODE does allocate a lot of memory on stack. On linux you may need to increase its limit
     ; script opensim-ode-sh starts opensim setting that limit. You may need to increase it even more on large regions
     ; edit the line ulimit -s 262144, and change this last value
 
@@ -314,6 +308,60 @@
     ;; routing and land at the landmark coordinates when set to true
     ;; default is false
     ; TelehubAllowLandmark = false
+
+
+    ;; Let's Encrypt and others ".pem" certificates converter settings.
+    ;; Enabling this feature will automatically convert the CA .pem certificates to
+    ;; OpenSim compatible PKCS12 .p12 and .pfx certificates on every server startup.
+    ;; The resulting certificates are stored in the bin\SSL\ssl folder.
+    ;# {EnableCertConverter} {} {Enable pem to pkcs12 certificates converter} {true false} false
+    EnableCertConverter = false
+
+    ;; Set the absolute path of the "fullchain.pem". If your CA don't provide this file,
+    ;; you can use the "cert.pem" instead.
+    ;# {PemCertPublicKey} {} {Set the path of the public key .pem} {} ""
+    PemCertPublicKey = ""
+
+    ;; Set the absolute path of the pem private key "privkey.pem".
+    ;# {PemCertPrivateKey} {} {Set the path of the private key .pem} {} ""
+    PemCertPrivateKey = ""
+
+    ;; Set the name of the resulting .p12 and .pfx.
+    ;# {outputCertName} {} {Set the name of the resulting .p12 and .pfx} {} "letsencrypt"
+    outputCertName = "letsencrypt"
+
+    ;; Set the .p12 and .pfx password.
+    ;# {outputCertPassword} {} {Set the .p12 and .pfx password} {} ""
+    outputCertPassword = ""
+
+
+    ;; SSL selfsigned certificate settings.
+    ;; Enable selfsigned certificate creation for local and external use. When set to true, will create a folder SSL\ and 2 sub folders SSL\ssl\ and SSL\src\.
+    ;; Next creates and store an RSA private key in SSL\src\ and the derived selfsigned certificate in SSL\ssl\ folder.
+    ;;Is also possible to renew the certificate on every server restart if CertRenewOnStartup is set to true.
+    ;# {EnableSelfsignedCertSupport} {} {Enable selfsigned certificate creation and renew} {true false} false
+    EnableSelfsignedCertSupport = false
+
+    ;; Renew the selfsigned certificate on every server startup ?
+    ;# {CertRenewOnStartup} {} {renew the selfsigned certificate on the server startup} {true false} true
+    CertRenewOnStartup = false
+
+    ;; Certificate options:
+    ;; Set the certificate file name. the output files extensions are CertFileName.p12 and CertFileName.pfx.
+    ;# {CertFileName} {} {set the certificate file name} {} "OpenSim"
+    CertFileName = "OpenSim"
+
+    ;; Set the certificate password.
+    ;# {CertPassword} {} {set the certificate password} {} ""
+    CertPassword = "mycertpass"
+
+    ;; The certificate host name (domain or IP of this machine CN). Must be the same as "ExternalHostName" in Regions.ini
+    ;# {CertHostName} {} {set the certificate host name} {} "myRegionsExternalHostName"
+    CertHostName = "myRegionsExternalHostName"
+
+    ;; The certificate host IP (IP of this machine).
+    ;# {CertHostIp} {} {set the certificate host IP} {}
+    CertHostIp = "127.0.0.1"
 
 
     ;; SSL certificate validation options
@@ -424,7 +472,7 @@
     ;;
     ;; If set to false, then, in theory, the server never carries out
     ;; permission checks (allowing anybody to copy
-    ;; any item, etc.  This may not yet be implemented uniformally.
+    ;; any item, etc).  This may not yet be implemented uniformally.
     ;; If set to true, then all permissions checks are carried out
     ; serverside_object_permissions = true
 
@@ -587,24 +635,24 @@
     ; the main unsecure port will still open for some services. this may change in future.
     
     ; set http_listener_ssl to enable main server ssl. it will replace unsecure port on most functions
-    ;# {http_listener_ssl}{} {enable main server ssl port)} {} false
+    ;# {http_listener_ssl}{} {enable main server ssl port} {} false
     ;http_listener_ssl = false
     
     ; Set port for main SSL connections
-    ;# {http_listener_sslport}{} {main server ssl port)} {} 9001
+    ;# {http_listener_sslport}{} {main server ssl port} {} 9001
     ;http_listener_sslport = 9001 ;
     
     ; currently if using ssl, regions ExternalHostName must the the same and equal to http_listener_cn
     ; this may be removed in future
-    ;# {http_listener_cn}{} {main server ssl externalHostName)} {} ""
+    ;# {http_listener_cn}{} {main server ssl externalHostName} {} ""
     ;http_listener_cn = "myRegionsExternalHostName"
 
     ; the path for the certificate path
-    ;# {http_listener_cert_path}{} {main server ssl certificate file path)} {} ""
-    ;http_listener_cert_path = "mycert.p12"
+    ;# {http_listener_cert_path}{} {main server ssl certificate file path} {} ""
+    ;http_listener_cert_path = "SSL\ssl\OpenSim.p12"
     
-    ;# {http_listener_cert_pass}{} {main server ssl certificate password)} {} ""
-    ;http_listener_cert_pass = "mycertpass" ; the cert passwork
+    ;# {http_listener_cert_pass}{} {main server ssl certificate password} {} ""
+    ;http_listener_cert_pass = "mycertpass"
     
     ; By default, OpenSimulator does not allow scripts to make HTTP calls to addresses on the simulator's LAN.
     ; See the OutboundDisallowForUserScripts parameter in OpenSimDefaults.ini for more information on this filter.
@@ -647,6 +695,8 @@
     ;# {ExternalHostNameForLSL} {} {Hostname to use for HTTP-IN URLs. This should be reachable from the internet.} {}
     ;; Hostname to use in llRequestURL/llRequestSecureURL
     ;; if not defined - llRequestURL/llRequestSecureURL are disabled
+	;; this should be reachable from internet and point this machine
+	;; for standalones it can be
     ExternalHostNameForLSL = ${Const|BaseHostname}
 
     ;# {shard} {} {Name to use for X-Secondlife-Shard header? (press enter if unsure)} {} OpenSim
@@ -800,14 +850,6 @@
     ;# {AvatarToAvatarCollisionsByDefault} {[Startup]physics:BulletSim} {Should avatars collide with each other?} {true false} true
     AvatarToAvatarCollisionsByDefault = true
 
-
-[ODEPhysicsSettings]
-    ;# {mesh_sculpted_prim} {[Startup]physics:OpenDynamicsEngine} {Mesh sculpties so they collide as they look?} {true false} true
-    ;; Do we want to mesh sculpted prim to collide like they look?
-    ;; If you are seeing sculpt texture decode problems
-    ;; (messages such as "Decoded image with unhandled number of components: 0 shortly followed by a physcs exception")
-    ;; then you might want to try setting this to false.
-    ; mesh_sculpted_prim = true
 
 [RemoteAdmin]
     ;; This is the remote admin module, which uses XMLRPC requests to

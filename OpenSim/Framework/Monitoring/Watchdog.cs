@@ -184,26 +184,26 @@ namespace OpenSim.Framework.Monitoring
             if(m_threads == null)
                 return;
 
-            // AKIDO
-            m_enabled = false;
-            if (m_watchdogTimer != null)
-            {
-                m_watchdogTimer.Dispose();
-                m_watchdogTimer = null;
-            }
+            // AKIDO remove locks
 
-            foreach (ThreadWatchdogInfo twi in m_threads.Values)
-            {
-                Thread t = twi.Thread;
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                   "Stop: Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
+                m_enabled = false;
+                if(m_watchdogTimer != null)
+                {
+                    m_watchdogTimer.Dispose();
+                    m_watchdogTimer = null;
+                }
+                
+                foreach(ThreadWatchdogInfo twi in m_threads.Values)
+                {
+                    Thread t = twi.Thread;
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                        "Stop: Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
 
                 if (t.IsAlive)
                     t.Abort();
-            }
-
-            m_threads.Clear();
-            // AKIDO
+                }
+                m_threads.Clear();
+            // AKIDO end remove locks
         }
 
         /// <summary>
@@ -218,8 +218,8 @@ namespace OpenSim.Framework.Monitoring
                 if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "Started tracking thread {0}, ID {1}", name, info.Thread.ManagedThreadId);
 
-            // AKIDO
-            m_threads.Add(info.Thread.ManagedThreadId, info);
+            // AKIDO remove threads
+                m_threads.Add(info.Thread.ManagedThreadId, info);
         }
 
         /// <summary>
@@ -245,43 +245,40 @@ namespace OpenSim.Framework.Monitoring
 
         private static bool RemoveThread(int threadID, bool log = true)
         {
-            // AKIDO
-            ThreadWatchdogInfo twi;
-            if (m_threads.TryGetValue(threadID, out twi))
-            {
-                if (log)
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
+            // AKIDO remove lock
 
-                twi.Cleanup();
-                m_threads.Remove(threadID);
-                return true;
-            }
-            else
-            {
-                m_log.WarnFormat(
-                    "Requested to remove thread with ID {0} but this is not being monitored", threadID);
-                return false;
-            }
-            // AKIDO
+                ThreadWatchdogInfo twi;
+                if (m_threads.TryGetValue(threadID, out twi))
+                {
+                    if (log)
+                        m_log.InfoFormat(
+                            "Removing thread {0}, ID {1}", twi.Thread.Name, twi.Thread.ManagedThreadId);
+
+                    twi.Cleanup();
+                    m_threads.Remove(threadID);
+                    return true;
+                }
+                else
+                {
+                    m_log.InfoFormat(
+                        "Requested to remove thread with ID {0} but this is not being monitored", threadID);
+                    return false;
+                }
+            // AKIDO end remove lock
         }
 
         public static bool AbortThread(int threadID)
         {
-            // AKIDO
-            if (m_threads.ContainsKey(threadID))
+            // AKIDO remove lock
+            if (RemoveThread(threadID))
             {
-                ThreadWatchdogInfo twi = m_threads[threadID];
-                twi.Thread.Abort();
-                RemoveThread(threadID);
-
+                //ThreadWatchdogInfo twi = m_threads[threadID];
+                //twi.Thread.Abort();
                 return true;
             }
-            else
-            {
-                return false;
-            }
-            // AKIDO
+
+            return false;
+            // AKIDO end remove lock
         }
 
         private static void UpdateThread(int threadID)
@@ -313,8 +310,8 @@ namespace OpenSim.Framework.Monitoring
         /// <returns></returns>
         public static ThreadWatchdogInfo[] GetThreadsInfo()
         {
-            // AKDIO
-            return m_threads.Values.ToArray();
+            // AKIDO remove lock
+                return m_threads.Values.ToArray();
         }
 
         /// <summary>
@@ -323,12 +320,9 @@ namespace OpenSim.Framework.Monitoring
         /// <returns>The watchdog info.  null if the thread isn't being monitored.</returns>
         public static ThreadWatchdogInfo GetCurrentThreadInfo()
         {
-            // AKIDO
-            if (m_threads.ContainsKey(Thread.CurrentThread.ManagedThreadId))
-                return m_threads[Thread.CurrentThread.ManagedThreadId];
-            // AKIDO
-
-            return null;
+            // AKIDO remove lock
+                return m_threads.TryGetValue(Thread.CurrentThread.ManagedThreadId, out ThreadWatchdogInfo twi) ? twi : null;
+            // AKIDO end remove lock
         }
 
         /// <summary>
@@ -359,38 +353,45 @@ namespace OpenSim.Framework.Monitoring
 
                 const ThreadState thgone = ThreadState.Stopped;
 
-                // AKIDO
-                foreach (ThreadWatchdogInfo threadInfo in m_threads.Values)
-                {
-                    if (!m_enabled)
-                        return;
-                    if ((threadInfo.Thread.ThreadState & thgone) != 0)
-                    {
-                        if (threadsToRemove == null)
-                            threadsToRemove = new List<ThreadWatchdogInfo>();
+                // AKIDO remove lock
 
-                        threadsToRemove.Add(threadInfo);
-                    }
-                    else if (!threadInfo.IsTimedOut && now - threadInfo.LastTick >= threadInfo.Timeout)
+                    foreach(ThreadWatchdogInfo threadInfo in m_threads.Values)
                     {
-                        threadInfo.IsTimedOut = true;
-
-                        if (threadInfo.AlarmIfTimeout)
+                        if(!m_enabled)
+                            return;
+                        if((threadInfo.Thread.ThreadState & thgone) != 0)
                         {
-                            if (callbackInfos == null)
+                            if(threadsToRemove == null)
+                                threadsToRemove = new List<ThreadWatchdogInfo>();
+
+                            threadsToRemove.Add(threadInfo);
+/*
+                            if(callbackInfos == null)
                                 callbackInfos = new List<ThreadWatchdogInfo>();
 
-                            // Send a copy of the watchdog info to prevent race conditions where the watchdog
-                            // thread updates the monitoring info after an alarm has been sent out.
-                            callbackInfos.Add(new ThreadWatchdogInfo(threadInfo));
+                            callbackInfos.Add(threadInfo);
+*/
+                        }
+                        else if(!threadInfo.IsTimedOut && now - threadInfo.LastTick >= threadInfo.Timeout)
+                        {
+                            threadInfo.IsTimedOut = true;
+
+                            if(threadInfo.AlarmIfTimeout)
+                            {
+                                if(callbackInfos == null)
+                                    callbackInfos = new List<ThreadWatchdogInfo>();
+
+                                // Send a copy of the watchdog info to prevent race conditions where the watchdog
+                                // thread updates the monitoring info after an alarm has been sent out.
+                                callbackInfos.Add(new ThreadWatchdogInfo(threadInfo));
+                            }
                         }
                     }
-                }
 
-                if (threadsToRemove != null)
-                    foreach (ThreadWatchdogInfo twi in threadsToRemove)
-                        RemoveThread(twi.Thread.ManagedThreadId);
-                // AKIDO
+                    if(threadsToRemove != null)
+                        foreach(ThreadWatchdogInfo twi in threadsToRemove)
+                            RemoveThread(twi.Thread.ManagedThreadId);
+                // AKIDO end remove lock
 
                 if(callbackInfos != null)
                     foreach (ThreadWatchdogInfo callbackInfo in callbackInfos)
@@ -400,6 +401,7 @@ namespace OpenSim.Framework.Monitoring
             if (MemoryWatchdog.Enabled)
                 MemoryWatchdog.Update();
 
+            ChecksManager.CheckChecks();
             StatsManager.RecordStats();
 
             m_watchdogTimer.Change(WATCHDOG_INTERVAL_MS, Timeout.Infinite);

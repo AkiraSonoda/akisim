@@ -63,7 +63,7 @@ namespace OpenSim.Server.Handlers
             Object[] args = new Object[] { config };
             IEstateDataService e_service = ServerUtils.LoadPlugin<IEstateDataService>(service, args);
 
-            IServiceAuth auth = ServiceAuth.Create(config, m_ConfigName); ;
+            IServiceAuth auth = ServiceAuth.Create(config, m_ConfigName);
 
             server.AddStreamHandler(new EstateServerGetHandler(e_service, auth));
             server.AddStreamHandler(new EstateServerPostHandler(e_service, auth));
@@ -194,19 +194,16 @@ namespace OpenSim.Server.Handlers
 
             if (!string.IsNullOrEmpty(region))
             {
-                UUID regionID = UUID.Zero;
-                if (UUID.TryParse(region, out regionID))
+                if (UUID.TryParse(region, out UUID regionID))
                 {
                     string create = (string)httpRequest.Query["create"];
-                    bool createYN = false;
-                    Boolean.TryParse(create, out createYN);
+                    bool.TryParse(create, out bool createYN);
                     estate = m_EstateService.LoadEstateSettings(regionID, createYN);
                 }
             }
             else if (!string.IsNullOrEmpty(eid))
             {
-                int id = 0;
-                if (Int32.TryParse(eid, out id))
+                if (int.TryParse(eid, out  int id))
                     estate = m_EstateService.LoadEstateSettings(id);
             }
 

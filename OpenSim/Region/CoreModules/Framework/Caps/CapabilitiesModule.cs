@@ -26,7 +26,6 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -50,7 +49,7 @@ namespace OpenSim.Region.CoreModules.Framework
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private string m_showCapsCommandFormat = "   {0,-38} {1,-60}\n";
+        private static readonly string m_showCapsCommandFormat = "   {0,-38} {1,-60}\n";
 
         protected Scene m_scene;
 
@@ -63,7 +62,6 @@ namespace OpenSim.Region.CoreModules.Framework
 
         protected ConcurrentDictionary<UUID, ConcurrentDictionary<ulong, string>> m_childrenSeeds
             = new ConcurrentDictionary<UUID, ConcurrentDictionary<ulong, string>>();
-
         public void Initialise(IConfigSource source)
         {
         }
@@ -123,46 +121,47 @@ namespace OpenSim.Region.CoreModules.Framework
       
             string capsObjectPath = GetCapsPath(agentId);
             Caps caps;
-            if (m_capsObjects.TryGetValue(circuitCode, out Caps oldCaps))
-            {
-                if (capsObjectPath == oldCaps.CapsObjectPath)
+            // AKIDO remove lock
+
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps oldCaps))
                 {
-                    m_log.WarnFormat(
-                        "Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
-                        agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
-                    
-                    return;
-                }
-                else
-                {
-                    // not reusing  add extra melanie cleanup
-                    // Remove tge handlers. They may conflict with the
-                    // new object created below
-                    oldCaps.DeregisterHandlers();
-            
-                    // AKIDO
-                    if (!m_capsObjects.TryRemove(circuitCode, out Caps capss)) {
-                        m_log.WarnFormat("CreateCaps - m_capsObjects.TryRemove unexpectedly failed" +
-                                         "when removing circuitCode: {0}", circuitCode);
+                    if (capsObjectPath == oldCaps.CapsObjectPath)
+                    {
+                        //m_log.WarnFormat(
+                        //    "Reusing caps for agent {0} in region {1}.  Old caps path {2}, new caps path {3}. ",
+                        //    agentId, m_scene.RegionInfo.RegionName, oldCaps.CapsObjectPath, capsObjectPath);
+                        return;
+                    }
+                    else
+                    {
+                        // not reusing  add extra melanie cleanup
+                        // Remove tge handlers. They may conflict with the
+                        // new object created below
+                        oldCaps.DeregisterHandlers();
+
+                        // Better safe ... should not be needed but also
+                        // no big deal
+                        // AKIDO because of ConcurrentDictionary 
+                        if (!m_capsObjects.TryRemove(circuitCode, out Caps capss)) {
+                            m_log.WarnFormat("CreateCaps - m_capsObjects.TryRemove unexpectedly failed" +
+                                             "when removing circuitCode: {0}", circuitCode);
+                        }
                     }
                 }
-            }
-            
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "Adding capabilities for agent {0} in {1} with path {2}",
-                agentId, m_scene.RegionInfo.RegionName, capsObjectPath);
-            
-            caps = new Caps(MainServer.Instance, m_scene.RegionInfo.ExternalHostName,
-                (MainServer.Instance == null) ? 0 : MainServer.Instance.Port,
-                capsObjectPath, agentId, m_scene.RegionInfo.RegionName);
-            
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "New caps agent {0}, circuit {1}, path {2}", agentId,
-                circuitCode, caps.CapsObjectPath);
-            
-            m_capsObjects[circuitCode] = caps;
-            m_scene.EventManager.TriggerOnRegisterCaps(agentId, caps);
 
+                //m_log.DebugFormat(
+                //    "[CAPS]: Adding capabilities for agent {0} in {1} with path {2}",
+                //    agentId, m_scene.RegionInfo.RegionName, capsObjectPath);
+
+                caps = new Caps(MainServer.Instance, m_scene.RegionInfo.ExternalHostName,
+                        (MainServer.Instance is null) ? 0: MainServer.Instance.Port,
+                        capsObjectPath, agentId, m_scene.RegionInfo.RegionName);
+
+                m_log.Debug($"new caps agent {agentId}, circuit {circuitCode}, path {caps.CapsObjectPath}");
+
+                m_capsObjects[circuitCode] = caps;
+            // AKIDO end remove lock
+            m_scene.EventManager.TriggerOnRegisterCaps(agentId, caps);
         }
 
         public void RemoveCaps(UUID agentId, uint circuitCode)
@@ -176,111 +175,125 @@ namespace OpenSim.Region.CoreModules.Framework
                                  "when removing agentId: {0}", agentId);
             }
 
-            // AKIDO
-            if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
-            {
-                m_scene.EventManager.TriggerOnDeregisterCaps(agentId, cp);
-
-                // AKIDO
-                if (!m_capsObjects.TryRemove(circuitCode, out Caps caps)) {
-                    m_log.WarnFormat("RemoveCaps - m_capsObjects.TryRemove unexpectedly failed" +
-                                     "when removing circuitCode: {0}", circuitCode);
-                }
-
-                cp.Dispose();
-            }
-            else
-            {
-                foreach (KeyValuePair<uint, Caps> kvp in m_capsObjects)
+            // AKIDO remove lock
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
                 {
-                    if (kvp.Value.AgentID == agentId)
-                    {
-                        m_scene.EventManager.TriggerOnDeregisterCaps(agentId, kvp.Value);
+                    m_scene.EventManager.TriggerOnDeregisterCaps(agentId, cp);
 
-                        // AKIDO
-                        if (!m_capsObjects.TryRemove(kvp.Key, out Caps caps)) {
-                            m_log.WarnFormat("RemoveCaps - m_capsObjects.TryRemove unexpectedly failed" +
-                                             "when removing kvp.Key: {0}", kvp.Key);
-                        }
-
-                        kvp.Value.Dispose();
-                        return;
+                    // AKIDO
+                    if (!m_capsObjects.TryRemove(circuitCode, out Caps caps)) {
+                        m_log.WarnFormat("RemoveCaps - m_capsObjects.TryRemove unexpectedly failed" +
+                                         "when removing circuitCode: {0}", circuitCode);
                     }
-                }
 
-                m_log.WarnFormat(
-                    "Received request to remove CAPS handler for root agent {0} in {1}, but no such CAPS handler found!",
-                    agentId, m_scene.RegionInfo.RegionName);
-            }
-            // AKIDO
+                    cp.Dispose();
+                }
+                else
+                {
+                    foreach (KeyValuePair<uint, Caps> kvp in m_capsObjects)
+                    {
+                        if (agentId.Equals(kvp.Value.AgentID))
+                        {
+                            m_scene.EventManager.TriggerOnDeregisterCaps(agentId, kvp.Value);
+
+                            // AKIDO
+                            if (!m_capsObjects.TryRemove(kvp.Key, out Caps caps)) {
+                                m_log.WarnFormat("RemoveCaps - m_capsObjects.TryRemove unexpectedly failed" +
+                                                 "when removing kvp.Key: {0}", kvp.Key);
+                            }
+
+                            kvp.Value.Dispose();
+                            return;
+                        }
+                    }
+
+                    m_log.WarnFormat(
+                        "Received request to remove CAPS handler for root agent {0} in {1}, but no such CAPS handler found!",
+                        agentId, m_scene.RegionInfo.RegionName);
+                }
+            // AKIDO end remove caps
         }
 
         public Caps GetCapsForUser(uint circuitCode)
         {
-            // AKIDO
-            if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
-                return cp;
-            // AKIDO
+            // AKIDO renove lock
+
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
+                    return cp;
+            // AKDIO end remove lock
 
             return null;
         }
 
         public void ActivateCaps(uint circuitCode)
         {
-            // AKIDO
-            if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
-                cp.Activate();
-            // AKIDO
+            // AKIDO remove caps
+
+                if (m_capsObjects.TryGetValue(circuitCode, out Caps cp))
+                    cp.Activate();
+            // AKIDO remove caps 
         }
 
         public void SetAgentCapsSeeds(AgentCircuitData agent)
         {
-            m_capsPaths[agent.AgentID] = agent.CapsPath; // AKIDO
+            // AKIDO remove lock
+                m_capsPaths[agent.AgentID] = agent.CapsPath; // AKIDO
 
-            m_childrenSeeds[agent.AgentID] // AKIDO
-                = ((agent.ChildrenCapSeeds == null)
-                    ? new ConcurrentDictionary<ulong, string>()
-                    : new ConcurrentDictionary<ulong, string>(agent.ChildrenCapSeeds));
+            // AIDO remove lock
+                m_childrenSeeds[agent.AgentID] // AKIDO
+                    = ((agent.ChildrenCapSeeds == null)
+                        ? new ConcurrentDictionary<ulong, string>()
+                        : new ConcurrentDictionary<ulong, string>(agent.ChildrenCapSeeds));
         }
 
         public string GetCapsPath(UUID agentId)
         {
-            // AKIDO
-            if (m_capsPaths.TryGetValue(agentId, out string path))
-                return path;
-            // AKIDO
+            // AKIDO remove lock
+
+                if (m_capsPaths.TryGetValue(agentId, out string path))
+                    return path;
+            // AKIDO end remove lock
             return null;
         }
 
         public Dictionary<ulong, string> GetChildrenSeeds(UUID agentID)
         {
-            // AKIDO
-            if (m_childrenSeeds.TryGetValue(agentID, out ConcurrentDictionary<ulong, string> seeds))
-                return new Dictionary<ulong, string>(seeds);
+            // AKIDO remove lock
+                // AKIDO because of ConcurrentDictionary 
+                if (m_childrenSeeds.TryGetValue(agentID, out ConcurrentDictionary<ulong, string> seeds))
+                    return new Dictionary<ulong, string>(seeds);
+            // AKIDO end remove lock
             return new Dictionary<ulong, string>();
         }
 
         public void DropChildSeed(UUID agentID, ulong handle)
         {
+            // AKIDO remove lock
+
             if (m_childrenSeeds.TryGetValue(agentID, out ConcurrentDictionary<ulong, string> seeds))
             {
-                // AKIDO
-                if (!seeds.TryRemove(handle, out string dummy)) {
+                // AKIDO remove lock
+                if (!seeds.TryRemove(handle, out string dummy))
+                {
                     m_log.WarnFormat("DropChildSeed - seeds.TryRemove unexpectedly failed" +
                                      "when removing handle: {0}", handle);
                 }
+
             }
+            // AKIDO end remove lock
         }
 
         public string GetChildSeed(UUID agentID, ulong handle)
         {
-            // AKIDO
-            if (m_childrenSeeds.TryGetValue(agentID, out ConcurrentDictionary<ulong, string> seeds))
-            {
-                if (seeds.TryGetValue(handle, out string returnval))
-                    return returnval;
-            }
-            
+            // AKIDO remove lock
+                
+                // AKIDO because of ConcurrentDictionary
+                if (m_childrenSeeds.TryGetValue(agentID, out ConcurrentDictionary<ulong, string> seeds))
+                {
+                    if (seeds.TryGetValue(handle, out string returnval))
+                        return returnval;
+                }
+            // AKIDO end remove lock
             return null;
         }
 
@@ -288,22 +301,22 @@ namespace OpenSim.Region.CoreModules.Framework
         {
             //m_log.DebugFormat(" !!! Setting child seeds in {0} to {1}", m_scene.RegionInfo.RegionName, seeds.Count);
 
-            // AKIDO
-            m_childrenSeeds[agentID] = new ConcurrentDictionary<ulong, string>(seeds);
+            // AKIDO remove lock because of ConcurrentDictionary
+                m_childrenSeeds[agentID] = new ConcurrentDictionary<ulong, string>(seeds);
         }
 
         public void DumpChildrenSeeds(UUID agentID)
         {
             m_log.Info("================ ChildrenSeed "+m_scene.RegionInfo.RegionName+" ================");
 
-            // AKIDO
-            foreach (KeyValuePair<ulong, string> kvp in m_childrenSeeds[agentID])
-            {
-                uint x, y;
-                Util.RegionHandleToRegionLoc(kvp.Key, out x, out y);
-                m_log.Info(" >> " + x + ", " + y + ": " + kvp.Value);
-            }
-            // AKIDO
+            // AKIDO remove lock
+
+                foreach (KeyValuePair<ulong, string> kvp in m_childrenSeeds[agentID])
+                {
+                    Util.RegionHandleToRegionLoc(kvp.Key, out uint x, out uint y);
+                    m_log.Info(" >> "+x+", "+y+": "+kvp.Value);
+                }
+            // AKIDO end remove lock
         }
 
         private void HandleShowCapsListCommand(string module, string[] cmdParams)
@@ -311,32 +324,31 @@ namespace OpenSim.Region.CoreModules.Framework
             if (SceneManager.Instance.CurrentScene != null && SceneManager.Instance.CurrentScene != m_scene)
                 return;
 
-            StringBuilder capsReport = new StringBuilder();
+            StringBuilder capsReport = new();
             capsReport.AppendFormat("Region {0}:\n", m_scene.RegionInfo.RegionName);
 
-            // AKIDO
-            foreach (KeyValuePair<uint, Caps> kvp in m_capsObjects)
-            {
-                Caps caps = kvp.Value;
-                string name = string.Empty;
-                if (m_scene.TryGetScenePresence(caps.AgentID, out ScenePresence sp) && sp != null)
-                    name = sp.Name;
-                capsReport.AppendFormat("** Circuit {0}; {1} {2}:\n", kvp.Key, caps.AgentID, name);
+            // AKIDO remove lock
 
-                for (IDictionaryEnumerator kvp2 = caps.CapsHandlers.GetCapsDetails(false, null).GetEnumerator();
-                     kvp2.MoveNext();)
+                foreach (KeyValuePair<uint, Caps> kvp in m_capsObjects)
                 {
-                    Uri uri = new Uri(kvp2.Value.ToString());
-                    capsReport.AppendFormat(m_showCapsCommandFormat, kvp2.Key, uri.PathAndQuery);
+                    Caps caps = kvp.Value;
+                    string name = string.Empty;
+                    if(m_scene.TryGetScenePresence(caps.AgentID, out ScenePresence sp) && sp!=null)
+                        name = sp.Name;
+                    capsReport.AppendFormat("** Circuit {0}; {1} {2}:\n", kvp.Key, caps.AgentID,name);
+                    capsReport.AppendFormat("**    Base URL {0}\n", caps.CapsHandlers.BaseURL);
+
+                    Dictionary<string, string> capsPaths = caps.CapsHandlers.GetCapsLocalPaths();
+                    foreach(KeyValuePair<string, string> kvp2 in capsPaths)
+                         capsReport.AppendFormat(m_showCapsCommandFormat, kvp2.Key, kvp2.Value);
+ 
+                    foreach (KeyValuePair<string, PollServiceEventArgs> kvp2 in caps.GetPollHandlers())
+                        capsReport.AppendFormat(m_showCapsCommandFormat, kvp2.Key, kvp2.Value.Url);
+
+                    foreach (KeyValuePair<string, string> kvp3 in caps.ExternalCapsHandlers)
+                        capsReport.AppendFormat(m_showCapsCommandFormat, kvp3.Key, kvp3.Value);
                 }
-
-                foreach (KeyValuePair<string, PollServiceEventArgs> kvp2 in caps.GetPollHandlers())
-                    capsReport.AppendFormat(m_showCapsCommandFormat, kvp2.Key, kvp2.Value.Url);
-
-                foreach (KeyValuePair<string, string> kvp3 in caps.ExternalCapsHandlers)
-                    capsReport.AppendFormat(m_showCapsCommandFormat, kvp3.Key, kvp3.Value);
-            }
-            // AKIDO
+            // AKIDO end remove lock
 
             MainConsole.Instance.Output(capsReport.ToString());
         }

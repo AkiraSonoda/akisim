@@ -1071,7 +1071,7 @@ namespace OpenSim.Groups
             {
                 m_log.DebugFormat("Group Notice {0} not found, composing empty message.", groupNoticeID);
                 msg.fromAgentID = UUID.Zero.Guid;
-                msg.timestamp = (uint)Util.UnixTimeSinceEpoch(); ;
+                msg.timestamp = (uint)Util.UnixTimeSinceEpoch();
                 msg.fromAgentName = string.Empty;
                 msg.message = string.Empty;
                 msg.binaryBucket = Array.Empty<byte>(); ;
@@ -1233,7 +1233,7 @@ namespace OpenSim.Groups
                 msg.ParentEstateID = 0;
                 msg.Position = Vector3.Zero;
                 msg.RegionID = regionInfo.RegionID.Guid;
-                msg.binaryBucket = Array.Empty<byte>(); ;
+                msg.binaryBucket = Array.Empty<byte>();
                 OutgoingInstantMessage(msg, ejecteeID);
             }
 
@@ -1251,7 +1251,7 @@ namespace OpenSim.Groups
             msg.ParentEstateID = 0;
             msg.Position = Vector3.Zero;
             msg.RegionID = regionInfo.RegionID.Guid;
-            msg.binaryBucket = Array.Empty<byte>(); ;
+            msg.binaryBucket = Array.Empty<byte>();
             OutgoingInstantMessage(msg, agentID);
         }
 
@@ -1536,17 +1536,12 @@ namespace OpenSim.Groups
 
         private string GetRequestingAgentIDStr(IClientAPI client)
         {
-            return GetRequestingAgentID(client).ToString();
+            return client is null ? UUID.ZeroString : client.AgentId.ToString();
         }
 
         private UUID GetRequestingAgentID(IClientAPI client)
         {
-            UUID requestingAgentID = UUID.Zero;
-            if (client != null)
-            {
-                requestingAgentID = client.AgentId;
-            }
-            return requestingAgentID;
+            return client is null ? UUID.Zero : client.AgentId;
         }
 
     }

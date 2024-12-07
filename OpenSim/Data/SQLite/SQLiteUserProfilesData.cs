@@ -69,8 +69,7 @@ namespace OpenSim.Data.SQLite
 
         public void Initialise(string connectionString)
         {
-            if (Util.IsWindows())
-                Util.LoadArchSpecificWindowsDll("sqlite3.dll");
+            DllmapConfigHelper.RegisterAssembly(typeof(SqliteConnection).Assembly);
 
             m_connectionString = connectionString;
 
@@ -165,8 +164,6 @@ namespace OpenSim.Data.SQLite
 
             if(string.IsNullOrEmpty(ad.ParcelName))
                 ad.ParcelName = "Unknown";
-            if(ad.ParcelId == null)
-                ad.ParcelId = UUID.Zero;
             if(string.IsNullOrEmpty(ad.Description))
                 ad.Description = "No Description";
 

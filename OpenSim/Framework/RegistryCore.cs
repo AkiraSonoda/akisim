@@ -26,6 +26,8 @@
  */
 
 using System;
+using log4net;
+using System.Reflection;
 using ThreadedClasses;
 // AKIDO: clean
 
@@ -33,6 +35,7 @@ namespace OpenSim.Framework
 {
     public class RegistryCore : IRegistryCore
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         protected RwLockedDictionary<Type, object> m_moduleInterfaces = new RwLockedDictionary<Type, object>(); // AKIDO
 
         /// <summary>
@@ -42,19 +45,23 @@ namespace OpenSim.Framework
         /// <param name="iface"></param>
         public void RegisterInterface<T>(T iface)
         {
-            try // AKIDO
+            try // AKIDO dunno why i added this try-catch block 
             {
-                m_moduleInterfaces.Add(typeof(T), iface);
+                if (!m_moduleInterfaces.ContainsKey(typeof(T)))
+                {
+                    m_moduleInterfaces.Add(typeof(T), iface);
+                }
             }
             catch
             {
-
+                // AKIDO: Log error and re-throw the exception
+                m_log.ErrorFormat("Error registering interface {0}", typeof(T).Name);
             }
         }
 
         public bool TryGet<T>(out T iface)
         {
-            if(m_moduleInterfaces.TryGetValue(typeof(T), out var o)) // AKIDO
+            if (m_moduleInterfaces.TryGetValue(typeof(T), out object o))
             {
                 iface = (T)o;
                 return true;

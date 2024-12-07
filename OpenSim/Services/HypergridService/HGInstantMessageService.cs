@@ -27,11 +27,13 @@
 
 using System;
 using System.Reflection;
+
 using OpenSim.Framework;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors.InstantMessage;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OpenSim.Server.Base;
+
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
@@ -88,7 +90,7 @@ namespace OpenSim.Services.HypergridService
                 if (string.IsNullOrEmpty(userAgentService))
                     m_log.WarnFormat("UserAgentService not set in [HGInstantMessageService]");
 
-                object[] args = new object[] { config };
+                object[] args = [ config ];
                 try
                 {
                     m_GridService = ServerUtils.LoadPlugin<IGridService>(gridService, args);
@@ -145,12 +147,11 @@ namespace OpenSim.Services.HypergridService
         {
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Received message from {0} to {1}", im.fromAgentID, im.toAgentID);
-            
-            UUID toAgentID = new UUID(im.toAgentID);
 
             bool success = false;
             if (m_IMSimConnector != null)
             {
+                //m_log.DebugFormat("[XXX] SendIMToRegion local im connector");
                 success = m_IMSimConnector.SendInstantMessage(im);
             }
             else
@@ -166,8 +167,7 @@ namespace OpenSim.Services.HypergridService
 
         public bool OutgoingInstantMessage(GridInstantMessage im, string url, bool foreigner)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Sending message from {0} to {1}@{2}", 
-                im.fromAgentID, im.toAgentID, url);
+            //m_log.DebugFormat("Sending message from {0} to {1}@{2}", im.fromAgentID, im.toAgentID, url);
             return TrySendInstantMessage(im, url, true, foreigner);
         }
 
@@ -198,6 +198,7 @@ namespace OpenSim.Services.HypergridService
                 {
                     if (!p.RegionID.IsZero())
                     {
+                        //m_log.DebugFormat("[XXX]: Found presence in {0}", p.RegionID);
                         // stupid service does not cache region, even in region code
                         if(m_RegionsCache.TryGetValue(p.RegionID, out url))
                             break;
@@ -295,6 +296,7 @@ namespace OpenSim.Services.HypergridService
                 }
             }
 
+            //m_log.DebugFormat("[HG IM SERVICE]: Message saved");
             return m_OfflineIMService.StoreMessage(im, out string reason);
         }
     }
