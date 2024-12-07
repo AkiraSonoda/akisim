@@ -41,9 +41,7 @@ namespace OpenSim.Data.PGSQL
     /// </summary>
     public class PGSqlFramework
     {
-        private static readonly log4net.ILog m_log =
-                log4net.LogManager.GetLogger(
-                System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly log4net.ILog m_log = log4net.LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         protected string m_connectionString;
         protected object m_dbLock = new object();
@@ -51,36 +49,8 @@ namespace OpenSim.Data.PGSQL
         protected PGSqlFramework(string connectionString)
         {
             m_connectionString = connectionString;
-            InitializeMonoSecurity();
         }
 
-        public void InitializeMonoSecurity()
-        {
-            if (!Util.IsPlatformMono)
-            {
-
-                if (AppDomain.CurrentDomain.GetData("MonoSecurityPostgresAdded") == null)
-                {
-                    AppDomain.CurrentDomain.SetData("MonoSecurityPostgresAdded", "true");
-
-                    AppDomain currentDomain = AppDomain.CurrentDomain;
-                    currentDomain.AssemblyResolve += new ResolveEventHandler(ResolveEventHandlerMonoSec);
-                }
-            }
-        }
-
-        private System.Reflection.Assembly ResolveEventHandlerMonoSec(object sender, ResolveEventArgs args)
-        {
-            Assembly MyAssembly = null;
-
-            if (args.Name.Substring(0, args.Name.IndexOf(",")) == "Mono.Security")
-            {
-                MyAssembly = Assembly.LoadFrom("lib/NET/Mono.Security.dll");
-            }
-
-            //Return the loaded assembly.
-            return MyAssembly;
-        }
         //////////////////////////////////////////////////////////////
         //
         // All non queries are funneled through one connection

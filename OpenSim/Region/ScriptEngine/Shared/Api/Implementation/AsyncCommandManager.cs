@@ -205,7 +205,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 }
                 catch (System.Threading.ThreadAbortException)
                 {
-                    Thread.ResetAbort();
+                    //Thread.ResetAbort();
                     running = false;
                 }
                 catch (Exception e)

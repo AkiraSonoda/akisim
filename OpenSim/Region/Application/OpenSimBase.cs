@@ -40,7 +40,7 @@ using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework.Monitoring;
-using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
+//using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
@@ -352,7 +352,32 @@ namespace OpenSim
             IConfig startupConfig = Config.Configs["Startup"];
             if (startupConfig == null || startupConfig.GetBoolean("JobEngineEnabled", true))
                 WorkManager.JobEngine.Start();
+            
+            // Sure is not the right place for this but do the job...
+            // Must always be called before (all) / the HTTP servers starting for the Certs creation or renewals.
+            if(startupConfig.GetBoolean("EnableSelfsignedCertSupport", false))
+            {
+                if(!File.Exists("SSL\\ssl\\"+ startupConfig.GetString("CertFileName") +".p12") || startupConfig.GetBoolean("CertRenewOnStartup"))
+                {               
+                    Util.CreateOrUpdateSelfsignedCert(
+                        string.IsNullOrEmpty(startupConfig.GetString("CertFileName")) ? "OpenSim" : startupConfig.GetString("CertFileName"),
+                        string.IsNullOrEmpty(startupConfig.GetString("CertHostName")) ? "localhost" : startupConfig.GetString("CertHostName"),
+                        string.IsNullOrEmpty(startupConfig.GetString("CertHostIp")) ? "127.0.0.1" : startupConfig.GetString("CertHostIp"),
+                        string.IsNullOrEmpty(startupConfig.GetString("CertPassword")) ? string.Empty : startupConfig.GetString("CertPassword")
+                    );
+                }
+            }
 
+            if(startupConfig.GetBoolean("EnableCertConverter", false))
+            {
+                 Util.ConvertPemToPKCS12(
+                    string.IsNullOrEmpty(startupConfig.GetString("outputCertName")) ? "letsencrypt" : startupConfig.GetString("outputCertName"),
+                    string.IsNullOrEmpty(startupConfig.GetString("PemCertPublicKey")) ? string.Empty : startupConfig.GetString("PemCertPublicKey"),
+                    string.IsNullOrEmpty(startupConfig.GetString("PemCertPrivateKey")) ? string.Empty : startupConfig.GetString("PemCertPrivateKey"),
+                    string.IsNullOrEmpty(startupConfig.GetString("outputCertPassword")) ? string.Empty : startupConfig.GetString("outputCertPassword")
+                );
+            }
+            
             if(m_networkServersInfo.HttpUsesSSL)
             {
                 m_httpServerSSL = true;
@@ -1034,7 +1059,7 @@ namespace OpenSim
             m_log.WarnFormat("[ESTATE] Region {0} is not part of an estate.", regInfo.RegionName);
 
             List<EstateSettings> estates = EstateDataService.LoadEstateSettingsAll();
-            Dictionary<string, EstateSettings> estatesByName = new Dictionary<string, EstateSettings>();
+            Dictionary<string, EstateSettings> estatesByName = [];
 
             foreach (EstateSettings estate in estates)
                 estatesByName[estate.EstateName] = estate;

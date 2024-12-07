@@ -494,7 +494,7 @@ namespace OpenSim.Data.MySQL
                         result.Parameters.AddWithValue("?salePrice", item.SalePrice);
                         result.Parameters.AddWithValue("?saleType", unchecked((sbyte)item.SaleType));
                         result.Parameters.AddWithValue("?creationDate", item.CreationDate);
-                        result.Parameters.AddWithValue("?groupID", item.GroupID);
+                        result.Parameters.AddWithValue("?groupID", item.GroupID.ToString());
                         result.Parameters.AddWithValue("?groupOwned", item.GroupOwned);
                         result.Parameters.AddWithValue("?flags", item.Flags);
 
@@ -697,7 +697,7 @@ namespace OpenSim.Data.MySQL
             try
             {
                 List<InventoryFolderBase> folders = new List<InventoryFolderBase>();
-                Dictionary<UUID, List<InventoryFolderBase>> hashtable = new Dictionary<UUID, List<InventoryFolderBase>>(); ;
+                Dictionary<UUID, List<InventoryFolderBase>> hashtable = new Dictionary<UUID, List<InventoryFolderBase>>();
                 List<InventoryFolderBase> parentFolder = new List<InventoryFolderBase>();
                 bool buildResultsFromHashTable = false;
 

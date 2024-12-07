@@ -34,7 +34,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Framework.InventoryAccess;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Region.ScriptEngine.XEngine;
+//using OpenSim.Region.ScriptEngine.XEngine;
 using OpenSim.Services.Interfaces;
 using OpenSim.Tests.Common;
 
@@ -43,6 +43,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess.Tests
     [TestFixture]
     public class HGAssetMapperTests : OpenSimTestCase
     {
+        /*
         [Test]
         public void TestPostAssetRewrite()
         {
@@ -95,7 +96,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess.Tests
             XmlDocument ncAssetGetXmlDoc = new XmlDocument();
             ncAssetGetXmlDoc.LoadXml(xmlData);
 
-            // Console.WriteLine(ncAssetGetXmlDoc.OuterXml);
+//            Console.WriteLine(ncAssetGetXmlDoc.OuterXml);
 
             XmlNodeList creatorDataNodes = ncAssetGetXmlDoc.GetElementsByTagName("CreatorData");
 
@@ -122,7 +123,7 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess.Tests
         private void RezScript(Scene scene, UUID soId, string script, string itemName, UUID userId)
         {
             InventoryItemBase itemTemplate = new InventoryItemBase();
-            // itemTemplate.ID = itemId;
+            //            itemTemplate.ID = itemId;
             itemTemplate.Name = itemName;
             itemTemplate.Folder = soId;
             itemTemplate.InvType = (int)InventoryType.LSL;
@@ -143,4 +144,5 @@ namespace OpenSim.Region.CoreModules.Framework.InventoryAccess.Tests
             Assert.IsTrue(chatEvent.WaitOne(60000), "Chat event in HGAssetMapperTests.RezScript not received");
         }
     }
+        */
 }

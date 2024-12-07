@@ -219,10 +219,7 @@ namespace OpenSim.Region.Framework.Scenes
         {
             // RemoteClient.SendLayerData(Heightmap.GetFloatsSerialised());
             ITerrainModule terrModule = RequestModuleInterface<ITerrainModule>();
-            if (terrModule != null)
-            {
-                terrModule.PushTerrain(RemoteClient);
-            }
+            terrModule?.PushTerrain(RemoteClient);
         }
 
         #endregion
@@ -235,14 +232,12 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TryGetScenePresence(UUID agentID, out object scenePresence)
         {
-            scenePresence = null;
-            ScenePresence sp = null;
-            if (TryGetScenePresence(agentID, out sp))
+            if (TryGetScenePresence(agentID, out ScenePresence sp))
             {
                 scenePresence = sp;
                 return true;
             }
-
+            scenePresence = null;
             return false;
         }
 
@@ -492,11 +487,10 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>null if there is no registered module implementing that interface</returns>
         public T RequestModuleInterface<T>()
         {
-            if (ModuleInterfaces.ContainsKey(typeof(T)) &&
-                    (ModuleInterfaces[typeof(T)].Count > 0))
-                return (T)ModuleInterfaces[typeof(T)][0];
-            else
-                return default(T);
+            if (ModuleInterfaces.TryGetValue(typeof(T), out List<object> mio ) && mio.Count > 0)
+                return (T)mio[0];
+
+            return default;
         }
 
         /// <summary>
@@ -565,11 +559,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="callback"></param>
         public void AddCommand(IRegionModuleBase module, string command, string shorthelp, string longhelp, string descriptivehelp, CommandDelegate callback)
         {
-            string moduleName = "";
-
-            if (module != null)
-                moduleName = module.Name;
-
+            string moduleName = (module is null) ? module.Name : string.Empty;
             AddCommand(moduleName, module, command, shorthelp, longhelp, descriptivehelp, callback);
         }
 
@@ -589,14 +579,10 @@ namespace OpenSim.Region.Framework.Scenes
             string category, IRegionModuleBase module, string command,
             string shorthelp, string longhelp, string descriptivehelp, CommandDelegate callback)
         {
-            if (MainConsole.Instance == null)
+            if (MainConsole.Instance is null)
                 return;
 
-            bool shared = false;
-
-            if (module != null)
-                shared = module is ISharedRegionModule;
-
+            bool shared = module is not null && module is ISharedRegionModule;
             MainConsole.Instance.Commands.AddCommand(
                 category, shared, command, shorthelp, longhelp, descriptivehelp, callback);
         }
@@ -617,10 +603,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void Restart()
         {
-            // This has to be here to fire the event
-            restart handlerPhysicsCrash = OnRestart;
-            if (handlerPhysicsCrash != null)
-                handlerPhysicsCrash(RegionInfo);
+            OnRestart?.Invoke(RegionInfo);
         }
 
         public abstract bool CheckClient(UUID agentID, System.Net.IPEndPoint ep);

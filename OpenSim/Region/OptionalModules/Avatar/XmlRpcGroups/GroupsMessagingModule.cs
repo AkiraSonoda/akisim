@@ -523,7 +523,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups
 
                 default:
                     client.SendInstantMessage(msg);
-                    break;;
+                    break;
             }
         }
 

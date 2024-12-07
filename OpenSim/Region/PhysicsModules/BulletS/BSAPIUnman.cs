@@ -143,15 +143,8 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
         public BSAPIUnman(string paramName, BSScene physScene)
         {
+            DllmapConfigHelper.RegisterAssembly(typeof(BSAPIUnman).Assembly);
             PhysicsScene = physScene;
-
-            // Do something fancy with the paramName to get the right DLL implementation
-            //     like "Bullet-2.80-OpenCL-Intel" loading the version for Intel based OpenCL implementation, etc.
-            if (Util.IsWindows())
-                Util.LoadArchSpecificWindowsDll("BulletSim.dll");
-            // If not Windows, loading is performed by the
-            // Mono loader as specified in
-            // "bin/Physics/OpenSim.Region.Physics.BulletSPlugin.dll.config".
         }
 
         // Initialization and simulation
@@ -177,10 +170,26 @@ namespace OpenSim.Region.PhysicsModule.BulletS
                     m_DebugLogCallbackHandle = new BSAPICPP.DebugLogCallback(BulletLogger);
             }
 
-            // Get the version of the DLL
-            // TODO: this doesn't work yet. Something wrong with marshaling the returned string.
-            // BulletEngineVersion = BulletSimAPI.GetVersion2();
+            // Get the version of the Physics Engine
             BulletEngineVersion = "";
+            try
+            {
+
+                BulletEngineVersion = Marshal.PtrToStringAnsi(BSAPICPP.GetVersion2());
+                BSScene.m_log.DebugFormat("Initialize: GetVersionInfo returned {0}", BulletEngineVersion);
+                string legacyValue = BSParam.VersionLegacyValue;
+                if (BulletEngineVersion.Equals(legacyValue))
+                {
+                    // The old version of BulletSim returned a static string for the version.
+                    // Convert that old static string into what is probably the correct version information.
+                    BulletEngineVersion = BSParam.VersionLegacyReplacement;
+                    BSScene.m_log.DebugFormat("Initialize: BulletSim version converted from legacy {0} to {1}",
+                        legacyValue, BulletEngineVersion);
+                }
+            }
+            catch (Exception e) {
+                BSScene.m_log.DebugFormat("Initialize: Could not fetch Bullet version info. Exception: {1}", e);
+            }
 
             // Call the unmanaged code with the buffers and other information
             return new BulletWorldUnman(0, PhysicsScene, BSAPICPP.Initialize2(maxPosition, m_paramsHandle.AddrOfPinnedObject(),
@@ -1504,6 +1513,9 @@ namespace OpenSim.Region.PhysicsModule.BulletS
 
             [DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
             public static extern bool UpdateParameter2(IntPtr world, uint localID, String parm, float value);
+
+            [DllImport("BulletSim", CallingConvention = CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]
+            public static extern IntPtr GetVersion2();
 
             // =====================================================================================
             // Mesh, hull, shape and body creation helper routines

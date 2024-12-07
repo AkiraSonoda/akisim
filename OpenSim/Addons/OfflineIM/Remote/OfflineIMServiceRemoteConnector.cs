@@ -25,6 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -89,21 +90,30 @@ namespace OpenSim.OfflineIM
             if (ret == null)
                 return ims;
 
-            if (!ret.ContainsKey("RESULT"))
+            if (!ret.TryGetValue("RESULT", out object resultobj))
                 return ims;
 
-            string result = ret["RESULT"].ToString();
-            if (result == "NULL" || result.ToLower() == "false")
+            if(resultobj is string result)
             {
-                string reason = ret.ContainsKey("REASON") ? ret["REASON"].ToString() : "Unknown error";
-                m_log.DebugFormat("[OfflineIM.V2.RemoteConnector]: GetMessages for {0} failed: {1}", principalID, reason);
-                return ims;
+                if (result == "NULL" || result.Equals("false", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (ret.TryGetValue("REASON", out object rso))
+                        m_log.Debug($"[OfflineIM.V2.RemoteConnector]: GetMessages for {principalID} failed: {rso}");
+                    else
+                        m_log.Debug($"[OfflineIM.V2.RemoteConnector]: GetMessages for {principalID} failed: Unknown error");
+                    return ims;
+                }
             }
-
-            foreach (object v in ((Dictionary<string, object>)ret["RESULT"]).Values)
+            else if(resultobj is Dictionary<string, object> resultdic)
             {
-                GridInstantMessage m = OfflineIMDataUtils.GridInstantMessage((Dictionary<string, object>)v);
-                ims.Add(m);
+                foreach (object v in resultdic.Values)
+                {
+                    if (v is Dictionary<string, object> vdic)
+                    {
+                        GridInstantMessage m = OfflineIMDataUtils.GridInstantMessage(vdic);
+                        ims.Add(m);
+                    }
+                }
             }
 
             return ims;
@@ -111,7 +121,6 @@ namespace OpenSim.OfflineIM
 
         public bool StoreMessage(GridInstantMessage im, out string reason)
         {
-            reason = string.Empty;
             Dictionary<string, object> sendData = OfflineIMDataUtils.GridInstantMessage(im);
 
             Dictionary<string, object> ret = MakeRequest("STORE", sendData);
@@ -122,13 +131,20 @@ namespace OpenSim.OfflineIM
                 return false;
             }
 
-            string result = ret["RESULT"].ToString();
-            if (result == "NULL" || result.ToLower() == "false")
+            if(ret.TryGetValue("RESULT", out object o))
             {
-                reason = ret.ContainsKey("REASON") ? ret["REASON"].ToString() : "Unknown error";
-                return false;
+                string result = o.ToString();
+                if (result == "NULL" || result.Equals("false", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if(ret.TryGetValue("REASON", out object ro))
+                        reason = ro.ToString();
+                    else
+                        reason = "Unknown error";
+                    return false;
+                }
             }
 
+            reason = string.Empty;
             return true;
         }
 
@@ -150,16 +166,13 @@ namespace OpenSim.OfflineIM
             sendData["METHOD"] = method;
 
             string reply = string.Empty;
-            
             // AKIDO remove lock
-            reply = SynchronousRestFormsRequester.MakeRequest("POST",
-                m_ServerURI + "/offlineim",
-                ServerUtils.BuildQueryString(sendData),
-                m_Auth);
-            // AKIDO end of remove lock
-            
-            Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(
-                    reply);
+                reply = SynchronousRestFormsRequester.MakeRequest("POST",
+                         m_ServerURI + "/offlineim",
+                         ServerUtils.BuildQueryString(sendData),
+                         m_Auth);
+
+            Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
 
             return replyData;
         }

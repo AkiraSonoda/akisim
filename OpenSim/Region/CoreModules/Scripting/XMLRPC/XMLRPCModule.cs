@@ -28,12 +28,14 @@
 using System;
 using System.Collections;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using log4net;
 using Nini.Config;
 using Nwc.XmlRpc;
 using OpenMetaverse;
+using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
@@ -686,9 +688,11 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
             ArrayList parameters = new ArrayList();
             parameters.Add(param);
             XmlRpcRequest req = new XmlRpcRequest(mName, parameters);
+            HttpClient hclient = null;
             try
             {
-                XmlRpcResponse resp = req.Send(DestURL, 30000);
+                hclient = WebUtil.GetNewGlobalHttpClient(-1);
+                XmlRpcResponse resp = req.Send(DestURL, hclient);
                 if (resp != null)
                 {
                     Hashtable respParms;
@@ -733,6 +737,7 @@ namespace OpenSim.Region.CoreModules.Scripting.XMLRPC
                 _finished = true;
                 httpThread = null;
                 Watchdog.RemoveThread();
+                hclient?.Dispose();
             }
         }
 

@@ -57,6 +57,7 @@ namespace OpenSim.Region.PhysicsModule.ODE.Tests
             IConfig startupConfig = openSimINI.AddConfig("Startup");
             startupConfig.Set("physics", "OpenDynamicsEngine");
             startupConfig.Set("DecodedSculptMapPath", "j2kDecodeCache");
+            startupConfig.Set("meshing", "Meshmerizer");
 
             Vector3 regionExtent = new Vector3(Constants.RegionSize, Constants.RegionSize, Constants.RegionHeight);
 

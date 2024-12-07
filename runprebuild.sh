@@ -2,26 +2,27 @@
 
 case "$1" in
 
-  'clean')
+ 'clean')
+    dotnet bin/prebuild.dll /file prebuild.xml /clean
 
-    mono bin/Prebuild.exe /clean
   ;;
 
 
   'autoclean')
 
-    echo y|mono bin/Prebuild.exe /clean
+    echo y|dotnet bin/prebuild.dll /file prebuild.xml /clean
 
   ;;
+
 
 
   *)
 
-    mono bin/Prebuild.exe /target nant
-    mono bin/Prebuild.exe /target vs2015 /excludedir = "obj | bin"
+    cp bin/System.Drawing.Common.dll.linux bin/System.Drawing.Common.dll
+    dotnet bin/prebuild.dll /target vs2022 /targetframework net8_0 /excludedir = "obj | bin" /file prebuild.xml
+    echo "dotnet build -c Release OpenSim.sln" > compile.sh
+    chmod +x compile.sh
 
   ;;
 
 esac
-    rm -fr bin/addin-db-002
-

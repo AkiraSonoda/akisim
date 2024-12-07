@@ -1,16 +1,32 @@
+# git clone
+
+get or update source from git
+
+ `git clone git://opensimulator.org/git/opensim`
+	
+
+
 # Building on Windows
 
 ## Requirements
-  For building under Windows, the following is required:
+  To building under Windows, the following is required:
 
-  * [Visual Studio .NET](https://visualstudio.microsoft.com/vs/features/net-development/), version 2015 or later
+  * [dotnet 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+
+optionally also
+
+  * [Visual Studio .NET](https://visualstudio.microsoft.com/vs/features/net-development/), version 2022 or later
+  
 
 ### Building
  To create the project files, run   
 
- ```runprebuild.bat```
+  `runprebuild.bat`
 
-Load the generated OpenSim.sln into Visual Studio .NET and build the solution.
+run 
+  `compile.bat`
+
+Or load the generated OpenSim.sln into Visual Studio and build the solution.
 
 Configure, see below
 
@@ -20,26 +36,29 @@ Now just run `OpenSim.exe` from the `bin` folder, and set up the region.
 
 ## Requirements
 
- *	[Mono > 5.0](https://www.mono-project.com/download/stable/#download-lin)
- *	On some Linux distributions you may need to install additional packages.
- *	msbuild or xbuild(deprecated) if still supported by the mono version
- *   See [the wiki](http://opensimulator.org/wiki/Dependencies) for more information.
+ * [dotnet 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+ * libgdiplus 
+ 
+ if you have mono 6.x complete, you already have libgdiplus, otherwise you need to install it
+ using a package manager for your operating system, like apt, brew, macports, etc
+ for example on debian:
+ 
+ `apt-get update && apt-get install -y apt-utils libgdiplus libc6-dev`
 
 ### Building
   To create the project files, run:
 
-  ```./runprebuild.sh```
+  `./runprebuild.sh`
 
-  then run ```msbuild``` or ```xbuild``` if xbuild was installed.
+  then run
+
+ `dotnet build --configuration Release OpenSim.sln`
+  
 
 Configure. See below
 
 run `./opensim.sh` from the `bin` folder, and set up the region
 
-For rebuilding and debugging use the msbuild option switches
-  *  clean:  `msbuild /target:clean`
-  *  debug: (default) `msbuild /property:Configuration=Debug`
-  *  release: `msbuild /property:Configuration=Release`
 
 
 # Configure #

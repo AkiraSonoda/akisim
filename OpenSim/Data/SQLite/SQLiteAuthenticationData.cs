@@ -65,8 +65,7 @@ namespace OpenSim.Data.SQLite
 
             if (!m_initialized)
             {
-                if (Util.IsWindows())
-                    Util.LoadArchSpecificWindowsDll("sqlite3.dll");
+                DllmapConfigHelper.RegisterAssembly(typeof(SqliteConnection).Assembly);
 
                 m_Connection = new SqliteConnection(connectionString);
                 m_Connection.Open();
@@ -130,8 +129,7 @@ namespace OpenSim.Data.SQLite
 
         public bool Store(AuthenticationData data)
         {
-            if (data.Data.ContainsKey("UUID"))
-                data.Data.Remove("UUID");
+            data.Data.Remove("UUID");
 
             string[] fields = new List<string>(data.Data.Keys).ToArray();
             string[] values = new string[data.Data.Count];

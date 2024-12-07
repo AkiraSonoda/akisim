@@ -184,9 +184,9 @@ namespace OpenSim.Framework.Console
             m_Server = server;
 
             // Add our handlers
-            m_Server.AddHTTPHandler("/StartSession/", HandleHttpStartSession);
-            m_Server.AddHTTPHandler("/CloseSession/", HandleHttpCloseSession);
-            m_Server.AddHTTPHandler("/SessionCommand/", HandleHttpSessionCommand);
+            m_Server.AddHTTPHandler("/StartSession", HandleHttpStartSession);
+            m_Server.AddHTTPHandler("/CloseSession", HandleHttpCloseSession);
+            m_Server.AddHTTPHandler("/SessionCommand", HandleHttpSessionCommand);
         }
 
         public override void Output(string format)
@@ -321,7 +321,7 @@ namespace OpenSim.Framework.Console
 
                     for (i=0 ; i < cmd.Length ; i++)
                     {
-                        if (cmd[i].Contains(" "))
+                        if (cmd[i].Contains(' '))
                             cmd[i] = "\"" + cmd[i] + "\"";
                     }
                     return String.Empty;
@@ -699,12 +699,10 @@ namespace OpenSim.Framework.Console
             Hashtable result = new Hashtable();
 
             XmlDocument xmldoc = new XmlDocument();
-            XmlNode xmlnode = xmldoc.CreateNode(XmlNodeType.XmlDeclaration,
-                    "", "");
+            XmlNode xmlnode = xmldoc.CreateNode(XmlNodeType.XmlDeclaration, "", "");
 
             xmldoc.AppendChild(xmlnode);
-            XmlElement rootElement = xmldoc.CreateElement("", "ConsoleSession",
-                    "");
+            XmlElement rootElement = xmldoc.CreateElement("", "ConsoleSession", "");
 
             xmldoc.AppendChild(rootElement);
 

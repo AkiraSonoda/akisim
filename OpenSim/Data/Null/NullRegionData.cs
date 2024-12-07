@@ -169,12 +169,9 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.Get(regionID, scopeID);
 
-            // AKIDO
-            if (m_regionData.ContainsKey(regionID))
-                return m_regionData[regionID];
-            // AKIDO
-
-            return null;
+            // AKIDO start remove lock
+                return m_regionData.TryGetValue(regionID, out RegionData rd) ? rd : null;
+            // AKIDO end remove lock
         }
 
         public List<RegionData> Get(int startX, int startY, int endX, int endY, UUID scopeID)
@@ -184,14 +181,15 @@ namespace OpenSim.Data.Null
 
             List<RegionData> ret = new List<RegionData>();
 
-            // AKIDO
-            foreach (RegionData r in m_regionData.Values)
-            {
-                if (r.posX + r.sizeX > startX && r.posX <= endX
-                                              && r.posY + r.sizeX > startY && r.posY <= endY)
-                    ret.Add(r);
-            }
-            // AKIDO
+            // AKIDO start remove lock
+
+                foreach (RegionData r in m_regionData.Values)
+                {
+                    if (r.posX + r.sizeX > startX && r.posX <= endX
+                         && r.posY + r.sizeX > startY && r.posY <= endY)
+                         ret.Add(r);
+                }
+            // AKIDO end remove lock
 
             return ret;
         }
@@ -204,9 +202,10 @@ namespace OpenSim.Data.Null
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Storing region {0} {1}, scope {2}", data.RegionName, data.RegionID, data.ScopeID);
 
-            // AKIDO
-            m_regionData[data.RegionID] = data;
-            // AKIDO
+            // AKIDO start remove lock
+
+                m_regionData[data.RegionID] = data;
+            // AKIDO end remove lock
 
             return true;
         }
@@ -216,14 +215,14 @@ namespace OpenSim.Data.Null
             if (m_useStaticInstance && Instance != this)
                 return Instance.SetDataItem(regionID, item, value);
 
-            // AKIDO
-            if (!m_regionData.ContainsKey(regionID))
+            // AKIDO start remove lock
+                if(m_regionData.TryGetValue(regionID, out RegionData rd))
+                {
+                    rd.Data[item] = value;
+                    return true;
+                }
                 return false;
-
-            m_regionData[regionID].Data[item] = value;
             // AKIDO
-
-            return true;
         }
 
         public bool Delete(UUID regionID)
@@ -233,14 +232,9 @@ namespace OpenSim.Data.Null
 
             if(m_log.IsDebugEnabled) m_log.DebugFormat("Deleting region {0}", regionID);
 
-            // AKIDO
-            if (!m_regionData.ContainsKey(regionID))
-                return false;
-
-            m_regionData.Remove(regionID);
-            // AKIDO
-
-            return true;
+            // AKIDO start remove lock
+                return m_regionData.Remove(regionID);
+            // AKIDO end remove lock
         }
 
         public List<RegionData> GetDefaultRegions(UUID scopeID)
@@ -275,13 +269,14 @@ namespace OpenSim.Data.Null
 
             List<RegionData> ret = new List<RegionData>();
 
-            // AKIDO
-            foreach (RegionData r in m_regionData.Values)
-            {
-                if ((Convert.ToInt32(r.Data["flags"]) & regionFlags) != 0)
-                    ret.Add(r);
-            }
-            // AKIDO
+            // AKIDO start remove lock
+
+                foreach (RegionData r in m_regionData.Values)
+                {
+                    if ((Convert.ToInt32(r.Data["flags"]) & regionFlags) != 0)
+                        ret.Add(r);
+                }
+            // AKIDO end remove lock
 
             return ret;
         }

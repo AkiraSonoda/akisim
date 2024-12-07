@@ -84,7 +84,7 @@ namespace OpenSim.Data.Null
 
         public string LoadRegionEnvironmentSettings(UUID regionUUID)
         {
-            // AKIDO
+            // AKIDO remove lock
             if (EnvironmentSettings.ContainsKey(regionUUID))
                 return EnvironmentSettings[regionUUID];
             // AKIDO
@@ -100,9 +100,9 @@ namespace OpenSim.Data.Null
 
         public void RemoveRegionEnvironmentSettings(UUID regionUUID)
         {
-            // AKIDO
-            EnvironmentSettings.Remove(regionUUID);
-            // AKIDO
+            // AKIDO remove lock
+                EnvironmentSettings.Remove(regionUUID);
+            // AKIDO end remove lock
         }
         #endregion
 
@@ -141,9 +141,7 @@ namespace OpenSim.Data.Null
 
         public void StoreBakedTerrain(TerrainData ter, UUID regionID)
         {
-            if (m_bakedterrains.ContainsKey(regionID))
-                m_bakedterrains.Remove(regionID);
-            m_bakedterrains.Add(regionID, ter);
+            m_bakedterrains[regionID] = ter;
         }
 
         // Legacy. Just don't do this.
@@ -157,29 +155,17 @@ namespace OpenSim.Data.Null
         // Returns 'null' if region not found
         public double[,] LoadTerrain(UUID regionID)
         {
-            if (m_terrains.TryGetValue(regionID, out var data))
-            {
-                return data.GetDoubles();
-            }
-            return null;
+            return m_terrains.TryGetValue(regionID, out TerrainData terrData) ? terrData.GetDoubles() : null;
         }
 
         public TerrainData LoadTerrain(UUID regionID, int pSizeX, int pSizeY, int pSizeZ)
         {
-            if (m_terrains.TryGetValue(regionID, out var data))
-            {
-                return data;
-            }
-            return null;
+            return m_terrains.TryGetValue(regionID, out TerrainData terrData) ? terrData : null;
         }
 
         public TerrainData LoadBakedTerrain(UUID regionID, int pSizeX, int pSizeY, int pSizeZ)
         {
-            if (m_bakedterrains.TryGetValue(regionID, out TerrainData data))
-            {
-                return data;
-            }
-            return null;
+            return m_bakedterrains.TryGetValue(regionID, out TerrainData terrData) ? terrData : null;
         }
 
         public void RemoveLandObject(UUID globalID)

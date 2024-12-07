@@ -52,15 +52,15 @@ namespace OpenSim.Framework
         /// references</summary>
         private IClientAPI[] m_array = null;
         /// <summary>Synchronization object for writing to the collections</summary>
-        private readonly object m_syncRoot = new object();
+        private readonly object m_syncRoot = new();
 
         /// <summary>Number of clients in the collection</summary>
         public int Count
         {
             get
             {
-                // AKIDO
-                return m_dictbyUUID.Count;
+                // AKIDO remove lock 
+                    return m_dictbyUUID.Count;
             }
         }
 
@@ -80,11 +80,12 @@ namespace OpenSim.Framework
         /// otherwise false if the given key already existed in the collection</returns>
         public bool Add(IClientAPI value)
         {
-            // AKIDO
-            m_dictbyUUID[value.AgentId] = value;
-            m_dictbyIPe[value.RemoteEndPoint] = value;
-            m_array = null;
-            //
+            // AKIDO remove lock
+
+                m_dictbyUUID[value.AgentId] = value;
+                m_dictbyIPe[value.RemoteEndPoint] = value;
+                m_array = null;
+            // AKIDO end remove lock
 
             return true;
         }
@@ -97,16 +98,14 @@ namespace OpenSim.Framework
         /// was not present in the collection</returns>
         public bool Remove(UUID key)
         {
-            // AKIDO
-            IClientAPI value;
-            if (m_dictbyUUID.TryGetValue(key, out value))
-            {
-                m_dictbyUUID.Remove(key);
-                m_dictbyIPe.Remove(value.RemoteEndPoint);
-                m_array = null;
-                return true;
-            }
-            // AKIDO
+            // AKIDO remove lock
+                if (m_dictbyUUID.Remove(key, out IClientAPI value))
+                {
+                    m_dictbyIPe.Remove(value.RemoteEndPoint);
+                    m_array = null;
+                    return true;
+                }
+            // AKIDO end remove lock
             return false;
         }
 
@@ -115,11 +114,12 @@ namespace OpenSim.Framework
         /// </summary>
         public void Clear()
         {
-            // AKIDO
-            m_dictbyUUID.Clear();
-            m_dictbyIPe.Clear();
-            m_array = null;
-            // AKIDO
+            // AKIDO remove lock
+
+                m_dictbyUUID.Clear();
+                m_dictbyIPe.Clear();
+                m_array = null;
+            // AKIDO end remove lock
         }
 
         /// <summary>
@@ -129,8 +129,8 @@ namespace OpenSim.Framework
         /// <returns>True if the UUID was found in the collection, otherwise false</returns>
         public bool ContainsKey(UUID key)
         {
-            // AKIDO
-            return m_dictbyUUID.ContainsKey(key);
+            // AKIDO remove lock
+                return m_dictbyUUID.ContainsKey(key);
         }
 
         /// <summary>
@@ -140,8 +140,8 @@ namespace OpenSim.Framework
         /// <returns>True if the endpoint was found in the collection, otherwise false</returns>
         public bool ContainsKey(IPEndPoint key)
         {
-            // AKIDO
-            return m_dictbyIPe.ContainsKey(key);
+            // AKIDO remove lock
+                return m_dictbyIPe.ContainsKey(key);
         }
 
         /// <summary>
@@ -154,8 +154,8 @@ namespace OpenSim.Framework
         {
             try
             {
-                // AKIDO
-                return m_dictbyUUID.TryGetValue(key, out value);
+                // AKIDO remove lock
+                    return m_dictbyUUID.TryGetValue(key, out value);
             }
             catch
             {
@@ -174,8 +174,8 @@ namespace OpenSim.Framework
         {
             try
             {
-                // AKIDO
-                return m_dictbyIPe.TryGetValue(key, out value);
+                // AKIDO remove lock
+                    return m_dictbyIPe.TryGetValue(key, out value);
             }
             catch
             {
@@ -194,7 +194,7 @@ namespace OpenSim.Framework
             IClientAPI[] localArray;
             lock (m_syncRoot)
             {
-                if (m_array == null)
+                if (m_array is null)
                 {
                     if (m_dictbyUUID.Count == 0)
                         return;

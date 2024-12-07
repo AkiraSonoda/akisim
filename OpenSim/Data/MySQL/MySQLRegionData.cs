@@ -67,7 +67,7 @@ namespace OpenSim.Data.MySQL
         public List<RegionData> Get(string regionName, UUID scopeID)
         {
             string command = "select * from `"+m_Realm+"` where regionName like ?regionName";
-            if (!scopeID.IsZero())
+            if (scopeID.IsNotZero())
                 command += " and ScopeID = ?scopeID";
 
             command += " order by regionName";
@@ -75,7 +75,8 @@ namespace OpenSim.Data.MySQL
             using (MySqlCommand cmd = new MySqlCommand(command))
             {
                 cmd.Parameters.AddWithValue("?regionName", regionName);
-                cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
+                if (scopeID.IsNotZero())
+                    cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
 
                 return RunCommand(cmd);
             }
@@ -84,13 +85,14 @@ namespace OpenSim.Data.MySQL
         public RegionData GetSpecific(string regionName, UUID scopeID)
         {
             string command = "select * from `" + m_Realm + "` where regionName = ?regionName";
-            if (!scopeID.IsZero())
+            if (scopeID.IsNotZero())
                 command += " and ScopeID = ?scopeID";
 
             using (MySqlCommand cmd = new MySqlCommand(command))
             {
                 cmd.Parameters.AddWithValue("?regionName", regionName);
-                cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
+                if (scopeID.IsNotZero())
+                    cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
 
                 List<RegionData> ret = RunCommand(cmd);
                 if (ret.Count == 0)
@@ -104,7 +106,7 @@ namespace OpenSim.Data.MySQL
         public RegionData Get(int posX, int posY, UUID scopeID)
         {
             string command = "select * from `" + m_Realm + "` where locX between ?startX and ?endX and locY between ?startY and ?endY";
-            if (!scopeID.IsZero())
+            if (scopeID.IsNotZero())
                 command += " and ScopeID = ?scopeID";
 
             int startX = posX - (int)Constants.MaximumRegionSize;
@@ -119,7 +121,8 @@ namespace OpenSim.Data.MySQL
                 cmd.Parameters.AddWithValue("?startY", startY.ToString());
                 cmd.Parameters.AddWithValue("?endX", endX.ToString());
                 cmd.Parameters.AddWithValue("?endY", endY.ToString());
-                cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
+                if (scopeID.IsNotZero())
+                    cmd.Parameters.AddWithValue("?scopeID", scopeID.ToString());
 
                 ret = RunCommand(cmd);
             }
@@ -288,24 +291,15 @@ namespace OpenSim.Data.MySQL
 
         public bool Store(RegionData data)
         {
-            if (data.Data.ContainsKey("uuid"))
-                data.Data.Remove("uuid");
-            if (data.Data.ContainsKey("ScopeID"))
-                data.Data.Remove("ScopeID");
-            if (data.Data.ContainsKey("regionName"))
-                data.Data.Remove("regionName");
-            if (data.Data.ContainsKey("posX"))
-                data.Data.Remove("posX");
-            if (data.Data.ContainsKey("posY"))
-                data.Data.Remove("posY");
-            if (data.Data.ContainsKey("sizeX"))
-                data.Data.Remove("sizeX");
-            if (data.Data.ContainsKey("sizeY"))
-                data.Data.Remove("sizeY");
-            if (data.Data.ContainsKey("locX"))
-                data.Data.Remove("locX");
-            if (data.Data.ContainsKey("locY"))
-                data.Data.Remove("locY");
+            data.Data.Remove("uuid");
+            data.Data.Remove("ScopeID");
+            data.Data.Remove("regionName");
+            data.Data.Remove("posX");
+            data.Data.Remove("posY");
+            data.Data.Remove("sizeX");
+            data.Data.Remove("sizeY");
+            data.Data.Remove("locX");
+            data.Data.Remove("locY");
 
             if (data.RegionName.Length > 128)
                 data.RegionName = data.RegionName.Substring(0, 128);
