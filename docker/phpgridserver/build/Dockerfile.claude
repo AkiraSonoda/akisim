@@ -1,0 +1,52 @@
+FROM php:7.4-apache
+
+# persistent / runtime deps
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y \
+        ca-certificates \
+        curl \
+        xz-utils \
+        libgmp-dev \
+        libpng-dev \
+        libjpeg-dev \
+        libfreetype6-dev \
+        libmagickwand-dev \
+    ; \
+    rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install gmp mysqli pdo pdo_mysql gd
+
+# Install ImageMagick and Xdebug
+RUN pecl install imagick && \
+    docker-php-ext-enable imagick && \
+    pecl install xdebug-3.1.6 && \
+    docker-php-ext-enable xdebug
+
+# Configure Xdebug
+RUN echo "xdebug.mode=develop,debug" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+    echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+    echo "xdebug.idekey=PHPSTORM" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+    echo "xdebug.discover_client_host=0" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && \
+    echo "xdebug.log_level=10" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+ENV APACHE_CONFDIR /etc/apache2
+ENV APACHE_ENVVARS $APACHE_CONFDIR/envvars
+
+COPY apache2.conf /etc/apache2
+COPY php.ini /usr/local/etc/php/php.ini
+
+# Apache configuration
+RUN a2dismod mpm_event && a2dismod reqtimeout && a2enmod rewrite
+
+COPY phpgridserver.conf /etc/apache2/conf-available
+RUN a2enconf phpgridserver
+
+COPY 000-default.conf /etc/apache2/sites-available
+RUN a2ensite 000-default
+
+WORKDIR /var/www
+
+EXPOSE 80
+CMD ["apache2-foreground"]
