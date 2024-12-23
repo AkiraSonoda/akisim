@@ -1,4 +1,3 @@
-version: '3.8'
 services:
     php-apache:
         container_name: phpgridserver
@@ -16,7 +15,7 @@ services:
             - 8020:80
     db:
         container_name: db
-        image: mysql
+        image: mariadb:latest
         restart: always
         hostname: db
         networks:
@@ -24,11 +23,11 @@ services:
         volumes:
             - ./mysql:/var/lib/mysql
         environment:
-            MYSQL_ROOT_PASSWORD: mvnrw07
-            MYSQL_DATABASE: phpgridserver
-            MYSQL_USER: phpgridserver
-            MYSQL_PASSWORD: phpgridserver
+            MARIADB_ROOT_PASSWORD: mvnrw07
+            MARIADB_DATABASE: phpgridserver
+            MARIADB_USER: phpgridserver
+            MARIADB_PASSWORD: phpgridserver
         ports:
-            - "9306:3306"
+            - 9306:3306
 networks:
     test-net:

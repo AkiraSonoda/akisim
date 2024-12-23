@@ -24,8 +24,8 @@ RUN set -eux; \
  	; \
 	rm -rf /var/lib/apt/lists/*
 	
-ENV APACHE_CONFDIR /etc/apache2
-ENV APACHE_ENVVARS $APACHE_CONFDIR/envvars
+ENV APACHE_CONFDIR=/etc/apache2
+ENV APACHE_ENVVARS=$APACHE_CONFDIR/envvars
 
 RUN rm -f /etc/php/7.4/apache2/conf.d/20-xdebug.ini
 
@@ -62,6 +62,10 @@ ENTRYPOINT ["docker-php-entrypoint"]
 # STOPSIGNAL SIGWINCH
 
 COPY apache2-foreground /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-php-entrypoint \
+    && chmod +x /usr/local/bin/apache2-foreground
+
+
 WORKDIR /var/www
 
 EXPOSE 80
