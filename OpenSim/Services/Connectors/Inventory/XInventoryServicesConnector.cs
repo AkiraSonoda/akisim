@@ -132,6 +132,10 @@ namespace OpenSim.Services.Connectors
 
         private static bool CheckReturn(Dictionary<string, object> ret)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("CheckReturn ret-keys: {0}", ret.Keys);
+            }
+            
             if (ret is null || ret.Count == 0)
                 return false;
 
@@ -149,6 +153,10 @@ namespace OpenSim.Services.Connectors
 
         public bool CreateUserInventory(UUID principalID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("CreateUserInventory({0})", principalID);
+            }
+            
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=CREATEUSERINVENTORY&PRINCIPAL={principalID}");
 
@@ -157,6 +165,10 @@ namespace OpenSim.Services.Connectors
 
         public List<InventoryFolderBase> GetInventorySkeleton(UUID principalID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetInventorySkeleton({0})", principalID);
+            }
+            
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=GETINVENTORYSKELETON&PRINCIPAL={principalID}");
 
@@ -174,7 +186,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception unwrapping folder list: " + e.Message);
+                m_log.Error("Exception unwrapping folder list: " + e.Message);
             }
 
             return fldrs;
@@ -182,6 +194,9 @@ namespace OpenSim.Services.Connectors
 
         public InventoryFolderBase GetRootFolder(UUID principalID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetRootFolder({0})", principalID);
+            }
             Dictionary<string,object> ret = MakeRequest($"METHOD=GETROOTFOLDER&PRINCIPAL={principalID}");
 
             if (!CheckReturn(ret))
@@ -192,6 +207,9 @@ namespace OpenSim.Services.Connectors
 
         public InventoryFolderBase GetFolderForType(UUID principalID, FolderType type)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetFolderForType({0}, {1})", principalID, type);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=GETFOLDERFORTYPE&PRINCIPAL={principalID}&TYPE={(int)type}");
 
@@ -203,6 +221,9 @@ namespace OpenSim.Services.Connectors
 
         public InventoryCollection GetFolderContent(UUID principalID, UUID folderID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetFolderContent({0}, {1})", principalID, folderID);
+            }
             InventoryCollection inventory = new()
             {
                 Folders = new(),
@@ -233,7 +254,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.WarnFormat("[XINVENTORY SERVICES CONNECTOR]: Exception in GetFolderContent: {0}", e.Message);
+                m_log.WarnFormat("Exception in GetFolderContent: {0}", e.Message);
             }
 
             return inventory;
@@ -241,16 +262,28 @@ namespace OpenSim.Services.Connectors
 
         public virtual InventoryCollection[] GetMultipleFoldersContent(UUID principalID, UUID[] folderIDs)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetMultipleFoldersContent({0}, {1})", principalID, string.Join(", ", folderIDs));
+            }
+            
             InventoryCollection[] inventoryArr = new InventoryCollection[folderIDs.Length];
-            // m_log.DebugFormat("[XXX]: In GetMultipleFoldersContent {0}", String.Join(",", folderIDs));
             try
             {
                 Dictionary<string, object> resultSet = MakeRequest(
                     $"METHOD=GETMULTIPLEFOLDERSCONTENT&PRINCIPAL={principalID}&FOLDERS={string.Join(',', folderIDs)}&COUNT={folderIDs.Length}");
-
+        
                 if (!CheckReturn(resultSet))
                     return null;
-
+        
+                // AKIDO Print resultSet into debug log
+                if (m_log.IsDebugEnabled)
+                {
+                    m_log.Debug("GETMULTIPLEFOLDERSCONTENT ResultSet contents:");
+                    foreach (var kvp in resultSet)
+                    {
+                        m_log.DebugFormat("  {0}: {1}", kvp.Key, kvp.Value);
+                    }
+                }                
                 int i = 0;
                 foreach (UUID u in folderIDs.AsSpan())
                 {
@@ -261,7 +294,7 @@ namespace OpenSim.Services.Connectors
                         {
                             if (!UUID.TryParse((string)retFID, out inventoryFolderID))
                             {
-                                m_log.WarnFormat("[XINVENTORY SERVICES CONNECTOR]: Could not parse folder id {0}", retFID.ToString());
+                                m_log.WarnFormat("Could not parse folder id {0}", retFID.ToString());
                                 inventoryArr[i] = null;
                                 continue;
                             }
@@ -269,18 +302,18 @@ namespace OpenSim.Services.Connectors
                         else
                         {
                             inventoryArr[i] = null;
-                            m_log.WarnFormat("[XINVENTORY SERVICES CONNECTOR]: FID key not present in response");
+                            m_log.WarnFormat("FID key not present in response");
                             continue;
                         }
-
+        
                         if (!ret.TryGetValue("OWNER", out object retOwner) || 
                             !UUID.TryParse((string)retOwner, out UUID inventoryOwnerID))
                         {
                             inventoryArr[i] = null;
-                            m_log.Warn($"[XINVENTORY SERVICES CONNECTOR]: Could not parse folder {retFID} owner id");
+                            m_log.Warn($"Could not parse folder {retFID} owner id");
                             continue;
                         }
-
+        
                         InventoryCollection inventory = new()
                         {
                             FolderID = inventoryFolderID,
@@ -288,24 +321,22 @@ namespace OpenSim.Services.Connectors
                             Folders = new List<InventoryFolderBase>(),
                             Items = new List<InventoryItemBase>()
                         };
-
+        
                         if (!ret.TryGetValue("VERSION", out object retVer) ||
                                 !Int32.TryParse((string)retVer, out inventory.Version))
                             inventory.Version = -1;
-
-                        //m_log.DebugFormat("[XXX]: Received {0} ({1}) {2} {3}", inventory.FolderID, fid, inventory.Version, inventory.OwnerID);
-
+        
                         if (ret.TryGetValue("FOLDERS", out object ofolders) && ofolders is Dictionary<string, object> folders)
                         {
-                            foreach (object o in folders.Values) // getting the values directly, we don't care about the keys folder_i
+                            foreach (object o in folders.Values)
                             {
                                 inventory.Folders.Add(BuildFolder((Dictionary<string, object>)o));
                             }
                         }
-
+        
                         if (ret.TryGetValue("ITEMS", out object oitems) && oitems is Dictionary<string, object> items)
                         {
-                            foreach (object o in items.Values) // getting the values directly, we don't care about the keys item_i
+                            foreach (object o in items.Values)
                             {
                                 inventory.Items.Add(BuildItem((Dictionary<string, object>)o));
                             }
@@ -315,21 +346,23 @@ namespace OpenSim.Services.Connectors
                     else
                     {
                         inventoryArr[i] = null;
-                        //m_log.Warn($"[XINVENTORY SERVICES CONNECTOR]: Folder {folderIDs[i]} not on reply");,
                     }
                     i++;
                 }
             }
             catch (Exception e)
             {
-                m_log.WarnFormat("[XINVENTORY SERVICES CONNECTOR]: Exception in GetMultipleFoldersContent: {0}", e.Message);
+                m_log.WarnFormat("Exception in GetMultipleFoldersContent: {0}", e.Message);
             }
-
+        
             return inventoryArr;
         }
 
         public List<InventoryItemBase> GetFolderItems(UUID principalID, UUID folderID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetFolderItems({0}, {1})", principalID, folderID);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=GETFOLDERITEMS&PRINCIPAL={principalID}&FOLDER={folderID}");
 
@@ -346,6 +379,9 @@ namespace OpenSim.Services.Connectors
 
         public bool AddFolder(InventoryFolderBase folder)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("AddFolder({0})", folder);
+            }
             Dictionary<string,object> ret = MakeRequest(
                     new Dictionary<string,object> {
                         { "METHOD", "ADDFOLDER"},
@@ -362,6 +398,9 @@ namespace OpenSim.Services.Connectors
 
         public bool UpdateFolder(InventoryFolderBase folder)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("UpdateFolder({0})", folder);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=UPDATEFOLDER&ParentID={folder.ParentID}&Type={folder.Type}&Version={folder.Version}&Name={folder.Name}&Owner={folder.Owner}&ID={folder.ID}");
 
@@ -370,6 +409,9 @@ namespace OpenSim.Services.Connectors
 
         public bool MoveFolder(InventoryFolderBase folder)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("MoveFolder({0})", folder);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=MOVEFOLDER&ParentID={folder.ParentID}&ID={folder.ID}&PRINCIPAL={folder.Owner}");
             return CheckReturn(ret);
@@ -377,6 +419,9 @@ namespace OpenSim.Services.Connectors
 
         public bool DeleteFolders(UUID principalID, List<UUID> folderIDs)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("DeleteFolders({0}, {1})", principalID, folderIDs);
+            }
             List<string> slist = new();
 
             foreach (UUID f in folderIDs)
@@ -394,6 +439,9 @@ namespace OpenSim.Services.Connectors
 
         public bool PurgeFolder(InventoryFolderBase folder)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("PurgeFolder({0})", folder);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=PURGEFOLDER&ID={folder.ID}");
             return CheckReturn(ret);
@@ -401,6 +449,9 @@ namespace OpenSim.Services.Connectors
 
         public bool AddItem(InventoryItemBase item)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("AddItem({0})", item);
+            }
             item.Description ??= string.Empty;
             item.CreatorData ??= string.Empty;
             item.CreatorId ??= string.Empty;
@@ -435,6 +486,9 @@ namespace OpenSim.Services.Connectors
 
         public bool UpdateItem(InventoryItemBase item)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("UpdateItem({0})", item);
+            }
             item.CreatorData ??= string.Empty;
             Dictionary<string,object> ret = MakeRequest(
                     new Dictionary<string,object> {
@@ -473,6 +527,9 @@ namespace OpenSim.Services.Connectors
 
         public bool MoveItems(UUID principalID, List<InventoryItemBase> items)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("MoveItems({0}, {1})", principalID, items);
+            }
             List<string> idlist = new();
             List<string> destlist = new();
 
@@ -496,6 +553,9 @@ namespace OpenSim.Services.Connectors
 
         public bool DeleteItems(UUID principalID, List<UUID> itemIDs)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("DeleteItems({0}, {1})", principalID, itemIDs);
+            }
             List<string> slist = new();
 
             foreach (UUID f in itemIDs)
@@ -516,6 +576,9 @@ namespace OpenSim.Services.Connectors
 
         public InventoryItemBase GetItem(UUID principalID, UUID itemID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetItem({0}, {1})", principalID, itemID);
+            }
             if (m_ItemCache.TryGetValue(itemID, out InventoryItemBase retrieved))
                 return retrieved;
 
@@ -529,7 +592,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception in GetItem: " + e.Message);
+                m_log.Error("Exception in GetItem: " + e.Message);
             }
 
             m_ItemCache.AddOrUpdate(itemID, retrieved, CACHE_EXPIRATION_SECONDS);
@@ -539,7 +602,9 @@ namespace OpenSim.Services.Connectors
 
         public virtual InventoryItemBase[] GetMultipleItems(UUID principalID, UUID[] itemIDs)
         {
-            //m_log.DebugFormat("[XXX]: In GetMultipleItems {0}", String.Join(",", itemIDs));
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetMultipleItems({0}, {1})", principalID, String.Join(",", itemIDs));
+            }
 
             InventoryItemBase[] itemArr = new InventoryItemBase[itemIDs.Length];
 
@@ -596,7 +661,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.WarnFormat("[XINVENTORY SERVICES CONNECTOR]: Exception in GetMultipleItems: {0}", e.Message);
+                m_log.WarnFormat("Exception in GetMultipleItems: {0}", e.Message);
             }
 
             return itemArr;
@@ -604,6 +669,10 @@ namespace OpenSim.Services.Connectors
 
         public InventoryFolderBase GetFolder(UUID principalID, UUID folderID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetFolder({0}, {1})", principalID, folderID);
+            }
+            
             try
             {
                 Dictionary<string, object> ret = MakeRequest(
@@ -616,7 +685,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.Error("[XINVENTORY SERVICES CONNECTOR]: Exception in GetFolder: " + e.Message);
+                m_log.Error("Exception in GetFolder: " + e.Message);
             }
 
             return null;
@@ -624,6 +693,9 @@ namespace OpenSim.Services.Connectors
 
         public List<InventoryItemBase> GetActiveGestures(UUID principalID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetActiveGestures({0})", principalID);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=GETACTIVEGESTURES&PRINCIPAL={principalID}");
 
@@ -643,6 +715,9 @@ namespace OpenSim.Services.Connectors
 
         public int GetAssetPermissions(UUID principalID, UUID assetID)
         {
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GetAssetPermissions({0}, {1})", principalID, assetID);
+            }
             Dictionary<string,object> ret = MakeRequest(
                 $"METHOD=GETASSETPERMISSIONS&PRINCIPAL={principalID}&ASSET={assetID}");
 
@@ -671,6 +746,10 @@ namespace OpenSim.Services.Connectors
         //
         private Dictionary<string, object> MakeRequest(Dictionary<string, object> sendData)
         {
+            if (m_log.IsDebugEnabled)
+            {
+                m_log.DebugFormat("MakeRequest sendData: {0}", sendData);
+            }
             RequestsMade++;
             Dictionary<string, object> replyData = MakePostDicRequest(ServerUtils.BuildQueryString(sendData));
 
@@ -679,6 +758,10 @@ namespace OpenSim.Services.Connectors
 
         private Dictionary<string, object> MakeRequest(string query)
         {
+            if (m_log.IsDebugEnabled)
+            {
+                m_log.DebugFormat("MakeRequest query: {0}", query);
+            }
             RequestsMade++;
             Dictionary<string, object> replyData = MakePostDicRequest(query);
 
@@ -687,6 +770,9 @@ namespace OpenSim.Services.Connectors
 
         private static InventoryFolderBase BuildFolder(Dictionary<string,object> data)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("BuildFolder data: {0}", data.Keys);
+
             try
             {
                 InventoryFolderBase folder = new()
@@ -702,7 +788,7 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.Error($"[XINVENTORY SERVICES CONNECTOR]: Exception building folder: {e.Message}");
+                m_log.Error($"Exception building folder: {e.Message}");
             }
 
             return new InventoryFolderBase();
@@ -710,6 +796,9 @@ namespace OpenSim.Services.Connectors
 
         private static InventoryItemBase BuildItem(Dictionary<string,object> data)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("BuildItem data: {0}", data);
+            
             try
             {
                 InventoryItemBase item = new()
@@ -741,17 +830,18 @@ namespace OpenSim.Services.Connectors
             }
             catch (Exception e)
             {
-                m_log.Error($"[XINVENTORY CONNECTOR]: Exception building item: {e.Message}");
+                m_log.Error($"Exception building item: {e.Message}");
             }
             return new InventoryItemBase();
         }
         public Dictionary<string, object> MakePostDicRequest(string obj)
         {
-            if (WebUtil.DebugLevel >= 3)
-                m_log.Debug($"[XInventory]: HTTP OUT SynchronousRestForms POST to {m_InventoryURL}");
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("MakePostDicRequest obj: {0}", obj);
+            
             if (string.IsNullOrEmpty(obj))
             {
-                m_log.Warn($"[XInventory]: empty post data");
+                m_log.Warn($"empty post data");
                 return new Dictionary<string, object>();
             }
 
@@ -792,15 +882,17 @@ namespace OpenSim.Services.Connectors
                 responseMessage = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
                 responseMessage.EnsureSuccessStatusCode();
 
-                if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
-                {
-                    rcvlen = (int)contentLength;
+                // AKIDO 
+                // PhpGridServer streams the Content and therefore is not able to set a content length.
+                // if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                // {
+                    // rcvlen = (int)contentLength;
                     respDic = ServerUtils.ParseXmlResponse(responseMessage.Content.ReadAsStream());
-                }
+                // }
             }
             catch (Exception e)
             {
-                m_log.Info($"[XInventory]: Error receiving response from {m_InventoryURL}: {e.Message}");
+                m_log.Info($"Error receiving response from {m_InventoryURL}: {e.Message}");
                 throw;
             }
             finally
@@ -813,7 +905,7 @@ namespace OpenSim.Services.Connectors
             ticks = Util.EnvironmentTickCountSubtract(ticks);
             if (ticks > WebUtil.LongCallTime)
             {
-                m_log.Info($"[XInventory]: POST {m_InventoryURL} took {ticks}ms {sendlen}/{rcvlen}bytes");
+                m_log.Info($"POST {m_InventoryURL} took {ticks}ms {sendlen}/{rcvlen}bytes");
             }
 
             return respDic ?? new Dictionary<string, object>();

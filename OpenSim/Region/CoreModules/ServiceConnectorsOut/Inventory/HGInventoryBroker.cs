@@ -284,11 +284,18 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool CreateUserInventory(UUID userID)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("CreateUserInventory for {0}", userID);
+
+            string invURL = GetInventoryServiceURL(userID);
             return m_LocalGridInventoryService.CreateUserInventory(userID);
         }
 
         public List<InventoryFolderBase> GetInventorySkeleton(UUID userID)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                "GetInventorySkeleton for {0}", userID);
+            
             string invURL = GetInventoryServiceURL(userID);
 
             if (invURL is null) // not there, forward to local inventory connector to resolve
@@ -367,6 +374,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public InventoryCollection[] GetMultipleFoldersContent(UUID userID, UUID[] folderIDs)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("GetMultipleFoldersContent for {0} folderIDs {1}", userID, folderIDs);
+            
             string invURL = GetInventoryServiceURL(userID);
 
             if (invURL is null) // not there, forward to local inventory connector to resolve
@@ -382,7 +391,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public List<InventoryItemBase> GetFolderItems(UUID userID, UUID folderID)
         {
-            if(m_log.IsDebugEnabled) m_log.Debug("GetFolderItems " + folderID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("GetFolderItems for user: {0}, {1}", userID, folderID);
 
             string invURL = GetInventoryServiceURL(userID);
 
@@ -403,6 +412,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool AddFolder(InventoryFolderBase folder)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug($"AddFolder called for folder {folder?.Name}");
+            
             if (folder == null)
                 return false;
 
@@ -420,6 +431,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool UpdateFolder(InventoryFolderBase folder)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug($"UpdateFolder called for folder {folder?.Name}");
+            
             if (folder == null)
                 return false;
 
@@ -437,6 +450,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool DeleteFolders(UUID ownerID, List<UUID> folderIDs)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("DeleteFolders for user: {0}, folderIDs {1}", ownerID, folderIDs);
+            
             if (folderIDs == null)
                 return false;
             if (folderIDs.Count == 0)
@@ -456,6 +471,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool MoveFolder(InventoryFolderBase folder)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("MoveFolder called for folder {0}", folder?.UTF8Name);
+            
             if (folder == null)
                 return false;
 
@@ -473,6 +490,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool PurgeFolder(InventoryFolderBase folder)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("PurgeFolder called for folder {0}", folder?.UTF8Name);
+            
             if (folder == null)
                 return false;
 
@@ -490,6 +509,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool AddItem(InventoryItemBase item)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("AddItem called for item {0}", item?.Name);
+            
             if (item == null)
                 return false;
 
@@ -507,6 +528,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool UpdateItem(InventoryItemBase item)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("UpdateItem called for item {0}", item?.Name);
+            
             if (item == null)
                 return false;
 
@@ -524,6 +547,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool MoveItems(UUID ownerID, List<InventoryItemBase> items)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("MoveItems called for {0} items", items?.Count);
+            
             if (items == null)
                 return false;
             if (items.Count == 0)
@@ -543,7 +568,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public bool DeleteItems(UUID ownerID, List<UUID> itemIDs)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Delete {0} items for user {1}", itemIDs.Count, ownerID);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("DeleteItems called for user {0} with {1} items", ownerID, itemIDs?.Count ?? 0);
 
             if (itemIDs == null)
                 return false;
@@ -576,6 +601,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         public InventoryItemBase[] GetMultipleItems(UUID userID, UUID[] itemIDs)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("GetMultipleItems called for user {0} with {1} items", userID, itemIDs?.Length?? 0);
+            
             if (itemIDs is null || itemIDs.Length == 0)
                 return Array.Empty<InventoryItemBase>();
             if(m_log.IsDebugEnabled) m_log.Debug("GetItem " + itemIDs);
@@ -635,6 +662,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
         private IInventoryService GetConnector(string url)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("GetConnector called for URL {0}", url);
+        
             IInventoryService connector = null;
             lock (m_connectors)
             {
