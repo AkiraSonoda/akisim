@@ -1,0 +1,48 @@
+<?php
+
+$dbhost = "db";
+$dbname = "phpgridserver";
+$dbuser = "phpgridserver";
+$dbpass = "phpgridserver";
+
+require_once("config.mysql.php");
+
+$enablegzipcompression = false;
+
+$useXForwardedFor = false; /* only set this true if really using a reverse proxy like nginx */
+
+$cfg_AuthenticationService = array(
+	"use" => "services/authentication/PasswordAuthenticationService"
+);
+
+$cfg_AdminAuthenticationService = array(
+	"use" => "services/authentication/PasswordAuthenticationService"
+);
+
+$cfg_UserAuthenticationService = array(
+	"use" => "services/authentication/PasswordAuthenticationService"
+);
+
+$cfg_DestinationLookupService = array(
+	"use" => "services/destinationlookup/HG"
+);
+
+$cfg_LaunchAgentService = array(
+	"use" => "connectors/launchagent/json"
+);
+
+$cfg_HTTPConnectorService = array(
+	"use" => "connectors/http/Curl"
+);
+
+$cfg_FriendsSimConnectorService = array(
+	"use" => "connectors/sim/Friends/LocalOnly"
+);
+
+$cfg_IMService = array(
+	"use" => "services/im/Grid"
+);
+
+require_once("config.hg.php");
+require_once("config.acl.php");
+
