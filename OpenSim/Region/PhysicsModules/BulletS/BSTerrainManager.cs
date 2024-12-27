@@ -147,7 +147,7 @@ namespace OpenSim.Region.PhysicsModule.BulletS
             m_physicsScene.PE.ForceActivationState(m_groundPlane, ActivationState.DISABLE_SIMULATION);
 
             BSTerrainPhys initialTerrain = new BSTerrainHeightmap(m_physicsScene, Vector3.Zero, BSScene.TERRAIN_ID, DefaultRegionSize);
-            // Build an initial terrain and put it in the world. This quickly gets replaced by the real region terrain.
+                // Build an initial terrain and put it in the world. This quickly gets replaced by the real region terrain.
             if (!m_terrains.TryAdd(Vector3.Zero, initialTerrain)) { // AKIDO
                 m_log.WarnFormat("CreateInitialGroundPlaneAndTerrain m_terrains.TryAdd() unexpectedly failed when adding initialTerrain: {0}", initialTerrain);        
             }

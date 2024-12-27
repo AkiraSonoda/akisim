@@ -60,6 +60,8 @@ namespace OpenSim.Data.Tests
     {
     }
 
+    [TestFixture(typeof(SqliteConnection), typeof(SQLiteSimulationData))]
+    [TestFixture(typeof(MySqlConnection), typeof(MySQLSimulationData))] 
     public class RegionTests<TConn, TRegStore> : BasicDataServiceTest<TConn, TRegStore>
         where TConn : DbConnection, new()
         where TRegStore : class, ISimulationDataStore, new()

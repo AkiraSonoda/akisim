@@ -120,7 +120,7 @@ namespace OpenSim.Region.CoreModules.Framework
 
         public void CreateCaps(UUID agentId, uint circuitCode)
         {
-            int ts = Util.EnvironmentTickCount();
+      
             string capsObjectPath = GetCapsPath(agentId);
             Caps caps;
             if (m_capsObjects.TryGetValue(circuitCode, out Caps oldCaps))
@@ -139,7 +139,7 @@ namespace OpenSim.Region.CoreModules.Framework
                     // Remove tge handlers. They may conflict with the
                     // new object created below
                     oldCaps.DeregisterHandlers();
-
+            
                     // AKIDO
                     if (!m_capsObjects.TryRemove(circuitCode, out Caps capss)) {
                         m_log.WarnFormat("CreateCaps - m_capsObjects.TryRemove unexpectedly failed" +
@@ -147,19 +147,19 @@ namespace OpenSim.Region.CoreModules.Framework
                     }
                 }
             }
-
+            
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Adding capabilities for agent {0} in {1} with path {2}",
                 agentId, m_scene.RegionInfo.RegionName, capsObjectPath);
-
+            
             caps = new Caps(MainServer.Instance, m_scene.RegionInfo.ExternalHostName,
                 (MainServer.Instance == null) ? 0 : MainServer.Instance.Port,
                 capsObjectPath, agentId, m_scene.RegionInfo.RegionName);
-
+            
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "New caps agent {0}, circuit {1}, path {2}, time {3} ", agentId,
-                circuitCode, caps.CapsObjectPath, Util.EnvironmentTickCountSubtract(ts));
-
+                "New caps agent {0}, circuit {1}, path {2}", agentId,
+                circuitCode, caps.CapsObjectPath);
+            
             m_capsObjects[circuitCode] = caps;
             m_scene.EventManager.TriggerOnRegisterCaps(agentId, caps);
 

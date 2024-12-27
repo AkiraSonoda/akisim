@@ -690,8 +690,6 @@ namespace OpenSim.Region.CoreModules.Scripting.HttpRequest
             {
                 if (resStream != null)
                     resStream.Close();
-                if (response != null)
-                    response.Close();
 
                 if(!Removed)
                 {
@@ -771,6 +769,8 @@ namespace OpenSim.Region.CoreModules.Scripting.HttpRequest
                         RequestModule.GotCompletedRequest(this);
                     }
                 }
+                if (response != null)
+                    response.Close();
             }
         }
 

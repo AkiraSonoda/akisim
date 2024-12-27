@@ -239,7 +239,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 {
                     m_log.DebugFormat("HttpRequest CheckHttpRequests - exception: {0}", ex.Message );
                 }
-
                 // Check ScriptTimers
                 try
                 {
