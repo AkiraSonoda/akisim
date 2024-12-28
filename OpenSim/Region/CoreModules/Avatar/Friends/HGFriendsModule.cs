@@ -122,6 +122,9 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
 
         protected override void OnInstantMessage(IClientAPI client, GridInstantMessage im)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("OnInstantMessage called for {0}, dialog type: {1}", client.Name, (InstantMessageDialog)im.dialog);
+            
             if ((InstantMessageDialog)im.dialog == InstantMessageDialog.FriendshipOffered)
             {
                 // we got a friendship offer

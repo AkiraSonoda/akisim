@@ -1,11 +1,27 @@
-# Configuration
-CONFIGURATION := Release
-SOLUTION := Akisim.sln
+# Check for configuration parameter
+ifeq ($(config),)
+    CONFIGURATION := Debug
+else
+    CONFIGURATION := $(config)
+endif
+
+# Default to Linux paths
 PACKAGING_DIR := $(HOME)/opensim/packaging
 SOURCE_DIR := $(HOME)/src/akisim
-DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/akisim_phpgrid_lin/bin_delta
+DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/dereos_kosuai
 SRC_BIN := $(HOME)/src/akisim/bin
-DEST_DIR := $(HOME)/opensim/bin
+DEST_DIR := $(HOME)/opensim/grid/akisim
+
+# Override with Windows paths if on Windows
+ifeq ($(OS),Windows_NT)
+    PACKAGING_DIR := /d/ieu/opensim/packaging
+    SOURCE_DIR := /d/ieu/develop/akisim
+    DELTA_BIN := /d/ieu/opensim/grid/akisim_akiwin/delta
+    SRC_BIN := /d/ieu/develop/akisim/bin
+    DEST_DIR := /d/ieu/opensim/grid/akisim_dereos/KoSuai
+endif
+
+SOLUTION := Akisim.sln
 
 # Default target
 .PHONY: all
@@ -14,6 +30,7 @@ all: build
 # Build the solution
 .PHONY: build
 build:
+	@echo "Building in $(CONFIGURATION) configuration..."
 	dotnet build -c $(CONFIGURATION) $(SOLUTION)
 
 # Clean build outputs
@@ -21,18 +38,29 @@ build:
 clean:
 	dotnet clean -c $(CONFIGURATION) $(SOLUTION)
 
-# Rebuild (clean + build)
+# Clean obj directories
+.PHONY: clean-obj
+clean-obj:
+	@find . -type d -name "obj" -exec sh -c '\
+		for dir in "$$@"; do \
+			echo "Cleaning directory: $$dir"; \
+			rm -rf "$$dir"/*; \
+		done' sh {} +
+
+# Full clean
+.PHONY: clean-all
+clean-all: clean clean-obj
+
+# Rebuild
 .PHONY: rebuild
 rebuild: clean build
 
 # Deploy solution
 .PHONY: deploy
 deploy: build
-	@echo "Removing existing bin directory..."
+	@echo "Deploying $(CONFIGURATION) build..."
 	rm -rf "$(DEST_DIR)/bin"
-	@echo "Copying main bin directory..."
 	cp -r "$(SRC_BIN)" "$(DEST_DIR)/"
-	@echo "Applying delta files..."
 	cd "$(DELTA_BIN)" && \
 	for item in *; do \
 		if [ -e "$$item" ]; then \
@@ -60,5 +88,4 @@ package: build
 	mkdir -p "$$new_dir"; \
 	rsync -av --exclude='.*' "$(SOURCE_DIR)/" "$$new_dir/"; \
 	cd "$(PACKAGING_DIR)" && zip -r "akisim-$$new_version.zip" "akisim-$$new_version"; \
-	echo "Package created: akisim-$$new_version.zip"; \
-	echo "Location: $(PACKAGING_DIR)/akisim-$$new_version.zip"
+	echo "Package created: akisim-$$new_version.zip";
