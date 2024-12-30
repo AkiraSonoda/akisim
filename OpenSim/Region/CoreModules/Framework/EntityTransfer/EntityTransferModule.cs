@@ -2098,6 +2098,9 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         /// <param name="sp"></param>
         public void EnableChildAgents(ScenePresence sp)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("[ENTITY TRANSFER MODULE]: Enabling child agents for {0}", sp.Name);
+
+            
             // assumes that out of view range regions are disconnected by the previous region
             ICapabilitiesModule capsModule = m_scene.CapsModule;
             if (capsModule == null)
@@ -2213,6 +2216,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
                 Util.FireAndForget(delegate
                 {
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("Firing and Forgetting Informing neighbours about new agent");
+                        
                     int count = 0;
                     IPEndPoint ipe;
  
@@ -2254,6 +2259,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                                 e);
                         }
                     }
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("End of Firing and Forgetting Informing neighbours about new agent");
                 });
             }
         }

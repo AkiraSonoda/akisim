@@ -1,6 +1,6 @@
 # Check for configuration parameter
 ifeq ($(config),)
-    CONFIGURATION := Debug
+    CONFIGURATION := Release
 else
     CONFIGURATION := $(config)
 endif

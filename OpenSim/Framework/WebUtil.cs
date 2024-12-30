@@ -109,6 +109,38 @@ namespace OpenSim.Framework
             sslPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
             return sslPolicyErrors == SslPolicyErrors.None;
         }
+        
+        /// <summary>
+        /// AKIDO: Checks if the given HTTP response message contains a Content-Length header.
+        /// </summary>
+        /// <param name="responseMessage">The HTTP response message to check for Content-Length header.</param>
+        /// <returns>
+        /// Returns true if the response message contains a Content-Length header; otherwise, false.
+        /// </returns>
+        /// <remarks>
+        /// This method iterates through the headers of the response message's content,
+        /// logging each header for debugging purposes and checking for the presence of
+        /// a Content-Length header (case-insensitive).
+        /// </remarks>
+        public static bool hasContentLength( HttpResponseMessage responseMessage )
+        {
+            bool hasContentLength = false;
+            if (responseMessage.Content != null && responseMessage.Content.Headers != null)
+            {
+                foreach (var header in responseMessage.Content.Headers)
+                {
+                    m_log.Debug($"    {header.Key}: {string.Join(", ", header.Value)}");
+                    if (header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasContentLength = true;
+                    }
+                    m_log.Debug($"    {header.Key}: {string.Join(", ", header.Value)}");
+                }
+            }
+
+            return hasContentLength;
+        }
+        
         #region JSONRequest
 
         public static void SetupHTTPClients(bool NoVerifyCertChain, bool NoVerifyCertHostname, IWebProxy proxy, int MaxConnectionsPerServer )
@@ -333,7 +365,7 @@ namespace OpenSim.Framework
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void LogOutgoingDetail(string context, string output)
         {
-            if (DebugLevel >= 5)
+            if (m_log.IsDebugEnabled)
             {
                 if (output.Length > MaxRequestDiagLength)
                     output = output[..MaxRequestDiagLength] + "...";
@@ -1190,12 +1222,30 @@ namespace OpenSim.Framework
                 responseMessage = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
                 responseMessage.EnsureSuccessStatusCode();
 
-                if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                // AKIDO - Content-length check because of phpgridserver 
+                // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
+                if (WebUtil.hasContentLength(responseMessage))
                 {
+                    m_log.Info($"Found Content-Length header in response from {requestUrl}"); 
+                    if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                    {
+                        using StreamReader reader = new(responseMessage.Content.ReadAsStream());
+                        respstring = reader.ReadToEnd();
+                        rcvlen = respstring.Length;
+                    }
+                    else {
+                        m_log.Info($"Content-Length is 0 in response from {requestUrl}"); 
+                    }
+                }
+                else
+                {
+                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
                     using StreamReader reader = new(responseMessage.Content.ReadAsStream());
                     respstring = reader.ReadToEnd();
                     rcvlen = respstring.Length;
                 }
+                // AKIDO - End of Content-Length check
+
             }
             catch (Exception e)
             {
@@ -1235,7 +1285,7 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.Debug($"[LOGHTTP]: HTTP OUT {reqnum} SynchronousRestForms POST to {requestUrl}");
 
             int ticks = Util.EnvironmentTickCount();
@@ -1270,16 +1320,32 @@ namespace OpenSim.Framework
                 request.Content.Headers.TryAddWithoutValidation("Content-Type", "application/x-www-form-urlencoded");
                 request.Content.Headers.TryAddWithoutValidation("Content-Length", sendlen.ToString());
 
-                if (WebUtil.DebugLevel >= 5)
+                if (m_log.IsDebugEnabled)
                     WebUtil.LogOutgoingDetail("SEND", reqnum, System.Text.Encoding.UTF8.GetString(data));
 
                 responseMessage = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
 
-                if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                // AKIDO - Content-length check because of phpgridserver 
+                // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
+                if (WebUtil.hasContentLength(responseMessage))
                 {
+                    m_log.Info($"Found Content-Length header in response from {requestUrl}"); 
+                    if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0) {
+                        m_log.Info($"Found Content-Length > 0, reading response...  {contentLength} bytes"); 
+                        using StreamReader reader = new(responseMessage.Content.ReadAsStream());
+                        respstring = reader.ReadToEnd();
+                    }
+                    else {
+                        m_log.Info($"Content-Length is 0 in response from {requestUrl}"); 
+                    }
+                }
+                else
+                {
+                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
                     using StreamReader reader = new(responseMessage.Content.ReadAsStream());
                     respstring = reader.ReadToEnd();
                 }
+                // AKIDO - End of Content-Length check
             }
             catch (Exception e)
             {
@@ -1307,6 +1373,7 @@ namespace OpenSim.Framework
 
             return respstring;
         }
+        
     }
 
     public class SynchronousRestObjectRequester
@@ -1369,7 +1436,7 @@ namespace OpenSim.Framework
         {
             int reqnum = WebUtil.RequestNumber++;
 
-            if (WebUtil.DebugLevel >= 3)
+            if (m_log.IsDebugEnabled)
                 m_log.Debug($"[LOGHTTP]: HTTP OUT {reqnum} SRestObjReq {method} {requestUrl}");
 
             int ticks = Util.EnvironmentTickCount();
@@ -1424,17 +1491,31 @@ namespace OpenSim.Framework
                 responseMessage.EnsureSuccessStatusCode();
 
                 int rcvlen = 0;
-                if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                // AKIDO - Content-length check because of phpgridserver 
+                // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
+                if (WebUtil.hasContentLength(responseMessage))
                 {
-                    rcvlen = (int)contentLength;
-                    using Stream respStream = responseMessage.Content.ReadAsStream();
-                    deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
-                        reqnum, respStream, contentLength);
+                    m_log.Info($"Found Content-Length header in response from {requestUrl}");
+                    if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                    {
+                        rcvlen = (int)contentLength;
+                        using Stream respStream = responseMessage.Content.ReadAsStream();
+                        deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
+                            reqnum, respStream, contentLength);
+                    }
+                    else
+                    {
+                        m_log.Debug($"[SRestObjReq]: Oops! no content found in response stream from {method} {requestUrl}");
+                    }
                 }
                 else
                 {
-                    m_log.Debug($"[SRestObjReq]: Oops! no content found in response stream from {method} {requestUrl}");
+                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
+                    using Stream respStream = responseMessage.Content.ReadAsStream();
+                    deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
+                        reqnum, respStream, -1);
                 }
+                // AKIDO - End of Content-Length check
 
                 ticks = Util.EnvironmentTickCountSubtract(ticks);
                 if (ticks > WebUtil.LongCallTime)
@@ -1518,17 +1599,31 @@ namespace OpenSim.Framework
                 responseMessage.EnsureSuccessStatusCode();
 
                 int rcvlen = 0;
-                if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                
+                // AKIDO - Content-length check because of phpgridserver 
+                // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
+                if (WebUtil.hasContentLength(responseMessage))
                 {
-                    rcvlen = (int)contentLength;
-                    using Stream respStream = responseMessage.Content.ReadAsStream();
-                    deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
-                        reqnum, respStream, contentLength);
+                    m_log.Info($"Found Content-Length header in response from {requestUrl}"); 
+                    if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
+                    {
+                        rcvlen = (int)contentLength;
+                        using Stream respStream = responseMessage.Content.ReadAsStream();
+                        deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
+                            reqnum, respStream, contentLength);
+                    }
+                    else {
+                        m_log.Info($"Content-Length is 0 in response from {requestUrl}"); 
+                    }
                 }
                 else
                 {
-                    m_log.Debug($"[SRestObjReq]: Oops! no content found in response stream from GET {requestUrl}");
+                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
+                    using Stream respStream = responseMessage.Content.ReadAsStream();
+                    deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
+                        reqnum, respStream, -1);
                 }
+                // AKIDO - End of Content-Length check
 
                 ticks = Util.EnvironmentTickCountSubtract(ticks);
                 if (ticks > WebUtil.LongCallTime)

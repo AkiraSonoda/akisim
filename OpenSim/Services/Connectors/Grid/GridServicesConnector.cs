@@ -442,7 +442,7 @@ namespace OpenSim.Services.Connectors
                         m_ServerGridURI,
                         ServerUtils.BuildQueryString(sendData), m_Auth);
 
-                //m_log.DebugFormat("[GRID CONNECTOR]: GetRegionRange reply was {0}", reply);
+                m_log.DebugFormat("[GRID CONNECTOR]: GetRegionRange reply was {0}", reply);
                 if (reply.Length > 0)
                 {
                     Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
