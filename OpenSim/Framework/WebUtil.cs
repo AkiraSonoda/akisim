@@ -1067,6 +1067,8 @@ namespace OpenSim.Framework
                         {
                             // If the server returns a 404, this appears to trigger a System.Net.WebException even though that isn't
                             // documented in MSDN
+                            // AKIDO: Business code should not act onto technical return code and therefore if we have a known identifier
+                            // and request the object for that identifier, should not result in a 404. 
                             using WebResponse response = request.EndGetResponse(res2);
                             try
                             {
@@ -1082,8 +1084,10 @@ namespace OpenSim.Framework
                                     deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
                                         reqnum, respStream, response.ContentLength);
                                 }
-                                catch (System.InvalidOperationException)
+                                catch (System.InvalidOperationException ex)
                                 {
+
+                                    m_log.Error($"InvalidOperationException: {ex.Message}\nStack Trace: {ex.StackTrace}");
                                 }
                             }
                         }
@@ -1093,12 +1097,11 @@ namespace OpenSim.Framework
                             {
                                 if (e.Response is HttpWebResponse httpResponse)
                                 {
-                                    if (httpResponse.StatusCode != HttpStatusCode.NotFound)
+                                    if (httpResponse.StatusCode != HttpStatusCode.OK)
                                     {
                                         // We don't appear to be handling any other status codes, so log these feailures to that
                                         // people don't spend unnecessary hours hunting phantom bugs.
-                                        m_log.Debug(
-                                            $"[ASYNC REQUEST]: Request {verb} {requestUrl} failed with unexpected status code {httpResponse.StatusCode}");
+                                        m_log.Debug($"Request {verb} {requestUrl} failed with unexpected status code {httpResponse.StatusCode}");
                                     }
                                     httpResponse.Dispose();
                                 }
@@ -1106,12 +1109,12 @@ namespace OpenSim.Framework
                             else
                             {
                                 m_log.Error(
-                                    $"[ASYNC REQUEST]: Request {verb} {requestUrl} failed with status {e.Status} and message {e.Message}");
+                                    $"Request {verb} {requestUrl} failed with status {e.Status} and message {e.Message}");
                             }
                         }
                         catch (Exception e)
                         {
-                            m_log.Error($"[ASYNC REQUEST]: Request {verb} {requestUrl} failed with exception {e.Message}");
+                            m_log.Error($"Request {verb} {requestUrl} failed with exception {e.Message}");
                         }
 
                         //m_log.DebugFormat("[ASYNC REQUEST]: Received {0}", deserial.ToString());
@@ -1122,7 +1125,7 @@ namespace OpenSim.Framework
                         }
                         catch (Exception e)
                         {
-                            m_log.ErrorFormat($"[ASYNC REQUEST]: Request {verb} {requestUrl} callback failed with exception {e.Message}");
+                            m_log.ErrorFormat($"Request {verb} {requestUrl} callback failed with exception {e.Message}");
                         }
 
                     }, null);
@@ -1535,9 +1538,9 @@ namespace OpenSim.Framework
                     {
                         m_log.Error($"[SRestObjReq]:  GET {requestUrl} requires authentication");
                     }
-                    else if (status != HttpStatusCode.NotFound)
+                    else
                     {
-                        m_log.Warn($"[SRestObjReq]: GET {requestUrl} returned error: {status}");
+                        m_log.Error($"[SRestObjReq]: GET {requestUrl} returned error: {status}");
                     }
                 }
                 else
@@ -1548,11 +1551,11 @@ namespace OpenSim.Framework
             catch (System.InvalidOperationException)
             {
                 // This is what happens when there is invalid XML
-                m_log.Debug($"[SRestObjReq]: Invalid XML from {method} {requestUrl} {typeof(TResponse)}");
+                m_log.Error($"[SRestObjReq]: Invalid XML from {method} {requestUrl} {typeof(TResponse)}");
             }
             catch (Exception e)
             {
-                m_log.Debug($"[SRestObjReq]: Exception on response from {method} {requestUrl}: {e.Message}");
+                m_log.Error($"[SRestObjReq]: Exception on response from {method} {requestUrl}: {e.Message}");
             }
             finally
             {
@@ -1643,9 +1646,9 @@ namespace OpenSim.Framework
                     {
                         m_log.Error($"[SRestObjReq]:  GET {requestUrl} requires authentication");
                     }
-                    else if (status != HttpStatusCode.NotFound)
+                    else 
                     {
-                        m_log.Warn($"[SRestObjReq]: GET {requestUrl} returned error: {status}");
+                        m_log.Error($"[SRestObjReq]: GET {requestUrl} returned error: {status}");
                     }
                 }
                 else
