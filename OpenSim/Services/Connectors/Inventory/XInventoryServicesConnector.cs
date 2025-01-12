@@ -886,19 +886,19 @@ namespace OpenSim.Services.Connectors
                 // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
                 if (WebUtil.hasContentLength(responseMessage))
                 {
-                    m_log.Info($"Found Content-Length header in response from {request.RequestUri}"); 
+                    m_log.Debug($"Found Content-Length header in response from {request.RequestUri}"); 
                     if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
                     {
                         rcvlen = (int)contentLength;
                         respDic = ServerUtils.ParseXmlResponse(responseMessage.Content.ReadAsStream());
                     }
                     else {
-                        m_log.Info($"Content-Length is 0 in response from {request.RequestUri}"); 
+                        m_log.Debug($"Content-Length is 0 in response from {request.RequestUri}"); 
                     }
                 }
                 else
                 {
-                    m_log.Info($"No Content-Length found in response from {request.RequestUri} - trying to read anyway..."); 
+                    m_log.Debug($"No Content-Length found in response from {request.RequestUri} - trying to read anyway..."); 
                     respDic = ServerUtils.ParseXmlResponse(responseMessage.Content.ReadAsStream());
                 }
                 // AKIDO - End of Content-Length check

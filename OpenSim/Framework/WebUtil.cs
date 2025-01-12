@@ -1229,7 +1229,7 @@ namespace OpenSim.Framework
                 // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
                 if (WebUtil.hasContentLength(responseMessage))
                 {
-                    m_log.Info($"Found Content-Length header in response from {requestUrl}"); 
+                    m_log.Debug($"Found Content-Length header in response from {requestUrl}"); 
                     if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
                     {
                         using StreamReader reader = new(responseMessage.Content.ReadAsStream());
@@ -1237,12 +1237,12 @@ namespace OpenSim.Framework
                         rcvlen = respstring.Length;
                     }
                     else {
-                        m_log.Info($"Content-Length is 0 in response from {requestUrl}"); 
+                        m_log.Debug($"Content-Length is 0 in response from {requestUrl}"); 
                     }
                 }
                 else
                 {
-                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
+                    m_log.Debug($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
                     using StreamReader reader = new(responseMessage.Content.ReadAsStream());
                     respstring = reader.ReadToEnd();
                     rcvlen = respstring.Length;
@@ -1332,19 +1332,19 @@ namespace OpenSim.Framework
                 // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
                 if (WebUtil.hasContentLength(responseMessage))
                 {
-                    m_log.Info($"Found Content-Length header in response from {requestUrl}"); 
+                    m_log.Debug($"Found Content-Length header in response from {requestUrl}"); 
                     if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0) {
-                        m_log.Info($"Found Content-Length > 0, reading response...  {contentLength} bytes"); 
+                        m_log.Debug($"Found Content-Length > 0, reading response...  {contentLength} bytes"); 
                         using StreamReader reader = new(responseMessage.Content.ReadAsStream());
                         respstring = reader.ReadToEnd();
                     }
                     else {
-                        m_log.Info($"Content-Length is 0 in response from {requestUrl}"); 
+                        m_log.Debug($"Content-Length is 0 in response from {requestUrl}"); 
                     }
                 }
                 else
                 {
-                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
+                    m_log.Debug($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
                     using StreamReader reader = new(responseMessage.Content.ReadAsStream());
                     respstring = reader.ReadToEnd();
                 }
@@ -1498,7 +1498,7 @@ namespace OpenSim.Framework
                 // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
                 if (WebUtil.hasContentLength(responseMessage))
                 {
-                    m_log.Info($"Found Content-Length header in response from {requestUrl}");
+                    m_log.Debug($"Found Content-Length header in response from {requestUrl}");
                     if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
                     {
                         rcvlen = (int)contentLength;
@@ -1513,7 +1513,7 @@ namespace OpenSim.Framework
                 }
                 else
                 {
-                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
+                    m_log.Debug($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
                     using Stream respStream = responseMessage.Content.ReadAsStream();
                     deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
                         reqnum, respStream, -1);
@@ -1605,23 +1605,20 @@ namespace OpenSim.Framework
                 
                 // AKIDO - Content-length check because of phpgridserver 
                 // Sometimes the Content-length will be delivered sometimes when streamed there will be no Content-Length
-                if (WebUtil.hasContentLength(responseMessage))
-                {
-                    m_log.Info($"Found Content-Length header in response from {requestUrl}"); 
-                    if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0)
-                    {
+                if (WebUtil.hasContentLength(responseMessage)) {
+                    m_log.Debug($"Found Content-Length header in response from {requestUrl}"); 
+                    if ((responseMessage.Content.Headers.ContentLength is long contentLength) && contentLength != 0) {
                         rcvlen = (int)contentLength;
                         using Stream respStream = responseMessage.Content.ReadAsStream();
                         deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
                             reqnum, respStream, contentLength);
                     }
                     else {
-                        m_log.Info($"Content-Length is 0 in response from {requestUrl}"); 
+                        m_log.Debug($"Content-Length is 0 in response from {requestUrl}"); 
                     }
                 }
-                else
-                {
-                    m_log.Info($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
+                else {
+                    m_log.Debug($"No Content-Length found in response from {requestUrl} - trying to read anyway..."); 
                     using Stream respStream = responseMessage.Content.ReadAsStream();
                     deserial = XMLResponseHelper.LogAndDeserialize<TResponse>(
                         reqnum, respStream, -1);
