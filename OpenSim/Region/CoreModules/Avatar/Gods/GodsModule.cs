@@ -108,6 +108,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Gods
 
         private void HandleUntrustedSimulatorMessage(IOSHttpRequest request, IOSHttpResponse response)
         {
+            // AKIDO - Log Method and params to debug
+            if(m_log.IsDebugEnabled)
+                m_log.Debug("HandleUntrustedSimulatorMessage called with request: " + request + " and response: " + response + "\n");
+            
+            
             if (request.HttpMethod != "POST")
             {
                 response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -160,6 +165,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Gods
         public void RequestGodlikePowers(
             UUID agentID, UUID sessionID, UUID token, bool godLike)
         {
+            // Log Method Name and Parameters to m_log
+            m_log.DebugFormat(
+                "RequestGodlikePowers({0},{1},{2},{3})",
+                agentID, sessionID, token, godLike);
+            
             ScenePresence sp = m_scene.GetScenePresence(agentID);
             if(sp == null || sp.IsDeleted || sp.IsNPC)
                 return;
@@ -245,6 +255,10 @@ namespace OpenSim.Region.CoreModules.Avatar.Gods
 
         private void doKickmodes(UUID godID, ScenePresence sp, uint kickflags, string reason)
         {
+            // AKIDO Log Method and Params to m_log
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("doKickmodes invoked with params: {0}, {1}, {2}, {3}", godID, sp.UUID, kickflags, reason);
+            
             switch (kickflags)
             {
                 case 0:
@@ -273,6 +287,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Gods
 
         private void KickPresence(ScenePresence sp, string reason)
         {
+            // AKIDO Log Method and Params to m_log
+            if (m_log.IsDebugEnabled) {
+                m_log.Debug("KickPresence " + sp.Name + " for reason " + reason);
+            }
+            
             if(sp.IsDeleted || sp.IsChildAgent)
                 return;
             if (sp.IsNPC)
@@ -290,6 +309,11 @@ namespace OpenSim.Region.CoreModules.Avatar.Gods
 
         public void GridKickUser(UUID agentID, string reason)
         {
+            // AKIDO Log Method and Params to m_log
+            if (m_log.IsDebugEnabled) {
+                m_log.Debug("GridKickUser " + agentID + " for reason " + reason);
+            }
+
             int godlevel = 240; // grid god default
 
             ScenePresence sp = m_scene.GetScenePresence(agentID);
@@ -334,6 +358,10 @@ namespace OpenSim.Region.CoreModules.Avatar.Gods
 
         private void OnIncomingInstantMessage(GridInstantMessage msg)
         {
+            // AKIDO Log Method and Params to m_log
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("OnIncomingInstantMessage({0})", msg.dialog);
+            
             if (msg.dialog == (uint)250) // Nonlocal kick
             {
                 UUID agentID = new UUID(msg.toAgentID);

@@ -26,9 +26,10 @@
  */
 
 using System;
+using System.Reflection;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-//using log4net;
+using log4net;
 using Nini.Config;
 using OpenSim.Framework;
 
@@ -37,6 +38,8 @@ namespace OpenSim.Region.Framework.Scenes
 {
     public class GodController
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
         public enum ImplicitGodLevels : int
         {
             EstateManager = 210,    // estate manager implicit god level
@@ -63,6 +66,11 @@ namespace OpenSim.Region.Framework.Scenes
 
         public GodController(Scene scene, ScenePresence sp, int userlevel)
         {
+            // AKIDO Log Method and parameters to Debug
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("GodController({0}, {1}, {2})", scene, sp, userlevel);
+            }
+            
             m_scene = scene;
             m_scenePresence = sp;
             m_userLevel = userlevel;
@@ -136,6 +144,12 @@ namespace OpenSim.Region.Framework.Scenes
         // later estate and gride level updates may update this
         protected int CalcRightsGodLevel()
         {
+            // AKIDO Log Method and parameters to Debug
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat(  "CalcRightsGodLevel: m_scenePresence.UUID {0}", m_scenePresence.UUID);
+            }
+            
+
             int level = 0;
             if (m_allowGridGods && m_userLevel >= 200)
                 level = m_userLevel;
@@ -162,6 +176,11 @@ namespace OpenSim.Region.Framework.Scenes
 
         protected void UpdateGodLevels(bool viewerState)
         {
+            // AKIDO Log Method and parameters to Debug
+            if (m_log.IsDebugEnabled) {
+                m_log.DebugFormat("UpdateGodLevels: m_scenePresence.IsGod {0}", m_scenePresence.IsGod);
+            }
+
             if(!CanBeGod())
             {
                 m_viewergodlevel = 0;
@@ -201,6 +220,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void SyncViewerState()
         {
+            // AKIDO Log Method and parameters to Debug
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("SyncViewerState - m_viewergodlevel: {0} m_lastLevelToViewer: {1}", m_viewergodlevel, m_lastLevelToViewer);
+            
             if(m_lastLevelToViewer == m_viewergodlevel)
                 return;
 
@@ -214,6 +237,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void RequestGodMode(bool god)
         {
+            //AKIDO Log Method and parameters to Debug
+            if (m_log.IsDebugEnabled) 
+                m_log.DebugFormat("RequestGodMode - m_viewergodlevel: {0} m_lastLevelToViewer: {1}", m_viewergodlevel, m_lastLevelToViewer);
+            
             UpdateGodLevels(god);
 
             if(m_lastLevelToViewer != m_viewergodlevel)
@@ -234,6 +261,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void SetState(OSD state)
         {
+            //AKIDO Log Method and parameters to Debug
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("SetState - m_viewergodlevel: {0} m_lastLevelToViewer: {1}", m_viewergodlevel, m_lastLevelToViewer);
+            
             bool newstate = false;
             if(m_forceGodModeAlwaysOn)
                 newstate = m_viewergodlevel >= 200;
