@@ -73,37 +73,26 @@ namespace OpenSim
             // First line, hook the appdomain to the crash reporter
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
 
-            System.AppContext.SetSwitch("System.Drawing.EnableUnixSupport", true);
-
             Culture.SetCurrentCulture();
             Culture.SetDefaultCurrentCulture();
 
-            ServicePointManager.DefaultConnectionLimit = 32;
-            ServicePointManager.MaxServicePointIdleTime = 30000;
+            AppContext.SetSwitch("System.Drawing.EnableUnixSupport", true);
 
-            try { ServicePointManager.DnsRefreshTimeout = 5000; } catch { }
-            ServicePointManager.Expect100Continue = false;
-            ServicePointManager.UseNagleAlgorithm = false;
-
-            // Add the arguments supplied when running the application to the configuration
-            ArgvConfigSource configSource = new ArgvConfigSource(args);
-
-            // Configure Log4Net
-            configSource.AddSwitch("Startup", "logconfig");
-            string logConfigFile = configSource.Configs["Startup"].GetString("logconfig", String.Empty);
-            if (!string.IsNullOrEmpty(logConfigFile))
+            /*
+            // pre load System.Drawing.Common.dll for the platform
+            // this will fail if a newer version is present on GAC, bin folder, etc, since LoadFrom only accepts the path, if it cannot find it elsewhere
+            string targetdll = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),"lib",
+                        (Util.IsWindows() ? "win" : "linux"), "System.Drawing.Common.dll");
+            try
             {
-                XmlConfigurator.Configure(new System.IO.FileInfo(logConfigFile));
-                m_log.InfoFormat("configured log4net using \"{0}\" as configuration file",
-                                 logConfigFile);
+                Assembly asmb =  Assembly.LoadFrom(targetdll);
             }
-            else
+            catch (Exception e)
             {
-                XmlConfigurator.Configure(new System.IO.FileInfo("OpenSim.exe.config"));
-                m_log.Info("configured log4net using default OpenSim.exe.config");
+                m_log.Error("Failed to load System.Drawing.Common.dll for current platform" + e.Message);
+                throw;
             }
-
-            // temporay set the platform dependent System.Drawing.Common.dll
+            */
             string targetdll = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
                         "System.Drawing.Common.dll");
             string src = targetdll + (Util.IsWindows() ? ".win" : ".linux");
@@ -125,26 +114,36 @@ namespace OpenSim
                 throw;
             }
 
-            m_log.InfoFormat(
-                "System Locale is {0}", System.Threading.Thread.CurrentThread.CurrentCulture);
-            if(!Util.IsWindows())
+            ServicePointManager.DefaultConnectionLimit = 32;
+            ServicePointManager.MaxServicePointIdleTime = 30000;
+
+            try { ServicePointManager.DnsRefreshTimeout = 5000; } catch { }
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.UseNagleAlgorithm = false;
+
+            // Add the arguments supplied when running the application to the configuration
+            ArgvConfigSource configSource = new ArgvConfigSource(args);
+
+            // Configure Log4Net
+            configSource.AddSwitch("Startup", "logconfig");
+            string logConfigFile = configSource.Configs["Startup"].GetString("logconfig", String.Empty);
+            if (!string.IsNullOrEmpty(logConfigFile))
             {
-                string monoThreadsPerCpu = System.Environment.GetEnvironmentVariable("MONO_THREADS_PER_CPU");
-                m_log.InfoFormat(
-                    "Environment variable MONO_THREADS_PER_CPU is {0}", monoThreadsPerCpu ?? "unset");
+                XmlConfigurator.Configure(new System.IO.FileInfo(logConfigFile));
+                m_log.Info($"[OPENSIM MAIN]: configured log4net using \"{logConfigFile}\" as configuration file");
+            }
+            else
+            {
+                XmlConfigurator.Configure(new System.IO.FileInfo("OpenSim.exe.config"));
+                m_log.Info("[OPENSIM MAIN]: configured log4net using default OpenSim.exe.config");
             }
 
-            // Verify the Threadpool allocates or uses enough worker and IO completion threads
-            // .NET 2.0, workerthreads default to 50 *  numcores
-            // .NET 3.0, workerthreads defaults to 250 * numcores
-            // .NET 4.0, workerthreads are dynamic based on bitness and OS resources
-            // Max IO Completion threads are 1000 on all 3 CLRs
-            //
-            // Mono 2.10.9 to at least Mono 3.1, workerthreads default to 100 * numcores, iocp threads to 4 * numcores
+            m_log.Info($"[OPENSIM MAIN]: System Locale is {System.Threading.Thread.CurrentThread.CurrentCulture}");
+
             int workerThreadsMin = 500;
-            int workerThreadsMax = 1000; // may need further adjustment to match other CLR
+            int workerThreadsMax = 1000;
             int iocpThreadsMin = 1000;
-            int iocpThreadsMax = 2000; // may need further adjustment to match other CLR
+            int iocpThreadsMax = 2000;
 
             System.Threading.ThreadPool.GetMinThreads(out int currentMinWorkerThreads, out int currentMinIocpThreads);
             m_log.InfoFormat(
@@ -192,8 +191,8 @@ namespace OpenSim
 
             // Check if the system is compatible with OpenSimulator.
             // Ensures that the minimum system requirements are met
-            string supported = String.Empty;
-            if (Util.IsEnvironmentSupported(ref supported))
+            string error = string.Empty;
+            if (Util.IsEnvironmentSupported(ref error))
             {
                 m_log.Info("Environment is supported by OpenSimulator.");
             }
@@ -202,7 +201,7 @@ namespace OpenSim
                 m_log.Warn("Environment is not supported by OpenSimulator (" + supported + ")\n");
             }
 
-            m_log.InfoFormat("Default culture changed to {0}",Culture.GetDefaultCurrentCulture().DisplayName);
+            m_log.Info($"Default culture changed to {Culture.GetDefaultCurrentCulture().DisplayName}");
 
             // Configure nIni aliases and localles
 
@@ -362,7 +361,7 @@ namespace OpenSim
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("Command error: {0}", e);
+                        m_log.Error($"Command error: {e}");
                     }
                 }
             }
@@ -386,22 +385,19 @@ namespace OpenSim
             // TODO: Add config option to allow users to turn off error reporting
             // TODO: Post error report (disabled for now)
 
-            string msg = String.Empty;
-            msg += "\r\n";
-            msg += "APPLICATION EXCEPTION DETECTED: " + e.ToString() + "\r\n";
-            msg += "\r\n";
+            string msg = $"\r\nAPPLICATION EXCEPTION DETECTED: {e}\r\n\r\n";
 
-            msg += "Exception: " + e.ExceptionObject.ToString() + "\r\n";
-            Exception ex = (Exception) e.ExceptionObject;
+            Exception ex = (Exception)e.ExceptionObject;
+
+            msg += $"Exception: {ex}\r\n";
             if (ex.InnerException != null)
             {
-                msg += "InnerException: " + ex.InnerException.ToString() + "\r\n";
+                msg += $"InnerException: {ex.InnerException}\r\n";
             }
 
-            msg += "\r\n";
-            msg += "Application is terminating: " + e.IsTerminating.ToString() + "\r\n";
+            msg += $"\r\nApplication is terminating: {e.IsTerminating}\r\n";
 
-            m_log.ErrorFormat("[APPLICATION]: {0}", msg);
+            m_log.Error("[APPLICATION]: + msg");
 
             if (m_saveCrashDumps)
             {
@@ -422,7 +418,7 @@ namespace OpenSim
                 }
                 catch (Exception e2)
                 {
-                    m_log.ErrorFormat("[CRASH LOGGER CRASHED]: {0}", e2);
+                    m_log.Error($"[CRASH LOGGER CRASHED]: {e2}");
                 }
             }
 
