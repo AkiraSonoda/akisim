@@ -10,7 +10,7 @@
 *.pdb
 *.pidb
 *.dll.build
-*.dll
+# *.dll
 *.log
 .idea
 *.bak
