@@ -198,7 +198,7 @@ namespace OpenSim
             }
             else
             {
-                m_log.Warn("Environment is not supported by OpenSimulator (" + supported + ")\n");
+                m_log.Warn($"Environment is not supported by OpenSimulator: {error}\n");
             }
 
             m_log.Info($"Default culture changed to {Culture.GetDefaultCurrentCulture().DisplayName}");
