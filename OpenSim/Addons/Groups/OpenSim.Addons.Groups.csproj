@@ -1,0 +1,163 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PreserveCompilationContext>false</PreserveCompilationContext>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OpenSim.Addons.Groups</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>True</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>False</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../../../bin/</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants></DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>False</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>True</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../../../bin/</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="log4net" >
+      <Name>log4net</Name>
+      <HintPath>/home/akira/develop/akisim/bin/log4net.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Mono.Addins" >
+      <Name>Mono.Addins</Name>
+      <HintPath>/home/akira/develop/akisim/bin/Mono.Addins.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Nini" >
+      <Name>Nini</Name>
+      <HintPath>/home/akira/develop/akisim/bin/Nini.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <Name>OpenMetaverse</Name>
+      <HintPath>/home/akira/develop/akisim/bin/OpenMetaverse.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <Name>OpenMetaverse.StructuredData</Name>
+      <HintPath>/home/akira/develop/akisim/bin/OpenMetaverse.StructuredData.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <Name>OpenMetaverseTypes</Name>
+      <HintPath>/home/akira/develop/akisim/bin/OpenMetaverseTypes.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../../Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../../Framework/Monitoring/OpenSim.Framework.Monitoring.csproj" />
+    <ProjectReference Include="../../Framework/Servers/OpenSim.Framework.Servers.csproj" />
+    <ProjectReference Include="../../Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../../Region/Framework/OpenSim.Region.Framework.csproj" />
+    <ProjectReference Include="../../Server/Base/OpenSim.Server.Base.csproj" />
+    <ProjectReference Include="../../Server/Handlers/OpenSim.Server.Handlers.csproj" />
+    <ProjectReference Include="../../Services/Base/OpenSim.Services.Base.csproj" />
+    <ProjectReference Include="../../Services/Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="../../../ThirdParty/ThreadedClasses/ThreadedClasses.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="ForeignImporter.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GroupsExtendedData.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="IGroupsServicesConnector.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="RemoteConnectorCacheWrapper.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GroupsMessagingModule.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GroupsModule.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Hypergrid\HGGroupsServiceRobustConnector.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Hypergrid\GroupsServiceHGConnector.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Hypergrid\GroupsServiceHGConnectorModule.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Local\GroupsServiceLocalConnectorModule.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Remote\GroupsServiceRemoteConnector.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Remote\GroupsServiceRobustConnector.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Remote\GroupsServiceRemoteConnectorModule.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Service\GroupsServiceBase.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Service\HGGroupsService.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Service\GroupsService.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>

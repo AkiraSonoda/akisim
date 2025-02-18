@@ -1,0 +1,217 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PreserveCompilationContext>false</PreserveCompilationContext>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <PackageId>Tests.OpenSim.Region.CoreModules</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>True</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>False</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../../../bin/</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants></DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>False</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>True</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../../../bin/</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="log4net" >
+      <Name>log4net</Name>
+      <HintPath>/home/akira/develop/akisim/bin/log4net.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MailKit" >
+      <Name>MailKit</Name>
+      <HintPath>/home/akira/develop/akisim/bin/MailKit.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MimeKit" >
+      <Name>MimeKit</Name>
+      <HintPath>/home/akira/develop/akisim/bin/MimeKit.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Nini" >
+      <Name>Nini</Name>
+      <HintPath>/home/akira/develop/akisim/bin/Nini.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="nunit.framework" >
+      <Name>nunit.framework</Name>
+      <HintPath>/home/akira/develop/akisim/bin/nunit.framework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <Name>OpenMetaverse</Name>
+      <HintPath>/home/akira/develop/akisim/bin/OpenMetaverse.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <Name>OpenMetaverse.StructuredData</Name>
+      <HintPath>/home/akira/develop/akisim/bin/OpenMetaverse.StructuredData.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <Name>OpenMetaverseTypes</Name>
+      <HintPath>/home/akira/develop/akisim/bin/OpenMetaverseTypes.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Drawing.Common" >
+      <Name>System.Drawing.Common</Name>
+      <HintPath>/home/akira/develop/akisim/bin/System.Drawing.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="XMLRPC" >
+      <Name>XMLRPC</Name>
+      <HintPath>/home/akira/develop/akisim/bin/XMLRPC.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../../Data/Null/OpenSim.Data.Null.csproj" />
+    <ProjectReference Include="../../Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../../Framework/Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../../Framework/Monitoring/OpenSim.Framework.Monitoring.csproj" />
+    <ProjectReference Include="../../Framework/Serialization/OpenSim.Framework.Serialization.csproj" />
+    <ProjectReference Include="../../Framework/Servers/OpenSim.Framework.Servers.csproj" />
+    <ProjectReference Include="../../Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../CoreModules/OpenSim.Region.CoreModules.csproj" />
+    <ProjectReference Include="../Framework/OpenSim.Region.Framework.csproj" />
+    <ProjectReference Include="../OptionalModules/OpenSim.Region.OptionalModules.csproj" />
+    <ProjectReference Include="../PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
+    <ProjectReference Include="../ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj" />
+    <ProjectReference Include="../../Services/Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="..\..\Tests\Common\Tests.OpenSim.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Asset\Tests\FlotsamAssetCacheTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Attachments\Tests\AttachmentsModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\AvatarFactory\Tests\AvatarFactoryModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Chat\Tests\ChatModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Friends\Tests\FriendModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Inventory\Archiver\Tests\InventoryArchiveLoadTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Inventory\Archiver\Tests\InventoryArchiveSaveTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Inventory\Archiver\Tests\InventoryArchiveLoadPathTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Inventory\Archiver\Tests\InventoryArchiveTestCase.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Avatar\Inventory\Transfer\Tests\InventoryTransferModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Framework\InventoryAccess\Tests\InventoryAccessModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Framework\InventoryAccess\Tests\HGAssetMapperTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Framework\UserManagement\Tests\HGUserManagementModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Scripting\HttpRequest\Tests\ScriptsHttpRequestsTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Scripting\VectorRender\Tests\VectorRenderModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="World\Archiver\Tests\ArchiverTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <EmbeddedResource Include="World\Archiver\Tests\Resources\test-sound.wav">
+    </EmbeddedResource>
+    <Compile Include="World\Land\Tests\LandManagementModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="World\Land\Tests\PrimCountModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="World\Media\Moap\Tests\MoapTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="World\Serialiser\Tests\SerialiserTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="World\Terrain\Tests\TerrainModuleTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="World\Terrain\Tests\TerrainTest.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ServiceConnectorsOut\Asset\Tests\AssetConnectorTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ServiceConnectorsOut\Grid\Tests\GridConnectorsTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ServiceConnectorsOut\Presence\Tests\PresenceConnectorsTests.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="4.3.2" />
+  </ItemGroup>
+</Project>

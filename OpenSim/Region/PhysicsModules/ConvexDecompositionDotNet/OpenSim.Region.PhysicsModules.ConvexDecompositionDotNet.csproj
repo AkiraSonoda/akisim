@@ -1,0 +1,140 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PreserveCompilationContext>false</PreserveCompilationContext>
+    <OutputType>Library</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>True</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>False</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../../../../bin/</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants></DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>False</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>True</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>../../../../bin/</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Mono.Addins" >
+      <Name>Mono.Addins</Name>
+      <HintPath>../../../../bin/Mono.Addins.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Framework/OpenSim.Framework.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="CTri.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Concavity.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ConvexBuilder.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ConvexDecomposition.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ConvexResult.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="HullClasses.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="HullTriangle.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="HullUtils.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Plane.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="PlaneTri.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Quaternion.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SplitPlane.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="VertexLookup.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="float2.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="float3.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="float3x3.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="float4.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="float4x4.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="int3.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="int4.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>
