@@ -1,0 +1,9 @@
+/home/akira/develop/akisim/bin/OpenSim.Tests.dll
+/home/akira/develop/akisim/bin/OpenSim.Tests.pdb
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim.Tests.csproj.AssemblyReference.cache
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim.Tests.GeneratedMSBuildEditorConfig.editorconfig
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim.Tests.csproj.CoreCompileInputs.cache
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim.Tests.sourcelink.json
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim..A2F6A98B.Up2Date
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim.Tests.dll
+/home/akira/develop/akisim/OpenSim/Tests/obj/Release/OpenSim.Tests.pdb

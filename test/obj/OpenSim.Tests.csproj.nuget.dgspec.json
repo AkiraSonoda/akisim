@@ -1,0 +1,2541 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/akira/develop/akisim/OpenSim/Tests/OpenSim.Tests.csproj": {}
+  },
+  "projects": {
+    "/home/akira/develop/akisim/OpenSim/Capabilities/Handlers/OpenSim.Capabilities.Handlers.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Capabilities/Handlers/OpenSim.Capabilities.Handlers.csproj",
+        "projectName": "OpenSim.Capabilities.Handlers",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/Handlers/OpenSim.Capabilities.Handlers.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Capabilities/Handlers/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[8.0.12, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj",
+        "projectName": "OpenSim.Capabilities",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Capabilities/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Data/MySQL/OpenSim.Data.MySQL.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Data/MySQL/OpenSim.Data.MySQL.csproj",
+        "projectName": "OpenSim.Data.MySQL",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Data/MySQL/OpenSim.Data.MySQL.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Data/MySQL/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Data/Null/OpenSim.Data.Null.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Data/Null/OpenSim.Data.Null.csproj",
+        "projectName": "OpenSim.Data.Null",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Data/Null/OpenSim.Data.Null.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Data/Null/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj",
+        "projectName": "OpenSim.Data",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Data/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj",
+        "projectName": "OpenSim.Framework.Console",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj",
+        "projectName": "OpenSim.Framework.Monitoring",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj",
+        "projectName": "OpenSim.Framework",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Framework/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[8.0.12, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj",
+        "projectName": "OpenSim.Framework.Serialization",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Framework/Serialization/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj",
+        "projectName": "OpenSim.Framework.Servers.HttpServer",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj",
+        "projectName": "OpenSim.Framework.Servers",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj",
+        "projectName": "OpenSim",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/Application/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/Caps/OpenSim.Region.ClientStack.LindenCaps.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/Caps/OpenSim.Region.ClientStack.LindenCaps.csproj",
+        "projectName": "OpenSim.Region.ClientStack.LindenCaps",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/Caps/OpenSim.Region.ClientStack.LindenCaps.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/Caps/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/Handlers/OpenSim.Capabilities.Handlers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/Handlers/OpenSim.Capabilities.Handlers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj",
+        "projectName": "OpenSim.Region.ClientStack.LindenUDP",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj",
+        "projectName": "OpenSim.Region.CoreModules",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/MySQL/OpenSim.Data.MySQL.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/MySQL/OpenSim.Data.MySQL.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj",
+        "projectName": "OpenSim.Region.Framework",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/OptionalModules/OpenSim.Region.OptionalModules.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/OptionalModules/OpenSim.Region.OptionalModules.csproj",
+        "projectName": "OpenSim.Region.OptionalModules",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/OptionalModules/OpenSim.Region.OptionalModules.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/OptionalModules/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj",
+        "projectName": "OpenSim.Region.PhysicsModule.BasicPhysics",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/BasicPhysics/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj",
+        "projectName": "OpenSim.Region.PhysicsModules.SharedBase",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj",
+        "projectName": "OpenSim.Region.ScriptEngine.Shared",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Region/ScriptEngine/Shared/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj": {
+                "projectPath": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj",
+        "projectName": "OpenSim.Server.Base",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Server/Base/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj",
+        "projectName": "OpenSim.Server.Handlers",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Server/Handlers/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj",
+        "projectName": "OpenSim.Services.Base",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Services/Base/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj",
+        "projectName": "OpenSim.Services.Connectors",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Services/Connectors/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Capabilities/OpenSim.Capabilities.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj",
+        "projectName": "OpenSim.Services.Interfaces",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj",
+        "projectName": "OpenSim.Services.UserAccountService",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Services/UserAccountService/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Base/OpenSim.Services.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Tests/Common/OpenSim.Tests.Common.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Tests/Common/OpenSim.Tests.Common.csproj",
+        "projectName": "OpenSim.Tests.Common",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Tests/Common/OpenSim.Tests.Common.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Tests/Common/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Data/Null/OpenSim.Data.Null.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/Null/OpenSim.Data.Null.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Data/OpenSim.Data.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Console/OpenSim.Framework.Console.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/Caps/OpenSim.Region.ClientStack.LindenCaps.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/Caps/OpenSim.Region.ClientStack.LindenCaps.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Framework/OpenSim.Region.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/OptionalModules/OpenSim.Region.OptionalModules.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/OptionalModules/OpenSim.Region.OptionalModules.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Server/Base/OpenSim.Server.Base.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "NUnit": {
+              "target": "Package",
+              "version": "[4.3.2, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/OpenSim/Tests/OpenSim.Tests.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/OpenSim/Tests/OpenSim.Tests.csproj",
+        "projectName": "OpenSim.Tests",
+        "projectPath": "/home/akira/develop/akisim/OpenSim/Tests/OpenSim.Tests.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/OpenSim/Tests/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Framework/OpenSim.Framework.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Region/Application/OpenSim.csproj"
+              },
+              "/home/akira/develop/akisim/OpenSim/Tests/Common/OpenSim.Tests.Common.csproj": {
+                "projectPath": "/home/akira/develop/akisim/OpenSim/Tests/Common/OpenSim.Tests.Common.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "NUnit": {
+              "target": "Package",
+              "version": "[4.3.2, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj",
+        "projectName": "SmartThreadPool",
+        "projectPath": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/SmartThreadPool.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/ThirdParty/SmartThreadPool/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj",
+        "projectName": "ThreadedClasses",
+        "projectPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/ThreadedClasses.csproj",
+        "packagesPath": "/home/akira/.nuget/packages/",
+        "outputPath": "/home/akira/develop/akisim/ThirdParty/ThreadedClasses/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/akira/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

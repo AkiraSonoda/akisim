@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "36SJkJstiyE=",
+  "success": true,
+  "projectFilePath": "/home/akira/develop/akisim/OpenSim/Tests/Tests.OpenSim.csproj",
+  "expectedPackageFiles": [
+    "/home/akira/.nuget/packages/microsoft.win32.systemevents/8.0.0/microsoft.win32.systemevents.8.0.0.nupkg.sha512",
+    "/home/akira/.nuget/packages/nunit/4.3.2/nunit.4.3.2.nupkg.sha512",
+    "/home/akira/.nuget/packages/system.drawing.common/8.0.12/system.drawing.common.8.0.12.nupkg.sha512",
+    "/home/akira/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.11/microsoft.aspnetcore.app.ref.8.0.11.nupkg.sha512"
+  ],
+  "logs": []
+}
