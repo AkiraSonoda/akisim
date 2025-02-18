@@ -43,7 +43,7 @@ using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
 using OpenSim.Region.CoreModules.World.Serialiser;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.Framework.Tests
 {

@@ -31,7 +31,7 @@ using System.Text;
 using log4net.Appender;
 using log4net.Layout;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public static class TestLogging
     {

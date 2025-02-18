@@ -31,7 +31,7 @@ using OpenMetaverse;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     /// <summary>
     /// Utility functions for carrying out user profile related tests.

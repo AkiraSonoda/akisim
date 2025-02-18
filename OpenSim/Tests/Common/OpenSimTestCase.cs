@@ -30,7 +30,7 @@ using NUnit.Framework;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     [TestFixture]
     public class OpenSimTestCase

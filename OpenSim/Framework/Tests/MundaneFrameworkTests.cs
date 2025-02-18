@@ -32,7 +32,7 @@ using OpenMetaverse.StructuredData;
 using System;
 using System.Globalization;
 using System.Threading;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Framework.Tests
 {

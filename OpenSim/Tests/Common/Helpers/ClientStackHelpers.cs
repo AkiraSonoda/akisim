@@ -34,7 +34,7 @@ using OpenSim.Framework;
 using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.Framework.Scenes;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     /// <summary>
     /// This class adds full UDP client classes and associated scene presence to scene.

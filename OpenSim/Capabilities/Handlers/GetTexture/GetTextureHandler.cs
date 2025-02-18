@@ -63,6 +63,10 @@ namespace OpenSim.Capabilities.Handlers
 
         public Hashtable Handle(Hashtable request)
         {
+            // print method and parameters into debug log
+            m_log.DebugFormat("handle called with No. {0} of requests", request.Count);
+            
+            
             Hashtable ret = new Hashtable();
             ret["int_response_code"] = (int)System.Net.HttpStatusCode.NotFound;
             ret["content_type"] = "text/plain";
@@ -134,7 +138,7 @@ namespace OpenSim.Capabilities.Handlers
         /// <returns>False for "caller try another codec"; true otherwise</returns>
         private bool FetchTexture(Hashtable request, Hashtable response, UUID textureID, string format)
         {
-//            m_log.DebugFormat("[GETTEXTURE]: {0} with requested format {1}", textureID, format);
+            m_log.DebugFormat("FetchTexture {0} with requested format {1}", textureID, format);
             AssetBase texture;
 
             string fullID = textureID.ToString();
@@ -195,6 +199,9 @@ namespace OpenSim.Capabilities.Handlers
 
         private void WriteTextureData(Hashtable request, Hashtable response, AssetBase texture, string format)
         {
+            // log method and parameters into debug log
+            m_log.DebugFormat("WriteTextureData {0} with requested format {1}", texture.ID, format);
+
             Hashtable headers = new Hashtable();
             response["headers"] = headers;
 
@@ -291,7 +298,7 @@ namespace OpenSim.Capabilities.Handlers
 
         private byte[] ConvertTextureData(AssetBase texture, string format)
         {
-            m_log.DebugFormat("[GETTEXTURE]: Converting texture {0} to {1}", texture.ID, format);
+            m_log.DebugFormat("Converting texture {0} to {1}", texture.ID, format);
             byte[] data = Array.Empty<byte>();
 
             MemoryStream imgstream = new MemoryStream();
@@ -322,13 +329,13 @@ namespace OpenSim.Capabilities.Handlers
                             data = imgstream.ToArray();
                         }
                         else
-                            m_log.WarnFormat("[GETTEXTURE]: No such codec {0}", format);
+                            m_log.WarnFormat("No such codec {0}", format);
                     }
                 }
             }
             catch (Exception e)
             {
-                m_log.WarnFormat("[GETTEXTURE]: Unable to convert texture {0} to {1}: {2}", texture.ID, format, e.Message);
+                m_log.WarnFormat("Unable to convert texture {0} to {1}: {2}", texture.ID, format, e.Message);
             }
             finally
             {
@@ -352,6 +359,9 @@ namespace OpenSim.Capabilities.Handlers
         // From msdn
         private static ImageCodecInfo GetEncoderInfo(String mimeType)
         {
+            // log method and parameter into debug
+            m_log.DebugFormat("GetEncoderInfo called with {0}", mimeType);
+            
             ImageCodecInfo[] encoders;
             encoders = ImageCodecInfo.GetImageEncoders();
             for (int j = 0; j < encoders.Length; ++j)

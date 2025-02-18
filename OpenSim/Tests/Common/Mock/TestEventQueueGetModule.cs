@@ -43,7 +43,7 @@ using OpenSim.Region.ClientStack.Linden;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public class TestEventQueueGetModule : IEventQueue, INonSharedRegionModule
     {
@@ -217,6 +217,18 @@ namespace OpenSim.Tests.Common
         public osUTF8 StartEvent(string eventName, int cap)
         {
             return null;
+        }
+
+        public void SendLargeGenericMessage(UUID avatarID, UUID? transationID, UUID? sessionID, string method, UUID invoice,
+            List<byte[]> message)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SendLargeGenericMessage(UUID avatarID, UUID? transationID, UUID? sessionID, string method, UUID invoice,
+            List<string> message)
+        {
+            throw new NotImplementedException();
         }
 
         public byte[] EndEventToBytes(osUTF8 sb)

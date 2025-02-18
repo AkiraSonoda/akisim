@@ -31,7 +31,7 @@ using NUnit.Framework;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Framework.Tests
 {

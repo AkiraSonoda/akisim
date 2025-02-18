@@ -32,7 +32,7 @@ using System.Text;
 using NUnit.Framework;
 using OpenMetaverse;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public class TestHelpers
     {

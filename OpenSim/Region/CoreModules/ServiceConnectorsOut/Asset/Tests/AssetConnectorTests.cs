@@ -37,7 +37,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.Tests
 {
@@ -55,7 +55,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.Tests
             config.Configs["Modules"].Set("AssetServices", "LocalAssetServicesConnector");
             config.AddConfig("AssetService");
             config.Configs["AssetService"].Set("LocalServiceModule", "OpenSim.Services.AssetService.dll:AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             LocalAssetServicesConnector lasc = new LocalAssetServicesConnector();
             lasc.Initialise(config);
@@ -87,7 +87,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.Tests
             config.Configs["Modules"].Set("AssetServices", "LocalAssetServicesConnector");
             config.AddConfig("AssetService");
             config.Configs["AssetService"].Set("LocalServiceModule", "OpenSim.Services.AssetService.dll:AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             LocalAssetServicesConnector lasc = new LocalAssetServicesConnector();
             lasc.Initialise(config);
@@ -124,7 +124,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.Tests
             config.Configs["Modules"].Set("AssetServices", "LocalAssetServicesConnector");
             config.AddConfig("AssetService");
             config.Configs["AssetService"].Set("LocalServiceModule", "OpenSim.Services.AssetService.dll:AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             LocalAssetServicesConnector lasc = new LocalAssetServicesConnector();
             lasc.Initialise(config);
@@ -152,7 +152,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.Tests
             config.Configs["Modules"].Set("AssetServices", "LocalAssetServicesConnector");
             config.AddConfig("AssetService");
             config.Configs["AssetService"].Set("LocalServiceModule", "OpenSim.Services.AssetService.dll:AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             LocalAssetServicesConnector lasc = new LocalAssetServicesConnector();
             lasc.Initialise(config);

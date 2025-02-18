@@ -32,9 +32,9 @@ using OpenMetaverse.StructuredData;
 using NUnit.Framework;
 using OpenSim.Framework;
 using OpenSim.Framework.Serialization.External;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
-namespace OpenSim.Framework.Serialization.Tests
+namespace Tests.OpenSim.Framework.Serialization
 {
     [TestFixture]
     public class RegionSettingsSerializerTests : OpenSimTestCase

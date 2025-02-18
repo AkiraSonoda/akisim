@@ -31,7 +31,7 @@ using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Framework.UserManagement;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement.Tests
 {

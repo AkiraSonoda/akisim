@@ -26,7 +26,7 @@
  */
 
 using NUnit.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Framework.Tests
 {

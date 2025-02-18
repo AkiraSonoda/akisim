@@ -36,10 +36,10 @@ using OpenSim.Region.CoreModules.World.Permissions;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Transfer;
 using OpenSim.Region.CoreModules.Framework.InventoryAccess;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 
-namespace OpenSim.Tests.Permissions
+namespace Tests.OpenSim.Permissions
 {
     [SetUpFixture]
     public class Common : OpenSimTestCase
@@ -78,12 +78,12 @@ namespace OpenSim.Tests.Permissions
 
             config.AddConfig("InventoryService");
             config.Configs["InventoryService"].Set("LocalServiceModule", "OpenSim.Services.InventoryService.dll:XInventoryService");
-            config.Configs["InventoryService"].Set("StorageProvider", "OpenSim.Tests.Common.dll:TestXInventoryDataPlugin");
+            config.Configs["InventoryService"].Set("StorageProvider", "Tests.OpenSim.Common.dll:TestXInventoryDataPlugin");
 
             config.AddConfig("Groups");
             config.Configs["Groups"].Set("Enabled", "true");
             config.Configs["Groups"].Set("Module", "Groups Module V2");
-            config.Configs["Groups"].Set("StorageProvider", "OpenSim.Tests.Common.dll:TestGroupsDataPlugin");
+            config.Configs["Groups"].Set("StorageProvider", "Tests.OpenSim.Common.dll:TestGroupsDataPlugin");
             config.Configs["Groups"].Set("ServicesConnectorModule", "Groups Local Service Connector");
             config.Configs["Groups"].Set("LocalService", "local");
 

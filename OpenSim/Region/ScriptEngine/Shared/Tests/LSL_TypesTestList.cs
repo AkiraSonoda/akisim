@@ -27,7 +27,7 @@
 
 using System.Collections.Generic;
 using NUnit.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using OpenSim.Region.ScriptEngine.Shared;
 
 namespace OpenSim.Region.ScriptEngine.Shared.Tests

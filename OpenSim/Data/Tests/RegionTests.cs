@@ -35,7 +35,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using log4net;
 using System.Reflection;
 using System.Data.Common;

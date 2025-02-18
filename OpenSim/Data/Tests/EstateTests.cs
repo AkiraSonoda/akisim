@@ -31,7 +31,7 @@ using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using System.Text;
 using log4net;
 using System.Reflection;

@@ -40,9 +40,9 @@ using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
 using OpenSim.Region.CoreModules.Scripting.VectorRender;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
-namespace OpenSim.Tests.Stress
+namespace Tests.OpenSim.Stress
 {
     [TestFixture]
     public class VectorRenderModuleStressTests : OpenSimTestCase

@@ -27,7 +27,7 @@
 
 using System.Collections.Generic;
 using NUnit.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using OpenSim.Region.ScriptEngine.Shared;
 
 namespace OpenSim.Region.ScriptEngine.Shared.Tests
@@ -94,7 +94,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
 
             foreach (KeyValuePair<double, string> number in m_doubleStringSet)
             {
-                testString = (LSL_Types.LSLString) new LSL_Types.LSLFloat(number.Key);
+                testString = new LSL_Types.LSLFloat(number.Key).ToString();
                 Assert.AreEqual(number.Value, testString.m_string);
             }
         }

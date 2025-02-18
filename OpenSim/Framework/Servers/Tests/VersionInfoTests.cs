@@ -29,9 +29,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
-using OpenSim.Tests.Common;
+using OpenSim;
+using Tests.OpenSim.Common;
 
-namespace OpenSim.Framework.Servers.Tests
+namespace Tests.OpenSim.Framework.Servers
 {
     [TestFixture]
     public class VersionInfoTests : OpenSimTestCase

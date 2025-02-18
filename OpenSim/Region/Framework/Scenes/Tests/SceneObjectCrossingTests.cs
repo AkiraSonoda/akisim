@@ -36,7 +36,7 @@ using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.World.Land;
 using OpenSim.Region.OptionalModules;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using System.Threading;
 
 namespace OpenSim.Region.Framework.Scenes.Tests

@@ -33,13 +33,13 @@ using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using log4net;
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
 
-namespace OpenSim.Data.Tests
+namespace Tests.OpenSim.Data
 {
     /// <summary>This is a base class for testing any Data service for any DBMS.
     /// Requires NUnit 2.5 or better (to support the generics).
@@ -76,7 +76,6 @@ namespace OpenSim.Data.Tests
             m_connStr = !String.IsNullOrEmpty(conn) ? conn : DefaultTestConns.Get(typeof(TConn));
 
             m_log = LogManager.GetLogger(this.GetType());
-            OpenSim.Tests.Common.TestLogging.LogToConsole();    // TODO: Is that right?
         }
 
         /// <summary>

@@ -40,7 +40,7 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.CoreModules.Framework.InventoryAccess;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.Framework.Tests
 {

@@ -35,7 +35,7 @@ using OpenSim.Framework;
 using OpenSim.Data;
 using OpenSim.Data.Null;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public class TestXInventoryDataPlugin : NullGenericDataHandler, IXInventoryData
     {
@@ -57,6 +57,11 @@ namespace OpenSim.Tests.Common
 //            Array.ForEach(items, i => Console.WriteLine("Found item {0} {1}", i.inventoryName, i.inventoryID));
 
             return items;
+        }
+
+        public XInventoryFolder[] GetFolder(string field, string val)
+        {
+            throw new NotImplementedException();
         }
 
         public XInventoryFolder[] GetFolders(string[] fields, string[] vals)

@@ -31,7 +31,7 @@ using System.Net;
 using System.Text;
 using OSHttpServer;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
 /*
     public class TestHttpResponse: IHttpResponse

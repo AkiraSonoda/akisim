@@ -30,7 +30,7 @@ using log4net.Config;
 using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using log4net;
 using System.Reflection;
 using System.Data.Common;

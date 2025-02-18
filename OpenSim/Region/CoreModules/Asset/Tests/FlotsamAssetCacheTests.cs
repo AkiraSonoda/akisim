@@ -38,7 +38,7 @@ using OpenMetaverse.Assets;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.Asset.Tests
 {

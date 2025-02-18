@@ -49,7 +49,7 @@ using OpenSim.Services.Interfaces;
 
 using BaseServerUtils = OpenSim.Server.Base.ServerUtils;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     /// <summary>
     /// Helpers for setting up scenes.
@@ -99,7 +99,7 @@ namespace OpenSim.Tests.Common
 
             m_physicsScene = StartPhysicsScene();
 
-            SimDataService = BaseServerUtils.LoadPlugin<ISimulationDataService>("OpenSim.Tests.Common.dll", null);
+            SimDataService = BaseServerUtils.LoadPlugin<ISimulationDataService>("Tests.OpenSim.Common.dll", null);
         }
 
         /// <summary>
@@ -218,7 +218,7 @@ namespace OpenSim.Tests.Common
             config.Configs["Modules"].Set("AssetServices", "LocalAssetServicesConnector");
             config.AddConfig("AssetService");
             config.Configs["AssetService"].Set("LocalServiceModule", "OpenSim.Services.AssetService.dll:AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             LocalAssetServicesConnector assetService = new LocalAssetServicesConnector();
             assetService.Initialise(config);
@@ -259,7 +259,7 @@ namespace OpenSim.Tests.Common
             config.AddConfig("InventoryService");
             config.Configs["Modules"].Set("InventoryServices", "LocalInventoryServicesConnector");
             config.Configs["InventoryService"].Set("LocalServiceModule", "OpenSim.Services.InventoryService.dll:XInventoryService");
-            config.Configs["InventoryService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["InventoryService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             LocalInventoryServicesConnector inventoryService = new LocalInventoryServicesConnector();
             inventoryService.Initialise(config);

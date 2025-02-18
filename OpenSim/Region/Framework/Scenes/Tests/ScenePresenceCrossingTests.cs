@@ -38,7 +38,7 @@ using OpenSim.Region.CoreModules.Framework;
 using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.World.Permissions;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using OpenSim.Region.OptionalModules.Avatar.XmlRpcGroups;
 using System.Threading;
 

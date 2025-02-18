@@ -38,7 +38,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Framework.Client;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public class TestClient : IClientAPI, IClientCore
     {
@@ -370,6 +370,9 @@ namespace OpenSim.Tests.Common
         }
 
         public float StartFar { get; set; }
+        public float FOV { get; set; }
+        public int viewHeight { get; set; }
+        public int viewWidth { get; set; }
 
         public virtual UUID AgentId
         {
@@ -429,6 +432,8 @@ namespace OpenSim.Tests.Common
         {
             return false;
         }
+
+        public ViewerFlags ViewerFlags { get; }
 
         public Dictionary<UUID, ulong> GetGroupPowers()
         {

@@ -37,7 +37,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.ScriptEngine.Interfaces;
 using OpenSim.Region.ScriptEngine.Shared;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public class MockScriptEngine : INonSharedRegionModule, IScriptModule, IScriptEngine
     {
@@ -146,6 +146,11 @@ namespace OpenSim.Tests.Common
         public bool PostObjectEvent(uint localID, EventParams evParams)
         {
             return PostObjectEvent(m_scene.GetSceneObjectPart(localID), evParams);
+        }
+
+        public bool PostObjectLinksetDataEvent(uint localID, int action, ReadOnlySpan<char> name, ReadOnlySpan<char> value)
+        {
+            throw new NotImplementedException();
         }
 
         public bool PostObjectEvent(UUID itemID, string name, object[] args)

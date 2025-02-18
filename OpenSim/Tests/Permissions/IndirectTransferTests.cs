@@ -31,10 +31,10 @@ using NUnit.Framework;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 
-namespace OpenSim.Tests.Permissions
+namespace Tests.OpenSim.Permissions
 {
     /// <summary>
     /// Basic scene object tests (create, read and delete but not update).

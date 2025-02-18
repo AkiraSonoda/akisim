@@ -30,7 +30,7 @@ using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     [AttributeUsage(AttributeTargets.All,
         AllowMultiple=false,

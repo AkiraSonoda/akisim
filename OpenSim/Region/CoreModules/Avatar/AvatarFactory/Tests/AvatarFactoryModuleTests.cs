@@ -33,7 +33,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Asset;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 {

@@ -31,7 +31,7 @@ using OpenSim.Region.CoreModules.World.Estate;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.Framework.Scenes.Tests
 {

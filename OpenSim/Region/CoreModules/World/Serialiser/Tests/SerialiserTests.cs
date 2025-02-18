@@ -35,7 +35,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Serialization;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Region.CoreModules.World.Serialiser.Tests

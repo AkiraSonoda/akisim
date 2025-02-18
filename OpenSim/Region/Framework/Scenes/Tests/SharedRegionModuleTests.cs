@@ -37,7 +37,7 @@ using OpenSim.ApplicationPlugins.RegionModulesController;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid;
 using OpenSim.Region.Framework.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.Framework.Scenes.Tests
 {

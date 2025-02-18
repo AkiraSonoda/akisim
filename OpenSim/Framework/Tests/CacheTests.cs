@@ -28,7 +28,7 @@
 using System;
 using NUnit.Framework;
 using OpenMetaverse;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Framework.Tests
 {

@@ -33,7 +33,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Data;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     /// <summary>
     /// In memory inventory data plugin for test purposes.  Could be another dll when properly filled out and when the

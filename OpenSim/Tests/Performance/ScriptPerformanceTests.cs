@@ -38,10 +38,9 @@ using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Scripting.WorldComm;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Region.ScriptEngine.XEngine;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
-namespace OpenSim.Tests.Performance
+namespace Tests.OpenSim.Performance
 {
     /// <summary>
     /// Script performance tests
@@ -164,6 +163,7 @@ namespace OpenSim.Tests.Performance
                     m_chatEvent.Set();
             }
         }
-    }
         */
+
+    }
 }

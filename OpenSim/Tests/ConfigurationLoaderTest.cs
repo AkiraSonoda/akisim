@@ -28,10 +28,11 @@
 using System.IO;
 using Nini.Config;
 using NUnit.Framework;
+using OpenSim;
 using OpenSim.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
-namespace OpenSim.Tests
+namespace Tests.OpenSim
 {
     [TestFixture]
     public class ConfigurationLoaderTests : OpenSimTestCase

@@ -30,7 +30,7 @@ using NUnit.Framework;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.Terrain.Tests
 {

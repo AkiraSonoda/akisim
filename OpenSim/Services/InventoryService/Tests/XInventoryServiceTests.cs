@@ -32,7 +32,7 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Server.Base;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Services.InventoryService.Tests
 {
@@ -49,7 +49,7 @@ namespace OpenSim.Services.InventoryService.Tests
         {
             IConfigSource config = new IniConfigSource();
             config.AddConfig("InventoryService");
-            config.Configs["InventoryService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["InventoryService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             return ServerUtils.LoadPlugin<IInventoryService>(
                 "OpenSim.Services.InventoryService.dll:XInventoryService", new Object[] { config });

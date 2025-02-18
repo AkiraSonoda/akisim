@@ -30,7 +30,7 @@ using System.Collections.Specialized;
 using System.IO;
 using OSHttpServer;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
 /*
     public class TestHttpRequest: IHttpRequest

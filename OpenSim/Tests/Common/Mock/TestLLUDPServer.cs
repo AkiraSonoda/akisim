@@ -34,7 +34,7 @@ using OpenMetaverse.Packets;
 using OpenSim.Framework;
 using OpenSim.Region.ClientStack.LindenUDP;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     /// <summary>
     /// This class enables regression testing of the LLUDPServer by allowing us to intercept outgoing data.

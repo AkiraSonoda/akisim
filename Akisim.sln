@@ -1,0 +1,536 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 22
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim", "OpenSim/Region/Application/OpenSim.csproj", "{2CF6E82E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Addons.Groups", "OpenSim/Addons/Groups/OpenSim.Addons.Groups.csproj", "{21D03E83-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Addons.OfflineIM", "OpenSim/Addons/OfflineIM/OpenSim.Addons.OfflineIM.csproj", "{CE12A493-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.ApplicationPlugins.LoadRegions", "OpenSim/ApplicationPlugins/LoadRegions/OpenSim.ApplicationPlugins.LoadRegions.csproj", "{ADD7A9A4-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.ApplicationPlugins.RegionModulesController", "OpenSim/ApplicationPlugins/RegionModulesController/OpenSim.ApplicationPlugins.RegionModulesController.csproj", "{08E86805-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.ApplicationPlugins.RemoteController", "OpenSim/ApplicationPlugins/RemoteController/OpenSim.ApplicationPlugins.RemoteController.csproj", "{EF6C3F10-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Capabilities", "OpenSim/Capabilities/OpenSim.Capabilities.csproj", "{6D8EC152-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Capabilities.Handlers", "OpenSim/Capabilities/Handlers/OpenSim.Capabilities.Handlers.csproj", "{D49F7B7F-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Capabilities.Handlers", "OpenSim\Capabilities\Handlers\Tests.OpenSim.Capabilities.Handlers.csproj", "{E73BECC4-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.ConsoleClient", "OpenSim/ConsoleClient/OpenSim.ConsoleClient.csproj", "{D11001BD-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Data", "OpenSim/Data/OpenSim.Data.csproj", "{6868217F-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Data.MySQL", "OpenSim/Data/MySQL/OpenSim.Data.MySQL.csproj", "{B23E9EB3-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Data.Null", "OpenSim/Data/Null/OpenSim.Data.Null.csproj", "{4B97177E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Data.PGSQL", "OpenSim/Data/PGSQL/OpenSim.Data.PGSQL.csproj", "{9A974075-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Data.SQLite", "OpenSim/Data/SQLite/OpenSim.Data.SQLite.csproj", "{772CC990-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Data", "OpenSim\Data\Tests\Tests.OpenSim.Data.csproj", "{142542B3-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework", "OpenSim/Framework/OpenSim.Framework.csproj", "{0259AAC2-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework.AssetLoader.Filesystem", "OpenSim/Framework/AssetLoader/Filesystem/OpenSim.Framework.AssetLoader.Filesystem.csproj", "{82E6B2D2-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework.Console", "OpenSim/Framework/Console/OpenSim.Framework.Console.csproj", "{0963042C-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework.Monitoring", "OpenSim/Framework/Monitoring/OpenSim.Framework.Monitoring.csproj", "{E0E4EFEB-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework.Serialization", "OpenSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj", "{693EFC45-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Framework.Serialization", "OpenSim\Framework\Serialization\Tests\Tests.OpenSim.Framework.Serialization.csproj", "{E5449DFE-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework.Servers", "OpenSim/Framework/Servers/OpenSim.Framework.Servers.csproj", "{DD5B2B60-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Framework.Servers.HttpServer", "OpenSim/Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj", "{F5D5DFAB-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Framework.Servers", "OpenSim\Framework\Servers\Tests\Tests.OpenSim.Framework.Servers.csproj", "{C4D4DCAC-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Framework", "OpenSim\Framework\Tests\Tests.OpenSim.Framework.csproj", "{15330D2E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Modules.Currency", "addon-modules/akkimoney_module/Modules/OpenSim.Modules.Currency.csproj", "{518090F0-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.ClientStack.LindenCaps", "OpenSim/Region/ClientStack/Linden/Caps/OpenSim.Region.ClientStack.LindenCaps.csproj", "{E91EC750-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Region.ClientStack.LindenCaps", "OpenSim\Region\ClientStack\Linden\Caps\Tests.OpenSim.Region.ClientStack.LindenCaps.csproj", "{8D2AEFC4-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.ClientStack.LindenUDP", "OpenSim/Region/ClientStack/Linden/UDP/OpenSim.Region.ClientStack.LindenUDP.csproj", "{9D80AD45-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Region.ClientStack.LindenUDP", "OpenSim\Region\ClientStack\Linden\UDP\Tests\Tests.OpenSim.Region.ClientStack.LindenUDP.csproj", "{EB708B47-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.CoreModules", "OpenSim/Region/CoreModules/OpenSim.Region.CoreModules.csproj", "{C215279F-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Region.CoreModules", "OpenSim\Region\CoreModules\Tests.OpenSim.Region.CoreModules.csproj", "{7B5B8C98-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.Framework", "OpenSim/Region/Framework/OpenSim.Region.Framework.csproj", "{A3A53503-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Region.Framework", "OpenSim\Region\Framework\Tests.OpenSim.Region.Framework.csproj", "{058EC893-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.OptionalModules", "OpenSim/Region/OptionalModules/OpenSim.Region.OptionalModules.csproj", "{05570297-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModule.BasicPhysics", "OpenSim/Region/PhysicsModules/BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj", "{7FE7FD2B-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModule.BulletS", "OpenSim/Region/PhysicsModules/BulletS/OpenSim.Region.PhysicsModule.BulletS.csproj", "{77DAE287-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Region.PhysicsModule.BulletS", "OpenSim\Region\PhysicsModules\BulletS\Tests\Tests.OpenSim.Region.PhysicsModule.BulletS.csproj", "{02772E50-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModule.Meshing", "OpenSim/Region/PhysicsModules/Meshing/OpenSim.Region.PhysicsModule.Meshing.csproj", "{AB63FD27-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModule.POS", "OpenSim/Region/PhysicsModules/POS/OpenSim.Region.PhysicsModule.POS.csproj", "{6EEA31E4-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModule.ubOde", "OpenSim/Region/PhysicsModules/ubOde/OpenSim.Region.PhysicsModule.ubOde.csproj", "{DF015317-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModule.ubOdeMeshing", "OpenSim/Region/PhysicsModules/ubOdeMeshing/OpenSim.Region.PhysicsModule.ubOdeMeshing.csproj", "{C5DFDA07-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet", "OpenSim/Region/PhysicsModules/ConvexDecompositionDotNet/OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet.csproj", "{C4876FF0-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.PhysicsModules.SharedBase", "OpenSim/Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj", "{1656476D-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.ScriptEngine.Shared", "OpenSim/Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj", "{B22EFC28-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.ScriptEngine.Shared.Api", "OpenSim/Region/ScriptEngine/Shared/Api/Implementation/OpenSim.Region.ScriptEngine.Shared.Api.csproj", "{DC63F3E3-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.ScriptEngine.Shared.Api.Runtime", "OpenSim/Region/ScriptEngine/Shared/Api/Runtime/OpenSim.Region.ScriptEngine.Shared.Api.Runtime.csproj", "{5BA7D9DD-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Region.ScriptEngine", "OpenSim\Region\ScriptEngine\Tests.OpenSim.Region.ScriptEngine.csproj", "{A636372C-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Region.ScriptEngine.YEngine", "OpenSim/Region/ScriptEngine/YEngine/OpenSim.Region.ScriptEngine.YEngine.csproj", "{3BD637DE-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Server.Base", "OpenSim/Server/Base/OpenSim.Server.Base.csproj", "{79E368E6-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Server.Handlers", "OpenSim/Server/Handlers/OpenSim.Server.Handlers.csproj", "{36D8B44B-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Server.Handlers", "OpenSim\Server\Handlers\Tests.OpenSim.Server.Handlers.csproj", "{7A6DA39E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.AssetService", "OpenSim/Services/AssetService/OpenSim.Services.AssetService.csproj", "{0D8F7A8E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.AuthenticationService", "OpenSim/Services/AuthenticationService/OpenSim.Services.AuthenticationService.csproj", "{CB824603-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.AuthorizationService", "OpenSim/Services/AuthorizationService/OpenSim.Services.AuthorizationService.csproj", "{0CA8576A-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.AvatarService", "OpenSim/Services/AvatarService/OpenSim.Services.AvatarService.csproj", "{4D4169F7-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.Base", "OpenSim/Services/Base/OpenSim.Services.Base.csproj", "{69077B5A-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.Connectors", "OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj", "{C6B60365-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.EstateService", "OpenSim/Services/EstateService/OpenSim.Services.EstateService.csproj", "{609EEC8F-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.FreeswitchService", "OpenSim/Services/FreeswitchService/OpenSim.Services.FreeswitchService.csproj", "{FB8362C0-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.FriendsService", "OpenSim/Services/Friends/OpenSim.Services.FriendsService.csproj", "{7BCFCDC5-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.FSAssetService", "OpenSim/Services/FSAssetService/OpenSim.Services.FSAssetService.csproj", "{2AC74E89-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.GridService", "OpenSim/Services/GridService/OpenSim.Services.GridService.csproj", "{1328311E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.HypergridService", "OpenSim/Services/HypergridService/OpenSim.Services.HypergridService.csproj", "{0F4AAEAB-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.Interfaces", "OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj", "{1F104929-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.InventoryService", "OpenSim/Services/InventoryService/OpenSim.Services.InventoryService.csproj", "{AB30F17F-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Services.InventoryService", "OpenSim\Services\InventoryService\Tests\Tests.OpenSim.Services.InventoryService.csproj", "{E6333F26-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.LLLoginService", "OpenSim/Services/LLLoginService/OpenSim.Services.LLLoginService.csproj", "{00CC44EE-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.MapImageService", "OpenSim/Services/MapImageService/OpenSim.Services.MapImageService.csproj", "{698F2611-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.MuteListService", "OpenSim/Services/MuteListService/OpenSim.Services.MuteListService.csproj", "{FDAEC736-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.PresenceService", "OpenSim/Services/PresenceService/OpenSim.Services.PresenceService.csproj", "{6AA8481E-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.SimulationService", "OpenSim/Services/SimulationService/OpenSim.Services.SimulationService.csproj", "{ECA1FF6C-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.UserAccountService", "OpenSim/Services/UserAccountService/OpenSim.Services.UserAccountService.csproj", "{C20FC5B4-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Services.UserProfilesService", "OpenSim/Services/UserProfilesService/OpenSim.Services.UserProfilesService.csproj", "{4A83CC9A-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim", "OpenSim\Tests\Tests.OpenSim.csproj", "{F45BEE18-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Clients.AssetClient", "OpenSim\Tests\Clients\Assets\Tests.OpenSim.Clients.AssetClient.csproj", "{A18BD266-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Common", "OpenSim\Tests\Common\Tests.OpenSim.Common.csproj", "{1063BD35-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Performance", "OpenSim\Tests\Performance\Tests.OpenSim.Performance.csproj", "{E4EF383F-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Permissions", "OpenSim\Tests\Permissions\Tests.OpenSim.Permissions.csproj", "{B784F8F2-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.OpenSim.Stress", "OpenSim\Tests\Stress\Tests.OpenSim.Stress.csproj", "{F00B6F24-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Tools.Configger", "OpenSim/Tools/Configger/OpenSim.Tools.Configger.csproj", "{0F482066-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pCampBot", "OpenSim/Tools/pCampBot/pCampBot.csproj", "{0BAEB292-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Robust", "OpenSim/Server/Robust.csproj", "{A832B106-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Robust", "OpenSim\Tests\Robust\Tests.Robust.csproj", "{136071ED-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartThreadPool", "ThirdParty/SmartThreadPool/SmartThreadPool.csproj", "{29C39AC0-0000-0000-0000-000000000000}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThreadedClasses", "ThirdParty/ThreadedClasses/ThreadedClasses.csproj", "{06304E7B-0000-0000-0000-000000000000}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{9AAFE345-F604-4300-A8DF-2EAD086CAE00}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9AAFE345-F604-4300-A8DF-2EAD086CAE00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AAFE345-F604-4300-A8DF-2EAD086CAE00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CF6E82E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2CF6E82E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2CF6E82E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2CF6E82E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21D03E83-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21D03E83-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21D03E83-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21D03E83-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE12A493-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE12A493-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE12A493-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE12A493-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADD7A9A4-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADD7A9A4-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADD7A9A4-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADD7A9A4-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08E86805-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08E86805-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08E86805-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08E86805-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF6C3F10-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF6C3F10-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF6C3F10-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF6C3F10-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D8EC152-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D8EC152-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D8EC152-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D8EC152-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D49F7B7F-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D49F7B7F-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D49F7B7F-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D49F7B7F-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E73BECC4-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E73BECC4-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E73BECC4-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E73BECC4-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11001BD-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11001BD-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11001BD-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11001BD-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6868217F-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6868217F-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6868217F-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6868217F-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B23E9EB3-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B23E9EB3-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B23E9EB3-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B23E9EB3-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B97177E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B97177E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B97177E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B97177E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A974075-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A974075-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A974075-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A974075-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{772CC990-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{772CC990-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{772CC990-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{772CC990-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{142542B3-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{142542B3-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{142542B3-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{142542B3-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0259AAC2-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0259AAC2-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0259AAC2-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0259AAC2-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82E6B2D2-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82E6B2D2-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82E6B2D2-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82E6B2D2-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0963042C-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0963042C-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0963042C-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0963042C-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0E4EFEB-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0E4EFEB-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0E4EFEB-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0E4EFEB-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{693EFC45-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{693EFC45-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{693EFC45-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{693EFC45-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5449DFE-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5449DFE-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5449DFE-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5449DFE-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD5B2B60-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD5B2B60-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD5B2B60-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD5B2B60-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5D5DFAB-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5D5DFAB-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5D5DFAB-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5D5DFAB-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4D4DCAC-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4D4DCAC-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4D4DCAC-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4D4DCAC-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15330D2E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15330D2E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15330D2E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15330D2E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{518090F0-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{518090F0-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{518090F0-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{518090F0-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E91EC750-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E91EC750-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E91EC750-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E91EC750-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D2AEFC4-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D2AEFC4-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D2AEFC4-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D2AEFC4-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D80AD45-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D80AD45-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D80AD45-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D80AD45-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB708B47-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB708B47-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB708B47-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB708B47-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C215279F-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C215279F-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C215279F-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C215279F-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B5B8C98-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B5B8C98-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B5B8C98-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B5B8C98-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3A53503-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3A53503-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3A53503-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3A53503-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{058EC893-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{058EC893-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{058EC893-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{058EC893-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05570297-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05570297-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05570297-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05570297-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FE7FD2B-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FE7FD2B-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FE7FD2B-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FE7FD2B-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77DAE287-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77DAE287-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77DAE287-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77DAE287-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02772E50-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02772E50-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02772E50-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02772E50-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB63FD27-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB63FD27-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB63FD27-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB63FD27-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EEA31E4-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6EEA31E4-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EEA31E4-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6EEA31E4-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF015317-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF015317-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF015317-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF015317-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5DFDA07-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5DFDA07-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5DFDA07-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5DFDA07-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4876FF0-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4876FF0-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4876FF0-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4876FF0-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1656476D-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1656476D-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1656476D-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1656476D-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B22EFC28-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B22EFC28-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B22EFC28-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B22EFC28-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC63F3E3-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC63F3E3-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC63F3E3-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC63F3E3-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BA7D9DD-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BA7D9DD-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BA7D9DD-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BA7D9DD-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A636372C-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A636372C-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A636372C-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A636372C-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3BD637DE-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3BD637DE-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3BD637DE-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3BD637DE-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79E368E6-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79E368E6-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79E368E6-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79E368E6-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36D8B44B-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36D8B44B-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36D8B44B-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36D8B44B-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A6DA39E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A6DA39E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A6DA39E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A6DA39E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D8F7A8E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D8F7A8E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D8F7A8E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D8F7A8E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB824603-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB824603-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB824603-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB824603-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CA8576A-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CA8576A-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CA8576A-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CA8576A-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D4169F7-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D4169F7-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D4169F7-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D4169F7-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69077B5A-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69077B5A-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69077B5A-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69077B5A-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6B60365-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6B60365-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6B60365-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6B60365-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{609EEC8F-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{609EEC8F-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{609EEC8F-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{609EEC8F-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB8362C0-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB8362C0-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB8362C0-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB8362C0-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BCFCDC5-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BCFCDC5-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BCFCDC5-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BCFCDC5-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AC74E89-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AC74E89-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AC74E89-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AC74E89-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1328311E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1328311E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1328311E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1328311E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F4AAEAB-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F4AAEAB-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F4AAEAB-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F4AAEAB-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F104929-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F104929-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F104929-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F104929-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB30F17F-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB30F17F-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB30F17F-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB30F17F-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6333F26-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6333F26-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6333F26-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6333F26-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00CC44EE-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00CC44EE-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00CC44EE-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00CC44EE-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{698F2611-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{698F2611-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{698F2611-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{698F2611-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDAEC736-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDAEC736-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDAEC736-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDAEC736-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AA8481E-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AA8481E-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AA8481E-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AA8481E-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECA1FF6C-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECA1FF6C-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECA1FF6C-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECA1FF6C-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C20FC5B4-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C20FC5B4-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C20FC5B4-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C20FC5B4-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A83CC9A-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A83CC9A-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A83CC9A-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A83CC9A-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F45BEE18-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F45BEE18-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F45BEE18-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F45BEE18-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A18BD266-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A18BD266-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A18BD266-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A18BD266-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1063BD35-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1063BD35-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1063BD35-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1063BD35-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4EF383F-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4EF383F-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4EF383F-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4EF383F-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B784F8F2-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B784F8F2-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B784F8F2-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B784F8F2-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F00B6F24-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F00B6F24-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F00B6F24-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F00B6F24-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F482066-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F482066-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F482066-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F482066-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0BAEB292-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0BAEB292-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0BAEB292-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0BAEB292-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A832B106-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A832B106-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A832B106-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A832B106-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{136071ED-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{136071ED-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{136071ED-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{136071ED-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29C39AC0-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29C39AC0-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29C39AC0-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29C39AC0-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06304E7B-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06304E7B-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06304E7B-0000-0000-0000-000000000000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06304E7B-0000-0000-0000-000000000000}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

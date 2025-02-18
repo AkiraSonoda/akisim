@@ -38,7 +38,7 @@ using OpenSim.Framework;
 using OpenSim.Server.Handlers.Asset;
 using OpenSim.Services.AssetService;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Server.Handlers.Asset.Test
 {
@@ -54,7 +54,7 @@ namespace OpenSim.Server.Handlers.Asset.Test
 
             IConfigSource config = new IniConfigSource();
             config.AddConfig("AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             AssetService assetService = new AssetService(config);
 
@@ -89,7 +89,7 @@ namespace OpenSim.Server.Handlers.Asset.Test
 
             IConfigSource config = new IniConfigSource();
             config.AddConfig("AssetService");
-            config.Configs["AssetService"].Set("StorageProvider", "OpenSim.Tests.Common.dll");
+            config.Configs["AssetService"].Set("StorageProvider", "Tests.OpenSim.Common.dll");
 
             AssetService assetService = new AssetService(config);
 

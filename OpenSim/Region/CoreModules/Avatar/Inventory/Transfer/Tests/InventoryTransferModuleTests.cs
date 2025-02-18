@@ -38,7 +38,7 @@ using OpenSim.Region.CoreModules.Avatar.Inventory.Transfer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.Avatar.Inventory.Transfer.Tests
 {

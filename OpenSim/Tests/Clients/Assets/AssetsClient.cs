@@ -41,7 +41,7 @@ using OpenSim.Framework;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors;
 
-namespace OpenSim.Tests.Clients.AssetsClient
+namespace Tests.OpenSim.Clients.AssetsClient
 {
     public class AssetsClient
     {

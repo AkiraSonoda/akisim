@@ -42,9 +42,9 @@ using OpenSim.Framework.Servers;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.CoreModules.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public static class EntityTransferHelpers
     {

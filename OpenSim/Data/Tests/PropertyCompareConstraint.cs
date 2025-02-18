@@ -36,7 +36,7 @@ using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Data.Tests
 {

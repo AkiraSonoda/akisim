@@ -37,7 +37,7 @@ using OpenSim.Framework;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors;
 
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace Robust.Tests
 {

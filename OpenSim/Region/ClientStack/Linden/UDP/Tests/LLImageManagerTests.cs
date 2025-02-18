@@ -38,7 +38,7 @@ using OpenMetaverse.Packets;
 using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Agent.TextureSender;
 using OpenSim.Region.Framework.Scenes;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.ClientStack.LindenUDP.Tests
 {

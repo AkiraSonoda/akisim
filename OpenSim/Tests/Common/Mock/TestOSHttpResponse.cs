@@ -32,7 +32,7 @@ using System.Net;
 using System.Text;
 using OpenSim.Framework.Servers.HttpServer;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     public class TestOSHttpResponse : IOSHttpResponse
     {

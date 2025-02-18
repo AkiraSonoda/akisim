@@ -25,15 +25,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
 using NUnit.Framework;
-using OpenSim.Framework;
-using OpenSim.Tests.Common;
-using OpenSim.Region.ScriptEngine.Shared;
+using Tests.OpenSim.Common;
 using OpenSim.Region.Framework.Scenes;
+using OpenSim.Region.ScriptEngine.Yengine;
 using Nini.Config;
 using OpenSim.Region.ScriptEngine.Shared.Api;
-using OpenSim.Region.ScriptEngine.Shared.ScriptBase;
 using OpenMetaverse;
 using System;
 
@@ -59,7 +56,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
             Scene scene = new SceneHelpers().SetupScene();
             SceneObjectPart part = SceneHelpers.AddSceneObject(scene).RootPart;
 
-            XEngine.XEngine engine = new XEngine.XEngine();
+            Yengine.Yengine engine = new Yengine.Yengine();
             engine.Initialise(initConfigSource);
             engine.AddRegion(scene);
 

@@ -27,7 +27,7 @@
 
 using NUnit.Framework;
 
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.PhysicsModule.BulletS.Tests
 {

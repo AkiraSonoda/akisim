@@ -43,7 +43,7 @@ using OpenSim.Region.CoreModules.World.Permissions;
 using OpenSim.Region.ScriptEngine.Shared;
 using OpenSim.Region.ScriptEngine.Shared.Api;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.ScriptEngine.Shared.Tests
@@ -51,7 +51,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
     /// <summary>
     /// Tests for inventory functions in LSL
     /// </summary>
-    [TestFixture]
+    // [TestFixture]
     /*
     public class LSL_ApiInventoryTests : OpenSimTestCase
     {

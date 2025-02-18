@@ -43,7 +43,7 @@ using OpenSim.Region.ScriptEngine.Shared;
 using OpenSim.Region.ScriptEngine.Shared.Api;
 using OpenSim.Region.ScriptEngine.Shared.ScriptBase;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using LSL_Integer = OpenSim.Region.ScriptEngine.Shared.LSL_Types.LSLInteger;
 using LSL_List = OpenSim.Region.ScriptEngine.Shared.LSL_Types.list;
 
@@ -393,7 +393,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
             Assert.AreEqual(vecCheck.z, vecReturned.z, VECTOR_COMPONENT_ACCURACY,
                 "TestllSetPrimitiveParams " + msg + " vector check fail on z component");
         }
-
-    }
         */
+    }
 }

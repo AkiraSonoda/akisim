@@ -42,7 +42,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.ScriptEngine.Shared;
 using OpenSim.Region.ScriptEngine.Shared.Api;
 using OpenSim.Services.Interfaces;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.ScriptEngine.Shared.Tests
 {
@@ -162,6 +162,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
 
             Assert.That(savedAppearance.AvatarHeight, Is.EqualTo(sp.Appearance.AvatarHeight));
         }
-    }
         */
+    }
 }

@@ -32,8 +32,9 @@ using OpenSim.Framework;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
+using PermissionMask = OpenSim.Framework.PermissionMask;
 
-namespace OpenSim.Tests.Common
+namespace Tests.OpenSim.Common
 {
     /// <summary>
     /// Utility functions for carrying out user inventory tests.
@@ -129,9 +130,9 @@ namespace OpenSim.Tests.Common
             item.AssetType = asset.Type;
             item.InvType = (int)itemType;
             item.BasePermissions = (uint)OpenMetaverse.PermissionMask.All |
-                (uint)(Framework.PermissionMask.FoldedMask | Framework.PermissionMask.FoldedCopy | Framework.PermissionMask.FoldedModify | Framework.PermissionMask.FoldedTransfer);
+                (uint)(PermissionMask.FoldedMask | PermissionMask.FoldedCopy | PermissionMask.FoldedModify | PermissionMask.FoldedTransfer);
             item.CurrentPermissions = (uint)OpenMetaverse.PermissionMask.All |
-                (uint)(Framework.PermissionMask.FoldedMask | Framework.PermissionMask.FoldedCopy | Framework.PermissionMask.FoldedModify | Framework.PermissionMask.FoldedTransfer);
+                (uint)(PermissionMask.FoldedMask | PermissionMask.FoldedCopy | PermissionMask.FoldedModify | PermissionMask.FoldedTransfer);
 
             InventoryFolderBase folder = InventoryArchiveUtils.FindFoldersByPath(scene.InventoryService, userId, path)[0];
 

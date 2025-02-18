@@ -29,12 +29,13 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using OpenSim.Framework;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 using OpenSim.Region.ScriptEngine.Shared;
 using OpenSim.Region.Framework.Scenes;
 using Nini.Config;
 using OpenSim.Region.ScriptEngine.Shared.Api;
 using OpenSim.Region.ScriptEngine.Shared.ScriptBase;
+using OpenSim.Region.ScriptEngine.Yengine;
 using OpenMetaverse;
 
 using LSL_Float = OpenSim.Region.ScriptEngine.Shared.LSL_Types.LSLFloat;
@@ -65,7 +66,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Tests
             Scene scene = new SceneHelpers().SetupScene();
             SceneObjectPart part = SceneHelpers.AddSceneObject(scene).RootPart;
 
-            XEngine.XEngine engine = new XEngine.XEngine();
+            Yengine.Yengine engine = new Yengine.Yengine();
             engine.Initialise(initConfigSource);
             engine.AddRegion(scene);
 

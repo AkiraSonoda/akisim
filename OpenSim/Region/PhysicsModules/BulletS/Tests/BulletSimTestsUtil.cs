@@ -25,19 +25,18 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Text;
 
 using Nini.Config;
 
 using OpenSim.Framework;
 using OpenSim.Region.PhysicsModules.SharedBase;
-using OpenSim.Region.PhysicsModule.Meshing;
 using OpenSim.Region.Framework.Interfaces;
 
 using OpenMetaverse;
+using OpenSim.Region.Framework.Scenes;
+using OpenSim.Region.PhysicsModule.Meshing;
 
 namespace OpenSim.Region.PhysicsModule.BulletS.Tests
 {
@@ -84,9 +83,9 @@ namespace OpenSim.Region.PhysicsModule.BulletS.Tests
             RegionInfo info = new RegionInfo();
             info.RegionName = "BSTestRegion";
             info.RegionSizeX = info.RegionSizeY = info.RegionSizeZ = Constants.RegionSize;
-            OpenSim.Region.Framework.Scenes.Scene scene = new OpenSim.Region.Framework.Scenes.Scene(info);
+            Scene scene = new Scene(info);
 
-            IMesher mesher = new OpenSim.Region.PhysicsModule.Meshing.Meshmerizer();
+            IMesher mesher = new Meshmerizer();
             INonSharedRegionModule mod = mesher as INonSharedRegionModule;
             mod.Initialise(openSimINI);
             mod.AddRegion(scene);

@@ -38,7 +38,7 @@ using Nini.Config;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
 using OpenSim.Region.Framework.Scenes;
 using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
-using OpenSim.Tests.Common;
+using Tests.OpenSim.Common;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence.Tests
 {
