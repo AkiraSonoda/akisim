@@ -42,10 +42,8 @@ namespace OpenSim.Framework.Capabilities
     /// </summary>
     public class CapsHandlers
     {
-        private RwLockedDictionary<string, IRequestHandler> m_capsHandlers = // AKIDO
-            new RwLockedDictionary<string, IRequestHandler>(); 
-        private ConcurrentDictionary<string, ISimpleStreamHandler> m_capsSimpleHandlers = 
-            new ConcurrentDictionary<string, ISimpleStreamHandler>();
+        private RwLockedDictionary<string, IRequestHandler> m_capsHandlers = new(); // AKIDO
+        private ConcurrentDictionary<string, ISimpleStreamHandler> m_capsSimpleHandlers = new();
         
         private IHttpServer m_httpListener;
         private string m_httpListenerHostName;
