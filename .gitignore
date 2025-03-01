@@ -20,6 +20,7 @@
 *.user
 
 *.VisualState.xml
+*/obj
 */*/obj
 */*/*/obj
 */*/*/*/obj
