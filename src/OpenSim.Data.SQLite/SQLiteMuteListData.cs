@@ -25,17 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data;
 using OpenMetaverse;
 using OpenSim.Framework;
-#if CSharpSqlite
-    using Community.CsharpSqlite.Sqlite;
-#else
-    using Mono.Data.Sqlite;
-#endif
+using System.Data.SQLite; // AKIDO refactured everything to SQLite.
+// AKIDO Added support for SQLite removing Mono.Data.Sqlite
 
 namespace OpenSim.Data.SQLite
 {
@@ -54,7 +47,7 @@ namespace OpenSim.Data.SQLite
 
         public bool Delete(UUID agentID, UUID muteID, string muteName)
         {
-            using (SqliteCommand cmd = new SqliteCommand())
+            using (SQLiteCommand cmd = new SQLiteCommand())
             {
                 cmd.CommandText = "delete from MuteList where `AgentID` = :AgentID and `MuteID` = :MuteID and `MuteName` = :MuteName";
 

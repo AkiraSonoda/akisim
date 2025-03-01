@@ -26,16 +26,9 @@
  */
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data;
 using OpenMetaverse;
-using OpenSim.Framework;
-#if CSharpSqlite
-    using Community.CsharpSqlite.Sqlite;
-#else
-    using Mono.Data.Sqlite;
-#endif
+using System.Data.SQLite; // AKIDO refactured everything to SQLite.
+// AKIDO Added support for SQLite removing Mono.Data.Sqlite
 
 namespace OpenSim.Data.SQLite
 {
@@ -53,7 +46,7 @@ namespace OpenSim.Data.SQLite
 
         public FriendsData[] GetFriends(string userID)
         {
-            using (SqliteCommand cmd = new SqliteCommand())
+            using (SQLiteCommand cmd = new SQLiteCommand())
             {
                 cmd.CommandText = String.Format("select a.*,case when b.Flags is null then -1 else b.Flags end as TheirFlags from {0} as a left join {0} as b on a.PrincipalID = b.Friend and a.Friend = b.PrincipalID where a.PrincipalID = :PrincipalID", m_Realm);
                 cmd.Parameters.AddWithValue(":PrincipalID", userID.ToString());
@@ -69,7 +62,7 @@ namespace OpenSim.Data.SQLite
 
         public override bool Delete(string principalID, string friend)
         {
-            using (SqliteCommand cmd = new SqliteCommand())
+            using (SQLiteCommand cmd = new SQLiteCommand())
             {
                 cmd.CommandText = String.Format("delete from {0} where PrincipalID = :PrincipalID and Friend = :Friend", m_Realm);
                 cmd.Parameters.AddWithValue(":PrincipalID", principalID.ToString());

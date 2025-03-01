@@ -21,7 +21,7 @@ class Build : NukeBuild
 
     [Solution("Akisim.sln")] readonly Solution Solution;
 
-    AbsolutePath SourceDirectory => RootDirectory / "OpenSim";
+    AbsolutePath SourceDirectory => RootDirectory / "src";
     AbsolutePath BinDirectory => RootDirectory / "bin";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     

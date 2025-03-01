@@ -28,6 +28,9 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="ThreadedClasses" >
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
