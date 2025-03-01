@@ -29,6 +29,9 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="ThreadedClasses">
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>    
+    </Reference>
     <Reference Include="XMLRPC" >
       <HintPath>../../bin/XMLRPC.dll</HintPath>
     </Reference>
@@ -45,7 +48,6 @@
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
   </ItemGroup>
 
 </Project>
