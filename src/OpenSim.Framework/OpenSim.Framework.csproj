@@ -8,6 +8,7 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +36,9 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="SmartThreadPool" >
+      <HintPath>../../bin/SmartThreadPool.dll</HintPath>
+    </Reference>
     <Reference Include="ThreadedClasses" >
       <HintPath>../../bin/ThreadedClasses.dll</HintPath>
     </Reference>
@@ -43,8 +47,5 @@
     </Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="../ThirdParty.SmartThreadPool/ThirdParty.SmartThreadPool.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
-  </ItemGroup>
+  
 </Project>
