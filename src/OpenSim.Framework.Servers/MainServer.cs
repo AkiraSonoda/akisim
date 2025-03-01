@@ -27,13 +27,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using System.Reflection;
 using System.Net;
 using System.Text;
 using log4net;
-using OpenSim.Framework;
-using OpenSim.Framework.Console;
 using OpenSim.Framework.Servers.HttpServer;
 using ThreadedClasses;
 // AKIDO: clean
