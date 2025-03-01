@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/home/akira/develop/akisim/build/_build.csproj": {}
+    "/Users/markusgasser/develop/akisim/build/_build.csproj": {}
   },
   "projects": {
-    "/home/akira/develop/akisim/build/_build.csproj": {
+    "/Users/markusgasser/develop/akisim/build/_build.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/akira/develop/akisim/build/_build.csproj",
+        "projectUniqueName": "/Users/markusgasser/develop/akisim/build/_build.csproj",
         "projectName": "_build",
-        "projectPath": "/home/akira/develop/akisim/build/_build.csproj",
-        "packagesPath": "/home/akira/.nuget/packages/",
-        "outputPath": "/home/akira/develop/akisim/build/obj/",
+        "projectPath": "/Users/markusgasser/develop/akisim/build/_build.csproj",
+        "packagesPath": "/Users/markusgasser/.nuget/packages/",
+        "outputPath": "/Users/markusgasser/develop/akisim/build/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/akira/.nuget/NuGet/NuGet.Config"
+          "/Users/markusgasser/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -37,7 +37,8 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        }
+        },
+        "SdkAnalysisLevel": "9.0.100"
       },
       "frameworks": {
         "net8.0": {
@@ -62,7 +63,15 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[8.0.11, 8.0.11]"
+              "version": "[8.0.12, 8.0.12]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.osx-arm64",
+              "version": "[8.0.12, 8.0.12]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.12, 8.0.12]"
             }
           ],
           "frameworkReferences": {
@@ -70,7 +79,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/var/run/host/usr/share/dotnet/sdk/8.0.404/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.102/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
