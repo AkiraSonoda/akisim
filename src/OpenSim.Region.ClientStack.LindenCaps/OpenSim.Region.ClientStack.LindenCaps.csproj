@@ -29,12 +29,14 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
-
+    <Reference Include="ThreadedClasses" >
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Capabilities/OpenSim.Capabilities.csproj" />
-    <ProjectReference Include="../OpenSim.Capabilities.Handlers/Handlers/OpenSim.Capabilities.Handlers.csproj" />
+    <ProjectReference Include="../OpenSim.Capabilities.Handlers/OpenSim.Capabilities.Handlers.csproj" />
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Monitoring/OpenSim.Framework.Monitoring.csproj" />
@@ -43,7 +45,6 @@
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
   </ItemGroup>
 
 </Project>
