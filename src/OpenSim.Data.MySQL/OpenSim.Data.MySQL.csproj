@@ -60,4 +60,8 @@
     <EmbeddedResource Include="Resources\os_groups_Store.migrations" />
     <EmbeddedResource Include="Resources\RegionStore.migrations" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
 </Project>

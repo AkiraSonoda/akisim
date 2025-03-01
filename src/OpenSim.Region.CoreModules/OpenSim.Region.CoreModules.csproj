@@ -6,6 +6,7 @@
     <Description>Core modules for OpenSim</Description>
     <Copyright>Copyright ©  2012</Copyright>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
@@ -41,6 +42,12 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="SmartThreadPool">
+      <HintPath>../../bin/SmartThreadPool.dll</HintPath>
+    </Reference>
+    <Reference Include="ThreadedClasses">
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
     <Reference Include="Warp3D" >
       <HintPath>../../bin/Warp3D.dll</HintPath>
     </Reference>
@@ -67,8 +74,10 @@
     <ProjectReference Include="../OpenSim.Services.Base/OpenSim.Services.Base.csproj" />
     <ProjectReference Include="../OpenSim.Services.Connectors/OpenSim.Services.Connectors.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
-    <ProjectReference Include="../ThirdParty.SmartThreadPool/ThirdParty.SmartThreadPool.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

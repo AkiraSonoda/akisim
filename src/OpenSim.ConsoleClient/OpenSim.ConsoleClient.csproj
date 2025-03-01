@@ -33,4 +33,8 @@
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
     <ProjectReference Include="../OpenSim.Server.Base/OpenSim.Server.Base.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
 </Project>

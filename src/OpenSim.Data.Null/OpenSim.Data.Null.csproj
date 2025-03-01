@@ -30,4 +30,8 @@
     <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
 </Project>

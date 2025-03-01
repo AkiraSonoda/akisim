@@ -53,4 +53,8 @@
     <EmbeddedResource Include="Resources\XInventoryStore.migrations" />
     <EmbeddedResource Include="Resources\RegionStore.migrations" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
 </Project>
