@@ -26,7 +26,6 @@
  */
 
 using System;
-using System.Text;
 using OpenMetaverse;
 
 namespace OpenSim.Framework

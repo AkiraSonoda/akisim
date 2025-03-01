@@ -30,7 +30,6 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Reflection;
 using log4net;
-using OpenMetaverse;
 using ThreadedClasses;
 
 namespace OpenSim.Framework

@@ -33,7 +33,7 @@ using OpenMetaverse.StructuredData;
 using ThreadedClasses;
 using log4net;
 using System.Text;
-using System.Runtime.InteropServices;
+
 
 namespace OpenSim.Framework
 {
