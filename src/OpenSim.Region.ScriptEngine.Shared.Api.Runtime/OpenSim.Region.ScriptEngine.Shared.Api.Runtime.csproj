@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>OpenSim.Region.ScriptEngine.Shared.Api.Runtime</AssemblyTitle>
+    <Company>http://opensimulator.org</Company>
+    <Product>OpenSim</Product>
+    <Copyright>OpenSimulator developers</Copyright>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="log4net" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Nini" >
+      <HintPath>../../bin/Nini.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OpenSim.Server.RegionServer/OpenSim.Server.RegionServer.csproj" />
+    <ProjectReference Include="../OpenSim.Framework/Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../OpenSim.Region.CoreModules/OpenSim.Region.CoreModules.csproj" />
+    <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Region.ScriptEngine.Shared/OpenSim.Region.ScriptEngine.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
