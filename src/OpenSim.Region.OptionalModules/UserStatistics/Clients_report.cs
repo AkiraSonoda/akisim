@@ -29,10 +29,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using Mono.Data.SqliteClient;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Region.Framework.Scenes;
+using System.Data.SQLite;
+// AKIDO Added support for SQLite removing Mono.Data.Sqlite
 
 namespace OpenSim.Region.UserStatistics
 {
@@ -73,7 +74,7 @@ namespace OpenSim.Region.UserStatistics
 
         public Hashtable ProcessModel(Hashtable pParams)
         {
-            SqliteConnection dbConn = (SqliteConnection)pParams["DatabaseConnection"];
+            SQLiteConnection dbConn = (SQLiteConnection)pParams["DatabaseConnection"];
 
 
             List<ClientVersionData> clidata = new List<ClientVersionData>();
@@ -90,8 +91,8 @@ namespace OpenSim.Region.UserStatistics
             {
                 string sql = "select count(distinct region_id) as regcnt from stats_session_data";
 
-                SqliteCommand cmd = new SqliteCommand(sql, dbConn);
-                SqliteDataReader sdr = cmd.ExecuteReader();
+                SQLiteCommand cmd = new SQLiteCommand(sql, dbConn);
+                SQLiteDataReader sdr = cmd.ExecuteReader();
                 if (sdr.HasRows)
                 {
                     sdr.Read();
@@ -103,7 +104,7 @@ namespace OpenSim.Region.UserStatistics
                 sql =
                     "select client_version, count(*) as cnt, avg(avg_sim_fps) as simfps from stats_session_data group by client_version order by count(*) desc LIMIT 10;";
 
-                cmd = new SqliteCommand(sql, dbConn);
+                cmd = new SQLiteCommand(sql, dbConn);
                 sdr = cmd.ExecuteReader();
                 if (sdr.HasRows)
                 {
@@ -125,7 +126,7 @@ namespace OpenSim.Region.UserStatistics
                 {
                     sql =
                         "select region_id, client_version, count(*) as cnt, avg(avg_sim_fps) as simfps from stats_session_data group by region_id, client_version order by region_id, count(*) desc;";
-                    cmd = new SqliteCommand(sql, dbConn);
+                    cmd = new SQLiteCommand(sql, dbConn);
 
                     sdr = cmd.ExecuteReader();
 

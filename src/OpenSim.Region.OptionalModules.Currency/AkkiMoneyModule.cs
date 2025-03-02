@@ -49,7 +49,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
 using RestSharp;
-using RestSharp.Deserializers;
+using RestSharp.Serializers.NewtonsoftJson;
 using RestClient = RestSharp.RestClient;
 
 
@@ -220,7 +220,7 @@ namespace OpenSim.Modules.Currency {
 		private float TeleportPriceExponent = 0f;
 		private float EnergyEfficiency = 0f;
 
-        private JsonDeserializer jsonDeserializer = new JsonDeserializer();
+        private JsonNetSerializer jsonDeserializer = new JsonNetSerializer();
         private Dictionary<string,string> tokens = new Dictionary<string,string>();
         private RestClient restClient = null;
 		
@@ -1229,7 +1229,7 @@ namespace OpenSim.Modules.Currency {
                 transaction.secure = UUID.Random().ToString();
                 transaction.status = (int)Status.PENDING_STATUS;
 
-                var moneyTransferRequest = new RestRequest("rest/transactions/", Method.POST);
+                var moneyTransferRequest = new RestRequest("rest/transactions/", Method.Post);
                 moneyTransferRequest.RequestFormat = DataFormat.Json;
                 moneyTransferRequest.AddBody(transaction);
                 moneyTransferRequest.AddHeader("token", tokens[sender.ToString()]);
@@ -1290,7 +1290,7 @@ namespace OpenSim.Modules.Currency {
                 transaction.secure = UUID.Random().ToString();
                 transaction.status = (int)Status.PENDING_STATUS;
 
-                var moneyTransferRequest = new RestRequest("rest/transactions/force", Method.POST);
+                var moneyTransferRequest = new RestRequest("rest/transactions/force", Method.Post);
                 moneyTransferRequest.RequestFormat = DataFormat.Json;
                 moneyTransferRequest.AddBody(transaction);
 
@@ -1502,7 +1502,7 @@ namespace OpenSim.Modules.Currency {
 
                 // Check if User already exists on money Server
                 UserInfo userinfo = null;
-                var getUserRequest = new RestRequest("rest/userinfo/" + client.AgentId, Method.GET);
+                var getUserRequest = new RestRequest("rest/userinfo/" + client.AgentId, Method.Get);
                 getUserRequest.RequestFormat = DataFormat.Json;
                 m_log.Debug("LoginMoneyServer - Getting User Information");
                 var getUserResponse = restClient.Execute(getUserRequest);
@@ -1517,7 +1517,7 @@ namespace OpenSim.Modules.Currency {
                         userinfo.avatarUUID = client.AgentId.ToString();
                         userinfo.sessionId = client.SessionId.ToString();
                         userinfo.secureSessionId = client.SecureSessionId.ToString();
-                        var createUserRequest = new RestRequest("rest/userinfo/", Method.POST);
+                        var createUserRequest = new RestRequest("rest/userinfo/", Method.Post);
                         createUserRequest.RequestFormat = DataFormat.Json;
                         createUserRequest.AddBody(userinfo);
                         m_log.DebugFormat("LoginMoneyServer - Creating User Information for: {0}", userName);
@@ -1539,7 +1539,7 @@ namespace OpenSim.Modules.Currency {
                                               scene.RegionInfo.HttpPort.ToString());
                         userinfo.sessionId = client.SessionId.ToString();
                         userinfo.secureSessionId = client.SecureSessionId.ToString();
-                        var updateUserRequest = new RestRequest("rest/userinfo/"+client.AgentId.ToString(), Method.PUT);
+                        var updateUserRequest = new RestRequest("rest/userinfo/"+client.AgentId.ToString(), Method.Put);
                         updateUserRequest.RequestFormat = DataFormat.Json;
                         updateUserRequest.AddBody(userinfo);
                         m_log.DebugFormat("LoginMoneyServer - Updating User Information for: {0}", userName);
@@ -1567,7 +1567,7 @@ namespace OpenSim.Modules.Currency {
                 }
 
                 // Get a Token
-                var getTokenRequest = new RestRequest("rest/userinfo/" + client.AgentId +"/token", Method.POST);
+                var getTokenRequest = new RestRequest("rest/userinfo/" + client.AgentId +"/token", Method.Post);
                 getTokenRequest.RequestFormat = DataFormat.Json;
                 getTokenRequest.AddBody(userinfo);
                 m_log.Debug("LoginMoneyServer - Token for User Information");
@@ -1587,7 +1587,7 @@ namespace OpenSim.Modules.Currency {
 
 
                 // Check if there is already a balance for the user. if not create one
-                var balancerequest = new RestRequest("rest/balances/"+client.AgentId.ToString(), Method.GET);
+                var balancerequest = new RestRequest("rest/balances/"+client.AgentId.ToString(), Method.Get);
                 balancerequest.AddHeader("token", tokens[client.AgentId.ToString()]);
                 m_log.Debug("LoginMoneyServer - Balance for User Information");
                 var balanceresponse = restClient.Execute(balancerequest);
@@ -1609,7 +1609,7 @@ namespace OpenSim.Modules.Currency {
                         balanceInsert.avatarUUID = userinfo.avatarUUID;
                         balanceInsert.balance = 0;
                         balanceInsert.status = 0;
-                        var balanceInsertRequest = new RestRequest("rest/balances", Method.POST);
+                        var balanceInsertRequest = new RestRequest("rest/balances", Method.Post);
                         balanceInsertRequest.RequestFormat = DataFormat.Json;
                         balanceInsertRequest.AddBody(balanceInsert);
                         balanceInsertRequest.AddHeader("token", tokens[client.AgentId.ToString()]);
@@ -1686,7 +1686,7 @@ namespace OpenSim.Modules.Currency {
                 clientLogout.sessionId = client.SessionId.ToString();
                 clientLogout.secureSessionId = client.SecureSessionId.ToString();
 
-                var request = new RestRequest("rest/userinfo/"+client.AgentId, Method.POST);
+                var request = new RestRequest("rest/userinfo/"+client.AgentId, Method.Post);
                 request.RequestFormat = DataFormat.Json;
                 request.AddBody(clientLogout);
                 request.AddHeader("token", tokens[client.AgentId.ToString()]);
@@ -1728,7 +1728,7 @@ namespace OpenSim.Modules.Currency {
 
 			if (client != null) {
 				if (m_enable_server) {
-                    var request = new RestRequest("rest/balances/" + client.AgentId, Method.GET);
+                    var request = new RestRequest("rest/balances/" + client.AgentId, Method.Get);
                     request.RequestFormat = DataFormat.Json;
                     request.AddHeader("token", tokens[client.AgentId.ToString()]);
 

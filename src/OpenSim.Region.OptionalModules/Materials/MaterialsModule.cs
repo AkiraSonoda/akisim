@@ -36,7 +36,6 @@ using Mono.Addins;
 using Nini.Config;
 using ThreadedClasses;
 using OpenMetaverse;
-using static OpenMetaverse.Primitive;
 using static OpenMetaverse.Primitive.RenderMaterials;
 using OpenMetaverse.StructuredData;
 

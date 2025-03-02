@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
-    <ProjectReference Include="../Console/OpenSim.Framework.Console/Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
   </ItemGroup>
 
