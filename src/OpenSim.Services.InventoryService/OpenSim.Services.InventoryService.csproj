@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.3" />
+    <PackageReference Include="log4net" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +23,9 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="ThreadedClasses" >
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -30,10 +33,9 @@
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
-    <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Services.Base.csproj" />
+    <ProjectReference Include="../OpenSim.Services.Base/OpenSim.Services.Base.csproj" />
     <ProjectReference Include="../OpenSim.Services.Connectors/OpenSim.Services.Connectors.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
   </ItemGroup>
 
 </Project>

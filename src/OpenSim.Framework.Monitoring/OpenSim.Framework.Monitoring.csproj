@@ -10,10 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.3" />
+    <PackageReference Include="log4net" Version="3.0.4" />
   </ItemGroup>
-
-
+  
   <ItemGroup>
     <Reference Include="Nini" >
       <HintPath>../../bin/Nini.dll</HintPath>
@@ -27,14 +26,13 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="ThreadedClasses" >
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
+  
 </Project>

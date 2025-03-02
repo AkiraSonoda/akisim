@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.3" />
+    <PackageReference Include="log4net" Version="3.0.4" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.2" />
   </ItemGroup>
   
@@ -28,6 +28,13 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="SmartThreadPool">
+      <HintPath>../../bin/SmartThreadPool.dll</HintPath>
+    </Reference>
+    <Reference Include="ThreadedClasses">
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
+
   </ItemGroup>
 
   <ItemGroup>
@@ -37,13 +44,15 @@
     <ProjectReference Include="../OpenSim.Framework.Monitoring/OpenSim.Framework.Monitoring.csproj" />
     <ProjectReference Include="../OpenSim.Region.CoreModules/OpenSim.Region.CoreModules.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
-    <ProjectReference Include="../OpenSim.Region.PhysicsModules/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
     <ProjectReference Include="../OpenSim.Region.ScriptEngine.Shared/OpenSim.Region.ScriptEngine.Shared.csproj" />
     <ProjectReference Include="../OpenSim.Region.ScriptEngine.Shared.Api.Runtime/OpenSim.Region.ScriptEngine.Shared.Api.Runtime.csproj" />
-    <ProjectReference Include="../OpenSim.Services.Connectors/Services/Connectors/OpenSim.Services.Connectors.csproj" />
+    <ProjectReference Include="../OpenSim.Services.Connectors/OpenSim.Services.Connectors.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
-    <ProjectReference Include="../ThirdParty.SmartThreadPool/ThirdParty.SmartThreadPool.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

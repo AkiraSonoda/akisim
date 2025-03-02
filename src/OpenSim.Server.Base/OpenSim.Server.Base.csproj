@@ -10,9 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.3" />
-    <PackageReference Include="Mono.Addins" Version="1.4.0" />
-    <PackageReference Include="Mono.Addins.Setup" Version="1.4.0" />    
+    <PackageReference Include="log4net" Version="3.0.4" />
+    <PackageReference Include="Mono.Addins" Version="1.4.1" />
+    <PackageReference Include="Mono.Addins.Setup" Version="1.4.1" />    
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +36,10 @@
     <ProjectReference Include="../OpenSim.Framework.Monitoring/OpenSim.Framework.Monitoring.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers/OpenSim.Framework.Servers.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

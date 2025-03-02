@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.3" />
+    <PackageReference Include="log4net" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +20,9 @@
     </Reference>
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+    <Reference Include="SmartThreadPool" >
+      <HintPath>../../bin/SmartThreadPool.dll</HintPath>
     </Reference>
   </ItemGroup>
 
@@ -30,7 +33,6 @@
     <ProjectReference Include="../OpenSim.Region.CoreModules/OpenSim.Region.CoreModules.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
-    <ProjectReference Include="../ThirdParty.SmartThreadPool/ThirdParty.SmartThreadPool.csproj" />
   </ItemGroup>
 
 </Project>

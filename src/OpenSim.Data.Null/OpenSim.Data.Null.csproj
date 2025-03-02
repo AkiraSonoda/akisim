@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.3" />
+    <PackageReference Include="log4net" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,7 +27,6 @@
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
-    <ProjectReference Include="../ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj" />
   </ItemGroup>
 
   <ItemGroup>
