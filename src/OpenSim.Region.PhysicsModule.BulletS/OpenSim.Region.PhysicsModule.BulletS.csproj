@@ -20,19 +20,16 @@
       <HintPath>../../bin/BulletXNA.dll</HintPath>
     </Reference>
     <Reference Include="Nini" >
-      <Name>Nini</Name>
       <HintPath>../../bin/Nini.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverse" >
-      <Name>OpenMetaverse</Name>
       <HintPath>../../bin/OpenMetaverse.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverseTypes" >
-      <Name>OpenMetaverseTypes</Name>
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
-      <Private>False</Private>
+    </Reference>
+    <Reference Include="ThreadedClasses" >
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
     </Reference>
   </ItemGroup>
 
