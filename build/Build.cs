@@ -271,8 +271,14 @@ class Build : NukeBuild
                 Console.WriteLine($"WARNING: Could not determine if {projectName} is an executable project: {ex.Message}");
             }
 
-            // Get all files from the output directory
+            // Examine output directory contents
+            Console.WriteLine($"Examining directory: {outputDir}");
             var allFilesInOutput = Directory.GetFiles(outputDir);
+            Console.WriteLine($"Found {allFilesInOutput.Length} total files in output directory:");
+            foreach (var file in allFilesInOutput)
+            {
+                Console.WriteLine($"  - {Path.GetFileName(file)}");
+            }
             
             // First, collect all DLLs, PDBs, and EXEs
             var filesToCopy = new List<string>();
@@ -293,17 +299,71 @@ class Build : NukeBuild
                 }
             }
 
-            // Also look for any other files without extensions that might be executables
+            // Also look for any other files without extensions or with non-standard filenames
             foreach (var file in allFilesInOutput)
             {
-                if (string.IsNullOrEmpty(Path.GetExtension(file)) && !filesToCopy.Contains(file))
+                string fileName = Path.GetFileName(file);
+                
+                // Skip if we already plan to copy this file
+                if (filesToCopy.Contains(file))
+                    continue;
+                
+                // Check if it has a proper extension or not
+                bool isExecutable = false;
+                
+                // Get the part after the last dot (if any)
+                int lastDotIndex = fileName.LastIndexOf('.');
+                if (lastDotIndex == -1)
                 {
-                    Console.WriteLine($"Found potential executable: {Path.GetFileName(file)}");
+                    // No dot at all - consider it an executable
+                    isExecutable = true;
+                }
+                else
+                {
+                    // There's a dot - check if what follows is a proper extension
+                    string extension = fileName.Substring(lastDotIndex + 1);
+                    
+                    // If more than 3 characters after the dot, it's probably not an extension
+                    // but part of the filename (like "executable.config123")
+                    if (extension.Length > 3)
+                    {
+                        isExecutable = true;
+                        Console.WriteLine($"Found file with non-standard name: {fileName} (>3 chars after dot)");
+                    }
+                    // Skip common non-executable extensions
+                    else if (extension == "xml" || extension == "config" || extension == "json" ||
+                             extension == "txt" || extension == "md" || extension == "log")
+                    {
+                        isExecutable = false;
+                    }
+                    else if (extension == "dll" || extension == "pdb" || extension == "exe")
+                    {
+                        // These should have been caught earlier, but double check
+                        isExecutable = true;
+                    }
+                    else
+                    {
+                        // Unknown extension with 3 or fewer chars - treat as potential executable
+                        isExecutable = true;
+                        Console.WriteLine($"Found file with unknown extension: {fileName} (treating as executable)");
+                    }
+                }
+                
+                if (isExecutable)
+                {
+                    Console.WriteLine($"Found potential executable: {fileName}");
                     filesToCopy.Add(file);
                 }
             }
 
             Console.WriteLine($"Found {filesToCopy.Count} files to copy from {outputDir}");
+            
+            // Print the list of files that will be copied
+            Console.WriteLine("Files to be copied:");
+            foreach (var file in filesToCopy)
+            {
+                Console.WriteLine($"  - {Path.GetFileName(file)}");
+            }
             
             // Copy only new or updated files
             foreach (var file in filesToCopy)
