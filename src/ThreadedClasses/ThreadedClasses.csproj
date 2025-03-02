@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>ThreadedClasses</AssemblyTitle>
+    <Company>http://opensimulator.org</Company>
+    <Product>OpenSim.Addons.Groups</Product>
+    <Copyright>Copyright (c) OpenSimulator.org Developers</Copyright>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+</Project>

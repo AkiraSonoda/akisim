@@ -4,9 +4,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build/_build.cspr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{5A9A319F-737A-4D73-9E39-35D97F2418D7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartThreadPool", "src/ThirdParty.SmartThreadPool/ThirdParty.SmartThreadPool.csproj", "{29C39AC0-0000-0000-0000-000000000000}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartThreadPool", "src\SmartThreadPool\SmartThreadPool.csproj", "{29C39AC0-0000-0000-0000-000000000000}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThreadedClasses", "src/ThirdParty.ThreadedClasses/ThirdParty.ThreadedClasses.csproj", "{06304E7B-0000-0000-0000-000000000000}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThreadedClasses", "src\ThreadedClasses\ThreadedClasses.csproj", "{06304E7B-0000-0000-0000-000000000000}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Addons.Groups", "src\OpenSim.Addons.Groups\OpenSim.Addons.Groups.csproj", "{F5D70E5F-C93E-4E9A-8DFD-026FDD434843}"
 EndProject

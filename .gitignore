@@ -8,7 +8,7 @@
 *.pdb
 *.pidb
 *.dll.build
-# *.dll
+*.dll
 *.log
 .idea
 *.bak
@@ -131,3 +131,5 @@ bin/pCampBot
 bin/pCampBot.runtimeconfig.json
 bin/Robust
 bin/Robust.runtimeconfig.json
+
+build/bin/Debug/_build.dll
