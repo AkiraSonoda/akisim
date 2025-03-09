@@ -8,7 +8,7 @@ endif
 # Default to Linux paths
 PACKAGING_DIR := $(HOME)/opensim/packaging
 SOURCE_DIR := $(HOME)/src/akisim
-DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/dereos_kosuai
+DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/akisim_phpgrid_lin
 SRC_BIN := $(HOME)/src/akisim/bin
 DEST_DIR := $(HOME)/opensim/grid/akisim
 
@@ -25,46 +25,11 @@ SOLUTION := Akisim.sln
 
 # Default target
 .PHONY: all
-all: build
-
-# Build the solution
-.PHONY: build
-build:
-	@echo "Building in $(CONFIGURATION) configuration..."
-	dotnet build -c $(CONFIGURATION) $(SOLUTION)
-
-# Clean all build artifacts and project files
-.PHONY: clean
-clean:
-	@echo "Cleaning dotnet..."
-	@dotnet clean -c $(CONFIGURATION) $(SOLUTION)
-	@echo "Cleaning obj directories..."
-	@find . -type d -name "obj" -exec sh -c '\
-		for dir in "$$@"; do \
-			echo "Cleaning directory: $$dir"; \
-			rm -rf "$$dir"/*; \
-		done' sh {} +
-	@echo "Removing .csproj.user files..."
-	@find . -type f -name "*.csproj.user" -exec sh -c '\
-		for file in "$$@"; do \
-			echo "Removing file: $$file"; \
-			rm -f "$$file"; \
-		done' sh {} +
-	@echo "Removing all .csproj files..."
-	@find . -type f -name "*.csproj" -exec sh -c '\
-		for file in "$$@"; do \
-			echo "Removing file: $$file"; \
-			rm -f "$$file"; \
-		done' sh {} +
-	@echo "Clean completed."
-	
-# Rebuild
-.PHONY: rebuild
-rebuild: clean build
+all: deploy
 
 # Deploy solution
 .PHONY: deploy
-deploy: build
+deploy: 
 	@echo "Deploying $(CONFIGURATION) build..."
 	rm -rf "$(DEST_DIR)/bin"
 	cp -r "$(SRC_BIN)" "$(DEST_DIR)/"
@@ -79,7 +44,7 @@ deploy: build
 
 # Package the solution
 .PHONY: package
-package: build
+package: 
 	@latest_dir=$$(ls -d $(PACKAGING_DIR)/akisim-* 2>/dev/null | sort -V | tail -n 1); \
 	if [ -z "$$latest_dir" ]; then \
 		new_version="0.1.0"; \

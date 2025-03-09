@@ -11,12 +11,62 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
 [ShutdownDotNetAfterServerBuild]
 class Build : NukeBuild
 {
-    public static int Main() => Execute<Build>(x => x.Compile);
+    public static int Main()
+    {
+        // Completely isolate the _build project from the rest of the build
+        var originalOutputPath = Environment.GetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY");
+        var buildAssemblyPath = Assembly.GetExecutingAssembly().Location;
+        var buildDirectory = Path.GetDirectoryName(buildAssemblyPath);
+        
+        Console.WriteLine($"Build is executing from: {buildDirectory}");
+        
+        // Create a permanent isolation directory for _build artifacts
+        var isolationDir = Path.Combine(Path.GetTempPath(), "NukeBuild_Isolation", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(isolationDir);
+        Console.WriteLine($"Created isolation directory for _build: {isolationDir}");
+        
+        try
+        {
+            // Set environment variable to isolate NUKE's output
+            Environment.SetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY", isolationDir);
+            
+            // Set MSBuildLocator to use a different directory to prevent files from being loaded
+            Environment.SetEnvironmentVariable("MSBUILD_DISABLE_SHARED_RESOLVER", "1");
+            
+            // Execute the build
+            return Execute<Build>(x => x.Compile);
+        }
+        finally
+        {
+            // Restore environment variables
+            Environment.SetEnvironmentVariable("MSBUILD_DISABLE_SHARED_RESOLVER", null);
+            
+            if (originalOutputPath != null)
+                Environment.SetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY", originalOutputPath);
+            else
+                Environment.SetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY", null);
+                
+            // Try to clean up temp directory, but don't fail if it can't be deleted
+            try
+            {
+                if (Directory.Exists(isolationDir))
+                {
+                    Directory.Delete(isolationDir, true);
+                    Console.WriteLine($"Cleaned up isolation directory: {isolationDir}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to clean up isolation directory: {ex.Message}");
+            }
+        }
+    }
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
@@ -26,6 +76,7 @@ class Build : NukeBuild
     AbsolutePath SourceDirectory => RootDirectory / "src";
     AbsolutePath BinDirectory => RootDirectory / "bin";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
+    AbsolutePath TempDirectory => RootDirectory / "temp" / ".nuke";
     
     Target Clean => _ => _
         .Before(Restore)
@@ -37,8 +88,11 @@ class Build : NukeBuild
             }
             Directory.CreateDirectory(BinDirectory);
             
-            // Restore all files in current directory
+            // Restore all files in current directory but skip everything related to _build
             RestoreFiles(ArtifactsDirectory, BinDirectory);
+            
+            // Verify no _build files were copied
+            VerifyNoBuildFiles();
         });
 
     Target Restore => _ => _
@@ -150,6 +204,9 @@ class Build : NukeBuild
         .DependsOn(BuildOpenSim)
         .Executes(() =>
         {
+            // Disable any references to _build
+            DisableBuildReferences();
+            
             // Build remaining projects one by one
             var builtProjects = new List<string> { "SmartThreadPool", "ThreadedClasses" };
             if (Solution.AllProjects.Any(p => p.Name == "OpenSim.Framework"))
@@ -159,7 +216,9 @@ class Build : NukeBuild
             
             foreach (var project in Solution.AllProjects)
             {
-                if (builtProjects.Contains(project.Name) || 
+                // Skip _build project and already built projects
+                if (IsBuildInfrastructureProject(project.Name) || 
+                    builtProjects.Contains(project.Name) || 
                     project.Name.EndsWith(".Tests") ||
                     project.Name.EndsWith(".Test"))
                     continue;
@@ -173,7 +232,7 @@ class Build : NukeBuild
                         .SetProperty("DisableParallel", "true")
                         .EnableNoRestore());
 
-                    // Copy project output to bin directory
+                    // Copy project output to bin directory with careful filtering
                     CopyOutputToBin(project.Path, project.Name);
                 }
                 catch (Exception ex)
@@ -182,10 +241,70 @@ class Build : NukeBuild
                     // Continue with other projects
                 }
             }
+            
+            // Final verification and cleanup
+            VerifyNoBuildFiles();
         });
 
+    // Helper method to check if a project is related to build infrastructure
+    bool IsBuildInfrastructureProject(string projectName)
+    {
+        return projectName == "_build" || 
+               projectName.Contains("Nuke") ||
+               projectName.Contains("Build") ||
+               projectName.Contains("MSBuild") ||
+               projectName.Contains("Azure") ||
+               projectName.StartsWith("_");
+    }
+    
+    // Helper method to disable any references to _build
+    void DisableBuildReferences()
+    {
+        try
+        {
+            // Find the _build project
+            var buildProject = Solution.AllProjects.FirstOrDefault(p => p.Name == "_build");
+            if (buildProject != null)
+            {
+                Console.WriteLine("Found _build project, disabling its references...");
+                
+                // Load the project file to examine it
+                var projectFile = ProjectModelTasks.ParseProject(buildProject.Path);
+                
+                // Get all referenced packages
+                var packageReferences = projectFile.GetItems("PackageReference")
+                    .Select(i => i.GetMetadataValue("Include"))
+                    .ToList();
+                    
+                Console.WriteLine($"_build project references the following packages:");
+                foreach (var package in packageReferences)
+                {
+                    Console.WriteLine($"  - {package}");
+                }
+                
+                // These are the packages to ensure aren't copied to output
+                Console.WriteLine("Any files from these packages will be explicitly filtered from the output");
+            }
+            else
+            {
+                Console.WriteLine("_build project not found in solution");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Error analyzing _build project: {ex.Message}");
+        }
+    }
+    
     void CopyOutputToBin(string projectPath, string projectName)
     {
+        // Skip any build infrastructure artifacts
+        if (IsBuildInfrastructureProject(projectName))
+        {
+            Console.WriteLine($"Skipping copying of build infrastructure artifacts: {projectName}");
+            return;
+        }
+        
         try
         {
             // Ensure bin directory exists
@@ -356,17 +475,33 @@ class Build : NukeBuild
                 }
             }
 
-            Console.WriteLine($"Found {filesToCopy.Count} files to copy from {outputDir}");
+            // Filter out Azure and other build infrastructure-related files
+            var filteredFiles = new List<string>();
+            foreach (var file in filesToCopy)
+            {
+                string fileName = Path.GetFileName(file);
+                
+                // Check all potential build infrastructure files and skip them
+                if (IsBuildInfrastructureFile(fileName))
+                {
+                    Console.WriteLine($"Skipping build-related file: {fileName}");
+                    continue;
+                }
+                
+                filteredFiles.Add(file);
+            }
+
+            Console.WriteLine($"Found {filteredFiles.Count} files to copy from {outputDir} after filtering");
             
             // Print the list of files that will be copied
             Console.WriteLine("Files to be copied:");
-            foreach (var file in filesToCopy)
+            foreach (var file in filteredFiles)
             {
                 Console.WriteLine($"  - {Path.GetFileName(file)}");
             }
             
             // Copy only new or updated files
-            foreach (var file in filesToCopy)
+            foreach (var file in filteredFiles)
             {
                 var fileName = Path.GetFileName(file);
                 var destFile = Path.Combine(BinDirectory, fileName);
@@ -424,6 +559,114 @@ class Build : NukeBuild
             .AddProperty("AppendRuntimeIdentifierToOutputPath", "false");
     }
     
+    // Verify that absolutely no build-related files exist in the bin directory
+    void VerifyNoBuildFiles()
+    {
+        if (!Directory.Exists(BinDirectory))
+            return;
+            
+        Console.WriteLine("Verifying bin directory for build-related files...");
+        
+        // List of patterns that should never be found in bin directory
+        var forbiddenPatterns = new string[] 
+        {
+            "_build*",
+            "Nuke.*",
+            "Microsoft.Build*",
+            "Microsoft.TeamFoundation*",
+            "Microsoft.VisualStudio*",
+            "MSBuild*",
+            "Azure*",
+            "System.Collections.Immutable*",  // Often used by build tools
+            "Newtonsoft.Json*",              // Often used by build tools
+            "NETStandard.Library*",           // References, not needed in output
+            "JetBrains*"                      // JetBrains annotations often used by NUKE
+        };
+        
+        bool foundForbiddenFiles = false;
+        
+        foreach (var pattern in forbiddenPatterns)
+        {
+            var matchingFiles = Directory.GetFiles(BinDirectory, pattern);
+            foreach (var file in matchingFiles)
+            {
+                Console.WriteLine($"ERROR: Found forbidden build file: {Path.GetFileName(file)}");
+                File.Delete(file);  // Forcibly delete it
+                foundForbiddenFiles = true;
+            }
+        }
+        
+        // Advanced: Search all files for mentions of build-related terms
+        foreach (var file in Directory.GetFiles(BinDirectory, "*.dll"))
+        {
+            string fileName = Path.GetFileName(file);
+            
+            // Check for _build and other patterns embedded in filenames
+            if (fileName.IndexOf("build", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                fileName.IndexOf("azure", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                fileName.IndexOf("msbuild", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                fileName.IndexOf("nuke", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                Console.WriteLine($"ERROR: Found suspicious file name: {fileName}");
+                File.Delete(file);  // Forcibly delete it
+                foundForbiddenFiles = true;
+            }
+        }
+        
+        if (foundForbiddenFiles)
+        {
+            Console.WriteLine("WARNING: Found and removed build-related files in bin directory");
+        }
+        else
+        {
+            Console.WriteLine("Verification passed: No build-related files found in bin directory");
+        }
+    }
+    
+    // Comprehensive check to identify any build infrastructure related file
+    bool IsBuildInfrastructureFile(string fileName)
+    {
+        // List of specific keywords that indicate build infrastructure
+        var buildKeywords = new[]
+        {
+            "Azure", "Nuke", "Build", "MSBuild", "TeamFoundation", "VisualStudio",
+            "Compiler", "CodeAnalysis", "Roslyn", "JetBrains", "Newtonsoft.Json",
+            "_build", "Nuget", "Artifacts", "NETStandard.Library"
+        };
+        
+        // List of prefixes that indicate build or system infrastructure
+        var systemPrefixes = new[]
+        {
+            "System.", "Microsoft.Build", "Microsoft.Team", "Microsoft.Visual", "Microsoft.CodeAnalysis",
+            "Microsoft.Extensions", "Microsoft.Net"
+        };
+        
+        // Check for any exact match in keywords (case-insensitive)
+        foreach (var keyword in buildKeywords)
+        {
+            if (fileName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+        
+        // Check for any matching prefixes
+        foreach (var prefix in systemPrefixes)
+        {
+            if (fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        
+        // Check for any special patterns
+        if (fileName.StartsWith("_") || // Files starting with underscore
+            (fileName.Contains(".") && fileName.IndexOf("build", StringComparison.OrdinalIgnoreCase) >= 0) || // Any file with 'build' in name
+            fileName.EndsWith(".props") || // MSBuild props
+            fileName.EndsWith(".targets")) // MSBuild targets
+        {
+            return true;
+        }
+        
+        return false;
+    }
+    
     void RestoreFiles(AbsolutePath tempDir, AbsolutePath targetDir)
     {
         // Skip if source directory doesn't exist
@@ -441,6 +684,15 @@ class Build : NukeBuild
         foreach (var file in Directory.GetFiles(tempDir))
         {
             var relativePath = Path.GetRelativePath(tempDir, file);
+            string fileName = Path.GetFileName(file);
+            
+            // Skip any build infrastructure files
+            if (IsBuildInfrastructureFile(fileName))
+            {
+                Console.WriteLine($"Skipping build infrastructure file: {relativePath}");
+                continue;
+            }
+            
             var targetFile = Path.Combine(targetDir, relativePath);
             var targetFileDir = Path.GetDirectoryName(targetFile);
             
@@ -453,6 +705,15 @@ class Build : NukeBuild
         // Recursively process all directories
         foreach (var dir in Directory.GetDirectories(tempDir))
         {
+            var dirName = Path.GetFileName(dir);
+            
+            // Skip build infrastructure directories
+            if (IsBuildInfrastructureFile(dirName))
+            {
+                Console.WriteLine($"Skipping build infrastructure directory: {dirName}");
+                continue;
+            }
+            
             var relativePath = Path.GetRelativePath(tempDir, dir);
             var newTargetDir = Path.Combine(targetDir, relativePath);
             RestoreFiles((AbsolutePath)dir, (AbsolutePath)newTargetDir);

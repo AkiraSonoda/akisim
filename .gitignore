@@ -13,6 +13,7 @@
 .idea
 *.bak
 *.lnk
+*.deps.json
 
 # Ignore .user and .suo files as these are user preference specific
 # http://stackoverflow.com/questions/72298/should-i-add-the-visual-studio-suo-and-user-files-to-source-control
@@ -133,3 +134,19 @@ bin/Robust
 bin/Robust.runtimeconfig.json
 
 build/bin/Debug/_build.dll
+
+bin/OpenSim.Data.SQLite.runtimeconfig.json
+
+bin/OpenSim.Region.OptionalModules.runtimeconfig.json
+
+bin/OpenSim.Server.RegionServer
+
+bin/OpenSim.Server.RegionServer.runtimeconfig.json
+
+bin/OpenSim.Server.RobustServer
+
+bin/OpenSim.Server.RobustServer.runtimeconfig.json
+
+bin/OpenSim.Tools.pCampBot
+
+bin/OpenSim.Tools.pCampBot.runtimeconfig.json
