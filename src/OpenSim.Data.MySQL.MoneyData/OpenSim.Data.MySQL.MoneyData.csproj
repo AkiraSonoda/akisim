@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyTitle>OpenSim.Region.OptionalModules.Currency</AssemblyTitle>
+    <AssemblyTitle>OpenSim.Data.MySQL.MoneyData</AssemblyTitle>
     <Company>OpenSim</Company>
-    <Product>DTL/NSL Group</Product>
+    <Product>OpenSim.Data.MySQL.MoneyData</Product>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
@@ -10,19 +10,15 @@
     <PackageReference Include="log4net" Version="3.0.4" />
     <PackageReference Include="Mono.Addins" Version="1.4.1" />
     <PackageReference Include="Mono.Addins.CecilReflector" Version="1.4.1" />
+    <PackageReference Include="MySqlConnector" Version="2.4.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.2" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Mono.Security.dll">
-      <HintPath>..\..\bin\Mono.Security.dll</HintPath>
-    </Reference>
     <Reference Include="Nini">
       <HintPath>..\..\bin\Nini.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverse">
       <HintPath>..\..\bin\OpenMetaverse.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenMetaverse.StructuredData">
-      <HintPath>..\..\bin\OpenMetaverse.StructuredData.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverseTypes">
       <HintPath>..\..\bin\OpenMetaverseTypes.dll</HintPath>
@@ -33,11 +29,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenSim.Data\OpenSim.Data.csproj" />
-    <ProjectReference Include="..\OpenSim.Data.MySQL.MoneyData\OpenSim.Data.MySQL.MoneyData.csproj" />
     <ProjectReference Include="..\OpenSim.Framework\OpenSim.Framework.csproj" />
     <ProjectReference Include="..\OpenSim.Framework.Console\OpenSim.Framework.Console.csproj" />
-    <ProjectReference Include="..\OpenSim.Framework.Servers\OpenSim.Framework.Servers.csproj" />
     <ProjectReference Include="..\OpenSim.Framework.Servers.HttpServer\OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="..\OpenSim.Framework.Servers\OpenSim.Framework.Servers.csproj" />
     <ProjectReference Include="..\OpenSim.Region.Framework\OpenSim.Region.Framework.csproj" />
     <ProjectReference Include="..\OpenSim.Server.Base\OpenSim.Server.Base.csproj" />
     <ProjectReference Include="..\OpenSim.Services.Interfaces\OpenSim.Services.Interfaces.csproj" />

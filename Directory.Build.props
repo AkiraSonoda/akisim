@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != '_build'">
+    <BaseOutputPath>$(SolutionDir)bin\</BaseOutputPath>
+    <OutputPath>$(SolutionDir)bin\</OutputPath>
+    <UseCommonOutputDirectory>true</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  
+  <ItemDefinitionGroup>
+    <PackageReference>
+      <Private>true</Private>
+    </PackageReference>
+    <Reference>
+      <Private>true</Private>
+    </Reference>
+  </ItemDefinitionGroup>
+</Project>
