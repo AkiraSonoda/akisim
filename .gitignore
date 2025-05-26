@@ -150,3 +150,4 @@ bin/OpenSim.Server.RobustServer.runtimeconfig.json
 bin/OpenSim.Tools.pCampBot
 
 bin/OpenSim.Tools.pCampBot.runtimeconfig.json
+.aider*
