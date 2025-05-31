@@ -29,34 +29,16 @@ all: build
 
 # Build the solution
 .PHONY: build
-build:
+build: clean
 	@echo "Building in $(CONFIGURATION) configuration..."
-	dotnet build -c $(CONFIGURATION) $(SOLUTION)
+	nuke
 
 # Clean all build artifacts and project files
 .PHONY: clean
 clean:
-	@echo "Cleaning dotnet..."
-	@dotnet clean -c $(CONFIGURATION) $(SOLUTION)
-	@echo "Cleaning obj directories..."
-	@find . -type d -name "obj" -exec sh -c '\
-		for dir in "$$@"; do \
-			echo "Cleaning directory: $$dir"; \
-			rm -rf "$$dir"/*; \
-		done' sh {} +
-	@echo "Removing .csproj.user files..."
-	@find . -type f -name "*.csproj.user" -exec sh -c '\
-		for file in "$$@"; do \
-			echo "Removing file: $$file"; \
-			rm -f "$$file"; \
-		done' sh {} +
-	@echo "Removing all .csproj files..."
-	@find . -type f -name "*.csproj" -exec sh -c '\
-		for file in "$$@"; do \
-			echo "Removing file: $$file"; \
-			rm -f "$$file"; \
-		done' sh {} +
-	@echo "Clean completed."
+	@echo "Cleaning solution..."
+	nuke clean
+
 	
 # Rebuild
 .PHONY: rebuild

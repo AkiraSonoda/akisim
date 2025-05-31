@@ -133,3 +133,6 @@ bin/Robust
 bin/Robust.runtimeconfig.json
 
 build/bin/Debug/_build.dll
+.aider*
+
+bin/
