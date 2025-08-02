@@ -28,6 +28,7 @@
         "BuildThirdParty",
         "Clean",
         "Compile",
+        "CopyNuGetDependencies",
         "Restore"
       ]
     },

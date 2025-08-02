@@ -26,14 +26,9 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Data;
 using System.Data.Common;
-using System.IO;
 using System.Reflection;
-using System.Text.RegularExpressions;
-using log4net;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace OpenSim.Data.MySQL
 {
@@ -65,17 +60,24 @@ namespace OpenSim.Data.MySQL
                 base.ExecuteScript(conn, script);
                 return;
             }
-
-            MySqlScript scr = new MySqlScript((MySqlConnection)conn);
+            else
             {
+                // Assuming 'conn' is your existing connection and 'script' is a collection of SQL statements
                 foreach (string sql in script)
                 {
-                    scr.Query = sql;
-                    scr.Error += delegate(object sender, MySqlScriptErrorEventArgs args)
+                    try
                     {
-                        throw new Exception(sql);
-                    };
-                    scr.Execute();
+                        using (var cmd = new MySqlCommand(sql, (MySqlConnection)conn))
+                        {
+                            // Execute the command regardless of whether it contains multiple statements
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Preserve the original behavior of throwing an exception with the SQL
+                        throw new Exception($"Error executing SQL: {sql}", ex);
+                    }
                 }
             }
         }

@@ -1,22 +1,68 @@
 using Nuke.Common;
 using Nuke.Common.CI;
-using Nuke.Common.Execution;
-using Nuke.Common.Git;
 using Nuke.Common.IO;
 using Nuke.Common.ProjectModel;
-using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
-using Nuke.Common.Utilities.Collections;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
 [ShutdownDotNetAfterServerBuild]
 class Build : NukeBuild
 {
-    public static int Main() => Execute<Build>(x => x.Compile);
+    public static int Main()
+    {
+        // Completely isolate the _build project from the rest of the build
+        var originalOutputPath = Environment.GetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY");
+        var buildAssemblyPath = Assembly.GetExecutingAssembly().Location;
+        var buildDirectory = Path.GetDirectoryName(buildAssemblyPath);
+        
+        Console.WriteLine($"Build is executing from: {buildDirectory}");
+        
+        // Create a permanent isolation directory for _build artifacts
+        var isolationDir = Path.Combine(Path.GetTempPath(), "NukeBuild_Isolation", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(isolationDir);
+        Console.WriteLine($"Created isolation directory for _build: {isolationDir}");
+        
+        try
+        {
+            // Set environment variable to isolate NUKE's output
+            Environment.SetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY", isolationDir);
+            
+            // Set MSBuildLocator to use a different directory to prevent files from being loaded
+            Environment.SetEnvironmentVariable("MSBUILD_DISABLE_SHARED_RESOLVER", "1");
+            
+            // Execute the build
+            return Execute<Build>(x => x.Compile);
+        }
+        finally
+        {
+            // Restore environment variables
+            Environment.SetEnvironmentVariable("MSBUILD_DISABLE_SHARED_RESOLVER", null);
+            
+            if (originalOutputPath != null)
+                Environment.SetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY", originalOutputPath);
+            else
+                Environment.SetEnvironmentVariable("NUKE_OUTPUT_DIRECTORY", null);
+                
+            // Try to clean up temp directory, but don't fail if it can't be deleted
+            try
+            {
+                if (Directory.Exists(isolationDir))
+                {
+                    Directory.Delete(isolationDir, true);
+                    Console.WriteLine($"Cleaned up isolation directory: {isolationDir}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to clean up isolation directory: {ex.Message}");
+            }
+        }
+    }
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
@@ -26,6 +72,7 @@ class Build : NukeBuild
     AbsolutePath SourceDirectory => RootDirectory / "src";
     AbsolutePath BinDirectory => RootDirectory / "bin";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
+    AbsolutePath TempDirectory => RootDirectory / "temp" / ".nuke";
     
     Target Clean => _ => _
         .Before(Restore)
@@ -37,8 +84,9 @@ class Build : NukeBuild
             }
             Directory.CreateDirectory(BinDirectory);
             
-            // Restore all files in current directory
+            // Restore all files in current directory but skip everything related to _build
             RestoreFiles(ArtifactsDirectory, BinDirectory);
+            
         });
 
     Target Restore => _ => _
@@ -89,11 +137,8 @@ class Build : NukeBuild
                 .SetProjectFile(smartThreadPoolPath)
                 .SetConfiguration(Configuration)
                 .SetProperty("DisableParallel", "true")
+                .SetProperty("OutputPath", RootDirectory / "bin")
                 .EnableNoRestore());
-
-            // Copy SmartThreadPool DLL to bin directory
-            Console.WriteLine("Copying SmartThreadPool to bin...");
-            CopyOutputToBin(smartThreadPoolPath, "SmartThreadPool");
 
             // Build ThreadedClasses
             Console.WriteLine("Building ThreadedClasses...");
@@ -101,11 +146,8 @@ class Build : NukeBuild
                 .SetProjectFile(threadedClassesPath)
                 .SetConfiguration(Configuration)
                 .SetProperty("DisableParallel", "true")
+                .SetProperty("OutputPath", RootDirectory / "bin")
                 .EnableNoRestore());
-
-            // Copy ThreadedClasses DLL to bin directory
-            Console.WriteLine("Copying ThreadedClasses to bin...");
-            CopyOutputToBin(threadedClassesPath, "ThreadedClasses");
         });
 
     Target BuildOpenSim => _ => _
@@ -139,15 +181,135 @@ class Build : NukeBuild
                 .SetProjectFile(openSimProject)
                 .SetConfiguration(Configuration)
                 .SetProperty("DisableParallel", "true")
+                .SetProperty("OutputPath", RootDirectory / "bin")
                 .EnableNoRestore());
+        });
 
-            // Copy OpenSim.Framework DLL to bin directory
-            Console.WriteLine("Copying OpenSim.Framework to bin...");
-            CopyOutputToBin(openSimProject.Path, openSimProject.Name);
+    Target CopyNuGetDependencies => _ => _
+        .Executes(() =>
+        {
+            Console.WriteLine("Copying NuGet dependencies to bin directory...");
+            
+            // Get the home directory and NuGet packages folder
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var nugetPackages = Path.Combine(home, ".nuget", "packages");
+            
+            // Define packages we want to ensure are copied
+            var packages = new Dictionary<string, string[]>
+            {
+                { "log4net", new[] { "log4net.dll" } },
+                { "BouncyCastle.Cryptography", new[] { "BouncyCastle.Cryptography.dll" } },
+                { "Mono.Addins", new[] { "Mono.Addins.dll" } },
+                { "Mono.Addins.CecilReflector", new[] { "Mono.Addins.CecilReflector.dll" } },
+                { "Mono.Addins.Setup", new[] { "Mono.Addins.Setup.dll" } },
+                { "mysqlconnector", new[] { "MySqlConnector.dll" } },
+                { "System.Configuration.ConfigurationManager", new[] { "System.Configuration.ConfigurationManager.dll" } },
+                { "System.Text.Json", new[] { "System.Text.Json.dll" } },
+                { "Npgsql", new[] { "Npgsql.dll" } },
+                { "System.Drawing.Common", new[] { "System.Drawing.Common.dll" } },
+                { "System.Data.SqlClient", new[] { "System.Data.SqlClient.dll" } },
+                { "System.Data.SQLite", new[] { "System.Data.SQLite.dll" } },
+                { "System.Runtime.Caching", new[] { "System.Runtime.Caching.dll" } },
+                { "Ionic.Zlib.Core", new[] { "Ionic.Zlib.Core.dll" } },
+                // Add other packages you need here in the format:
+                // { "packageName", new[] { "file1.dll", "file2.dll" } }
+            };
+            
+            foreach (var package in packages)
+            {
+                string packageName = package.Key;
+                string[] files = package.Value;
+                
+                // Check if package directory exists
+                string packageDir = Path.Combine(nugetPackages, packageName);
+                if (!Directory.Exists(packageDir))
+                {
+                    Console.WriteLine($"Package directory for {packageName} not found at {packageDir}");
+                    continue;
+                }
+                
+                // Get all versions and sort to get the latest
+                var versions = Directory.GetDirectories(packageDir)
+                    .Select(Path.GetFileName)
+                    .OrderByDescending(v => v)
+                    .ToList();
+                    
+                if (versions.Count == 0)
+                {
+                    Console.WriteLine($"No versions found for package {packageName}");
+                    continue;
+                }
+                
+                string latestVersion = versions.First();
+                string packageVersionDir = Path.Combine(packageDir, latestVersion);
+                
+                // Look for the lib directory
+                string libDir = Path.Combine(packageVersionDir, "lib");
+                if (!Directory.Exists(libDir))
+                {
+                    Console.WriteLine($"Lib directory not found for package {packageName} version {latestVersion}");
+                    continue;
+                }
+                
+                // Find all target framework directories in the lib folder
+                var frameworkDirs = Directory.GetDirectories(libDir);
+                
+                // Priority order for framework selection
+                var frameworkPriority = new[] 
+                { 
+                    "netstandard2.1", "netstandard2.0", "netstandard1.3", "netstandard", 
+                    "net8.0", "net7.0", "net6.0", "net5.0", "netcoreapp3.1", "netcoreapp",
+                    "net48", "net472", "net47", "net462", "net461", "net46", "net45", "net40"
+                };
+                
+                string selectedFramework = null;
+                
+                // Find the highest priority framework that exists
+                foreach (var framework in frameworkPriority)
+                {
+                    var match = frameworkDirs.FirstOrDefault(d => 
+                        Path.GetFileName(d).Equals(framework, StringComparison.OrdinalIgnoreCase));
+                        
+                    if (match != null)
+                    {
+                        selectedFramework = match;
+                        break;
+                    }
+                }
+                
+                // If no prioritized framework found, just take the first one
+                if (selectedFramework == null && frameworkDirs.Length > 0)
+                {
+                    selectedFramework = frameworkDirs[0];
+                }
+                
+                if (selectedFramework == null)
+                {
+                    Console.WriteLine($"No compatible framework found for package {packageName}");
+                    continue;
+                }
+                
+                // Copy each requested file
+                foreach (var file in files)
+                {
+                    string sourceFile = Path.Combine(selectedFramework, file);
+                    if (File.Exists(sourceFile))
+                    {
+                        string targetFile = Path.Combine(BinDirectory, file);
+                        Console.WriteLine($"Copying {sourceFile} to {targetFile}");
+                        File.Copy(sourceFile, targetFile, true);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"File {file} not found in {selectedFramework}");
+                    }
+                }
+            }
         });
 
     Target Compile => _ => _
         .DependsOn(BuildOpenSim)
+        .DependsOn(CopyNuGetDependencies)
         .Executes(() =>
         {
             // Build remaining projects one by one
@@ -159,7 +321,9 @@ class Build : NukeBuild
             
             foreach (var project in Solution.AllProjects)
             {
-                if (builtProjects.Contains(project.Name) || 
+                // Skip _build project and already built projects
+                if (IsBuildInfrastructureProject(project.Name) || 
+                    builtProjects.Contains(project.Name) || 
                     project.Name.EndsWith(".Tests") ||
                     project.Name.EndsWith(".Test"))
                     continue;
@@ -171,10 +335,8 @@ class Build : NukeBuild
                         .SetProjectFile(project)
                         .SetConfiguration(Configuration)
                         .SetProperty("DisableParallel", "true")
+                        .SetProperty("OutputPath", RootDirectory / "bin")
                         .EnableNoRestore());
-
-                    // Copy project output to bin directory
-                    CopyOutputToBin(project.Path, project.Name);
                 }
                 catch (Exception ex)
                 {
@@ -184,230 +346,15 @@ class Build : NukeBuild
             }
         });
 
-    void CopyOutputToBin(string projectPath, string projectName)
+    // Helper method to check if a project is related to build infrastructure
+    bool IsBuildInfrastructureProject(string projectName)
     {
-        try
-        {
-            // Ensure bin directory exists
-            Directory.CreateDirectory(BinDirectory);
-            
-            // Calculate output directory for the project
-            var projectDir = Path.GetDirectoryName(projectPath);
-            
-            // For .NET 8.0 projects, the output is likely in a net8.0 subdirectory
-            var outputDir = Path.Combine(projectDir, "bin", Configuration, "net8.0");
-            
-            Console.WriteLine($"Looking for {projectName} output in: {outputDir}");
-            
-            if (!Directory.Exists(outputDir))
-            {
-                Console.WriteLine($"WARNING: .NET 8.0 output directory not found: {outputDir}");
-                
-                // Try alternate locations
-                var alternateOutputDirs = new string[]
-                {
-                    Path.Combine(projectDir, "bin", Configuration),
-                    Path.Combine(projectDir, "bin", Configuration.ToString()),
-                    Path.Combine(projectDir, "bin", Configuration, "netstandard2.0"),
-                    Path.Combine(projectDir, "bin", Configuration, "netcoreapp3.1")
-                };
-                
-                foreach (var altDir in alternateOutputDirs)
-                {
-                    Console.WriteLine($"Trying alternate path: {altDir}");
-                    if (Directory.Exists(altDir))
-                    {
-                        outputDir = altDir;
-                        Console.WriteLine($"Found alternate output directory: {outputDir}");
-                        break;
-                    }
-                }
-                
-                if (!Directory.Exists(outputDir))
-                {
-                    Console.WriteLine($"WARNING: No output directory found for {projectName}. Trying recursive search...");
-                    
-                    // Last resort: search recursively for the DLL
-                    if (Directory.Exists(Path.Combine(projectDir, "bin")))
-                    {
-                        var foundFiles = Directory.GetFiles(
-                            Path.Combine(projectDir, "bin"), 
-                            $"{projectName}.dll", 
-                            SearchOption.AllDirectories);
-                            
-                        if (foundFiles.Length > 0)
-                        {
-                            // Use the directory of the first found file
-                            outputDir = Path.GetDirectoryName(foundFiles[0]);
-                            Console.WriteLine($"Found DLL via recursive search: {foundFiles[0]}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"WARNING: Could not find any output for {projectName}. Skipping copy.");
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"WARNING: Project bin directory not found. Skipping copy for {projectName}");
-                        return;
-                    }
-                }
-            }
-
-            // Try to check if this is an executable project
-            bool isExecutableProject = false;
-            try 
-            {
-                var projectFile = ProjectModelTasks.ParseProject(projectPath);
-                isExecutableProject = projectFile.GetPropertyValue("OutputType")?.Equals("Exe", StringComparison.OrdinalIgnoreCase) == true;
-                if (isExecutableProject)
-                {
-                    Console.WriteLine($"Project {projectName} is an executable project.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"WARNING: Could not determine if {projectName} is an executable project: {ex.Message}");
-            }
-
-            // Examine output directory contents
-            Console.WriteLine($"Examining directory: {outputDir}");
-            var allFilesInOutput = Directory.GetFiles(outputDir);
-            Console.WriteLine($"Found {allFilesInOutput.Length} total files in output directory:");
-            foreach (var file in allFilesInOutput)
-            {
-                Console.WriteLine($"  - {Path.GetFileName(file)}");
-            }
-            
-            // First, collect all DLLs, PDBs, and EXEs
-            var filesToCopy = new List<string>();
-            filesToCopy.AddRange(Directory.GetFiles(outputDir, "*.dll"));
-            filesToCopy.AddRange(Directory.GetFiles(outputDir, "*.pdb"));
-            filesToCopy.AddRange(Directory.GetFiles(outputDir, "*.exe"));
-
-            // For executable projects, also look for files without extension matching the project name
-            if (isExecutableProject)
-            {
-                var executableName = Path.GetFileNameWithoutExtension(projectName);
-                var potentialExecutable = Path.Combine(outputDir, executableName);
-                
-                if (File.Exists(potentialExecutable))
-                {
-                    Console.WriteLine($"Found executable: {executableName}");
-                    filesToCopy.Add(potentialExecutable);
-                }
-            }
-
-            // Also look for any other files without extensions or with non-standard filenames
-            foreach (var file in allFilesInOutput)
-            {
-                string fileName = Path.GetFileName(file);
-                
-                // Skip if we already plan to copy this file
-                if (filesToCopy.Contains(file))
-                    continue;
-                
-                // Check if it has a proper extension or not
-                bool isExecutable = false;
-                
-                // Get the part after the last dot (if any)
-                int lastDotIndex = fileName.LastIndexOf('.');
-                if (lastDotIndex == -1)
-                {
-                    // No dot at all - consider it an executable
-                    isExecutable = true;
-                }
-                else
-                {
-                    // There's a dot - check if what follows is a proper extension
-                    string extension = fileName.Substring(lastDotIndex + 1);
-                    
-                    // If more than 3 characters after the dot, it's probably not an extension
-                    // but part of the filename (like "executable.config123")
-                    if (extension.Length > 3)
-                    {
-                        isExecutable = true;
-                        Console.WriteLine($"Found file with non-standard name: {fileName} (>3 chars after dot)");
-                    }
-                    // Skip common non-executable extensions
-                    else if (extension == "xml" || extension == "config" || extension == "json" ||
-                             extension == "txt" || extension == "md" || extension == "log")
-                    {
-                        isExecutable = false;
-                    }
-                    else if (extension == "dll" || extension == "pdb" || extension == "exe")
-                    {
-                        // These should have been caught earlier, but double check
-                        isExecutable = true;
-                    }
-                    else
-                    {
-                        // Unknown extension with 3 or fewer chars - treat as potential executable
-                        isExecutable = true;
-                        Console.WriteLine($"Found file with unknown extension: {fileName} (treating as executable)");
-                    }
-                }
-                
-                if (isExecutable)
-                {
-                    Console.WriteLine($"Found potential executable: {fileName}");
-                    filesToCopy.Add(file);
-                }
-            }
-
-            Console.WriteLine($"Found {filesToCopy.Count} files to copy from {outputDir}");
-            
-            // Print the list of files that will be copied
-            Console.WriteLine("Files to be copied:");
-            foreach (var file in filesToCopy)
-            {
-                Console.WriteLine($"  - {Path.GetFileName(file)}");
-            }
-            
-            // Copy only new or updated files
-            foreach (var file in filesToCopy)
-            {
-                var fileName = Path.GetFileName(file);
-                var destFile = Path.Combine(BinDirectory, fileName);
-                
-                bool shouldCopy = false;
-                
-                // Check if destination file exists
-                if (!File.Exists(destFile))
-                {
-                    shouldCopy = true;
-                    Console.WriteLine($"New file: {fileName}");
-                }
-                else 
-                {
-                    // Check if source file is newer than destination
-                    var sourceTime = File.GetLastWriteTime(file);
-                    var destTime = File.GetLastWriteTime(destFile);
-                    
-                    if (sourceTime > destTime)
-                    {
-                        shouldCopy = true;
-                        Console.WriteLine($"Updated file: {fileName}");
-                    }
-                }
-                
-                // Copy only if file is new or updated
-                if (shouldCopy)
-                {
-                    File.Copy(file, destFile, true);
-                    Console.WriteLine($"Copied {fileName} to bin");
-                }
-                else
-                {
-                    Console.WriteLine($"Skipped {fileName} (unchanged)");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"ERROR copying output for {projectName}: {ex.Message}");
-        }
+        return projectName == "_build" || 
+               projectName.Contains("Nuke") ||
+               projectName.Contains("Build") ||
+               projectName.Contains("MSBuild") ||
+               projectName.Contains("Azure") ||
+               projectName.StartsWith("_");
     }
 
     void SetCommonProperties(DotNetBuildSettings settings)
@@ -441,6 +388,8 @@ class Build : NukeBuild
         foreach (var file in Directory.GetFiles(tempDir))
         {
             var relativePath = Path.GetRelativePath(tempDir, file);
+            string fileName = Path.GetFileName(file);
+            
             var targetFile = Path.Combine(targetDir, relativePath);
             var targetFileDir = Path.GetDirectoryName(targetFile);
             
@@ -453,6 +402,8 @@ class Build : NukeBuild
         // Recursively process all directories
         foreach (var dir in Directory.GetDirectories(tempDir))
         {
+            var dirName = Path.GetFileName(dir);
+            
             var relativePath = Path.GetRelativePath(tempDir, dir);
             var newTargetDir = Path.Combine(targetDir, relativePath);
             RestoreFiles((AbsolutePath)dir, (AbsolutePath)newTargetDir);

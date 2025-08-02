@@ -1,82 +1,46 @@
-# akkimoney_module
+# OpenSimCurrencyServer-2020
+For the new OpeSimulator 0.9.2.0.200+ DEV
 
-## Outline
+DTL/NSL Money Server by Fumi.Iseki and NSL http://www.nsl.tuis.ac.jp , here is my test revision.
 
-This Module is a modified version of DTLNSLMoneyModule by by Fumi.Iseki.
-This Module only works with the corresponding AkkiMoney Server.
-This Module and the AkkiMoney Server currently is very insecure because of missing encryption etc.
-and therefore only thought for internal "funny money" or roleplaying purposes.  
+I have fixed or switched off all errors, warnings and messages.
 
-This module is tested on the latest ArribaSim
+Now you can experiment with new things without having old messages.
 
+    This is currently being tested with:
+    opensim-0.9.2.0 Dev - 579
+    Status works.
 
-## Install
+## copy:
 
-Clone this Repository into the addon-modules directory of your OpenSim / ArribaSim instalation.
+copy addon-modules to addon-modules
 
-Copy the provided RestSharp.dll ( in the lib subdirectory ) into the OpenSim / Arriba bin subdirectory
+copy bin to bin
 
-Build the OpenSim.exe from the OpenSim or ArribaSim Sources
+copy helper to web (www/html/helper) - OSGrid Version - mysqli is not yet working
 
+## Building:
 
+### Linux: (Ubuntu 18.04 test server)
 
-## Setting
+    ./runprebuild.sh
+    msbuild /p:Configuration=Release
 
-### Money Server
+### Windows: (Windows 10, Visual Studio 2019 Community)
 
-The AkkiMoney Server implementation needed for this Module to work within
-can be found here:  
+    runprebuild.bat
+    start Visual studio with OpenSim.sln 
+    or run compile.bat
+    
+Config: Robust, MoneyServer and OpenSim.
 
-https://bitbucket.org/AkiraSonoda/akkimoney
+Start: 1. Robust, 2. MoneyServer, 3. OpenSim regions.
 
-Please read the Documentation in this Repository on how to Setup and run the
-AkkiMoney Server.
+INFO: On Windows and Visual Studio, the Money Server only starts when mysql is running and config is set.
 
-### Region Server
+## Todo:
+If a message comes to the Console, the prompt is gone.
 
- [Economy]
-   SellEnabled = "true"
-   CurrencyServer = "https://(MoneyServer's Name or IP):8009/"  
-   EconomyModule  = AkkiMoneyModule
+No color is displayed in the MoneyServer Console.
 
-   ;; Money Unit fee to upload textures, animations etc
-   ;; PriceUpload = 10
-
-   ;; Money Unit fee to create groups
-   ;; PriceGroupCreate = 100
-
-
- Attention!
-  - Do not use this Module without a working installation of the AkkiMoney Server
-  - Not use 127.0.0.1 or localhost for UserServer's address and CurrencyServer's address.
-    This address is used for identification of user on Money Server.
-
-
-
-## License.
-
- This software is licensed under
-
- GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007
- https://www.gnu.org/licenses/agpl.html
-
-
-## Attention.
-
- This is unofficial software.
- Please do not inquire to OpenSim development team about this software.
-
-
-## Exemption from responsibility.
-
-  This software is not guaranteed at all. The author doesn't assume the responsibility for the
-  problem that occurs along with use, remodeling, and the re-distribution of this software at all.
-  Please use everything by the self-responsibility.
-
-## Address of thanks.
-
-  This Money Module is based on the DTLNSLMoneyModule
-  by Fumi.Iseki and NSL '11 5/7
-  http://www.nsl.tuis.ac.jp
-
-  Thank you very much!!
+BuyLand, buyCurrency (Multi-currency support to OpenSim viewers)

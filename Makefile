@@ -8,7 +8,7 @@ endif
 # Default to Linux paths
 PACKAGING_DIR := $(HOME)/opensim/packaging
 SOURCE_DIR := $(HOME)/src/akisim
-DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/dereos_kosuai
+DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/akisim_phpgrid_lin
 SRC_BIN := $(HOME)/src/akisim/bin
 DEST_DIR := $(HOME)/opensim/grid/akisim
 
@@ -25,7 +25,7 @@ SOLUTION := Akisim.sln
 
 # Default target
 .PHONY: all
-all: build
+all: deploy
 
 # Build the solution
 .PHONY: build
@@ -46,7 +46,7 @@ rebuild: clean build
 
 # Deploy solution
 .PHONY: deploy
-deploy: build
+deploy: 
 	@echo "Deploying $(CONFIGURATION) build..."
 	rm -rf "$(DEST_DIR)/bin"
 	cp -r "$(SRC_BIN)" "$(DEST_DIR)/"
@@ -61,7 +61,7 @@ deploy: build
 
 # Package the solution
 .PHONY: package
-package: build
+package: 
 	@latest_dir=$$(ls -d $(PACKAGING_DIR)/akisim-* 2>/dev/null | sort -V | tail -n 1); \
 	if [ -z "$$latest_dir" ]; then \
 		new_version="0.1.0"; \
