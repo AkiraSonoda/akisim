@@ -63,10 +63,13 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
 
         // List of shared module instances, for adding to Scenes
         private List<ISharedRegionModule> m_sharedInstances = new List<ISharedRegionModule>();
+        
+        // For factory pattern: store types instead of TypeExtensionNodes
+        private List<Type> m_factoryNonSharedModuleTypes = new List<Type>();
 
         public RegionModulesControllerPlugin()
         {
-            LoadModulesFromAddins = true;
+            LoadModulesFromAddins = false; // Use factory pattern instead of Mono.Addins
         }
 
 #region IApplicationPlugin implementation
@@ -78,7 +81,10 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
             m_log.Debug("Initializing...");
 
             if (!LoadModulesFromAddins)
+            {
+                LoadCoreModulesFromFactory();
                 return;
+            }
 
             // Who we are
             string id = AddinManager.CurrentAddin.Id;
@@ -406,6 +412,49 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
                 list.Add(module);
             }
 
+            // Load non-shared modules from factory pattern (when not using Mono.Addins)
+            if (!LoadModulesFromAddins)
+            {
+                foreach (Type moduleType in m_factoryNonSharedModuleTypes)
+                {
+                    try
+                    {
+                        INonSharedRegionModule module = (INonSharedRegionModule)Activator.CreateInstance(moduleType);
+                        
+                        // Check for replaceable interfaces
+                        Type replaceableInterface = module.ReplaceableInterface;
+                        if (replaceableInterface != null)
+                        {
+                            MethodInfo mii = mi.MakeGenericMethod(replaceableInterface);
+                            
+                            if (mii.Invoke(scene, new object[0]) != null)
+                            {
+                                if(m_log.IsDebugEnabled) m_log.DebugFormat("Not loading {0} because another module has registered {1}", 
+                                    module.Name, replaceableInterface.ToString());
+                                continue;
+                            }
+                            
+                            deferredNonSharedModules[replaceableInterface] = module;
+                            if(m_log.IsDebugEnabled) m_log.DebugFormat("Deferred load of {0}", module.Name);
+                            continue;
+                        }
+                        
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding scene {0} to factory non-shared module {1}",
+                            scene.RegionInfo.RegionName, module.Name);
+                        
+                        // Initialise the module
+                        module.Initialise(m_openSim.ConfigSource.Source);
+                        
+                        list.Add(module);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat("Failed to instantiate factory module {0}: {1}", moduleType.Name, e.Message);
+                        if(m_log.IsDebugEnabled) m_log.Debug("Exception details:", e);
+                    }
+                }
+            }
+
             // Now add the modules that we found to the scene. If a module
             // wishes to override a replaceable interface, it needs to
             // register it in Initialise, so that the deferred module
@@ -515,6 +564,48 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
                 }
             }
             scene.RegionModules.Clear();
+        }
+
+        /// <summary>
+        /// Load core modules using factory pattern instead of Mono.Addins
+        /// </summary>
+        private void LoadCoreModulesFromFactory()
+        {
+            m_log.Info("Loading core modules from factory (bypassing Mono.Addins)");
+            
+            try
+            {
+                int nonSharedCount = 0;
+                
+                // Store non-shared module types for instantiation per region
+                foreach (var module in OpenSim.Region.CoreModules.CoreModuleFactory.CreateNonSharedModules())
+                {
+                    Type moduleType = module.GetType();
+                    m_factoryNonSharedModuleTypes.Add(moduleType);
+                    m_log.DebugFormat("Registered non-shared module type: {0}", moduleType.Name);
+                    nonSharedCount++;
+                    
+                    // Dispose the instance since we only needed it for type registration
+                    if (module is IDisposable disposable)
+                        disposable.Dispose();
+                }
+                
+                // Load shared modules and initialize them
+                foreach (var module in OpenSim.Region.CoreModules.CoreModuleFactory.CreateSharedModules())
+                {
+                    m_log.DebugFormat("Initializing shared module: {0}", module.GetType().Name);
+                    module.Initialise(m_openSim.ConfigSource.Source);
+                    m_sharedInstances.Add(module);
+                }
+                
+                m_log.InfoFormat("Loaded {0} non-shared module types and {1} shared module instances from factory", 
+                    nonSharedCount, m_sharedInstances.Count);
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("Failed to load core modules from factory: {0}", e.Message);
+                m_log.Debug("Exception details:", e);
+            }
         }
 
 #endregion
