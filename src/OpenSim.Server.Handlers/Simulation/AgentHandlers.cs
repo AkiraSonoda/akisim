@@ -234,6 +234,10 @@ namespace OpenSim.Server.Handlers.Simulation
                 return;
             }
 
+            m_log.DebugFormat("[AGENT HANDLER]: Received {0} request for Agent: {1}, Region: {2}, Action: {3}, From: {4}", 
+                httpRequest.HttpMethod, agentID, regionID, action ?? "none", 
+                httpRequest.RemoteIPEndPoint?.Address?.ToString() ?? "unknown");
+
             switch(httpRequest.HttpMethod)
             {
                 case "QUERYACCESS":

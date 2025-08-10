@@ -1205,7 +1205,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 foreach (LandObject p in landOwnersAndParcels[owner])
                 {
                     simArea += p.LandData.Area;
-                    simPrims += p.PrimCounts.Total;
+                    simPrims += p.PrimCounts?.Total ?? 0;
                 }
 
                 foreach (LandObject p in landOwnersAndParcels[owner])

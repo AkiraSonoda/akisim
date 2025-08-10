@@ -28,11 +28,13 @@
 using System;
 using System.Collections.Generic;
 using OpenSim.Region.Framework.Interfaces;
+using Nini.Config;
 
 using OpenSim.Region.CoreModules.Agent.AssetTransaction;
 using OpenSim.Region.CoreModules.Agent.IPBan;
 using OpenSim.Region.CoreModules.Agent.TextureSender;
-using OpenSim.Region.CoreModules.Agent.UserManagement;
+using OpenSim.Region.CoreModules.Framework.UserManagement;
+using OpenSim.Region.CoreModules.Framework;
 using OpenSim.Region.CoreModules.Agent.Xfer;
 using OpenSim.Region.CoreModules.Avatar.Attachments;
 using OpenSim.Region.CoreModules.Avatar.AvatarFactory;
@@ -42,13 +44,12 @@ using OpenSim.Region.CoreModules.Avatar.Friends;
 using OpenSim.Region.CoreModules.Avatar.Gods;
 using OpenSim.Region.CoreModules.Avatar.Groups;
 using OpenSim.Region.CoreModules.Avatar.InstantMessage;
+using OpenSim.Region.CoreModules.Avatar.Lure;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Transfer;
-using OpenSim.Region.CoreModules.Avatar.Lure;
-using OpenSim.Region.CoreModules.Avatar.Profiles;
+using OpenSim.Region.CoreModules.Avatar.UserProfiles;
 using OpenSim.Region.CoreModules.Framework.InventoryAccess;
-using OpenSim.Region.CoreModules.Framework.Statistics.Logging;
-using OpenSim.Region.CoreModules.Framework.UserManagement;
+// BinaryLoggingModule not found in this project
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization;
@@ -59,6 +60,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Neighbour;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
+using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.CoreModules.World.Archiver;
@@ -73,6 +75,28 @@ using OpenSim.Region.CoreModules.World.Sound;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
+using OpenSim.Region.CoreModules.Framework.Library;
+using OpenSim.Region.CoreModules.Framework.EntityTransfer;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Grid;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Asset;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Authentication;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Inventory;
+using OpenSim.Region.CoreModules.ServiceConnectorsIn.Hypergrid;
+
+// Physics modules
+using OpenSim.Region.PhysicsModule.BasicPhysics;
+using OpenSim.Region.PhysicsModule.BulletS;
+using OpenSim.Region.PhysicsModule.POS;
+using OpenSim.Region.PhysicsModule.ubOde;
+using OpenSim.Region.PhysicsModule.Meshing;
+using OpenSim.Region.PhysicsModule.ubODEMeshing;
+
+// Caps modules
+using OpenSim.Region.ClientStack.Linden;
 
 namespace OpenSim.Region.CoreModules
 {
@@ -85,72 +109,367 @@ namespace OpenSim.Region.CoreModules
         /// <summary>
         /// Creates all essential core modules for basic OpenSim functionality
         /// </summary>
-        public static IEnumerable<INonSharedRegionModule> CreateNonSharedModules()
+        public static IEnumerable<INonSharedRegionModule> CreateNonSharedModules(IConfigSource configSource = null)
         {
-            // Agent modules
+            // Essential non-shared region modules
             yield return new AssetTransactionModule();
-            yield return new IPBanModule();
-            yield return new TextureSender();
             yield return new XferModule();
-
-            // Avatar modules  
             yield return new AttachmentsModule();
             yield return new AvatarFactoryModule();
-            yield return new ChatModule();
             yield return new DialogModule();
-            yield return new FriendsModule();
-            yield return new GodsModule();
-            yield return new GroupsModule();
-            yield return new MessageTransferModule();
-            yield return new InventoryArchiverModule();
-            yield return new InventoryTransferModule();
-            yield return new LureModule();
-            yield return new BasicProfileModule();
-
-            // Framework modules
             yield return new BasicInventoryAccessModule();
-            yield return new BinaryLoggingModule();
-            yield return new UserManagementModule();
-
-            // Service connector modules
-            yield return new LocalAssetServicesConnector();
-            yield return new LocalAuthenticationServicesConnector();
-            yield return new LocalAuthorizationServicesConnector();
-            yield return new LocalAvatarServicesConnector();
-            yield return new LocalGridServicesConnector();
-            yield return new LocalGridUserServicesConnector();
-            yield return new LocalInventoryServicesConnector();
-            yield return new LandServicesConnector();
-            yield return new NeighbourServicesConnector();
-            yield return new LocalPresenceServicesConnector();
-            yield return new LocalSimulationConnectorModule();
-            yield return new LocalUserAccountServicesConnector();
-
-            // World modules
-            yield return new ArchiverModule();
-            yield return new EstateModule();
-            yield return new DefaultDwellModule();
+            yield return new HGInventoryAccessModule();
             yield return new LandManagementModule();
             yield return new PrimCountModule();
-            yield return new BuySellModule();
-            yield return new ObjectCommandsModule();
             yield return new DefaultPermissionsModule();
-            yield return new RestartModule();
-            yield return new SerialiserModule();
             yield return new SoundModule();
-            yield return new TerrainModule();
-            yield return new VegetationModule();
-            yield return new WindModule();
+            // TerrainModule temporarily disabled due to System.Drawing.Common version issues
+            // yield return new TerrainModule();
+            
+            // Essential capabilities module for viewer functionality
+            yield return new CapabilitiesModule();
+            
+            // Essential UDP server for client communication
+            yield return new LLUDPServerShim();
+
+            // Essential caps modules for viewer functionality
+            yield return new BunchOfCapsModule();
+            yield return new EventQueueGetModule();
+            yield return new SimulatorFeaturesModule();
+            yield return new WebFetchInvDescModule();
+            yield return new GetAssetsModule();
+            yield return new FetchLibDescModule();
+            yield return new MeshUploadFlagModule();
+            yield return new RegionConsoleModule();
+            yield return new EstateAccessCapModule();
+            yield return new EstateChangeInfoCapModule();
+
+            // Load EntityTransferModule based on configuration
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                string entityTransferModule = modulesConfig?.GetString("EntityTransferModule", "");
+                if (entityTransferModule == "HGEntityTransferModule")
+                {
+                    yield return new HGEntityTransferModule();
+                }
+                else if (entityTransferModule == "BasicEntityTransferModule")
+                {
+                    yield return new EntityTransferModule();
+                }
+                
+                // Load meshing module based on configuration
+                string meshingModule = modulesConfig?.GetString("MeshingModule", "Meshmerizer");
+                switch (meshingModule.ToLowerInvariant())
+                {
+                    case "meshmerizer":
+                        yield return new Meshmerizer();
+                        break;
+                    case "ubmeshmerizer":
+                    case "ubodemeshmerizer":
+                    case "ubODEMeshmerizer":
+                        yield return new ubMeshmerizer();
+                        break;
+                    case "zeromesher":
+                        yield return new ZeroMesher();
+                        break;
+                    default:
+                        // Default to Meshmerizer if unknown meshing module specified
+                        yield return new Meshmerizer();
+                        break;
+                }
+            }
+            else
+            {
+                // Default to Meshmerizer if no config provided
+                yield return new Meshmerizer();
+            }
+
+            // Physics modules - load based on configuration
+            if (configSource != null)
+            {
+                var startupConfig = configSource.Configs["Startup"];
+                string physics = startupConfig?.GetString("physics", "BulletSim") ?? "BulletSim";
+                
+                switch (physics.ToLowerInvariant())
+                {
+                    case "bulletsim":
+                        yield return new BSScene();
+                        break;
+                    case "basicphysics":
+                        yield return new BasicScene();
+                        break;
+                    case "pos":
+                        yield return new POSScene();
+                        break;
+                    case "ubode":
+                        yield return new ubOdeModule();
+                        break;
+                    default:
+                        // Default to BulletSim if unknown physics engine specified
+                        yield return new BSScene();
+                        break;
+                }
+            }
+            else
+            {
+                // Default to BulletSim if no config provided
+                yield return new BSScene();
+            }
         }
 
         /// <summary>
         /// Creates shared modules that are instantiated once per OpenSim instance
+        /// Reads configuration to determine which modules to load
         /// </summary>
-        public static IEnumerable<ISharedRegionModule> CreateSharedModules()
+        public static IEnumerable<ISharedRegionModule> CreateSharedModules(IConfigSource configSource)
         {
-            // Add shared modules here when needed
-            // Most core modules are non-shared
-            yield break;
+            // Load modules based on configuration
+            var modulesConfig = configSource.Configs["Modules"];
+            var messagingConfig = configSource.Configs["Messaging"];
+
+            // Load AssetService first - required by LibraryModule and other services
+            string assetServicesModule = modulesConfig?.GetString("AssetServices", "");
+            if (assetServicesModule == "RegionAssetConnector")
+            {
+                yield return new RegionAssetConnector();
+            }
+
+            // Load LibraryModule after AssetService - it provides LibraryService needed by other modules
+            if (modulesConfig?.GetBoolean("LibraryModule", false) == true)
+            {
+                yield return new LibraryModule();
+            }
+
+            // Always load core modules that don't have configuration options
+            yield return new ChatModule();
+            yield return new InventoryTransferModule();
+            
+            var groupsConfig = configSource.Configs["Groups"];
+
+            // Load Friends module based on configuration
+            if (modulesConfig?.GetString("FriendsModule", "") == "HGFriendsModule")
+                yield return new HGFriendsModule();
+            else
+                yield return new FriendsModule();
+
+            // Load MessageTransfer module based on configuration  
+            if (messagingConfig?.GetString("MessageTransferModule", "") == "HGMessageTransferModule")
+                yield return new HGMessageTransferModule();
+            else
+                yield return new MessageTransferModule();
+
+            // Load Lure module based on configuration
+            if (messagingConfig?.GetString("LureModule", "") == "HGLureModule")
+                yield return new HGLureModule();
+            else
+                yield return new LureModule();
+
+            // Load UserManagement module based on configuration
+            if (modulesConfig?.GetString("UserManagementModule", "") == "HGUserManagementModule")
+                yield return new HGUserManagementModule();
+            else
+                yield return new UserManagementModule();
+
+            // Load Groups module based on configuration
+            string groupsModule = modulesConfig?.GetString("Module", "");
+            ISharedRegionModule groupsModuleInstance = null;
+            
+            if (groupsModule == "Groups Module V2")
+            {
+                // Try to load Groups Module V2 from OpenSim.Addons.Groups assembly
+                try
+                {
+                    var assembly = System.Reflection.Assembly.LoadFrom("OpenSim.Addons.Groups.dll");
+                    var groupsV2Type = assembly.GetType("OpenSim.Region.OptionalModules.Avatar.Groups.GroupsModule");
+                    if (groupsV2Type != null)
+                    {
+                        groupsModuleInstance = (ISharedRegionModule)Activator.CreateInstance(groupsV2Type);
+                    }
+                }
+                catch
+                {
+                    // Will fallback to regular GroupsModule below
+                }
+            }
+            
+            // Use regular GroupsModule if Groups V2 failed to load or not configured
+            if (groupsModuleInstance == null)
+            {
+                groupsModuleInstance = new GroupsModule();
+            }
+            
+            yield return groupsModuleInstance;
+
+            // Load GridService module based on configuration
+            string gridServicesModule = modulesConfig?.GetString("GridServices", "");
+            if (gridServicesModule == "RegionGridServicesConnector")
+            {
+                yield return new RegionGridServicesConnector();
+            }
+
+            // Load UserAccountService module based on configuration
+            string userAccountServicesModule = modulesConfig?.GetString("UserAccountServices", "");
+            if (userAccountServicesModule == "RemoteUserAccountServicesConnector")
+            {
+                yield return new RemoteUserAccountServicesConnector();
+            }
+            else if (userAccountServicesModule == "LocalUserAccountServicesConnector")
+            {
+                yield return new LocalUserAccountServicesConnector();
+            }
+
+            // Load NeighbourServices module based on configuration
+            string neighbourServicesModule = modulesConfig?.GetString("NeighbourServices", "");
+            if (neighbourServicesModule == "NeighbourServicesOutConnector")
+            {
+                yield return new NeighbourServicesOutConnector();
+            }
+
+            // Load SimulationServices module based on configuration
+            string simulationServicesModule = modulesConfig?.GetString("SimulationServices", "");
+            if (simulationServicesModule == "RemoteSimulationConnectorModule")
+            {
+                yield return new RemoteSimulationConnectorModule();
+            }
+            else if (simulationServicesModule == "LocalSimulationConnectorModule")
+            {
+                yield return new LocalSimulationConnectorModule();
+            }
+
+            // Load SimulationServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("SimulationServiceInConnector", false) == true)
+            {
+                yield return new SimulationServiceInConnectorModule();
+            }
+
+            // Load LandServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("LandServiceInConnector", false) == true)
+            {
+                yield return new LandServiceInConnectorModule();
+            }
+
+            // Load NeighbourServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("NeighbourServiceInConnector", false) == true)
+            {
+                yield return new NeighbourServiceInConnectorModule();
+            }
+
+            // Load GridInfoServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("GridInfoServiceInConnector", false) == true)
+            {
+                yield return new GridInfoServiceInConnectorModule();
+            }
+
+            // Load MapImageServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("MapImageServiceInConnector", false) == true)
+            {
+                yield return new MapImageServiceInConnectorModule();
+            }
+
+            // Load AssetServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("AssetServiceInConnector", false) == true)
+            {
+                yield return new AssetServiceInConnectorModule();
+            }
+
+            // Load AuthenticationServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("AuthenticationServiceInConnector", false) == true)
+            {
+                yield return new AuthenticationServiceInConnectorModule();
+            }
+
+            // Load InventoryServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("InventoryServiceInConnector", false) == true)
+            {
+                yield return new InventoryServiceInConnectorModule();
+            }
+
+            // Load HypergridServiceInConnector if enabled
+            if (modulesConfig?.GetBoolean("HypergridServiceInConnector", false) == true)
+            {
+                yield return new HypergridServiceInConnectorModule();
+            }
+
+            // Load InventoryServices module based on configuration
+            string inventoryServicesModule = modulesConfig?.GetString("InventoryServices", "");
+            if (inventoryServicesModule == "HGInventoryBroker")
+            {
+                yield return new HGInventoryBroker();
+            }
+            else if (inventoryServicesModule == "RemoteXInventoryServicesConnector")
+            {
+                yield return new RemoteXInventoryServicesConnector();
+            }
+            else if (inventoryServicesModule == "LocalInventoryServicesConnector")
+            {
+                yield return new LocalInventoryServicesConnector();
+            }
+
+            // Load PresenceServices module based on configuration
+            string presenceServicesModule = modulesConfig?.GetString("PresenceServices", "");
+            if (presenceServicesModule == "RemotePresenceServicesConnector")
+            {
+                yield return new RemotePresenceServicesConnector();
+            }
+            else if (presenceServicesModule == "LocalPresenceServicesConnector")
+            {
+                yield return new LocalPresenceServicesConnector();
+            }
+
+
+            // Essential shared caps modules - loaded at runtime to avoid circular dependencies
+            foreach (var capsModule in CreateCapsModules())
+            {
+                if (capsModule != null)
+                    yield return capsModule;
+            }
+        }
+
+        /// <summary>
+        /// Creates caps modules using runtime reflection to avoid circular dependencies
+        /// </summary>
+        private static IEnumerable<ISharedRegionModule> CreateCapsModules()
+        {
+            var capsModuleTypes = new[]
+            {
+                "OpenSim.Region.ClientStack.Linden.FetchInventory2Module",
+                "OpenSim.Region.ClientStack.Linden.UploadBakedTextureModule",
+                "OpenSim.Region.ClientStack.LindenCaps.ServerReleaseNotesModule",
+                "OpenSim.Region.ClientStack.Linden.AvatarPickerSearchModule",
+                "OpenSim.Region.ClientStack.Linden.AgentPreferencesModule"
+            };
+
+            var modules = new List<ISharedRegionModule>();
+
+            foreach (var typeName in capsModuleTypes)
+            {
+                try
+                {
+                    // Try to find the type in any loaded assembly
+                    Type moduleType = null;
+                    foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        moduleType = assembly.GetType(typeName);
+                        if (moduleType != null)
+                            break;
+                    }
+
+                    if (moduleType != null)
+                    {
+                        var moduleInstance = Activator.CreateInstance(moduleType) as ISharedRegionModule;
+                        if (moduleInstance != null)
+                            modules.Add(moduleInstance);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail - caps modules are optional for basic functionality
+                    System.Console.WriteLine($"[CoreModuleFactory] Warning: Could not load caps module {typeName}: {ex.Message}");
+                }
+            }
+
+            return modules;
         }
     }
 }

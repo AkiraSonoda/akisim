@@ -1437,6 +1437,9 @@ namespace OpenSim.Framework
         /// </returns>
         public static TResponse MakeRequest<TRequest, TResponse>(string method, string requestUrl, TRequest obj, int pTimeout, IServiceAuth auth)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Making request {method} {requestUrl} with object: {obj} timeout={pTimeout}ms {auth?.GetType().Name?? "null"}");
+            
             int reqnum = WebUtil.RequestNumber++;
 
             if (m_log.IsDebugEnabled)
@@ -1569,11 +1572,11 @@ namespace OpenSim.Framework
 
         public static TResponse MakeGetRequest<TResponse>(string requestUrl, int pTimeout, IServiceAuth auth)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Making GET request {requestUrl} timeout={pTimeout}ms {auth?.GetType().Name?? "null"}");
+            
             int reqnum = WebUtil.RequestNumber++;
-
-            if (WebUtil.DebugLevel >= 3)
-                m_log.Debug($"[LOGHTTP]: HTTP OUT {reqnum} SRestObjReq GET {requestUrl}");
-
+            
             int ticks = Util.EnvironmentTickCount();
             TResponse deserial = default;
             HttpResponseMessage responseMessage = null;

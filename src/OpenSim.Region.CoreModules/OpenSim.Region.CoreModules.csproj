@@ -16,13 +16,15 @@
     <PackageReference Include="log4net" Version="3.0.4" />
     <PackageReference Include="MailKit" Version="4.10.0" />
     <PackageReference Include="MimeKit" Version="4.10.0" />
-    <PackageReference Include="System.Drawing.Common" Version="9.0.2" />
   </ItemGroup>
 
 
   <ItemGroup>
     <Reference Include="CSJ2K" >
       <HintPath>../../bin/CSJ2K.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing.Common" >
+      <HintPath>../../bin/System.Drawing.Common.dll</HintPath>
     </Reference>
     <Reference Include="NDesk.Options" >
       <HintPath>../../bin/NDesk.Options.dll</HintPath>
@@ -63,9 +65,16 @@
     <ProjectReference Include="../OpenSim.Framework.Serialization/OpenSim.Framework.Serialization.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers/OpenSim.Framework.Servers.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../OpenSim.Region.ClientStack.LindenCaps/OpenSim.Region.ClientStack.LindenCaps.csproj" />
     <ProjectReference Include="../OpenSim.Region.ClientStack.LindenUDP/OpenSim.Region.ClientStack.LindenUDP.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.BulletS/OpenSim.Region.PhysicsModule.BulletS.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.POS/OpenSim.Region.PhysicsModule.POS.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.ubOde/OpenSim.Region.PhysicsModule.ubOde.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.Meshing/OpenSim.Region.PhysicsModule.Meshing.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.ubOdeMeshing/OpenSim.Region.PhysicsModule.ubOdeMeshing.csproj" />
     <ProjectReference Include="../OpenSim.Server.Base/OpenSim.Server.Base.csproj" />
     <ProjectReference Include="../OpenSim.Server.Handlers/OpenSim.Server.Handlers.csproj" />
     <ProjectReference Include="../OpenSim.Services.Base/OpenSim.Services.Base.csproj" />

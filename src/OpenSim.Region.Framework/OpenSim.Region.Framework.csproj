@@ -21,6 +21,9 @@
     <Reference Include="Nini" >
       <HintPath>../../bin/Nini.dll</HintPath>
     </Reference>
+    <Reference Include="System.Drawing.Common" >
+      <HintPath>../../bin/System.Drawing.Common.dll</HintPath>
+    </Reference>
     <Reference Include="OpenMetaverse" >
       <HintPath>../../bin/OpenMetaverse.dll</HintPath>
     </Reference>

@@ -12,7 +12,7 @@ using OpenMetaverse;
 namespace OpenSim.Region.PhysicsModule.ubOde
 {
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ubODEPhysicsScene")]
-    class ubOdeModule : INonSharedRegionModule
+    public class ubOdeModule : INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 

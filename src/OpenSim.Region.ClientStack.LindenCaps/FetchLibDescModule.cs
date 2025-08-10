@@ -31,7 +31,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
@@ -49,7 +48,6 @@ namespace OpenSim.Region.ClientStack.Linden
     /// <summary>
     /// This module implements both WebFetchInventoryDescendents and FetchInventoryDescendents2 capabilities.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "FetchLibDescModule")]
     public class FetchLibDescModule : INonSharedRegionModule
     {
         class APollRequest

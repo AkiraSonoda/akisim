@@ -31,7 +31,6 @@ using System.Net;
 using System.Text;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework.Servers.HttpServer;
@@ -44,7 +43,6 @@ namespace OpenSim.Region.ClientStack.Linden
     /// <summary>
     /// MeshUploadFlag capability. This is required for uploading Mesh.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MeshUploadFlagModule")]
     public class MeshUploadFlagModule : INonSharedRegionModule
     {
 //        private static readonly ILog m_log =

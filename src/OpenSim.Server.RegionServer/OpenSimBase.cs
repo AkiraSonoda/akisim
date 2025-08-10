@@ -49,6 +49,7 @@ using OpenSim.Server.Base;
 using OpenSim.Services.Base;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.UserAccountService;
+// Removed circular dependency - will use reflection to load RegionModulesController
 
 namespace OpenSim
 {
@@ -196,6 +197,35 @@ namespace OpenSim
                 {
                     loader.Load("/OpenSim/Startup");
                     m_plugins = loader.Plugins;
+                }
+            }
+            
+            // Manual fallback for RegionModulesController when Mono.Addins fails
+            IRegionModulesController testController;
+            if (!ApplicationRegistry.TryGet<IRegionModulesController>(out testController))
+            {
+                m_log.Warn("[STARTUP]: RegionModulesController not found via Mono.Addins, loading manually...");
+                
+                try
+                {
+                    // Use reflection to avoid circular dependency
+                    Assembly assembly = Assembly.LoadFrom("OpenSim.ApplicationPlugins.RegionModulesController.dll");
+                    Type controllerType = assembly.GetType("OpenSim.ApplicationPlugins.RegionModulesController.RegionModulesControllerPlugin");
+                    if (controllerType != null)
+                    {
+                        var regionModulesController = (IApplicationPlugin)Activator.CreateInstance(controllerType);
+                        regionModulesController.Initialise(this);
+                        m_plugins.Add(regionModulesController);
+                        m_log.Info("[STARTUP]: RegionModulesController loaded manually via reflection.");
+                    }
+                    else
+                    {
+                        m_log.Error("[STARTUP]: Could not find RegionModulesControllerPlugin type in assembly.");
+                    }
+                }
+                catch (Exception e)
+                {
+                    m_log.Error("[STARTUP]: Failed to manually load RegionModulesController: " + e.Message);
                 }
             }
         }
@@ -504,8 +534,6 @@ namespace OpenSim
                 scene.SnmpService.BootInfo("Loading prims", scene);
             }
 
-            while (regionInfo.EstateSettings.EstateOwner.IsZero() && MainConsole.Instance != null)
-                SetUpEstateOwner(scene);
 
             scene.loadAllLandObjectsFromStorage(regionInfo.originRegionID);
 
@@ -553,6 +581,10 @@ namespace OpenSim
             }
 
             SceneManager.Add(scene);
+
+            // Set up estate owner after all modules are loaded and interfaces are available
+            while (regionInfo.EstateSettings.EstateOwner.IsZero() && MainConsole.Instance != null)
+                SetUpEstateOwner(scene);
 
             //if (m_autoCreateClientStack)
             //{
@@ -624,6 +656,12 @@ namespace OpenSim
             {
                 estateOwnerFirstName = MainConsole.Instance.Prompt("Estate owner first name", "Test", excluded);
                 estateOwnerLastName = MainConsole.Instance.Prompt("Estate owner last name", "User", excluded);
+            }
+
+            if (scene.UserAccountService == null)
+            {
+                m_log.Error("[OPENSIM BASE]: UserAccountService is not available yet. Cannot set up estate owner at this time.");
+                return;
             }
 
             UserAccount account

@@ -3246,6 +3246,11 @@ namespace OpenSim.Framework
 
         public static void InitThreadPool(int minThreads, int maxThreads)
         {
+            if (m_log.IsDebugEnabled)
+            {
+                m_log.Debug($"InitThreadPool(minThreads: {maxThreads}, maxThreads: {maxThreads})");
+            }
+            
             if (maxThreads < 2)
                 throw new ArgumentOutOfRangeException(nameof(maxThreads), "maxThreads must be greater than 2");
 
@@ -3431,6 +3436,10 @@ namespace OpenSim.Framework
 
         public static void FireAndForget(System.Threading.WaitCallback callback, object obj, string context, bool dotimeout = true)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("FireAndForget(callback: {0}, obj: {1}, context: {2}, dotimeout: {3})", callback, obj, context, dotimeout);
+
+            Interlocked.Increment(ref numQueuedThreadFuncs);
             Interlocked.Increment(ref numTotalThreadFuncsCalled);
             WaitCallback realCallback;
 

@@ -437,7 +437,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             );
         }
 
-        private void UVPlanarMap(ref Vertex v, ref Vector3 scale, out float tu, out float tv)
+        private void UVPlanarMap(ref OpenMetaverse.Rendering.Vertex v, ref Vector3 scale, out float tu, out float tv)
         {
             Vector3 scaledPos = v.Position * scale;
             float d = v.Normal.X;
@@ -596,7 +596,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                     {
                         if(teFace.TexMapType == MappingType.Planar)
                         {
-                            Vertex v = face.Vertices[j];
+                            OpenMetaverse.Rendering.Vertex v = face.Vertices[j];
                             UVPlanarMap(ref v, ref primScale, out tu, out tv);
                         }
                         else

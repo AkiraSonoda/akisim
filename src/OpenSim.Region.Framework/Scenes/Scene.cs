@@ -506,7 +506,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public new float TimeDilation
         {
-            get { return m_sceneGraph.PhysicsScene.TimeDilation; }
+            get { return m_sceneGraph.PhysicsScene?.TimeDilation ?? 1.0f; }
         }
 
         public void setThreadCount(int inUseThreads)

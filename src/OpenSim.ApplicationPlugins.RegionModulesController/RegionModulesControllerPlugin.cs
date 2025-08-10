@@ -35,6 +35,7 @@ using OpenSim;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using OpenSim.Region.CoreModules;
 
 namespace OpenSim.ApplicationPlugins.RegionModulesController
 {
@@ -578,7 +579,7 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
                 int nonSharedCount = 0;
                 
                 // Store non-shared module types for instantiation per region
-                foreach (var module in OpenSim.Region.CoreModules.CoreModuleFactory.CreateNonSharedModules())
+                foreach (var module in CoreModuleFactory.CreateNonSharedModules(m_openSim.ConfigSource.Source))
                 {
                     Type moduleType = module.GetType();
                     m_factoryNonSharedModuleTypes.Add(moduleType);
@@ -591,7 +592,7 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
                 }
                 
                 // Load shared modules and initialize them
-                foreach (var module in OpenSim.Region.CoreModules.CoreModuleFactory.CreateSharedModules())
+                foreach (var module in CoreModuleFactory.CreateSharedModules(m_openSim.ConfigSource.Source))
                 {
                     m_log.DebugFormat("Initializing shared module: {0}", module.GetType().Name);
                     module.Initialise(m_openSim.ConfigSource.Source);

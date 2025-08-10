@@ -204,8 +204,6 @@ namespace OpenSim.Server
                 else
                     server = MainServer.Instance;
 
-                if (friendlyName == "LLLoginServiceInConnector")
-                    server.AddSimpleStreamHandler(new IndexPHPHandler(server));
 
                 m_log.InfoFormat("[SERVER]: Loading {0} on port {1}", friendlyName, server.Port);
 

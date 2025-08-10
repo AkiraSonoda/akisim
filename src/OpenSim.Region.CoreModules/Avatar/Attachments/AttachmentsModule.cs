@@ -122,7 +122,7 @@ namespace OpenSim.Region.CoreModules.Avatar.Attachments
                 m_scene.EventManager.OnNewClient -= SubscribeToClientEvents;
                 m_scene.EventManager.OnStartScript -= OnScriptStarted;
                 m_scene.EventManager.OnStopScript -= OnScriptStopped;
-                m_log.WarnFormat("[ATTACHMENTS MODULE]: InventoryService unvailable!. Module disabled");
+                m_log.WarnFormat("[ATTACHMENTS MODULE]: InventoryAccessModule unavailable. Module disabled");
                 return;
             }
 

@@ -31,7 +31,6 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Threading;
-using Mono.Addins;
 using OpenSim.Framework.Monitoring;
 using log4net;
 using Nini.Config;
@@ -47,7 +46,6 @@ using Caps = OpenSim.Framework.Capabilities.Caps;
 
 namespace OpenSim.Region.ClientStack.Linden
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "GetAssetsModule")]
     public class GetAssetsModule : INonSharedRegionModule
     {
 //        private static readonly ILog m_log =
