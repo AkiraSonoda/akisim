@@ -565,6 +565,20 @@ namespace OpenSim.Region.CoreModules
                 m_log.Error("LocalAgentPreferencesServicesConnector is no longer supported. Use RemoteAgentPreferencesServicesConnector instead.");
             }
 
+            // Load ViewerStatsModule (WebStatsModule) based on configuration
+            if (modulesConfig?.GetBoolean("ViewerStatsModule", false) == true)
+            {
+                var viewerStatsModuleInstance = LoadViewerStatsModule();
+                if (viewerStatsModuleInstance != null)
+                {
+                    yield return viewerStatsModuleInstance;
+                }
+                else
+                {
+                    m_log.Warn("ViewerStatsModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+
 
             // Essential shared caps modules - loaded at runtime to avoid circular dependencies
             foreach (var capsModule in CreateCapsModules())
@@ -572,6 +586,36 @@ namespace OpenSim.Region.CoreModules
                 if (capsModule != null)
                     yield return capsModule;
             }
+        }
+
+        /// <summary>
+        /// Loads ViewerStatsModule (WebStatsModule) using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadViewerStatsModule()
+        {
+            try
+            {
+                // Try to find the WebStatsModule type in any loaded assembly
+                Type viewerStatsModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    viewerStatsModuleType = assembly.GetType("OpenSim.Region.UserStatistics.WebStatsModule");
+                    if (viewerStatsModuleType != null)
+                        break;
+                }
+
+                if (viewerStatsModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(viewerStatsModuleType) as ISharedRegionModule;
+                    return moduleInstance;
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load ViewerStatsModule: {0}", ex.Message);
+            }
+
+            return null;
         }
 
         /// <summary>
