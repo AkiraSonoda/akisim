@@ -579,6 +579,20 @@ namespace OpenSim.Region.CoreModules
                 }
             }
 
+            // Load External Data Generator (DataSnapshotManager) based on configuration
+            if (modulesConfig?.GetBoolean("DataSnapshot", false) == true)
+            {
+                var dataSnapshotModuleInstance = LoadDataSnapshotModule();
+                if (dataSnapshotModuleInstance != null)
+                {
+                    yield return dataSnapshotModuleInstance;
+                }
+                else
+                {
+                    m_log.Warn("DataSnapshot was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+
 
             // Essential shared caps modules - loaded at runtime to avoid circular dependencies
             foreach (var capsModule in CreateCapsModules())
@@ -586,6 +600,36 @@ namespace OpenSim.Region.CoreModules
                 if (capsModule != null)
                     yield return capsModule;
             }
+        }
+
+        /// <summary>
+        /// Loads External Data Generator (DataSnapshotManager) using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadDataSnapshotModule()
+        {
+            try
+            {
+                // Try to find the DataSnapshotManager type in any loaded assembly
+                Type dataSnapshotModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    dataSnapshotModuleType = assembly.GetType("OpenSim.Region.DataSnapshot.DataSnapshotManager");
+                    if (dataSnapshotModuleType != null)
+                        break;
+                }
+
+                if (dataSnapshotModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(dataSnapshotModuleType) as ISharedRegionModule;
+                    return moduleInstance;
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load DataSnapshotManager: {0}", ex.Message);
+            }
+
+            return null;
         }
 
         /// <summary>
