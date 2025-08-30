@@ -27,8 +27,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using OpenSim.Region.Framework.Interfaces;
 using Nini.Config;
+using log4net;
 
 using OpenSim.Region.CoreModules.Agent.AssetTransaction;
 using OpenSim.Region.CoreModules.Agent.IPBan;
@@ -63,6 +65,8 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
 using OpenSim.Region.ClientStack.LindenUDP;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences;
 using OpenSim.Region.CoreModules.World.Archiver;
 using OpenSim.Region.CoreModules.World.Estate;
 using OpenSim.Region.CoreModules.World.Land;
@@ -75,6 +79,8 @@ using OpenSim.Region.CoreModules.World.Sound;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
+using OpenSim.Region.CoreModules.World.WorldMap;
+using OpenSim.Region.CoreModules.Hypergrid;
 using OpenSim.Region.CoreModules.Framework.Library;
 using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
@@ -97,6 +103,8 @@ using OpenSim.Region.PhysicsModule.ubODEMeshing;
 
 // Caps modules
 using OpenSim.Region.ClientStack.Linden;
+using OpenSim.Region.ClientStack.LindenCaps;
+
 
 namespace OpenSim.Region.CoreModules
 {
@@ -106,6 +114,8 @@ namespace OpenSim.Region.CoreModules
     /// </summary>
     public static class CoreModuleFactory
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        
         /// <summary>
         /// Creates all essential core modules for basic OpenSim functionality
         /// </summary>
@@ -123,6 +133,50 @@ namespace OpenSim.Region.CoreModules
             yield return new PrimCountModule();
             yield return new DefaultPermissionsModule();
             yield return new SoundModule();
+            
+            // Load WorldMap module based on configuration
+            if (configSource != null)
+            {
+                string[] configSections = new string[] { "Map", "Startup" };
+                string worldMapModule = "";
+                if(m_log.IsDebugEnabled) m_log.Debug("Checking WorldMapModule configuration...");
+                
+                foreach (var sectionName in configSections)
+                {
+                    var section = configSource.Configs[sectionName];
+                    if (section != null)
+                    {
+                        worldMapModule = section.GetString("WorldMapModule", "");
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Section [{0}] WorldMapModule = '{1}'", sectionName, worldMapModule);
+                        if (!string.IsNullOrEmpty(worldMapModule))
+                            break;
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Section [{0}] not found", sectionName);
+                    }
+                }
+                
+                if (worldMapModule == "HGWorldMap")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading HGWorldMapModule");
+                    yield return new HGWorldMapModule();
+                }
+                else if (worldMapModule == "WorldMap")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading WorldMapModule");
+                    yield return new WorldMapModule();
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("No WorldMapModule loaded - configured value: '{0}'", worldMapModule);
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided for WorldMapModule");
+            }
+            
             // TerrainModule temporarily disabled due to System.Drawing.Common version issues
             // yield return new TerrainModule();
             
@@ -244,6 +298,7 @@ namespace OpenSim.Region.CoreModules
             // Always load core modules that don't have configuration options
             yield return new ChatModule();
             yield return new InventoryTransferModule();
+            yield return new AgentPreferencesModule();
             
             var groupsConfig = configSource.Configs["Groups"];
 
@@ -264,6 +319,22 @@ namespace OpenSim.Region.CoreModules
                 yield return new HGLureModule();
             else
                 yield return new LureModule();
+
+            // Load Offline IM module based on configuration
+            string offlineIMModule = messagingConfig?.GetString("OfflineMessageModule", "");
+            if (offlineIMModule == "OfflineMessageModule V2")
+            {
+                // Try to load OfflineIMRegionModule using reflection to avoid hard dependency
+                var offlineIMModuleInstance = LoadOfflineIMModuleV2();
+                if (offlineIMModuleInstance != null)
+                {
+                    yield return offlineIMModuleInstance;
+                }
+                else
+                {
+                    m_log.Warn("OfflineMessageModule V2 was configured but could not be loaded. Check that OpenSim.Addons.OfflineIM.dll is available.");
+                }
+            }
 
             // Load UserManagement module based on configuration
             if (modulesConfig?.GetString("UserManagementModule", "") == "HGUserManagementModule")
@@ -316,7 +387,7 @@ namespace OpenSim.Region.CoreModules
             }
             else if (userAccountServicesModule == "LocalUserAccountServicesConnector")
             {
-                yield return new LocalUserAccountServicesConnector();
+                m_log.Error("LocalUserAccountServicesConnector is no longer supported. Use RemoteUserAccountServicesConnector instead.");
             }
 
             // Load NeighbourServices module based on configuration
@@ -334,7 +405,7 @@ namespace OpenSim.Region.CoreModules
             }
             else if (simulationServicesModule == "LocalSimulationConnectorModule")
             {
-                yield return new LocalSimulationConnectorModule();
+                m_log.Error("LocalSimulationConnectorModule is no longer supported. Use RemoteSimulationConnectorModule instead.");
             }
 
             // Load SimulationServiceInConnector if enabled
@@ -403,7 +474,7 @@ namespace OpenSim.Region.CoreModules
             }
             else if (inventoryServicesModule == "LocalInventoryServicesConnector")
             {
-                yield return new LocalInventoryServicesConnector();
+                m_log.Error("LocalInventoryServicesConnector is no longer supported. Use RemoteXInventoryServicesConnector instead.");
             }
 
             // Load PresenceServices module based on configuration
@@ -414,7 +485,84 @@ namespace OpenSim.Region.CoreModules
             }
             else if (presenceServicesModule == "LocalPresenceServicesConnector")
             {
-                yield return new LocalPresenceServicesConnector();
+                m_log.Error("LocalPresenceServicesConnector is no longer supported. Use RemotePresenceServicesConnector instead.");
+            }
+
+            // Load AuthenticationServices module based on configuration
+            string authenticationServicesModule = modulesConfig?.GetString("AuthenticationServices", "");
+            if (authenticationServicesModule == "RemoteAuthenticationServicesConnector")
+            {
+                yield return new RemoteAuthenticationServicesConnector();
+            }
+            else if (authenticationServicesModule == "LocalAuthenticationServicesConnector")
+            {
+                m_log.Error("LocalAuthenticationServicesConnector is no longer supported. Use RemoteAuthenticationServicesConnector instead.");
+            }
+
+            // Load AuthorizationServices module based on configuration
+            string authorizationServicesModule = modulesConfig?.GetString("AuthorizationServices", "");
+            if (authorizationServicesModule == "RemoteAuthorizationServicesConnector")
+            {
+                yield return new RemoteAuthorizationServicesConnector();
+            }
+            else if (authorizationServicesModule == "LocalAuthorizationServicesConnector")
+            {
+                m_log.Error("LocalAuthorizationServicesConnector is no longer supported. Use RemoteAuthorizationServicesConnector instead.");
+            }
+
+            // Load AvatarServices module based on configuration
+            string avatarServicesModule = modulesConfig?.GetString("AvatarServices", "");
+            if (avatarServicesModule == "RemoteAvatarServicesConnector")
+            {
+                yield return new RemoteAvatarServicesConnector();
+            }
+            else if (avatarServicesModule == "LocalAvatarServicesConnector")
+            {
+                m_log.Error("LocalAvatarServicesConnector is no longer supported. Use RemoteAvatarServicesConnector instead.");
+            }
+
+            // Load GridUserServices module based on configuration
+            string gridUserServicesModule = modulesConfig?.GetString("GridUserServices", "");
+            if (gridUserServicesModule == "RemoteGridUserServicesConnector")
+            {
+                yield return new RemoteGridUserServicesConnector();
+            }
+            else if (gridUserServicesModule == "LocalGridUserServicesConnector")
+            {
+                m_log.Error("LocalGridUserServicesConnector is no longer supported. Use RemoteGridUserServicesConnector instead.");
+            }
+
+            // Load LandServices module based on configuration
+            string landServicesModule = modulesConfig?.GetString("LandServices", "");
+            if (landServicesModule == "RemoteLandServicesConnector")
+            {
+                yield return new RemoteLandServicesConnector();
+            }
+            else if (landServicesModule == "LocalLandServicesConnector")
+            {
+                m_log.Error("LocalLandServicesConnector is no longer supported. Use RemoteLandServicesConnector instead.");
+            }
+
+            // Load MuteListServices module based on configuration
+            string muteListServicesModule = modulesConfig?.GetString("MuteListService", "");
+            if (muteListServicesModule == "RemoteMuteListServicesConnector")
+            {
+                yield return new RemoteMuteListServicesConnector();
+            }
+            else if (muteListServicesModule == "LocalMuteListServicesConnector")
+            {
+                m_log.Error("LocalMuteListServicesConnector is no longer supported. Use RemoteMuteListServicesConnector instead.");
+            }
+
+            // Load AgentPreferencesServices module based on configuration
+            string agentPreferencesServicesModule = modulesConfig?.GetString("AgentPreferencesService", "");
+            if (agentPreferencesServicesModule == "RemoteAgentPreferencesServicesConnector")
+            {
+                yield return new RemoteAgentPreferencesServicesConnector();
+            }
+            else if (agentPreferencesServicesModule == "LocalAgentPreferencesServicesConnector")
+            {
+                m_log.Error("LocalAgentPreferencesServicesConnector is no longer supported. Use RemoteAgentPreferencesServicesConnector instead.");
             }
 
 
@@ -424,6 +572,36 @@ namespace OpenSim.Region.CoreModules
                 if (capsModule != null)
                     yield return capsModule;
             }
+        }
+
+        /// <summary>
+        /// Loads OfflineIMRegionModule V2 using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadOfflineIMModuleV2()
+        {
+            try
+            {
+                // Try to find the OfflineIMRegionModule type in any loaded assembly
+                Type offlineIMModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    offlineIMModuleType = assembly.GetType("OpenSim.OfflineIM.OfflineIMRegionModule");
+                    if (offlineIMModuleType != null)
+                        break;
+                }
+
+                if (offlineIMModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(offlineIMModuleType) as ISharedRegionModule;
+                    return moduleInstance;
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load OfflineIMRegionModule V2: {0}", ex.Message);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -465,7 +643,7 @@ namespace OpenSim.Region.CoreModules
                 catch (Exception ex)
                 {
                     // Log but don't fail - caps modules are optional for basic functionality
-                    System.Console.WriteLine($"[CoreModuleFactory] Warning: Could not load caps module {typeName}: {ex.Message}");
+                    m_log.WarnFormat("Could not load caps module {0}: {1}", typeName, ex.Message);
                 }
             }
 
