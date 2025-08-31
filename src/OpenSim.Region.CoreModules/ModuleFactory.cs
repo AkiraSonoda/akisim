@@ -593,6 +593,20 @@ namespace OpenSim.Region.CoreModules
                 }
             }
 
+            // Load NPCModule based on configuration
+            if (modulesConfig?.GetBoolean("NPCModule", false) == true)
+            {
+                var npcModuleInstance = LoadNPCModule();
+                if (npcModuleInstance != null)
+                {
+                    yield return npcModuleInstance;
+                }
+                else
+                {
+                    m_log.Warn("NPCModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+
 
             // Essential shared caps modules - loaded at runtime to avoid circular dependencies
             foreach (var capsModule in CreateCapsModules())
@@ -600,6 +614,36 @@ namespace OpenSim.Region.CoreModules
                 if (capsModule != null)
                     yield return capsModule;
             }
+        }
+
+        /// <summary>
+        /// Loads NPCModule using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadNPCModule()
+        {
+            try
+            {
+                // Try to find the NPCModule type in any loaded assembly
+                Type npcModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    npcModuleType = assembly.GetType("OpenSim.Region.OptionalModules.World.NPC.NPCModule");
+                    if (npcModuleType != null)
+                        break;
+                }
+
+                if (npcModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(npcModuleType) as ISharedRegionModule;
+                    return moduleInstance;
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load NPCModule: {0}", ex.Message);
+            }
+
+            return null;
         }
 
         /// <summary>
