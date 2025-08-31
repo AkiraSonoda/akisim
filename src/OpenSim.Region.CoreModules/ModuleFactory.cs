@@ -773,10 +773,33 @@ namespace OpenSim.Region.CoreModules
             {
                 if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load OfflineIMRegionModule V2 via reflection");
                 
+                // First, try to load the assembly if it's not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Addons.OfflineIM.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for assembly at: {0}", assemblyPath);
+                    
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Addons.OfflineIM.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Addons.OfflineIM.dll: {0}", loadEx.Message);
+                }
+                
                 // Try to find the OfflineIMRegionModule type in any loaded assembly
                 Type offlineIMModuleType = null;
                 foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Checking assembly: {0}", assembly.FullName);
+                    
                     offlineIMModuleType = assembly.GetType("OpenSim.OfflineIM.OfflineIMRegionModule");
                     if (offlineIMModuleType != null)
                     {
@@ -801,6 +824,14 @@ namespace OpenSim.Region.CoreModules
                 else
                 {
                     m_log.Warn("OfflineIMRegionModule V2 type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled) 
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
