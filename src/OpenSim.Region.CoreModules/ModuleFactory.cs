@@ -298,6 +298,8 @@ namespace OpenSim.Region.CoreModules
             // Always load core modules that don't have configuration options
             yield return new ChatModule();
             yield return new InventoryTransferModule();
+            
+            // Load AgentPreferencesModule directly for reliable loading
             yield return new AgentPreferencesModule();
             
             var groupsConfig = configSource.Configs["Groups"];
@@ -322,8 +324,11 @@ namespace OpenSim.Region.CoreModules
 
             // Load Offline IM module based on configuration
             string offlineIMModule = messagingConfig?.GetString("OfflineMessageModule", "");
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("OfflineMessageModule configuration: '{0}'", offlineIMModule);
+            
             if (offlineIMModule == "OfflineMessageModule V2")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("OfflineMessageModule V2 configured, attempting to load");
                 // Try to load OfflineIMRegionModule using reflection to avoid hard dependency
                 var offlineIMModuleInstance = LoadOfflineIMModuleV2();
                 if (offlineIMModuleInstance != null)
@@ -334,6 +339,14 @@ namespace OpenSim.Region.CoreModules
                 {
                     m_log.Warn("OfflineMessageModule V2 was configured but could not be loaded. Check that OpenSim.Addons.OfflineIM.dll is available.");
                 }
+            }
+            else if (!string.IsNullOrEmpty(offlineIMModule))
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("OfflineMessageModule configured as '{0}' but not 'OfflineMessageModule V2', skipping", offlineIMModule);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("No OfflineMessageModule configured, skipping offline IM loading");
             }
 
             // Load UserManagement module based on configuration
@@ -758,19 +771,36 @@ namespace OpenSim.Region.CoreModules
         {
             try
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load OfflineIMRegionModule V2 via reflection");
+                
                 // Try to find the OfflineIMRegionModule type in any loaded assembly
                 Type offlineIMModuleType = null;
                 foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
                 {
                     offlineIMModuleType = assembly.GetType("OpenSim.OfflineIM.OfflineIMRegionModule");
                     if (offlineIMModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found OfflineIMRegionModule V2 in assembly: {0}", assembly.FullName);
                         break;
+                    }
                 }
 
                 if (offlineIMModuleType != null)
                 {
                     var moduleInstance = Activator.CreateInstance(offlineIMModuleType) as ISharedRegionModule;
-                    return moduleInstance;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded OfflineIMRegionModule V2");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("OfflineIMRegionModule V2 type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("OfflineIMRegionModule V2 type not found in any loaded assembly");
                 }
             }
             catch (Exception ex)
@@ -791,8 +821,7 @@ namespace OpenSim.Region.CoreModules
                 "OpenSim.Region.ClientStack.Linden.FetchInventory2Module",
                 "OpenSim.Region.ClientStack.Linden.UploadBakedTextureModule",
                 "OpenSim.Region.ClientStack.LindenCaps.ServerReleaseNotesModule",
-                "OpenSim.Region.ClientStack.Linden.AvatarPickerSearchModule",
-                "OpenSim.Region.ClientStack.Linden.AgentPreferencesModule"
+                "OpenSim.Region.ClientStack.Linden.AvatarPickerSearchModule"
             };
 
             var modules = new List<ISharedRegionModule>();
