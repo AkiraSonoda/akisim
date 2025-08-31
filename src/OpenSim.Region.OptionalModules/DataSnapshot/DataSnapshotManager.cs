@@ -38,7 +38,6 @@ using System.Xml;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
-using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Region.DataSnapshot.Interfaces;
 using OpenSim.Region.Framework.Interfaces;
@@ -47,7 +46,6 @@ using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.DataSnapshot
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "DataSnapshotManager")]
     public class DataSnapshotManager : ISharedRegionModule, IDataSnapshot
     {
         #region Class members

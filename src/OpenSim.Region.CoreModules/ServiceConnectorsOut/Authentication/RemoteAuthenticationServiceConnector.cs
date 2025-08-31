@@ -28,7 +28,6 @@
 using System;
 using Nini.Config;
 using log4net;
-using Mono.Addins;
 using System.Reflection;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
@@ -38,7 +37,6 @@ using OpenSim.Services.Connectors;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RemoteAuthenticationServicesConnector")]
     public class RemoteAuthenticationServicesConnector : AuthenticationServicesConnector,
             ISharedRegionModule, IAuthenticationService
     {

@@ -33,13 +33,11 @@ using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors;
 using OpenMetaverse;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RemoteGridUserServicesConnector")]
     public class RemoteGridUserServicesConnector : ISharedRegionModule, IGridUserService
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

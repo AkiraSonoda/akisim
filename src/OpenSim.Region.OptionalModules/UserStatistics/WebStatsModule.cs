@@ -41,7 +41,6 @@ using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using Mono.Addins;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using OSD = OpenMetaverse.StructuredData.OSD;
 using OSDMap = OpenMetaverse.StructuredData.OSDMap;
@@ -50,7 +49,6 @@ using System.Data.SQLite;
 
 namespace OpenSim.Region.UserStatistics
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WebStatsModule")]
     public class WebStatsModule : ISharedRegionModule
     {
         private static readonly ILog m_log =
