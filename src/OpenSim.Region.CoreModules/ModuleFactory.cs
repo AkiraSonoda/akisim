@@ -326,9 +326,9 @@ namespace OpenSim.Region.CoreModules
             string offlineIMModule = messagingConfig?.GetString("OfflineMessageModule", "");
             if(m_log.IsDebugEnabled) m_log.DebugFormat("OfflineMessageModule configuration: '{0}'", offlineIMModule);
             
-            if (offlineIMModule == "OfflineMessageModule V2")
+            if (offlineIMModule == "Offline Message Module V2")
             {
-                if(m_log.IsDebugEnabled) m_log.Debug("OfflineMessageModule V2 configured, attempting to load");
+                if(m_log.IsDebugEnabled) m_log.Debug("Offline Message Module V2 configured, attempting to load");
                 // Try to load OfflineIMRegionModule using reflection to avoid hard dependency
                 var offlineIMModuleInstance = LoadOfflineIMModuleV2();
                 if (offlineIMModuleInstance != null)
@@ -337,12 +337,12 @@ namespace OpenSim.Region.CoreModules
                 }
                 else
                 {
-                    m_log.Warn("OfflineMessageModule V2 was configured but could not be loaded. Check that OpenSim.Addons.OfflineIM.dll is available.");
+                    m_log.Warn("Offline Message Module V2 was configured but could not be loaded. Check that OpenSim.Addons.OfflineIM.dll is available.");
                 }
             }
             else if (!string.IsNullOrEmpty(offlineIMModule))
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("OfflineMessageModule configured as '{0}' but not 'OfflineMessageModule V2', skipping", offlineIMModule);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("OfflineMessageModule configured as '{0}' but not 'Offline Message Module V2', skipping", offlineIMModule);
             }
             else
             {
