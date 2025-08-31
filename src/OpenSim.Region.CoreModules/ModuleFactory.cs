@@ -568,7 +568,7 @@ namespace OpenSim.Region.CoreModules
             }
 
             // Load AgentPreferencesServices module based on configuration
-            string agentPreferencesServicesModule = modulesConfig?.GetString("AgentPreferencesService", "");
+            string agentPreferencesServicesModule = modulesConfig?.GetString("AgentPreferencesServices", "");
             if (agentPreferencesServicesModule == "RemoteAgentPreferencesServicesConnector")
             {
                 yield return new RemoteAgentPreferencesServicesConnector();

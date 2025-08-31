@@ -38,12 +38,10 @@ using OpenSim.Services.Connectors;
 
 using OpenMetaverse;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RemoteAgentPreferencesServicesConnector")]
     public class RemoteAgentPreferencesServicesConnector : AgentPreferencesServicesConnector,
             ISharedRegionModule, IAgentPreferencesService
     {
