@@ -607,6 +607,21 @@ namespace OpenSim.Region.CoreModules
                 }
             }
 
+            // Load BetaGridLikeMoneyModule (SampleMoneyModule) based on configuration
+            string economyModule = modulesConfig?.GetString("economymodule", "");
+            if (economyModule == "BetaGridLikeMoneyModule")
+            {
+                var moneyModuleInstance = LoadBetaGridLikeMoneyModule();
+                if (moneyModuleInstance != null)
+                {
+                    yield return moneyModuleInstance;
+                }
+                else
+                {
+                    m_log.Warn("BetaGridLikeMoneyModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+
 
             // Essential shared caps modules - loaded at runtime to avoid circular dependencies
             foreach (var capsModule in CreateCapsModules())
@@ -614,6 +629,36 @@ namespace OpenSim.Region.CoreModules
                 if (capsModule != null)
                     yield return capsModule;
             }
+        }
+
+        /// <summary>
+        /// Loads BetaGridLikeMoneyModule (SampleMoneyModule) using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadBetaGridLikeMoneyModule()
+        {
+            try
+            {
+                // Try to find the SampleMoneyModule type in any loaded assembly
+                Type moneyModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    moneyModuleType = assembly.GetType("OpenSim.Region.OptionalModules.World.MoneyModule.SampleMoneyModule");
+                    if (moneyModuleType != null)
+                        break;
+                }
+
+                if (moneyModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(moneyModuleType) as ISharedRegionModule;
+                    return moduleInstance;
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load BetaGridLikeMoneyModule: {0}", ex.Message);
+            }
+
+            return null;
         }
 
         /// <summary>
