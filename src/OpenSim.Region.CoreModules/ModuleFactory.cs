@@ -195,6 +195,10 @@ namespace OpenSim.Region.CoreModules
             yield return new FetchLibDescModule();
             yield return new MeshUploadFlagModule();
             yield return new RegionConsoleModule();
+            // Estate management - required by estate caps modules
+            yield return new EstateManagementModule();
+            
+            if(m_log.IsDebugEnabled) m_log.Debug("Creating EstateAccessCapModule...");
             yield return new EstateAccessCapModule();
             yield return new EstateChangeInfoCapModule();
 
@@ -579,31 +583,45 @@ namespace OpenSim.Region.CoreModules
             }
 
             // Load ViewerStatsModule (WebStatsModule) based on configuration
-            if (modulesConfig?.GetBoolean("ViewerStatsModule", false) == true)
+            // WebStatsModule checks for [WebStats] enabled = true in its own Initialise method
+            var webStatsConfig = configSource?.Configs["WebStats"];
+            if (webStatsConfig?.GetBoolean("enabled", false) == true)
             {
                 var viewerStatsModuleInstance = LoadViewerStatsModule();
                 if (viewerStatsModuleInstance != null)
                 {
                     yield return viewerStatsModuleInstance;
+                    m_log.Info("ViewerStatsModule (WebStatsModule) loaded");
                 }
                 else
                 {
-                    m_log.Warn("ViewerStatsModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    m_log.Warn("ViewerStatsModule was configured ([WebStats] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
                 }
+            }
+            else
+            {
+                m_log.Info("ViewerStatsModule (WebStatsModule) disabled by configuration ([WebStats] enabled = false)");
             }
 
             // Load External Data Generator (DataSnapshotManager) based on configuration
-            if (modulesConfig?.GetBoolean("DataSnapshot", false) == true)
+            // DataSnapshotManager checks for [DataSnapshot] index_sims = true in its own Initialise method
+            var dataSnapshotConfig = configSource?.Configs["DataSnapshot"];
+            if (dataSnapshotConfig?.GetBoolean("index_sims", false) == true)
             {
                 var dataSnapshotModuleInstance = LoadDataSnapshotModule();
                 if (dataSnapshotModuleInstance != null)
                 {
                     yield return dataSnapshotModuleInstance;
+                    m_log.Info("DataSnapshotManager (External Data Generator) loaded");
                 }
                 else
                 {
-                    m_log.Warn("DataSnapshot was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    m_log.Warn("DataSnapshot was configured ([DataSnapshot] index_sims = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
                 }
+            }
+            else
+            {
+                m_log.Info("DataSnapshotManager (External Data Generator) disabled by configuration ([DataSnapshot] index_sims = false)");
             }
 
             // Load NPCModule based on configuration
@@ -635,6 +653,33 @@ namespace OpenSim.Region.CoreModules
                 }
             }
 
+            // Load Groups Module V2 based on configuration
+            // Groups Module V2 checks for [Groups] Enabled = true and Module = "Groups Module V2" in its own Initialise method
+            var groupsV2Config = configSource?.Configs["Groups"];
+            if (groupsV2Config?.GetBoolean("Enabled", false) == true && 
+                groupsV2Config?.GetString("Module", "") == "Groups Module V2")
+            {
+                var groupsV2ModuleInstance = LoadGroupsModuleV2();
+                if (groupsV2ModuleInstance != null)
+                {
+                    yield return groupsV2ModuleInstance;
+                    m_log.Info("Groups Module V2 loaded");
+                }
+                else
+                {
+                    m_log.Warn("Groups Module V2 was configured ([Groups] Enabled = true, Module = \"Groups Module V2\") but could not be loaded. Check that OpenSim.Addons.Groups.dll is available.");
+                }
+            }
+            else if (groupsV2Config?.GetBoolean("Enabled", false) == true)
+            {
+                m_log.Info("Groups Module V2 disabled by configuration ([Groups] Module != \"Groups Module V2\")");
+            }
+            else
+            {
+                m_log.Info("Groups Module V2 disabled by configuration ([Groups] Enabled = false)");
+            }
+
+            // Estate management module - always load as it's essential for estate management
 
             // Essential shared caps modules - loaded at runtime to avoid circular dependencies
             foreach (var capsModule in CreateCapsModules())
@@ -837,6 +882,71 @@ namespace OpenSim.Region.CoreModules
             catch (Exception ex)
             {
                 m_log.WarnFormat("Could not load OfflineIMRegionModule V2: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads Groups Module V2 using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadGroupsModuleV2()
+        {
+            try
+            {
+                // Try to load OpenSim.Addons.Groups.dll if not already loaded
+                try
+                {
+                    Assembly.LoadFrom("OpenSim.Addons.Groups.dll");
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Addons.Groups.dll: {0}", loadEx.Message);
+                }
+                
+                // Try to find the GroupsModule type in any loaded assembly
+                Type groupsModuleV2Type = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Checking assembly: {0}", assembly.FullName);
+                    
+                    groupsModuleV2Type = assembly.GetType("OpenSim.Groups.GroupsModule");
+                    if (groupsModuleV2Type != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found Groups Module V2 in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (groupsModuleV2Type != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(groupsModuleV2Type) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded Groups Module V2");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("Groups Module V2 type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("Groups Module V2 type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled) 
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load Groups Module V2: {0}", ex.Message);
             }
 
             return null;

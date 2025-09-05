@@ -30,6 +30,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
+using System.Reflection;
 using System.Text;
 
 using log4net;
@@ -47,7 +48,7 @@ namespace OpenSim.Region.ClientStack.Linden
 {
     public class EstateAccessCapModule : INonSharedRegionModule
     {
-        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private Scene m_scene;
         private bool m_Enabled = false;
@@ -58,13 +59,25 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void Initialise(IConfigSource pSource)
         {
+            m_log.Info("EstateAccessCapModule initializing...");
+            
             IConfig config = pSource.Configs["ClientStack.LindenCaps"];
             if (config == null)
+            {
+                m_log.Info("No ClientStack.LindenCaps config section found");
                 return;
+            }
 
             m_capUrl = config.GetString("Cap_EstateAccess", string.Empty);
             if (!String.IsNullOrEmpty(m_capUrl) && m_capUrl.Equals("localhost"))
+            {
                 m_Enabled = true;
+                m_log.Info("Module enabled");
+            }
+            else
+            {
+                m_log.InfoFormat("Module disabled, Cap_EstateAccess = '{0}'", m_capUrl);
+            }
         }
 
         public void AddRegion(Scene scene)
@@ -73,6 +86,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 return;
 
             m_scene = scene;
+            m_log.InfoFormat("Added to region {0}", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
@@ -94,6 +108,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
             if (scene.RegionInfo == null || scene.RegionInfo.EstateSettings == null)
             {
+                m_log.ErrorFormat("Region {0} has no estate settings, disabling module", scene.RegionInfo.RegionName);
                 m_Enabled = false;
                 return;
             }
@@ -101,11 +116,13 @@ namespace OpenSim.Region.ClientStack.Linden
             IEstateModule m_EstateModule = scene.RequestModuleInterface<IEstateModule>();
             if(m_EstateModule == null)
             {
+                m_log.ErrorFormat("No EstateModule found in region {0}, disabling module", scene.RegionInfo.RegionName);
                 m_Enabled = false;
                 return;
             }
 
             scene.EventManager.OnRegisterCaps += RegisterCaps;
+            m_log.InfoFormat("Region {0} loaded successfully", scene.RegionInfo.RegionName);
         }
 
         public void Close()
@@ -126,30 +143,37 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterCaps(UUID agentID, Caps caps)
         {
+            UUID capID = UUID.Random();
             caps.RegisterSimpleHandler("EstateAccess",
-                new SimpleStreamHandler("/" + UUID.Random(),
+                new SimpleStreamHandler("/" + capID,
                 delegate(IOSHttpRequest request, IOSHttpResponse response)
                 {
                     ProcessRequest(request, response, agentID);
                 }));
+            m_log.DebugFormat("Registered EstateAccess capability for agent {0} in region {1}", agentID, m_scene.RegionInfo.RegionName);
         }
 
         public void ProcessRequest(IOSHttpRequest request, IOSHttpResponse response, UUID AgentId)
         {
+            m_log.DebugFormat("Processing {0} request from agent {1}", request.HttpMethod, AgentId);
+
             if(request.HttpMethod != "GET")
             {
+                m_log.WarnFormat("Invalid method {0} from agent {1}", request.HttpMethod, AgentId);
                 response.StatusCode = (int)HttpStatusCode.NotFound;
                 return;
             }
 
             if (!m_scene.TryGetScenePresence(AgentId, out ScenePresence _) || m_scene.RegionInfo == null || m_scene.RegionInfo.EstateSettings == null)
             {
+                m_log.WarnFormat("Agent {0} not found or no estate settings", AgentId);
                 response.StatusCode = (int)HttpStatusCode.Gone;
                 return;
             }
 
             if (!m_scene.Permissions.CanIssueEstateCommand(AgentId, false))
             {
+                m_log.WarnFormat("Agent {0} not authorized for estate commands", AgentId);
                 response.StatusCode = (int)HttpStatusCode.Unauthorized;
                 return;
             }
@@ -239,6 +263,9 @@ namespace OpenSim.Region.ClientStack.Linden
 
             response.RawBuffer = LLSDxmlEncode2.EndToBytes(sb);
             response.StatusCode = (int)HttpStatusCode.OK;
+            
+            m_log.DebugFormat("Successfully returned estate access data for agent {0} (Managers: {1}, Allowed: {2}, Groups: {3}, Banned: {4})", 
+                AgentId, managers?.Length ?? 0, allowed?.Length ?? 0, groups?.Length ?? 0, EstateBans?.Length ?? 0);
         }
     }
 }
