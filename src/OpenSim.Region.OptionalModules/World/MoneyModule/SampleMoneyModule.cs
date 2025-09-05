@@ -33,7 +33,6 @@ using System.Reflection;
 using log4net;
 using Nini.Config;
 using Nwc.XmlRpc;
-using Mono.Addins;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenSim.Framework;
@@ -57,7 +56,6 @@ namespace OpenSim.Region.OptionalModules.World.MoneyModule
     ///
     /// </summary>
 
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "SampleMoneyModule")]
     public class SampleMoneyModule : IMoneyModule, ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

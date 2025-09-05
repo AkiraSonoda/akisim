@@ -638,18 +638,39 @@ namespace OpenSim.Region.CoreModules
                 }
             }
 
-            // Load BetaGridLikeMoneyModule (SampleMoneyModule) based on configuration
+            // Load BetaGridLikeMoneyModule (SampleMoneyModule) - dynamic loading with fallback behavior
             string economyModule = modulesConfig?.GetString("economymodule", "");
             if (economyModule == "BetaGridLikeMoneyModule")
             {
+                m_log.Info("Loading BetaGridLikeMoneyModule (SampleMoneyModule) as explicitly requested by configuration");
                 var moneyModuleInstance = LoadBetaGridLikeMoneyModule();
                 if (moneyModuleInstance != null)
                 {
                     yield return moneyModuleInstance;
+                    m_log.Info("BetaGridLikeMoneyModule loaded successfully");
                 }
                 else
                 {
                     m_log.Warn("BetaGridLikeMoneyModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+            else if (!string.IsNullOrEmpty(economyModule))
+            {
+                m_log.InfoFormat("BetaGridLikeMoneyModule not loaded - economymodule configured as '{0}'", economyModule);
+            }
+            else
+            {
+                // Dynamic loading: attempt to load BetaGridLikeMoneyModule when no economy module is configured
+                m_log.Info("No economymodule configured - attempting dynamic loading of BetaGridLikeMoneyModule (SampleMoneyModule)");
+                var moneyModuleInstance = LoadBetaGridLikeMoneyModule();
+                if (moneyModuleInstance != null)
+                {
+                    yield return moneyModuleInstance;
+                    m_log.Info("BetaGridLikeMoneyModule loaded successfully via dynamic loading");
+                }
+                else
+                {
+                    m_log.Info("BetaGridLikeMoneyModule not available for dynamic loading - no economy module will be active");
                 }
             }
 
@@ -696,24 +717,65 @@ namespace OpenSim.Region.CoreModules
         {
             try
             {
+                m_log.Debug("Attempting to load BetaGridLikeMoneyModule (SampleMoneyModule)");
+                
+                // First, try to explicitly load the OptionalModules assembly
+                System.Reflection.Assembly optionalModulesAssembly = null;
+                try
+                {
+                    optionalModulesAssembly = System.Reflection.Assembly.LoadFrom("OpenSim.Region.OptionalModules.dll");
+                    m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", optionalModulesAssembly.FullName);
+                }
+                catch (Exception ex)
+                {
+                    m_log.DebugFormat("Could not explicitly load OptionalModules assembly: {0}", ex.Message);
+                }
+                
+                // Debug: List all loaded assemblies
+                var loadedAssemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+                m_log.DebugFormat("Total loaded assemblies: {0}", loadedAssemblies.Length);
+                foreach (var assembly in loadedAssemblies)
+                {
+                    if (assembly.FullName.Contains("OptionalModules"))
+                    {
+                        m_log.DebugFormat("Found OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                }
+                
                 // Try to find the SampleMoneyModule type in any loaded assembly
                 Type moneyModuleType = null;
-                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                foreach (var assembly in loadedAssemblies)
                 {
                     moneyModuleType = assembly.GetType("OpenSim.Region.OptionalModules.World.MoneyModule.SampleMoneyModule");
                     if (moneyModuleType != null)
+                    {
+                        m_log.DebugFormat("Found SampleMoneyModule type in assembly: {0}", assembly.FullName);
                         break;
+                    }
                 }
 
                 if (moneyModuleType != null)
                 {
+                    m_log.Debug("Creating instance of SampleMoneyModule");
                     var moduleInstance = Activator.CreateInstance(moneyModuleType) as ISharedRegionModule;
-                    return moduleInstance;
+                    if (moduleInstance != null)
+                    {
+                        m_log.InfoFormat("Successfully created BetaGridLikeMoneyModule instance: {0}", moduleInstance.Name);
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Error("Failed to cast SampleMoneyModule instance to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("SampleMoneyModule type not found in any loaded assembly. Ensure OpenSim.Region.OptionalModules.dll is loaded.");
                 }
             }
             catch (Exception ex)
             {
-                m_log.WarnFormat("Could not load BetaGridLikeMoneyModule: {0}", ex.Message);
+                m_log.ErrorFormat("Exception while loading BetaGridLikeMoneyModule: {0}", ex);
             }
 
             return null;
