@@ -165,7 +165,12 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         public virtual void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.InfoFormat("[WORLD MAP] WorldMapModule disabled, not loading for region {0}", scene.Name);
                 return;
+            }
+            
+            m_log.InfoFormat("[WORLD MAP] WorldMapModule enabled, loading for region {0}", scene.Name);
 
             lock (m_sceneLock)
             {
@@ -246,6 +251,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 "/MAP/MapItems/" + m_regionHandle.ToString(), HandleRemoteMapItemRequest));
 
             m_scene.EventManager.OnRegisterCaps += OnRegisterCaps;
+            m_log.InfoFormat("[WORLD MAP] Subscribed to OnRegisterCaps event for region {0}", m_scene.Name);
             m_scene.EventManager.OnNewClient += OnNewClient;
             m_scene.EventManager.OnClientClosed += ClientLoggedOut;
             m_scene.EventManager.OnMakeChildAgent += MakeChildAgent;
@@ -277,8 +283,9 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         public void OnRegisterCaps(UUID agentID, Caps caps)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("OnRegisterCaps: agentID {0} caps {1}", agentID, caps);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] OnRegisterCaps: agentID {0} caps {1}", agentID, caps);
             caps.RegisterSimpleHandler("MapLayer", new SimpleStreamHandler("/" + UUID.Random(), MapLayerRequest));
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] Registered MapLayer CAPS handler for agent {0}", agentID);
         }
 
         /// <summary>

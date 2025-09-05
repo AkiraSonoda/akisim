@@ -95,24 +95,32 @@ namespace OpenSim.Services.Connectors
             string uri = m_ServerURI;
 
             AuthorizationRequest req = new AuthorizationRequest(userID, firstname, surname, email, regionName, regionID);
+            m_log.DebugFormat("Sending authorization request - UserID: {0}, Name: {1} {2}, Email: {3}, Region: {4} ({5})", 
+                userID, firstname, surname, email, regionName, regionID);
 
             AuthorizationResponse response;
             try
             {
                 response = SynchronousRestObjectRequester.MakeRequest<AuthorizationRequest, AuthorizationResponse>("POST", uri, req);
+                m_log.DebugFormat("Remote authorization call completed successfully for user {0}", userID);
             }
             catch (Exception e)
             {
                 m_log.WarnFormat("[AUTHORIZATION CONNECTOR]: Unable to send authorize {0} for region {1} error thrown during comms with remote server. Reason: {2}", userID, regionID, e.Message);
+                m_log.DebugFormat("Remote authorization call FAILED for user {0} - Exception: {1}, returning fallback response: {2}", 
+                    userID, e.Message, m_ResponseOnFailure);
                 message = e.Message;
                 return m_ResponseOnFailure;
             }
             if (response == null)
             {
+                m_log.DebugFormat("Remote authorization call returned NULL response for user {0}, returning fallback response: {1}", 
+                    userID, m_ResponseOnFailure);
                 message = "Null response";
                 return m_ResponseOnFailure;
             }
-            m_log.DebugFormat("[AUTHORIZATION CONNECTOR] response from remote service was {0}", response.Message);
+            m_log.DebugFormat("Remote authorization result for user {0} - Authorized: {1}, Message: '{2}'", 
+                userID, response.IsAuthorized, response.Message);
             message = response.Message;
 
             return response.IsAuthorized;

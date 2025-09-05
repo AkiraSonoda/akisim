@@ -3934,6 +3934,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool NewUserConnection(AgentCircuitData acd, uint teleportFlags, GridRegion source, out string reason, bool requirePresenceLookup)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("NewUserConnection");
             bool vialogin = (teleportFlags & (uint)(TPFlags.ViaLogin | TPFlags.ViaHGLogin)) != 0;
             bool viahome = (teleportFlags & (uint)TPFlags.ViaHome) != 0;
             //bool godlike = ((teleportFlags & (uint)TPFlags.Godlike) != 0);
