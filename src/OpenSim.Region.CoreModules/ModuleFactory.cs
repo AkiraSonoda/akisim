@@ -218,8 +218,9 @@ namespace OpenSim.Region.CoreModules
                     yield return new EntityTransferModule();
                 }
                 
-                // Load meshing module based on configuration
-                string meshingModule = modulesConfig?.GetString("MeshingModule", "Meshmerizer");
+                // Load meshing module based on configuration - use same key as physics modules
+                var startupConfig = configSource.Configs["Startup"];
+                string meshingModule = startupConfig?.GetString("meshing", "Meshmerizer") ?? "Meshmerizer";
                 switch (meshingModule.ToLowerInvariant())
                 {
                     case "meshmerizer":
@@ -229,9 +230,6 @@ namespace OpenSim.Region.CoreModules
                     case "ubodemeshmerizer":
                     case "ubODEMeshmerizer":
                         yield return new ubMeshmerizer();
-                        break;
-                    case "zeromesher":
-                        yield return new ZeroMesher();
                         break;
                     default:
                         // Default to Meshmerizer if unknown meshing module specified
