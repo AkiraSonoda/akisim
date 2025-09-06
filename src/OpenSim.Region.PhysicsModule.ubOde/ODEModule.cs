@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
@@ -11,7 +10,6 @@ using OpenMetaverse;
 
 namespace OpenSim.Region.PhysicsModule.ubOde
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ubODEPhysicsScene")]
     public class ubOdeModule : INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -41,12 +39,15 @@ namespace OpenSim.Region.PhysicsModule.ubOde
 
         public void Initialise(IConfigSource source)
         {
+            m_log.Info("ubODE physics module initializing");
+            
             IConfig config = source.Configs["Startup"];
             if (config != null)
             {
                 string physics = config.GetString("physics", string.Empty);
                 if (physics == Name)
                 {
+                    m_log.InfoFormat("ubODE enabled via configuration (physics={0})", physics);
                     m_config = source;
                     string mesher = config.GetString("meshing", string.Empty);
                     
@@ -92,7 +93,21 @@ namespace OpenSim.Region.PhysicsModule.ubOde
                     m_log.InfoFormat("[ubODE] ode library configuration: {0}", ode_config);
                     m_Enabled = true;
                 }
+                else if (!string.IsNullOrEmpty(physics))
+                {
+                    m_log.InfoFormat("ubODE not enabled - physics configured as '{0}'", physics);
+                }
+                else
+                {
+                    m_log.Info("ubODE not enabled - no physics configuration specified");
+                }
             }
+            else
+            {
+                m_log.Warn("No [Startup] configuration section found, ubODE disabled");
+            }
+            
+            m_log.InfoFormat("ubODE physics module initialization complete, enabled: {0}", m_Enabled);
         }
 
         public void Close()

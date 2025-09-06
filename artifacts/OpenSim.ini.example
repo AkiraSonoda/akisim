@@ -1166,21 +1166,6 @@
     Include-osslDefaultEnable = "config-include/osslDefaultEnable.ini"
 
 
-[FreeSwitchVoice]
-    ;; In order for this to work you need a functioning FreeSWITCH PBX set up.
-    ;; Configuration details at http://opensimulator.org/wiki/Freeswitch_Module
-    ; Enabled = false
-
-    ;; You need to load a local service for a standalone, and a remote service
-    ;; for a grid region. Use one of the lines below, as appropriate
-    ;; If you're using Freeswitch on a standalone then you will also need to configure the [FreeswitchService] section in config-include/StandaloneCommon.ini
-    ; LocalServiceModule = OpenSim.Services.FreeswitchService.dll:FreeswitchService
-    ; LocalServiceModule = OpenSim.Services.Connectors.dll:RemoteFreeswitchConnector
-
-    ;; If using a remote connector, specify the server URL
-    ; FreeswitchServiceURL = http://my.grid.server:8004/fsapi
-
-
 [Groups]
     ;# {Enabled} {} {Enable groups?} {true false} false
     ;; Enables the groups module

@@ -44,7 +44,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
-using OpenSim.Region.PhysicsModule.POS;
+using OpenSim.Region.PhysicsModule.BulletS;
 using OpenSim.Services.Interfaces;
 
 using BaseServerUtils = OpenSim.Server.Base.ServerUtils;
@@ -333,9 +333,9 @@ namespace Tests.OpenSim.Common
         {
             IConfigSource config = new IniConfigSource();
             config.AddConfig("Startup");
-            config.Configs["Startup"].Set("physics", "pos");
+            config.Configs["Startup"].Set("physics", "BulletSim");
 
-            PhysicsScene pScene = new POSScene();
+            PhysicsScene pScene = new BSScene();
             INonSharedRegionModule mod = pScene as INonSharedRegionModule;
             mod.Initialise(config);
 

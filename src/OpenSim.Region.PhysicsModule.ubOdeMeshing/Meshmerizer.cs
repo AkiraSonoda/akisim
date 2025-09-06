@@ -44,11 +44,9 @@ using Nini.Config;
 using System.Reflection;
 using System.IO;
 
-using Mono.Addins;
 
 namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ubODEMeshmerizer")]
     public class ubMeshmerizer : IMesher, INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -90,11 +88,19 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
 
         public void Initialise(IConfigSource config)
         {
+            m_log.Info("ubODEMeshmerizer module initializing");
+            
             IConfig start_config = config.Configs["Startup"];
+            if (start_config == null)
+            {
+                m_log.Warn("No [Startup] configuration section found, ubODEMeshmerizer disabled");
+                return;
+            }
 
             string mesher = start_config.GetString("meshing", string.Empty);
             if (mesher == Name)
             {
+                m_log.InfoFormat("ubODEMeshmerizer enabled via configuration (meshing={0})", mesher);
                 float fcache = 48.0f;
                 //            float fcache = 0.02f;
 
@@ -108,8 +114,17 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                     cachePath = mesh_config.GetString("MeshFileCachePath", cachePath);
                     fcache = mesh_config.GetFloat("MeshFileCacheExpireHours", fcache);
                     doCacheExpire = mesh_config.GetBoolean("MeshFileCacheDoExpire", doCacheExpire);
+                    
+                    m_log.InfoFormat("ubODEMeshmerizer configuration: UseMeshiesPhysicsMesh={0}, ConvexPrims={1}, ConvexSculpts={2}", 
+                        useMeshiesPhysicsMesh, doConvexPrims, doConvexSculpts);
+                    m_log.InfoFormat("ubODEMeshmerizer cache configuration: MeshFileCache={0}, CachePath={1}, ExpireHours={2}", 
+                        doMeshFileCache, cachePath, fcache);
 
                     m_Enabled = true;
+                }
+                else
+                {
+                    m_log.Debug("No [Mesh] configuration section found, using defaults");
                 }
 
                 CacheExpire = TimeSpan.FromHours(fcache);
@@ -121,13 +136,31 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
                 {
                     if(!checkCache())
                     {
+                        m_log.Warn("ubODEMeshmerizer mesh file cache validation failed, disabling cache");
                         doMeshFileCache = false;
                         doCacheExpire = false;
                     }
+                    else
+                    {
+                        m_log.InfoFormat("ubODEMeshmerizer mesh file cache enabled at: {0}", cachePath);
+                    }
                 }
                 else
+                {
                     doCacheExpire = false;
+                    m_log.Info("ubODEMeshmerizer mesh file cache disabled");
+                }
             }
+            else if (!string.IsNullOrEmpty(mesher))
+            {
+                m_log.InfoFormat("ubODEMeshmerizer not enabled - meshing configured as '{0}'", mesher);
+            }
+            else
+            {
+                m_log.Info("ubODEMeshmerizer not enabled - no meshing configuration specified");
+            }
+            
+            m_log.InfoFormat("ubODEMeshmerizer module initialization complete, enabled: {0}", m_Enabled);
         }
 
         public void Close()
@@ -137,23 +170,36 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
         public void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.DebugFormat("ubODEMeshmerizer not adding to region {0} - module disabled", scene.Name);
                 return;
+            }
 
+            m_log.InfoFormat("ubODEMeshmerizer registering mesher interface for region {0}", scene.Name);
             scene.RegisterModuleInterface<IMesher>(this);
         }
 
         public void RemoveRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.DebugFormat("ubODEMeshmerizer not removing from region {0} - module was disabled", scene.Name);
                 return;
+            }
 
+            m_log.InfoFormat("ubODEMeshmerizer unregistering mesher interface for region {0}", scene.Name);
             scene.UnregisterModuleInterface<IMesher>(this);
         }
 
         public void RegionLoaded(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.DebugFormat("ubODEMeshmerizer region loaded event ignored for {0} - module disabled", scene.Name);
                 return;
+            }
+            
+            m_log.InfoFormat("ubODEMeshmerizer region loaded successfully for {0}", scene.Name);
         }
 
         #endregion

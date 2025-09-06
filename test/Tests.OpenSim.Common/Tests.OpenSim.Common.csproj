@@ -116,7 +116,7 @@
     <ProjectReference Include="../../Region/Framework/OpenSim.Region.Framework.csproj" />
     <ProjectReference Include="../../Region/OptionalModules/OpenSim.Region.OptionalModules.csproj" />
     <ProjectReference Include="../../Region/PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
-    <ProjectReference Include="../../Region/PhysicsModules/POS/OpenSim.Region.PhysicsModule.POS.csproj" />
+    <ProjectReference Include="../../Region/PhysicsModules/BulletS/OpenSim.Region.PhysicsModule.BulletS.csproj" />
     <ProjectReference Include="../../Region/ScriptEngine/Shared/OpenSim.Region.ScriptEngine.Shared.csproj" />
     <ProjectReference Include="../../Server/Base/OpenSim.Server.Base.csproj" />
     <ProjectReference Include="../../Services/Interfaces/OpenSim.Services.Interfaces.csproj" />

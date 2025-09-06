@@ -42,11 +42,9 @@ using System.IO.Compression;
 using PrimMesher;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 
 namespace OpenSim.Region.PhysicsModule.Meshing
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "Meshmerizer")]
     public class Meshmerizer : IMesher, INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -89,36 +87,69 @@ namespace OpenSim.Region.PhysicsModule.Meshing
 
         public void Initialise(IConfigSource source)
         {
+            m_log.Info("Meshmerizer module initializing");
+            
             IConfig config = source.Configs["Startup"];
             if (config != null)
             {
                 string mesher = config.GetString("meshing", string.Empty);
                 if (mesher == Name)
                 {
+                    m_log.InfoFormat("Meshmerizer enabled via configuration (meshing={0})", mesher);
                     m_Enabled = true;
 
                     IConfig mesh_config = source.Configs["Mesh"];
 
                     decodedSculptMapPath = config.GetString("DecodedSculptMapPath", "j2kDecodeCache");
                     cacheSculptMaps = config.GetBoolean("CacheSculptMaps", cacheSculptMaps);
+                    
+                    m_log.InfoFormat("Meshmerizer configuration: DecodedSculptMapPath={0}, CacheSculptMaps={1}", 
+                        decodedSculptMapPath, cacheSculptMaps);
+                    
                     if (mesh_config != null)
                     {
                         useMeshiesPhysicsMesh = mesh_config.GetBoolean("UseMeshiesPhysicsMesh", useMeshiesPhysicsMesh);
                         debugDetail = mesh_config.GetBoolean("LogMeshDetails", debugDetail);
+                        m_log.InfoFormat("Meshmerizer mesh configuration: UseMeshiesPhysicsMesh={0}, LogMeshDetails={1}", 
+                            useMeshiesPhysicsMesh, debugDetail);
+                    }
+                    else
+                    {
+                        m_log.Debug("No [Mesh] configuration section found, using defaults");
                     }
 
                     try
                     {
                         if (!Directory.Exists(decodedSculptMapPath))
+                        {
                             Directory.CreateDirectory(decodedSculptMapPath);
+                            m_log.InfoFormat("Created decoded sculpt map directory: {0}", decodedSculptMapPath);
+                        }
+                        else
+                        {
+                            m_log.InfoFormat("Using existing decoded sculpt map directory: {0}", decodedSculptMapPath);
+                        }
                     }
                     catch (Exception e)
                     {
-                        m_log.WarnFormat("[SCULPT]: Unable to create {0} directory: ", decodedSculptMapPath, e.Message);
+                        m_log.ErrorFormat("Unable to create decoded sculpt map directory {0}: {1}", decodedSculptMapPath, e.Message);
                     }
-
+                }
+                else if (!string.IsNullOrEmpty(mesher))
+                {
+                    m_log.InfoFormat("Meshmerizer not enabled - meshing configured as '{0}'", mesher);
+                }
+                else
+                {
+                    m_log.Info("Meshmerizer not enabled - no meshing configuration specified");
                 }
             }
+            else
+            {
+                m_log.Warn("No [Startup] configuration section found, Meshmerizer disabled");
+            }
+            
+            m_log.InfoFormat("Meshmerizer module initialization complete, enabled: {0}", m_Enabled);
         }
 
         public void Close()
@@ -128,23 +159,36 @@ namespace OpenSim.Region.PhysicsModule.Meshing
         public void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.DebugFormat("Meshmerizer not adding to region {0} - module disabled", scene.Name);
                 return;
+            }
 
+            m_log.InfoFormat("Meshmerizer registering mesher interface for region {0}", scene.Name);
             scene.RegisterModuleInterface<IMesher>(this);
         }
 
         public void RemoveRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.DebugFormat("Meshmerizer not removing from region {0} - module was disabled", scene.Name);
                 return;
+            }
 
+            m_log.InfoFormat("Meshmerizer unregistering mesher interface for region {0}", scene.Name);
             scene.UnregisterModuleInterface<IMesher>(this);
         }
 
         public void RegionLoaded(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.DebugFormat("Meshmerizer region loaded event ignored for {0} - module disabled", scene.Name);
                 return;
+            }
+            
+            m_log.InfoFormat("Meshmerizer region loaded successfully for {0}", scene.Name);
         }
         #endregion
 
