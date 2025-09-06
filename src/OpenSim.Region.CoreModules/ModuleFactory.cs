@@ -94,7 +94,6 @@ using OpenSim.Region.CoreModules.ServiceConnectorsIn.Inventory;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Hypergrid;
 
 // Physics modules
-using OpenSim.Region.PhysicsModule.BasicPhysics;
 using OpenSim.Region.PhysicsModule.BulletS;
 using OpenSim.Region.PhysicsModule.POS;
 using OpenSim.Region.PhysicsModule.ubOde;
@@ -254,9 +253,6 @@ namespace OpenSim.Region.CoreModules
                     case "bulletsim":
                         yield return new BSScene();
                         yield return new ExtendedPhysics();
-                        break;
-                    case "basicphysics":
-                        yield return new BasicScene();
                         break;
                     case "pos":
                         yield return new POSScene();

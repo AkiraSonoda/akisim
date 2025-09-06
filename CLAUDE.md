@@ -88,7 +88,6 @@ OpenSim.exe         # Windows
 - Modules are discovered and loaded dynamically from assemblies
 
 ### Physics Engines (Pluggable)
-- **BasicPhysics** - Simple physics for basic operations
 - **BulletS** - Advanced Bullet physics engine
 - **ubOde** - ODE physics engine integration
 - **POS** - Position-based physics

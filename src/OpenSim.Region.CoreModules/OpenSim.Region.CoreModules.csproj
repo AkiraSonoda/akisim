@@ -69,7 +69,6 @@
     <ProjectReference Include="../OpenSim.Region.ClientStack.LindenUDP/OpenSim.Region.ClientStack.LindenUDP.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
-    <ProjectReference Include="../OpenSim.Region.PhysicsModule.BasicPhysics/OpenSim.Region.PhysicsModule.BasicPhysics.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModule.BulletS/OpenSim.Region.PhysicsModule.BulletS.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModule.POS/OpenSim.Region.PhysicsModule.POS.csproj" />
     <ProjectReference Include="../OpenSim.Region.PhysicsModule.ubOde/OpenSim.Region.PhysicsModule.ubOde.csproj" />
