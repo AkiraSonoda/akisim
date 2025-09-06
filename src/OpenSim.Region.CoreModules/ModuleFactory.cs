@@ -195,6 +195,8 @@ namespace OpenSim.Region.CoreModules
             yield return new FetchLibDescModule();
             yield return new MeshUploadFlagModule();
             yield return new RegionConsoleModule();
+            yield return new ObjectAddModule();
+            yield return new UploadObjectAssetModule();
             // Estate management - required by estate caps modules
             yield return new EstateManagementModule();
             
@@ -253,6 +255,7 @@ namespace OpenSim.Region.CoreModules
                 {
                     case "bulletsim":
                         yield return new BSScene();
+                        yield return new ExtendedPhysics();
                         break;
                     case "basicphysics":
                         yield return new BasicScene();
@@ -266,6 +269,7 @@ namespace OpenSim.Region.CoreModules
                     default:
                         // Default to BulletSim if unknown physics engine specified
                         yield return new BSScene();
+                        yield return new ExtendedPhysics();
                         break;
                 }
             }
@@ -273,6 +277,7 @@ namespace OpenSim.Region.CoreModules
             {
                 // Default to BulletSim if no config provided
                 yield return new BSScene();
+                yield return new ExtendedPhysics();
             }
         }
 

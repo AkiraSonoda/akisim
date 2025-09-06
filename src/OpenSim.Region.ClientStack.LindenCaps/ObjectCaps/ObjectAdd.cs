@@ -32,7 +32,6 @@ using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
@@ -41,20 +40,21 @@ using Caps=OpenSim.Framework.Capabilities.Caps;
 
 namespace OpenSim.Region.ClientStack.Linden
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ObjectAdd")]
-    public class ObjectAdd : INonSharedRegionModule
+    public class ObjectAddModule : INonSharedRegionModule
     {
-        // private static readonly ILog m_log =
-        //     LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log =
+            LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private Scene m_scene;
 
         #region INonSharedRegionModule Members
         public void Initialise(IConfigSource pSource)
         {
+            m_log.Info("ObjectAddModule initialized");
         }
 
         public void AddRegion(Scene scene)
         {
+            m_log.InfoFormat("ObjectAddModule adding region {0}", scene.Name);
             m_scene = scene;
             m_scene.EventManager.OnRegisterCaps += RegisterCaps;
         }
@@ -70,6 +70,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegionLoaded(Scene scene)
         {
+            m_log.InfoFormat("ObjectAddModule region loaded for {0}", scene.Name);
         }
 
         public void Close()
@@ -90,9 +91,10 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void RegisterCaps(UUID agentID, Caps caps)
         {
-            // m_log.InfoFormat("[OBJECTADD]: {0}", "/CAPS/OA/" + capuuid + "/");
+            string capPath = "/" + UUID.Random();
+            m_log.InfoFormat("ObjectAddModule registering ObjectAdd capability at {0} for agent {1}", capPath, agentID);
 
-            caps.RegisterSimpleHandler("ObjectAdd", new SimpleOSDMapHandler("POST", "/" + UUID.Random(),
+            caps.RegisterSimpleHandler("ObjectAdd", new SimpleOSDMapHandler("POST", capPath,
                 delegate (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, OSDMap map)
                 {
                     ProcessAdd(httpRequest, httpResponse, map, agentID);

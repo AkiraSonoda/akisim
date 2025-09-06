@@ -28,7 +28,6 @@
 using System;
 using System.Net;
 using System.Reflection;
-using Mono.Addins;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
@@ -44,7 +43,6 @@ using ExtraParamType = OpenMetaverse.ExtraParamType;
 
 namespace OpenSim.Region.ClientStack.Linden
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UploadObjectAssetModule")]
     public class UploadObjectAssetModule : INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
