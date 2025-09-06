@@ -105,6 +105,7 @@ using OpenSim.Region.ClientStack.Linden;
 using OpenSim.Region.ClientStack.LindenCaps;
 
 
+
 namespace OpenSim.Region.CoreModules
 {
     /// <summary>
@@ -699,6 +700,20 @@ namespace OpenSim.Region.CoreModules
                 m_log.Info("Groups Module V2 disabled by configuration ([Groups] Enabled = false)");
             }
 
+            // Load PhysicsParameters module based on configuration using reflection
+            if (modulesConfig?.GetBoolean("PhysicsParametersModule", false) == true)
+            {
+                var physicsParametersModule = LoadPhysicsParametersModule();
+                if (physicsParametersModule != null)
+                {
+                    yield return physicsParametersModule;
+                }
+                else
+                {
+                    m_log.Warn("PhysicsParametersModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+
             // Estate management module - always load as it's essential for estate management
 
             // Essential shared caps modules - loaded at runtime to avoid circular dependencies
@@ -943,6 +958,36 @@ namespace OpenSim.Region.CoreModules
             catch (Exception ex)
             {
                 m_log.WarnFormat("Could not load OfflineIMRegionModule V2: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads PhysicsParameters module using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadPhysicsParametersModule()
+        {
+            try
+            {
+                // Try to find the PhysicsParameters type in any loaded assembly
+                Type physicsParametersType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    physicsParametersType = assembly.GetType("OpenSim.Region.OptionalModules.PhysicsParameters.PhysicsParameters");
+                    if (physicsParametersType != null)
+                        break;
+                }
+
+                if (physicsParametersType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(physicsParametersType) as ISharedRegionModule;
+                    return moduleInstance;
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load PhysicsParameters module: {0}", ex.Message);
             }
 
             return null;

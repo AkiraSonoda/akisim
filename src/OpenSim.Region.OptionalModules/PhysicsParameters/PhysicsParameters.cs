@@ -29,7 +29,6 @@ using System;
 using System.Reflection;
 using System.Collections.Generic;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
@@ -41,10 +40,11 @@ using OpenSim.Region.PhysicsModules.SharedBase;
 namespace OpenSim.Region.OptionalModules.PhysicsParameters
 {
     /// <summary>
+    /// Runtime Physics Parameter Module - provides console commands to get/set physics parameters
     /// </summary>
     /// <remarks>
+    /// Allows runtime adjustment of physics engine parameters for debugging and tuning
     /// </remarks>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "PhysicsParameters")]
     public class PhysicsParameters : ISharedRegionModule
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
