@@ -35,9 +35,7 @@
         <RegionModule id="GroupsModule" class="OpenSim.Region.CoreModules.Avatar.Groups.GroupsModule" />
         <RegionModule id="HGMessageTransferModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.HGMessageTransferModule" />
         <RegionModule id="InstantMessageModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.InstantMessageModule" />
-        <RegionModule id="MessageTransferModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.MessageTransferModule" />
         <RegionModule id="MuteListModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.MuteListModule" />        
-        <RegionModule id="OfflineMessageModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.OfflineMessageModule" />
         <RegionModule id="PresenceModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.PresenceModule" />
         <RegionModule id="InventoryArchiverModule" class="OpenSim.Region.CoreModules.Avatar.Inventory.Archiver.InventoryArchiverModule" />
         <RegionModule id="InventoryTransferModule" class="OpenSim.Region.CoreModules.Avatar.Inventory.Transfer.InventoryTransferModule" />
