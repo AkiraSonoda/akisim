@@ -310,11 +310,8 @@ namespace OpenSim.Region.CoreModules
             else
                 yield return new FriendsModule();
 
-            // Load MessageTransfer module based on configuration  
-            if (messagingConfig?.GetString("MessageTransferModule", "") == "HGMessageTransferModule")
-                yield return new HGMessageTransferModule();
-            else
-                yield return new MessageTransferModule();
+            // Load HGMessageTransferModule (supports both hypergrid and local scenarios)
+            yield return new HGMessageTransferModule();
 
             // Load Lure module based on configuration
             if (messagingConfig?.GetString("LureModule", "") == "HGLureModule")
