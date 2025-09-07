@@ -36,6 +36,7 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.CoreModules;
+using OpenSim.Region.OptionalModules;
 
 namespace OpenSim.ApplicationPlugins.RegionModulesController
 {
@@ -592,15 +593,41 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
                 }
                 
                 // Load shared modules and initialize them
+                int sharedCoreCount = 0;
                 foreach (var module in CoreModuleFactory.CreateSharedModules(m_openSim.ConfigSource.Source))
                 {
-                    m_log.DebugFormat("Initializing shared module: {0}", module.GetType().Name);
+                    m_log.DebugFormat("Initializing shared core module: {0}", module.GetType().Name);
                     module.Initialise(m_openSim.ConfigSource.Source);
                     m_sharedInstances.Add(module);
+                    sharedCoreCount++;
                 }
                 
-                m_log.InfoFormat("Loaded {0} non-shared module types and {1} shared module instances from factory", 
-                    nonSharedCount, m_sharedInstances.Count);
+                // Load optional shared modules and initialize them
+                int sharedOptionalCount = 0;
+                foreach (var module in OptionalModulesFactory.CreateOptionalSharedModules(m_openSim.ConfigSource.Source))
+                {
+                    m_log.DebugFormat("Initializing shared optional module: {0}", module.GetType().Name);
+                    module.Initialise(m_openSim.ConfigSource.Source);
+                    m_sharedInstances.Add(module);
+                    sharedOptionalCount++;
+                }
+                
+                // Load optional non-shared module types
+                int optionalNonSharedCount = 0;
+                foreach (var module in OptionalModulesFactory.CreateOptionalRegionModules(m_openSim.ConfigSource.Source))
+                {
+                    Type moduleType = module.GetType();
+                    m_factoryNonSharedModuleTypes.Add(moduleType);
+                    m_log.DebugFormat("Registered non-shared optional module type: {0}", moduleType.Name);
+                    optionalNonSharedCount++;
+                    
+                    // Dispose the instance since we only needed it for type registration
+                    if (module is IDisposable disposable)
+                        disposable.Dispose();
+                }
+                
+                m_log.InfoFormat("Loaded {0} core non-shared + {1} optional non-shared module types, {2} core shared + {3} optional shared module instances from factory", 
+                    nonSharedCount, optionalNonSharedCount, sharedCoreCount, sharedOptionalCount);
             }
             catch (Exception e)
             {

@@ -299,6 +299,9 @@ namespace OpenSim.Region.CoreModules
             // Always load core modules that don't have configuration options
             yield return new ChatModule();
             yield return new InventoryTransferModule();
+            yield return new InstantMessageModule();
+            yield return new MuteListModule();
+            yield return new PresenceModule();
             
             // Load EmailModule based on configuration
             var startupConfig = configSource?.Configs["Startup"];
@@ -352,6 +355,9 @@ namespace OpenSim.Region.CoreModules
                 yield return new HGFriendsModule();
             else
                 yield return new FriendsModule();
+
+            // Note: FriendsCommandsModule is in OptionalModules and cannot be loaded from CoreModules
+            // It requires manual loading or a separate OptionalModules factory
 
             // Load HGMessageTransferModule (supports both hypergrid and local scenarios)
             yield return new HGMessageTransferModule();

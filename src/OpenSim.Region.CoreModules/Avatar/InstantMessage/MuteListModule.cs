@@ -32,14 +32,12 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using Mono.Addins;
 using OpenSim.Services.Interfaces;
 using ThreadedClasses;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MuteListModule")]
     public class MuteListModule : ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(

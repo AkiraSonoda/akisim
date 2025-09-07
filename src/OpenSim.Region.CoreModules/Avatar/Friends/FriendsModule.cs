@@ -31,7 +31,6 @@ using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
-using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework.Servers;
@@ -48,7 +47,6 @@ using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 
 namespace OpenSim.Region.CoreModules.Avatar.Friends
 {
-    // [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "FriendsModule")]
     public class FriendsModule : ISharedRegionModule, IFriendsModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -156,25 +154,47 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
         #region ISharedRegionModule
         public void Initialise(IConfigSource config)
         {
+            m_log.InfoFormat("Initializing {0}", Name);
+            
             IConfig moduleConfig = config.Configs["Modules"];
             if (moduleConfig != null)
             {
                 string name = moduleConfig.GetString("FriendsModule", "FriendsModule");
+                m_log.InfoFormat("Configuration found - FriendsModule = {0}, Expected = {1}", name, Name);
+                
                 if (name == Name)
                 {
-                    InitModule(config);
-
-                    m_Enabled = true;
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} enabled.", Name);
+                    try
+                    {
+                        InitModule(config);
+                        m_Enabled = true;
+                        m_log.InfoFormat("{0} enabled successfully.", Name);
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat("Failed to initialize {0}: {1}", Name, e.Message);
+                        throw;
+                    }
                 }
+                else
+                {
+                    m_log.InfoFormat("{0} disabled - configuration specifies {1}", Name, name);
+                }
+            }
+            else
+            {
+                m_log.WarnFormat("No [Modules] configuration section found, {0} disabled", Name);
             }
         }
 
         protected virtual void InitModule(IConfigSource config)
         {
+            m_log.InfoFormat("InitModule called for {0}", Name);
+            
             IConfig friendsConfig = config.Configs["Friends"];
             if (friendsConfig != null)
             {
+                m_log.InfoFormat("[Friends] configuration section found");
                 int mPort = friendsConfig.GetInt("Port", 0);
 
                 string connector = friendsConfig.GetString("Connector", String.Empty);
@@ -191,8 +211,12 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
 
             if (m_FriendsService is null)
             {
-                m_log.Error("No Connector defined in section Friends, or failed to load, cannot continue");
+                m_log.ErrorFormat("No Connector defined in section Friends, or failed to load, cannot continue");
                 throw new Exception("Connector load error");
+            }
+            else
+            {
+                m_log.InfoFormat("Friends service loaded successfully");
             }
         }
 
@@ -207,9 +231,12 @@ namespace OpenSim.Region.CoreModules.Avatar.Friends
         public virtual void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                m_log.InfoFormat("AddRegion skipped for {0} - module not enabled", Name);
                 return;
+            }
 
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("AddRegion on {0}", Name);
+            m_log.InfoFormat("AddRegion on {0} for scene {1}", Name, scene.Name);
 
             m_Scenes.Add(scene);
             scene.RegisterModuleInterface<IFriendsModule>(this);

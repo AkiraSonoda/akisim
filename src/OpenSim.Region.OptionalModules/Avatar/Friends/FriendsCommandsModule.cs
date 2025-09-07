@@ -31,7 +31,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using log4net;
-using Mono.Addins;
 using NDesk.Options;
 using Nini.Config;
 using OpenMetaverse;
@@ -50,7 +49,6 @@ namespace OpenSim.Region.OptionalModules.Avatar.Friends
     /// <summary>
     /// A module that just holds commands for inspecting avatar appearance.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "FriendsCommandModule")]
     public class FriendsCommandsModule : ISharedRegionModule
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
