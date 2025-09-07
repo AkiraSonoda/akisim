@@ -42,6 +42,7 @@ using OpenSim.Region.CoreModules.Avatar.Attachments;
 using OpenSim.Region.CoreModules.Avatar.AvatarFactory;
 using OpenSim.Region.CoreModules.Avatar.Chat;
 using OpenSim.Region.CoreModules.Avatar.Dialog;
+using OpenSim.Region.CoreModules.Scripting.EmailModules;
 using OpenSim.Region.CoreModules.Avatar.Friends;
 using OpenSim.Region.CoreModules.Avatar.Gods;
 using OpenSim.Region.CoreModules.Avatar.Groups;
@@ -298,6 +299,48 @@ namespace OpenSim.Region.CoreModules
             // Always load core modules that don't have configuration options
             yield return new ChatModule();
             yield return new InventoryTransferModule();
+            
+            // Load EmailModule based on configuration
+            var startupConfig = configSource?.Configs["Startup"];
+            string emailModule = startupConfig?.GetString("emailmodule", "");
+            if (emailModule == "DefaultEmailModule")
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading EmailModule (DefaultEmailModule)");
+                yield return new EmailModule();
+            }
+            else if (!string.IsNullOrEmpty(emailModule))
+            {
+                m_log.InfoFormat("EmailModule configured as '{0}' but not 'DefaultEmailModule', skipping", emailModule);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("No emailmodule configured, skipping email functionality");
+            }
+            
+            // Load VivoxVoiceModule based on configuration
+            var vivoxConfig = configSource?.Configs["VivoxVoice"];
+            if (vivoxConfig?.GetBoolean("enabled", false) == true)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading VivoxVoiceModule");
+                var vivoxModuleInstance = LoadVivoxVoiceModule();
+                if (vivoxModuleInstance != null)
+                {
+                    yield return vivoxModuleInstance;
+                    m_log.Info("VivoxVoiceModule loaded successfully");
+                }
+                else
+                {
+                    m_log.Warn("VivoxVoiceModule was configured ([VivoxVoice] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+            else if (vivoxConfig != null)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("VivoxVoiceModule disabled by configuration ([VivoxVoice] enabled = false)");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("No VivoxVoice configuration section found, skipping VivoxVoiceModule");
+            }
             
             // Load AgentPreferencesModule directly for reliable loading
             yield return new AgentPreferencesModule();
@@ -1046,6 +1089,84 @@ namespace OpenSim.Region.CoreModules
             catch (Exception ex)
             {
                 m_log.WarnFormat("Could not load Groups Module V2: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads VivoxVoiceModule using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadVivoxVoiceModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load VivoxVoiceModule via reflection");
+                
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+                
+                // Try to find the VivoxVoiceModule type in any loaded assembly
+                Type vivoxVoiceModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    vivoxVoiceModuleType = assembly.GetType("OpenSim.Region.OptionalModules.Avatar.Voice.VivoxVoice.VivoxVoiceModule");
+                    if (vivoxVoiceModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found VivoxVoiceModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (vivoxVoiceModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(vivoxVoiceModuleType) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully created VivoxVoiceModule instance");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("VivoxVoiceModule type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("VivoxVoiceModule type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled) 
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains("Optional"))
+                                m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load VivoxVoiceModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("VivoxVoiceModule loading exception details: {0}", ex.ToString());
             }
 
             return null;

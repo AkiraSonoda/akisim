@@ -35,7 +35,6 @@ using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 
@@ -47,7 +46,6 @@ using OpenMetaverse.StructuredData;
 
 namespace OpenSim.Region.OptionalModules.Avatar.Voice.VivoxVoice
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "VivoxVoiceModule")]
     public class VivoxVoiceModule : ISharedRegionModule
     {
 
