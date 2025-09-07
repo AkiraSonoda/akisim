@@ -38,13 +38,11 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using Mono.Addins;
 using ThreadedClasses;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.EmailModules
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EmailModule")]
     public class EmailModule : ISharedRegionModule, IEmailModule
     {
         public class throttleControlInfo
