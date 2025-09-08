@@ -14,6 +14,7 @@ The **Groups Module V2** is the primary groups functionality implementation for 
 
 - **Interface**: `ISharedRegionModule`, `IGroupsModule`
 - **Scope**: Shared across all regions in an OpenSim instance
+- **Loading**: Loaded via ModuleFactory (no Mono.Addins dependency)
 - **Dependencies**: IGroupsServicesConnector, IMessageTransferModule, IUserManagement
 
 ## Configuration
@@ -47,9 +48,7 @@ Groups Module V2 requires a groups services connector to be configured. Common o
 
 ```ini
 [Groups]
-ServicesConnectorModule = "Groups Local Service Connector"
-; or
-ServicesConnectorModule = "Groups HG Service Connector"  ; for hypergrid
+ServicesConnectorModule = "Groups HG Service Connector"  ; recommended for all setups
 ; or  
 ServicesConnectorModule = "Groups Remote Service Connector"  ; for distributed setups
 ```

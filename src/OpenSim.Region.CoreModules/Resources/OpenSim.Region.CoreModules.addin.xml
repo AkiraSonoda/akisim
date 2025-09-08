@@ -37,7 +37,6 @@
         <RegionModule id="InventoryArchiverModule" class="OpenSim.Region.CoreModules.Avatar.Inventory.Archiver.InventoryArchiverModule" />
         <RegionModule id="InventoryTransferModule" class="OpenSim.Region.CoreModules.Avatar.Inventory.Transfer.InventoryTransferModule" />
         <RegionModule id="HGLureModule" class="OpenSim.Region.CoreModules.Avatar.Lure.HGLureModule" />
-        <RegionModule id="BasicProfileModule" class="OpenSim.Region.CoreModules.Avatar.Profile.BasicProfileModule" />
         <RegionModule id="UserProfilesModule" class="OpenSim.Region.CoreModules.Avatar.UserProfiles.UserProfilesModule" />
         <RegionModule id="CapabilitiesModule" class="OpenSim.Region.CoreModules.Framework.CapabilitiesModule" />
         <RegionModule id="DAExampleModule" class="OpenSim.Region.CoreModules.Framework.DynamicAttributes.DAExampleModule" />

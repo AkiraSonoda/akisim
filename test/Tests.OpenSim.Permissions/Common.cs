@@ -84,7 +84,7 @@ namespace Tests.OpenSim.Permissions
             config.Configs["Groups"].Set("Enabled", "true");
             config.Configs["Groups"].Set("Module", "Groups Module V2");
             config.Configs["Groups"].Set("StorageProvider", "Tests.OpenSim.Common.dll:TestGroupsDataPlugin");
-            config.Configs["Groups"].Set("ServicesConnectorModule", "Groups Local Service Connector");
+            config.Configs["Groups"].Set("ServicesConnectorModule", "Groups HG Service Connector");
             config.Configs["Groups"].Set("LocalService", "local");
 
             m_Scene = new SceneHelpers().SetupScene("Test", UUID.Random(), 1000, 1000, config);

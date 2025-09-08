@@ -36,7 +36,6 @@ using OpenSim.Services.Connectors.Hypergrid;
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 using ThreadedClasses;
 // AKIDO: clean
 

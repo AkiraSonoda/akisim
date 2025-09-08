@@ -78,7 +78,7 @@ namespace OpenSim.Groups
             }
 
             m_Config = config;
-            m_ServiceLocation = groupsConfig.GetString("LocalService", "local"); // local or remote
+            m_ServiceLocation = groupsConfig.GetString("LocalService", "remote"); // remote only (local service no longer supported)
             m_LocalGroupsServiceLocation = groupsConfig.GetString("GroupsExternalURI", "http://127.0.0.1");
             m_Scenes = new List<Scene>();
 
@@ -135,14 +135,14 @@ namespace OpenSim.Groups
 
                 if (m_ServiceLocation.Equals("local"))
                 {
-                    m_LocalGroupsConnector = new GroupsServiceLocalConnectorModule(m_Config, m_UserManagement);
-                    // Also, if local, create the endpoint for the HGGroupsService
-                    new HGGroupsServiceRobustConnector(m_Config, MainServer.Instance, string.Empty,
-                        scene.RequestModuleInterface<IOfflineIMService>(), scene.RequestModuleInterface<IUserAccountService>());
-
+                    m_log.Error("[Groups.HGConnector]: LocalService = 'local' is no longer supported. Please use LocalService = 'remote' and configure GroupsServerURI to point to your local/remote Groups service.");
+                    m_Enabled = false;
+                    return;
                 }
                 else
+                {
                     m_LocalGroupsConnector = new GroupsServiceRemoteConnectorModule(m_Config, m_UserManagement);
+                }
 
                 m_CacheWrapper = new RemoteConnectorCacheWrapper(m_UserManagement);
             }

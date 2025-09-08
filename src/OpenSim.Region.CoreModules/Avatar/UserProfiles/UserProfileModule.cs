@@ -40,7 +40,6 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
-using Mono.Addins;
 using OpenSim.Services.Connectors.Hypergrid;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Services.UserProfilesService;
@@ -49,7 +48,6 @@ using OpenSim.Region.CoreModules.Avatar.Friends;
 
 namespace OpenSim.Region.CoreModules.Avatar.UserProfiles
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UserProfilesModule")]
     public class UserProfileModule : IProfileModule, INonSharedRegionModule
     {
         const double PROFILECACHEEXPIRE = 300;

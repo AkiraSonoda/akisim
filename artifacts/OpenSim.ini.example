@@ -1185,18 +1185,16 @@
     ;# {StorageProvider} {Module:Groups Module V2} {The DLL that provides the storage for V2} {OpenSim.Data.MySQL.dll}
     ; StorageProvider = OpenSim.Data.MySQL.dll
 
-    ;# {ServicesConnectorModule} {Module:GroupsModule Module:Groups Module V2} {Service connector to use for groups} {XmlRpcGroupsServicesConnector "Groups Local Service Connector" "Groups Remote Service Connector" "Groups HG Service Connector"} XmlRpcGroupsServicesConnector
+    ;# {ServicesConnectorModule} {Module:GroupsModule Module:Groups Module V2} {Service connector to use for groups} {"Groups Remote Service Connector" "Groups HG Service Connector"} "Groups HG Service Connector"
     ;; Service connectors to the Groups Service as used in the GroupsModule.  Select one as follows:
-    ;; -- for Flotsam Groups use XmlRpcGroupsServicesConnector
-    ;; -- for V2 Groups, standalone, non-HG use "Groups Local Service Connector"
     ;; -- for V2 Groups, grided sim, non-HG use "Groups Remote Service Connector"
-    ;; -- for V2 Groups, HG, both standalone and grided sim, use "Groups HG Service Connector"
+    ;; -- for V2 Groups, HG (both standalone and grided), use "Groups HG Service Connector" (recommended)
     ;; Note that the quotes "" around the words are important!
-    ; ServicesConnectorModule = XmlRpcGroupsServicesConnector
+    ; ServicesConnectorModule = "Groups HG Service Connector"
 
-    ;# {LocalService} {ServicesConnectorModule:Groups HG Service Connector} {Is the group service in this process or elsewhere?} {local remote} local
-    ;; Used for V2 in HG only. If standalone, set this to local; if grided sim, set this to remote
-    ; LocalService = local
+    ;# {LocalService} {ServicesConnectorModule:Groups HG Service Connector} {Groups service location} {remote} remote  
+    ;; Groups V2 requires remote service. Set this to remote and configure GroupsServerURI.
+    ; LocalService = remote
 
     ;# {SecretKey} {ServicesConnectorModule:Groups Remote Service Connector} {Secret key between sim and remote group service} {} ""
     ;; Used for V2 in Remote only.

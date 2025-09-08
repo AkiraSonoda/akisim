@@ -14,6 +14,7 @@ The `GroupsServiceHGConnectorModule` is a hypergrid-aware connector module that 
 
 - **Interface**: `ISharedRegionModule`, `IGroupsServicesConnector`
 - **Scope**: Shared across all regions in an OpenSim instance
+- **Loading**: Loaded via ModuleFactory (no Mono.Addins dependency)
 - **Dependencies**: Groups Module V2, UserManagement, OfflineIM service
 
 ## Configuration
@@ -37,7 +38,7 @@ To enable the GroupsServiceHGConnectorModule, configure the following in your Op
 Enabled = true
 Module = "Groups Module V2"
 ServicesConnectorModule = "Groups HG Service Connector"
-LocalService = "local"              ; or "remote" for distributed setup
+LocalService = "remote"             ; required (local service no longer supported)
 GroupsExternalURI = "http://127.0.0.1:8003"  ; URI for remote groups service
 ```
 
@@ -46,7 +47,7 @@ GroupsExternalURI = "http://127.0.0.1:8003"  ; URI for remote groups service
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
 | `ServicesConnectorModule` | Must be set to "Groups HG Service Connector" | - | Yes |
-| `LocalService` | "local" or "remote" service mode | "local" | Yes |
+| `LocalService` | Must be set to "remote" (local no longer supported) | "remote" | Yes |
 | `GroupsExternalURI` | External URI for groups service | "http://127.0.0.1" | Yes |
 
 ## Functionality

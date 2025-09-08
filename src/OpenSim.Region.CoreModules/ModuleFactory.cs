@@ -187,6 +187,29 @@ namespace OpenSim.Region.CoreModules
             // Essential UDP server for client communication
             yield return new LLUDPServerShim();
 
+            // Load UserProfiles module based on configuration
+            if (configSource != null)
+            {
+                var userProfilesConfig = configSource.Configs["UserProfiles"];
+                if (userProfilesConfig != null)
+                {
+                    string profileServiceURL = userProfilesConfig.GetString("ProfileServiceURL", "");
+                    if (!string.IsNullOrEmpty(profileServiceURL))
+                    {
+                        yield return new UserProfileModule();
+                        m_log.Info("UserProfileModule loaded (advanced profile system)");
+                    }
+                    else
+                    {
+                        m_log.Info("UserProfileModule not loaded - ProfileServiceURL not configured");
+                    }
+                }
+                else
+                {
+                    m_log.Info("UserProfileModule not loaded - no [UserProfiles] configuration section");
+                }
+            }
+
             // Essential caps modules for viewer functionality
             yield return new BunchOfCapsModule();
             yield return new EventQueueGetModule();
@@ -395,9 +418,16 @@ namespace OpenSim.Region.CoreModules
 
             // Load UserManagement module based on configuration
             if (modulesConfig?.GetString("UserManagementModule", "") == "HGUserManagementModule")
+            {
                 yield return new HGUserManagementModule();
+                m_log.Info("HGUserManagementModule loaded");
+            }
             else
+            {
                 yield return new UserManagementModule();
+                m_log.Info("UserManagementModule loaded");
+            }
+
 
             // Groups Module V2 loading is handled later in the factory with proper configuration checks
 
@@ -701,6 +731,18 @@ namespace OpenSim.Region.CoreModules
                 else
                 {
                     m_log.Warn("Groups Module V2 was configured ([Groups] Enabled = true, Module = \"Groups Module V2\") but could not be loaded. Check that OpenSim.Addons.Groups.dll is available.");
+                }
+
+                // Load Groups Messaging Module V2 when Groups V2 is enabled
+                var groupsMessagingV2ModuleInstance = LoadGroupsMessagingModuleV2();
+                if (groupsMessagingV2ModuleInstance != null)
+                {
+                    yield return groupsMessagingV2ModuleInstance;
+                    m_log.Info("Groups Messaging Module V2 loaded");
+                }
+                else
+                {
+                    m_log.Warn("Groups Messaging Module V2 could not be loaded. Check that OpenSim.Addons.Groups.dll is available.");
                 }
 
                 // Load GroupsServiceHGConnectorModule when Groups V2 is enabled
@@ -1081,6 +1123,71 @@ namespace OpenSim.Region.CoreModules
             catch (Exception ex)
             {
                 m_log.WarnFormat("Could not load Groups Module V2: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads Groups Messaging Module V2 using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadGroupsMessagingModuleV2()
+        {
+            try
+            {
+                // Try to load OpenSim.Addons.Groups.dll if not already loaded
+                try
+                {
+                    Assembly.LoadFrom("OpenSim.Addons.Groups.dll");
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Addons.Groups.dll: {0}", loadEx.Message);
+                }
+                
+                // Try to find the GroupsMessagingModule type in any loaded assembly
+                Type groupsMessagingModuleV2Type = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Checking assembly for Groups Messaging Module V2: {0}", assembly.FullName);
+                    
+                    groupsMessagingModuleV2Type = assembly.GetType("OpenSim.Groups.GroupsMessagingModule");
+                    if (groupsMessagingModuleV2Type != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found Groups Messaging Module V2 in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (groupsMessagingModuleV2Type != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(groupsMessagingModuleV2Type) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded Groups Messaging Module V2");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("Groups Messaging Module V2 type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("Groups Messaging Module V2 type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled) 
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load Groups Messaging Module V2: {0}", ex.Message);
             }
 
             return null;

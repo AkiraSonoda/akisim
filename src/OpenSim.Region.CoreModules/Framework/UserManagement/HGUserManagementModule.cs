@@ -41,7 +41,6 @@ using OpenMetaverse;
 using OpenMetaverse.Packets;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement
 {
