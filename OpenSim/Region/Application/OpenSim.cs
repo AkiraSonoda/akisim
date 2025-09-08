@@ -123,6 +123,8 @@ namespace OpenSim
                 try { ServicePointManager.DnsRefreshTimeout = dnsTimeout; } catch { }
             }
 
+            m_log.Info("Initialize ThreadPool");
+            
             if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
                 Util.InitThreadPool(stpMinThreads, stpMaxThreads);
 

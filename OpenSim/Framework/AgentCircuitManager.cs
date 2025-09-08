@@ -28,6 +28,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using OpenMetaverse;
+using log4net;
 
 // TODO replace Dictionary with ConcurrentDictionary https://learn.microsoft.com/en-us/dotnet/standard/collections/thread-safe/
 namespace OpenSim.Framework
@@ -37,6 +38,7 @@ namespace OpenSim.Framework
     /// </summary>
     public class AgentCircuitManager
     {
+        private static readonly ILog m_log = LogManager.GetLogger(typeof(AgentCircuitManager));
         /// <summary>
         /// Agent circuits indexed by circuit code.
         /// </summary>
@@ -86,6 +88,7 @@ namespace OpenSim.Framework
         /// <param name="agentData"></param>
         public virtual void AddNewCircuit(AgentCircuitData agentData)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("Adding new circuit {0} for agent {1}", agentData.circuitcode, agentData.AgentID);
             agentData.child = true;
             lock (m_lock)
             {
