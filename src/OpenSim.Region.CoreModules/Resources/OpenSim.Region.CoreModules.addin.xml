@@ -30,7 +30,6 @@
         <RegionModule id="CallingCardModule" class="OpenSim.Region.CoreModules.Avatar.Friends.CallingCardModule" />
         <RegionModule id="GesturesModule" class="OpenSim.Region.CoreModules.Avatar.Gestures.GesturesModule" />
         <RegionModule id="GodsModule" class="OpenSim.Region.CoreModules.Avatar.Gods.GodsModule" />
-        <RegionModule id="GroupsModule" class="OpenSim.Region.CoreModules.Avatar.Groups.GroupsModule" />
         <RegionModule id="HGMessageTransferModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.HGMessageTransferModule" />
         <RegionModule id="InstantMessageModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.InstantMessageModule" />
         <RegionModule id="MuteListModule" class="OpenSim.Region.CoreModules.Avatar.InstantMessage.MuteListModule" />        
@@ -38,7 +37,6 @@
         <RegionModule id="InventoryArchiverModule" class="OpenSim.Region.CoreModules.Avatar.Inventory.Archiver.InventoryArchiverModule" />
         <RegionModule id="InventoryTransferModule" class="OpenSim.Region.CoreModules.Avatar.Inventory.Transfer.InventoryTransferModule" />
         <RegionModule id="HGLureModule" class="OpenSim.Region.CoreModules.Avatar.Lure.HGLureModule" />
-        <RegionModule id="LureModule" class="OpenSim.Region.CoreModules.Avatar.Lure.LureModule" />
         <RegionModule id="BasicProfileModule" class="OpenSim.Region.CoreModules.Avatar.Profile.BasicProfileModule" />
         <RegionModule id="UserProfilesModule" class="OpenSim.Region.CoreModules.Avatar.UserProfiles.UserProfilesModule" />
         <RegionModule id="CapabilitiesModule" class="OpenSim.Region.CoreModules.Framework.CapabilitiesModule" />

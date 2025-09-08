@@ -44,8 +44,8 @@ using OpenSim.Region.CoreModules.Avatar.Chat;
 using OpenSim.Region.CoreModules.Avatar.Dialog;
 using OpenSim.Region.CoreModules.Scripting.EmailModules;
 using OpenSim.Region.CoreModules.Avatar.Friends;
+using OpenSim.Region.CoreModules.Avatar.Gestures;
 using OpenSim.Region.CoreModules.Avatar.Gods;
-using OpenSim.Region.CoreModules.Avatar.Groups;
 using OpenSim.Region.CoreModules.Avatar.InstantMessage;
 using OpenSim.Region.CoreModules.Avatar.Lure;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
@@ -127,6 +127,7 @@ namespace OpenSim.Region.CoreModules
             yield return new AttachmentsModule();
             yield return new AvatarFactoryModule();
             yield return new DialogModule();
+            yield return new GesturesModule();
             yield return new BasicInventoryAccessModule();
             yield return new HGInventoryAccessModule();
             yield return new LandManagementModule();
@@ -362,11 +363,8 @@ namespace OpenSim.Region.CoreModules
             // Load HGMessageTransferModule (supports both hypergrid and local scenarios)
             yield return new HGMessageTransferModule();
 
-            // Load Lure module based on configuration
-            if (messagingConfig?.GetString("LureModule", "") == "HGLureModule")
-                yield return new HGLureModule();
-            else
-                yield return new LureModule();
+            // Load HGLureModule - supports both local and cross-grid lures
+            yield return new HGLureModule();
 
             // Load Offline IM module based on configuration
             string offlineIMModule = messagingConfig?.GetString("OfflineMessageModule", "");
@@ -401,35 +399,7 @@ namespace OpenSim.Region.CoreModules
             else
                 yield return new UserManagementModule();
 
-            // Load Groups module based on configuration
-            string groupsModule = modulesConfig?.GetString("Module", "");
-            ISharedRegionModule groupsModuleInstance = null;
-            
-            if (groupsModule == "Groups Module V2")
-            {
-                // Try to load Groups Module V2 from OpenSim.Addons.Groups assembly
-                try
-                {
-                    var assembly = System.Reflection.Assembly.LoadFrom("OpenSim.Addons.Groups.dll");
-                    var groupsV2Type = assembly.GetType("OpenSim.Region.OptionalModules.Avatar.Groups.GroupsModule");
-                    if (groupsV2Type != null)
-                    {
-                        groupsModuleInstance = (ISharedRegionModule)Activator.CreateInstance(groupsV2Type);
-                    }
-                }
-                catch
-                {
-                    // Will fallback to regular GroupsModule below
-                }
-            }
-            
-            // Use regular GroupsModule if Groups V2 failed to load or not configured
-            if (groupsModuleInstance == null)
-            {
-                groupsModuleInstance = new GroupsModule();
-            }
-            
-            yield return groupsModuleInstance;
+            // Groups Module V2 loading is handled later in the factory with proper configuration checks
 
             // Load GridService module based on configuration
             string gridServicesModule = modulesConfig?.GetString("GridServices", "");
@@ -731,6 +701,22 @@ namespace OpenSim.Region.CoreModules
                 else
                 {
                     m_log.Warn("Groups Module V2 was configured ([Groups] Enabled = true, Module = \"Groups Module V2\") but could not be loaded. Check that OpenSim.Addons.Groups.dll is available.");
+                }
+
+                // Load GroupsServiceHGConnectorModule when Groups V2 is enabled
+                string groupsConnectorModule = groupsV2Config?.GetString("ServicesConnectorModule", "");
+                if (groupsConnectorModule == "Groups HG Service Connector")
+                {
+                    var groupsHGConnectorInstance = LoadGroupsServiceHGConnectorModule();
+                    if (groupsHGConnectorInstance != null)
+                    {
+                        yield return groupsHGConnectorInstance;
+                        m_log.Info("GroupsServiceHGConnectorModule loaded");
+                    }
+                    else
+                    {
+                        m_log.Warn("GroupsServiceHGConnectorModule was configured but could not be loaded. Check that OpenSim.Addons.Groups.dll is available.");
+                    }
                 }
             }
             else if (groupsV2Config?.GetBoolean("Enabled", false) == true)
@@ -1095,6 +1081,71 @@ namespace OpenSim.Region.CoreModules
             catch (Exception ex)
             {
                 m_log.WarnFormat("Could not load Groups Module V2: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads GroupsServiceHGConnectorModule using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadGroupsServiceHGConnectorModule()
+        {
+            try
+            {
+                // Try to load OpenSim.Addons.Groups.dll if not already loaded
+                try
+                {
+                    Assembly.LoadFrom("OpenSim.Addons.Groups.dll");
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Addons.Groups.dll: {0}", loadEx.Message);
+                }
+                
+                // Try to find the GroupsServiceHGConnectorModule type in any loaded assembly
+                Type groupsHGConnectorType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Checking assembly for GroupsServiceHGConnectorModule: {0}", assembly.FullName);
+                    
+                    groupsHGConnectorType = assembly.GetType("OpenSim.Groups.GroupsServiceHGConnectorModule");
+                    if (groupsHGConnectorType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found GroupsServiceHGConnectorModule in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (groupsHGConnectorType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(groupsHGConnectorType) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded GroupsServiceHGConnectorModule");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("GroupsServiceHGConnectorModule type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("GroupsServiceHGConnectorModule type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled) 
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load GroupsServiceHGConnectorModule: {0}", ex.Message);
             }
 
             return null;
