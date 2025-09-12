@@ -72,7 +72,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
                     IConfig userConfig = source.Configs["UserAccountService"];
                     if (userConfig == null)
                     {
-                        m_log.Error("[USER CONNECTOR]: UserAccountService missing from OpenSim.ini");
+                        m_log.Error("UserAccountService missing from OpenSim.ini");
                         return;
                     }
 
@@ -81,8 +81,20 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
                     base.Initialise(source);
                     m_Cache = new UserAccountCache();
 
-                    m_log.Info("[USER CONNECTOR]: Remote users enabled");
+                    m_log.Info("Remote user account connector enabled for distributed user account services");
+                    m_log.Debug("Using UserAccountServicesConnector for remote service communication");
+                    m_log.Debug("UserAccountCache configured for improved performance");
                 }
+                else
+                {
+                    if (m_log.IsDebugEnabled)
+                        m_log.Debug($"Module disabled. UserAccountServices = '{name}', expected '{Name}'");
+                }
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("No [Modules] configuration section found, connector disabled");
             }
         }
 
@@ -101,24 +113,37 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
         public void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"Not adding to region {scene.Name} - connector disabled");
                 return;
+            }
 
             scene.RegisterModuleInterface<IUserAccountService>(this);
             scene.RegisterModuleInterface<IUserAccountCacheModule>(m_Cache);
 
             scene.EventManager.OnNewClient += OnNewClient;
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Added to region {scene.Name} and registered IUserAccountService interface");
         }
 
         public void RemoveRegion(Scene scene)
         {
             if (!m_Enabled)
                 return;
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Removed from region {scene.Name}");
         }
 
         public void RegionLoaded(Scene scene)
         {
             if (!m_Enabled)
                 return;
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Region {scene.Name} loaded successfully");
         }
 
         // When a user actually enters the sim, clear them from
@@ -127,41 +152,76 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
         private void OnNewClient(IClientAPI client)
         {
             m_Cache.Remove(client.Name);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Cleared cache for user {client.Name} on new client connection");
         }
 
         #region Overwritten methods from IUserAccountService
 
         public override UserAccount GetUserAccount(UUID scopeID, UUID userID)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetUserAccount by UUID for user {userID}");
+                
             bool inCache = false;
             UserAccount account;
             account = m_Cache.Get(userID, out inCache);
             if (inCache)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"GetUserAccount cache hit for user {userID}");
                 return account;
+            }
 
             account = base.GetUserAccount(scopeID, userID);
             m_Cache.Cache(userID, account);
+            
+            if (m_log.IsDebugEnabled)
+            {
+                if (account != null)
+                    m_log.Debug($"GetUserAccount successful for user {userID} ({account.FirstName} {account.LastName})");
+                else
+                    m_log.Debug($"GetUserAccount returned null for user {userID}");
+            }
 
             return account;
         }
 
         public override UserAccount GetUserAccount(UUID scopeID, string firstName, string lastName)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetUserAccount by name for user '{firstName} {lastName}'");
+                
             bool inCache = false;
             UserAccount account;
             account = m_Cache.Get(firstName + " " + lastName, out inCache);
             if (inCache)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"GetUserAccount cache hit for user '{firstName} {lastName}'");
                 return account;
+            }
 
             account = base.GetUserAccount(scopeID, firstName, lastName);
             if (account != null)
                 m_Cache.Cache(account.PrincipalID, account);
+                
+            if (m_log.IsDebugEnabled)
+            {
+                if (account != null)
+                    m_log.Debug($"GetUserAccount successful for user '{firstName} {lastName}' (UUID: {account.PrincipalID})");
+                else
+                    m_log.Debug($"GetUserAccount returned null for user '{firstName} {lastName}'");
+            }
 
             return account;
         }
 
         public override List<UserAccount> GetUserAccounts(UUID scopeID, List<string> IDs)
         {
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetUserAccounts for {IDs.Count} users");
+                
             List<UserAccount> accs = new List<UserAccount>();
             List<string> missing = new List<string>();
 
@@ -181,6 +241,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
                 }
             }
 
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetUserAccounts found {accs.Count} cached accounts, {missing.Count} need remote lookup");
+
             if(missing.Count > 0)
             {
                 List<UserAccount> ext = base.GetUserAccounts(scopeID, missing);
@@ -196,12 +259,18 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts
                     }
                 }
             }
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetUserAccounts returning {accs.Count} total accounts");
+                
             return accs;
         }
 
         public override bool StoreUserAccount(UserAccount data)
         {
             // This remote connector refuses to serve this method
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"StoreUserAccount called for {data?.FirstName} {data?.LastName} but operation not supported by remote connector");
             return false;
         }
 

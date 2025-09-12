@@ -39,6 +39,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -138,6 +139,17 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("RemoteSimulationConnectorModule disabled - set SimulationServices = RemoteSimulationConnectorModule in [Modules] to enable distributed simulation services");
+            }
+
+            // Load RemoteUserAccountServicesConnector if enabled for distributed user account services
+            if (modulesConfig.GetString("UserAccountServices", "") == "RemoteUserAccountServicesConnector")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RemoteUserAccountServicesConnector for distributed user account services");
+                yield return new RemoteUserAccountServicesConnector();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RemoteUserAccountServicesConnector disabled - set UserAccountServices = RemoteUserAccountServicesConnector in [Modules] to enable distributed user account services");
             }
 
             // Additional optional modules can be added here as needed
