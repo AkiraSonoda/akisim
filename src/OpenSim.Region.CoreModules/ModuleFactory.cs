@@ -573,7 +573,9 @@ namespace OpenSim.Region.CoreModules
             string gridUserServicesModule = modulesConfig?.GetString("GridUserServices", "");
             if (gridUserServicesModule == "RemoteGridUserServicesConnector")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading RemoteGridUserServicesConnector");
                 yield return new RemoteGridUserServicesConnector();
+                m_log.Info("RemoteGridUserServicesConnector loaded for remote grid user data handling");
             }
 
             // Load LandServices module based on configuration
