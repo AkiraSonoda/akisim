@@ -49,19 +49,21 @@ namespace OpenSim.Region.ClientStack.LindenCaps
 
         public void Initialise(IConfigSource source)
         {
-
+            if (m_log.IsDebugEnabled) m_log.Debug("AgentPreferencesModule initializing");
         }
 
         #region Region module
 
         public void AddRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AgentPreferencesModule adding region {0}", scene.RegionInfo.RegionName);
             lock (m_scenes)
                 m_scenes.Add(scene);
         }
 
         public void RemoveRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AgentPreferencesModule removing region {0}", scene.RegionInfo.RegionName);
             lock (m_scenes)
                 m_scenes.Remove(scene);
             scene.EventManager.OnRegisterCaps -= RegisterCaps;
@@ -69,11 +71,13 @@ namespace OpenSim.Region.ClientStack.LindenCaps
 
         public void RegionLoaded(Scene scene)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AgentPreferencesModule region loaded {0}", scene.RegionInfo.RegionName);
             scene.EventManager.OnRegisterCaps += RegisterCaps;
 
             ISimulatorFeaturesModule simFeatures = scene.RequestModuleInterface<ISimulatorFeaturesModule>();
             simFeatures?.AddFeature("AvatarHoverHeightEnabled",OSD.FromBoolean(true));
-
+            
+            if (m_log.IsDebugEnabled) m_log.Debug("AgentPreferencesModule enabled AvatarHoverHeightEnabled simulator feature");
         }
 
         public void PostInitialise() {}
@@ -89,6 +93,7 @@ namespace OpenSim.Region.ClientStack.LindenCaps
 
         public void RegisterCaps(UUID agent, Caps caps)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AgentPreferencesModule registering capabilities for agent {0}", agent);
             string capPath = "/" + UUID.Random().ToString();
             caps.RegisterSimpleHandler("AgentPreferences",
                 new SimpleStreamHandler(capPath, delegate(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)

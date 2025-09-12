@@ -33,6 +33,8 @@ using Nini.Config;
 using log4net;
 
 using OpenSim.Region.OptionalModules.Avatar.Friends;
+using OpenSim.Region.OptionalModules.Avatar.Commands;
+using OpenSim.Region.OptionalModules.Avatar.Appearance;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -66,6 +68,28 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("FriendsCommandsModule disabled - set FriendsCommandsModule = true in [Modules] to enable friends debugging commands");
+            }
+
+            // Load UserCommandsModule if enabled for user administration commands
+            if (modulesConfig.GetBoolean("UserCommandsModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading UserCommandsModule for user administration commands");
+                yield return new UserCommandsModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule disabled - set UserCommandsModule = true in [Modules] to enable user administration commands");
+            }
+
+            // Load AppearanceInfoModule if enabled for appearance debugging commands
+            if (modulesConfig.GetBoolean("AppearanceInfoModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading AppearanceInfoModule for appearance debugging commands");
+                yield return new AppearanceInfoModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule disabled - set AppearanceInfoModule = true in [Modules] to enable appearance debugging commands");
             }
 
             // Additional optional modules can be added here as needed

@@ -28,8 +28,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
-using Mono.Addins;
+using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -44,10 +45,9 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
     /// <summary>
     /// A module that just holds commands for inspecting avatar appearance.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AppearanceInfoModule")]
     public class AppearanceInfoModule : ISharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>();
 
@@ -59,27 +59,27 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         public void Initialise(IConfigSource source)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: INITIALIZED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule initializing");
         }
 
         public void PostInitialise()
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: POST INITIALIZED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule post-initialized");
         }
 
         public void Close()
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: CLOSED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule closing");
         }
 
         public void AddRegion(Scene scene)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AppearanceInfoModule adding region {0}", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AppearanceInfoModule removing region {0}", scene.RegionInfo.RegionName);
 
             // AKIDO
             m_scenes.Remove(scene);
@@ -87,10 +87,12 @@ namespace OpenSim.Region.OptionalModules.Avatar.Appearance
 
         public void RegionLoaded(Scene scene)
         {
-//            m_log.DebugFormat("[APPEARANCE INFO MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AppearanceInfoModule region loaded {0}", scene.RegionInfo.RegionName);
 
             // AKIDO
             m_scenes.Add(scene);
+
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AppearanceInfoModule registering console commands for region {0}", scene.RegionInfo.RegionName);
 
             scene.AddCommand(
                 "Users", this, "show appearance",

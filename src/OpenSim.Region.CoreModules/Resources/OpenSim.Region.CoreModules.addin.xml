@@ -69,34 +69,22 @@
         <RegionModule id="MapImageServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage.MapImageServiceInConnectorModule" />
         <RegionModule id="NeighbourServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour.NeighbourServiceInConnectorModule" />
         <RegionModule id="SimulationServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation.SimulationServiceInConnectorModule" />
-        <RegionModule id="LocalUserProfilesServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Profile.LocalUserProfilesServicesConnector" />
-        <RegionModule id="LocalAgentPreferencesServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences.LocalAgentPreferencesServicesConnector" />
         <RegionModule id="RemoteAgentPreferencesServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences.RemoteAgentPreferencesServicesConnector" />
-        <RegionModule id="LocalAssetServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.LocalAssetServicesConnector" />
         <RegionModule id="RegionAssetConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset.RegionAssetConnector" />
-        <RegionModule id="LocalAuthenticationServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication.LocalAuthenticationServicesConnector" />
         <RegionModule id="RemoteAuthenticationServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication.RemoteAuthenticationServicesConnector" />
         <RegionModule id="LocalAuthorizationServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization.LocalAuthorizationServicesConnector" />
         <RegionModule id="RemoteAuthorizationServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Authorization.RemoteAuthorizationServicesConnector" />
-        <RegionModule id="LocalAvatarServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Avatar.LocalAvatarServicesConnector" />
         <RegionModule id="RemoteAvatarServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Avatar.RemoteAvatarServicesConnector" />
         <RegionModule id="RegionGridServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Grid.RegionGridServicesConnector" />
-        <RegionModule id="LocalGridUserServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser.LocalGridUserServicesConnector" />
         <RegionModule id="RemoteGridUserServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser.RemoteGridUserServicesConnector" />
         <RegionModule id="HGInventoryBroker" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory.HGInventoryBroker" />
-        <RegionModule id="LocalInventoryServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory.LocalInventoryServicesConnector" />
         <RegionModule id="RemoteXInventoryServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory.RemoteXInventoryServicesConnector" />
-        <RegionModule id="LocalLandServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Land.LocalLandServicesConnector" />
         <RegionModule id="RemoteLandServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Land.RemoteLandServicesConnector" />
         <RegionModule id="MapImageServiceModule" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage.MapImageServiceModule" />
-        <RegionModule id="LocalMuteListServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList.LocalMuteListServicesConnector" />
         <RegionModule id="RemoteMuteListServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList.RemoteMuteListServicesConnector" />
         <RegionModule id="NeighbourServicesOutConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Neighbour.NeighbourServicesOutConnector" />
-        <RegionModule id="LocalPresenceServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence.LocalPresenceServicesConnector" />
         <RegionModule id="RemotePresenceServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence.RemotePresenceServicesConnector" />
-        <RegionModule id="LocalSimulationConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation.LocalSimulationConnectorModule" />
         <RegionModule id="RemoteSimulationConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation.RemoteSimulationConnectorModule" />
-        <RegionModule id="LocalUserAccountServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts.LocalUserAccountServicesConnector" />
         <RegionModule id="RemoteUserAccountServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts.RemoteUserAccountServicesConnector" />
         <RegionModule id="LocalUserAliasServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAliases.LocalUserAliasServicesConnector" />
         <RegionModule id="RemoteUserAliasServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAliases.RemoteUserAliasServicesConnector" />

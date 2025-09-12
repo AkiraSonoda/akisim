@@ -28,8 +28,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-
 using System.Net;
+using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
@@ -44,7 +44,7 @@ namespace OpenSim.Region.ClientStack.Linden
 {
     public class AvatarPickerSearchModule : ISharedRegionModule
     {
-//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private int m_nscenes;
         private IPeople m_People = null;
@@ -56,20 +56,34 @@ namespace OpenSim.Region.ClientStack.Linden
 
         public void Initialise(IConfigSource source)
         {
+            if (m_log.IsDebugEnabled) m_log.Debug("AvatarPickerSearchModule initializing");
+            
             IConfig config = source.Configs["ClientStack.LindenCaps"];
             if (config == null)
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("AvatarPickerSearchModule: No ClientStack.LindenCaps config section found");
                 return;
+            }
 
             m_URL = config.GetString("Cap_AvatarPickerSearch", string.Empty);
             // Cap doesn't exist
             if (m_URL != string.Empty)
+            {
                 m_Enabled = true;
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule enabled with URL: {0}", m_URL);
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("AvatarPickerSearchModule disabled - no Cap_AvatarPickerSearch URL configured");
+            }
         }
 
         public void AddRegion(Scene s)
         {
             if (!m_Enabled)
                 return;
+            
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule adding region {0}", s.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene s)
@@ -77,6 +91,8 @@ namespace OpenSim.Region.ClientStack.Linden
             if (!m_Enabled)
                 return;
 
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule removing region {0}", s.RegionInfo.RegionName);
+            
             s.EventManager.OnRegisterCaps -= RegisterCaps;
             --m_nscenes;
             if(m_nscenes >= 0)
@@ -88,8 +104,13 @@ namespace OpenSim.Region.ClientStack.Linden
             if (!m_Enabled)
                 return;
 
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule region loaded {0}", s.RegionInfo.RegionName);
+
             if(m_People == null)
+            {
                 m_People = s.RequestModuleInterface<IPeople>();
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule found IPeople interface: {0}", m_People != null);
+            }
             s.EventManager.OnRegisterCaps += RegisterCaps;
             ++m_nscenes;
         }
@@ -115,14 +136,14 @@ namespace OpenSim.Region.ClientStack.Linden
 
             if (m_URL == "localhost")
             {
-                // m_log.DebugFormat("[AVATAR PICKER SEARCH]: /CAPS/{0} in region {1}", capID, m_scene.RegionInfo.RegionName);
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule registering local capability for agent {0}", agentID);
                 if(m_People != null)
                     caps.RegisterSimpleHandler("AvatarPickerSearch",
                         new SimpleStreamHandler("/" + UUID.Random(), ProcessRequest));
             }
             else
             {
-                // m_log.DebugFormat("[AVATAR PICKER SEARCH]: {0} in region {1}", m_URL, m_scene.RegionInfo.RegionName);
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule registering external capability {0} for agent {1}", m_URL, agentID);
                 caps.RegisterHandler("AvatarPickerSearch", m_URL);
             }
         }
@@ -140,8 +161,11 @@ namespace OpenSim.Region.ClientStack.Linden
             string psize = query.GetOne("page_size");
             string pnumber = query.GetOne("page");
 
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule processing search request for: {0}", names);
+
             if (string.IsNullOrEmpty(names) || names.Length < 3)
             {
+                if (m_log.IsDebugEnabled) m_log.Debug("AvatarPickerSearchModule: Invalid or too short search query");
                 httpResponse.StatusCode = (int)HttpStatusCode.BadRequest;
                 return;
             }
@@ -160,6 +184,8 @@ namespace OpenSim.Region.ClientStack.Linden
             }
             // Full content request
             List<UserData> users = m_People.GetUserData(names, page_size, page_number);
+
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AvatarPickerSearchModule found {0} users for query '{1}'", users.Count, names);
 
             LLSDAvatarPicker osdReply = new LLSDAvatarPicker();
             osdReply.next_page_url = httpRequest.RawUrl;

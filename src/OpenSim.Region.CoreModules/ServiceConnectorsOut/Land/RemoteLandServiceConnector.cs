@@ -49,7 +49,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
                 MethodBase.GetCurrentMethod().DeclaringType);
 
         private bool m_Enabled = false;
-        private LocalLandServicesConnector m_LocalService;
+        // AKIDO: Removed LocalLandServicesConnector dependency as it was deleted for GridHypergrid-only deployments
 
         public Type ReplaceableInterface
         {
@@ -69,10 +69,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
                 string name = moduleConfig.GetString("LandServices", "");
                 if (name == Name)
                 {
-                    m_LocalService = new LocalLandServicesConnector();
-
+                    // AKIDO: Removed LocalLandServicesConnector instantiation - no longer needed for remote-only operation
                     m_Enabled = true;
-
                     m_log.Info("[LAND CONNECTOR]: Remote Land connector enabled");
                 }
             }
@@ -91,14 +89,13 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
             if (!m_Enabled)
                 return;
 
-            m_LocalService.AddRegion(scene);
+            // AKIDO: Removed m_LocalService.AddRegion(scene) call - operating in remote-only mode
             scene.RegisterModuleInterface<ILandService>(this);
         }
 
         public void RemoveRegion(Scene scene)
         {
-            if (m_Enabled)
-                m_LocalService.RemoveRegion(scene);
+            // AKIDO: Removed m_LocalService.RemoveRegion(scene) call - no local service to clean up
         }
 
         public void RegionLoaded(Scene scene)
@@ -112,12 +109,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
 
         public override LandData GetLandData(UUID scopeID, ulong regionHandle, uint x, uint y, out byte regionAccess)
         {
-            LandData land = m_LocalService.GetLandData(scopeID, regionHandle, x, y, out regionAccess);
-            if (land != null)
-                return land;
-
+            // AKIDO: Removed local service fallback - now operates purely as remote connector
             return base.GetLandData(scopeID, regionHandle, x, y, out regionAccess);
-
         }
         #endregion ILandService
     }

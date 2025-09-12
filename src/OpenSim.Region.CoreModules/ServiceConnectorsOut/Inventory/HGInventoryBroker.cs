@@ -164,14 +164,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory
 
                     ((RemoteXInventoryServicesConnector)m_LocalGridInventoryService).Scene = scene;
                 }
-                else if (m_LocalGridInventoryService is LocalInventoryServicesConnector)
-                {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Manually setting scene in LocalInventoryServicesConnector to {0}",
-                        scene.RegionInfo.RegionName);
-
-                    ((LocalInventoryServicesConnector)m_LocalGridInventoryService).Scene = scene;
-                }
+                // AKIDO: Removed LocalInventoryServicesConnector handling - no longer supported in GridHypergrid mode
             }
             scene.EventManager.OnClientClosed += OnClientClosed;
         }

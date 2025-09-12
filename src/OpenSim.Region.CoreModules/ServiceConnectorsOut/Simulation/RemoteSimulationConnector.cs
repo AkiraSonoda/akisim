@@ -53,8 +53,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
         private bool initialized = false;
         protected bool m_enabled = false;
         protected Scene m_aScene;
-        // RemoteSimulationConnector does not care about local regions; it delegates that to the Local module
-        protected LocalSimulationConnectorModule m_localBackend;
+        // AKIDO: Removed LocalSimulationConnectorModule dependency - operating in remote-only mode
         protected SimulationServiceConnector m_remoteConnector;
 
         protected bool m_safemode;
@@ -69,10 +68,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
                 string name = moduleConfig.GetString("SimulationServices", "");
                 if (name == Name)
                 {
-                    m_localBackend = new LocalSimulationConnectorModule();
-
-                    m_localBackend.InitialiseService(configSource);
-
+                    // AKIDO: Removed LocalSimulationConnectorModule instantiation - remote-only operation
                     m_remoteConnector = new SimulationServiceConnector();
 
                     m_enabled = true;
@@ -107,7 +103,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
         {
             if (m_enabled)
             {
-                m_localBackend.RemoveScene(scene);
+                // AKIDO: Removed m_localBackend.RemoveScene(scene) call - no local backend to clean up
                 scene.UnregisterModuleInterface<ISimulationService>(this);
             }
         }
@@ -130,7 +126,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 
         protected virtual void InitEach(Scene scene)
         {
-            m_localBackend.Init(scene);
+            // AKIDO: Removed m_localBackend.Init(scene) call - remote-only operation
             scene.RegisterModuleInterface<ISimulationService>(this);
         }
 
@@ -146,12 +142,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 
         public IScene GetScene(UUID regionId)
         {
-            return m_localBackend.GetScene(regionId);
+            // AKIDO: Removed local backend dependency - returning null for remote-only operation
+            return null;
         }
 
         public ISimulationService GetInnerService()
         {
-            return m_localBackend;
+            // AKIDO: Removed local backend dependency - returning remote connector
+            return m_remoteConnector;
         }
 
         /**
@@ -167,16 +165,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
                 return false;
             }
 
-            // Try local first
-            if (m_localBackend.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason))
-                return true;
-
-            // else do the remote thing
-            if (!m_localBackend.IsLocalRegion(destination.RegionID))
-            {
-                return m_remoteConnector.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
-            }
-            return false;
+            // AKIDO: Removed local backend fallback - going directly to remote connector
+            return m_remoteConnector.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
         }
 
         public bool UpdateAgent(GridRegion destination, AgentData cAgentData, EntityTransferContext ctx)
@@ -184,10 +174,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             if (destination == null)
                 return false;
 
-            // Try local first
-            if (m_localBackend.IsLocalRegion(destination.RegionID))
-                return m_localBackend.UpdateAgent(destination, cAgentData, ctx);
-
+            // AKIDO: Removed local backend fallback - going directly to remote connector
             return m_remoteConnector.UpdateAgent(destination, cAgentData, ctx);
         }
 
@@ -196,10 +183,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             if (destination == null)
                 return false;
 
-            // Try local first
-            if (m_localBackend.IsLocalRegion(destination.RegionID))
-                return m_localBackend.UpdateAgent(destination, cAgentData);
-
+            // AKIDO: Removed local backend fallback - going directly to remote connector
             return m_remoteConnector.UpdateAgent(destination, cAgentData);
         }
 
@@ -210,28 +194,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             if (destination == null)
                 return false;
 
-            // Try local first
-            if (m_localBackend.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, features, ctx, out reason))
-                return true;
-
-            // else do the remote thing
-            if (!m_localBackend.IsLocalRegion(destination.RegionID))
-                return m_remoteConnector.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, features, ctx, out reason);
-
-            return false;
+            // AKIDO: Removed local backend fallback - going directly to remote connector
+            return m_remoteConnector.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, features, ctx, out reason);
         }
 
         public bool ReleaseAgent(UUID origin, UUID id, string uri)
         {
-            // Try local first
-            if (m_localBackend.ReleaseAgent(origin, id, uri))
-                return true;
-
-            // else do the remote thing
-            if (!m_localBackend.IsLocalRegion(origin))
-                return m_remoteConnector.ReleaseAgent(origin, id, uri);
-
-            return false;
+            // AKIDO: Removed local backend fallback - going directly to remote connector
+            return m_remoteConnector.ReleaseAgent(origin, id, uri);
         }
 
         public bool CloseAgent(GridRegion destination, UUID id, string auth_token)
@@ -239,15 +209,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             if (destination == null)
                 return false;
 
-            // Try local first
-            if (m_localBackend.CloseAgent(destination, id, auth_token))
-                return true;
-
-            // else do the remote thing
-            if (!m_localBackend.IsLocalRegion(destination.RegionID))
-                return m_remoteConnector.CloseAgent(destination, id, auth_token);
-
-            return false;
+            // AKIDO: Removed local backend fallback - going directly to remote connector
+            return m_remoteConnector.CloseAgent(destination, id, auth_token);
         }
 
         /**
@@ -259,18 +222,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             if (destination == null)
                 return false;
 
-            // Try local first
-            if (m_localBackend.CreateObject(destination, newPosition, sog, isLocalCall))
-            {
-                //m_log.Debug("[REST COMMS]: LocalBackEnd SendCreateObject succeeded");
-                return true;
-            }
-
-            // else do the remote thing
-            if (!m_localBackend.IsLocalRegion(destination.RegionID))
-                return m_remoteConnector.CreateObject(destination, newPosition, sog, isLocalCall);
-
-            return false;
+            // AKIDO: Removed local backend fallback - going directly to remote connector
+            return m_remoteConnector.CreateObject(destination, newPosition, sog, isLocalCall);
         }
 
         #endregion

@@ -135,6 +135,19 @@ namespace OpenSim.Region.CoreModules
             yield return new DefaultPermissionsModule();
             yield return new SoundModule();
             
+            // Load LocalAuthorizationServicesConnector based on configuration
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                string authorizationServicesModule = modulesConfig?.GetString("AuthorizationServices", "");
+                if (authorizationServicesModule == "LocalAuthorizationServicesConnector")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading LocalAuthorizationServicesConnector");
+                    yield return new LocalAuthorizationServicesConnector();
+                    m_log.Info("LocalAuthorizationServicesConnector loaded for local authorization handling");
+                }
+            }
+            
             // Load WorldMap module based on configuration
             if (configSource != null)
             {
@@ -444,10 +457,6 @@ namespace OpenSim.Region.CoreModules
             {
                 yield return new RemoteUserAccountServicesConnector();
             }
-            else if (userAccountServicesModule == "LocalUserAccountServicesConnector")
-            {
-                m_log.Error("LocalUserAccountServicesConnector is no longer supported. Use RemoteUserAccountServicesConnector instead.");
-            }
 
             // Load NeighbourServices module based on configuration
             string neighbourServicesModule = modulesConfig?.GetString("NeighbourServices", "");
@@ -461,10 +470,6 @@ namespace OpenSim.Region.CoreModules
             if (simulationServicesModule == "RemoteSimulationConnectorModule")
             {
                 yield return new RemoteSimulationConnectorModule();
-            }
-            else if (simulationServicesModule == "LocalSimulationConnectorModule")
-            {
-                m_log.Error("LocalSimulationConnectorModule is no longer supported. Use RemoteSimulationConnectorModule instead.");
             }
 
             // Load SimulationServiceInConnector if enabled
@@ -531,10 +536,6 @@ namespace OpenSim.Region.CoreModules
             {
                 yield return new RemoteXInventoryServicesConnector();
             }
-            else if (inventoryServicesModule == "LocalInventoryServicesConnector")
-            {
-                m_log.Error("LocalInventoryServicesConnector is no longer supported. Use RemoteXInventoryServicesConnector instead.");
-            }
 
             // Load PresenceServices module based on configuration
             string presenceServicesModule = modulesConfig?.GetString("PresenceServices", "");
@@ -542,20 +543,14 @@ namespace OpenSim.Region.CoreModules
             {
                 yield return new RemotePresenceServicesConnector();
             }
-            else if (presenceServicesModule == "LocalPresenceServicesConnector")
-            {
-                m_log.Error("LocalPresenceServicesConnector is no longer supported. Use RemotePresenceServicesConnector instead.");
-            }
 
             // Load AuthenticationServices module based on configuration
             string authenticationServicesModule = modulesConfig?.GetString("AuthenticationServices", "");
             if (authenticationServicesModule == "RemoteAuthenticationServicesConnector")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading RemoteAuthenticationServicesConnector");
                 yield return new RemoteAuthenticationServicesConnector();
-            }
-            else if (authenticationServicesModule == "LocalAuthenticationServicesConnector")
-            {
-                m_log.Error("LocalAuthenticationServicesConnector is no longer supported. Use RemoteAuthenticationServicesConnector instead.");
+                m_log.Info("RemoteAuthenticationServicesConnector loaded for remote authentication handling");
             }
 
             // Load AuthorizationServices module based on configuration
@@ -564,20 +559,14 @@ namespace OpenSim.Region.CoreModules
             {
                 yield return new RemoteAuthorizationServicesConnector();
             }
-            else if (authorizationServicesModule == "LocalAuthorizationServicesConnector")
-            {
-                m_log.Error("LocalAuthorizationServicesConnector is no longer supported. Use RemoteAuthorizationServicesConnector instead.");
-            }
 
             // Load AvatarServices module based on configuration
             string avatarServicesModule = modulesConfig?.GetString("AvatarServices", "");
             if (avatarServicesModule == "RemoteAvatarServicesConnector")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading RemoteAvatarServicesConnector");
                 yield return new RemoteAvatarServicesConnector();
-            }
-            else if (avatarServicesModule == "LocalAvatarServicesConnector")
-            {
-                m_log.Error("LocalAvatarServicesConnector is no longer supported. Use RemoteAvatarServicesConnector instead.");
+                m_log.Info("RemoteAvatarServicesConnector loaded for remote avatar data handling");
             }
 
             // Load GridUserServices module based on configuration
@@ -586,20 +575,12 @@ namespace OpenSim.Region.CoreModules
             {
                 yield return new RemoteGridUserServicesConnector();
             }
-            else if (gridUserServicesModule == "LocalGridUserServicesConnector")
-            {
-                m_log.Error("LocalGridUserServicesConnector is no longer supported. Use RemoteGridUserServicesConnector instead.");
-            }
 
             // Load LandServices module based on configuration
             string landServicesModule = modulesConfig?.GetString("LandServices", "");
             if (landServicesModule == "RemoteLandServicesConnector")
             {
                 yield return new RemoteLandServicesConnector();
-            }
-            else if (landServicesModule == "LocalLandServicesConnector")
-            {
-                m_log.Error("LocalLandServicesConnector is no longer supported. Use RemoteLandServicesConnector instead.");
             }
 
             // Load MuteListServices module based on configuration
@@ -608,20 +589,14 @@ namespace OpenSim.Region.CoreModules
             {
                 yield return new RemoteMuteListServicesConnector();
             }
-            else if (muteListServicesModule == "LocalMuteListServicesConnector")
-            {
-                m_log.Error("LocalMuteListServicesConnector is no longer supported. Use RemoteMuteListServicesConnector instead.");
-            }
 
             // Load AgentPreferencesServices module based on configuration
             string agentPreferencesServicesModule = modulesConfig?.GetString("AgentPreferencesServices", "");
             if (agentPreferencesServicesModule == "RemoteAgentPreferencesServicesConnector")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading RemoteAgentPreferencesServicesConnector");
                 yield return new RemoteAgentPreferencesServicesConnector();
-            }
-            else if (agentPreferencesServicesModule == "LocalAgentPreferencesServicesConnector")
-            {
-                m_log.Error("LocalAgentPreferencesServicesConnector is no longer supported. Use RemoteAgentPreferencesServicesConnector instead.");
+                m_log.Info("RemoteAgentPreferencesServicesConnector loaded for remote agent preferences handling");
             }
 
             // Load ViewerStatsModule (WebStatsModule) based on configuration

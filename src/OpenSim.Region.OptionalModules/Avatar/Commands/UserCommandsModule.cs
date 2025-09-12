@@ -29,7 +29,6 @@ using System;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -38,12 +37,11 @@ using OpenSim.Region.Framework.Scenes;
 using ThreadedClasses;
 // AKIDO: clean
 
-namespace OpenSim.Region.CoreModules.Avatars.Commands
+namespace OpenSim.Region.OptionalModules.Avatar.Commands
 {
     /// <summary>
-    /// A module that holds commands for manipulating objects in the scene.
+    /// A module that holds commands for manipulating users in the scene.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UserCommandsModule")]
     public class UserCommandsModule : ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -64,22 +62,22 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void Initialise(IConfigSource source)
         {
-//            m_log.DebugFormat("INITIALIZED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule initializing");
         }
 
         public void PostInitialise()
         {
-//            m_log.DebugFormat("POST INITIALIZED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule post-initialized");
         }
 
         public void Close()
         {
-//            m_log.DebugFormat("CLOSED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule closing");
         }
 
         public void AddRegion(Scene scene)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("UserCommandsModule adding region {0}", scene.RegionInfo.RegionName);
 
             // AKIDO 
             m_scenes[scene.RegionInfo.RegionID] = scene;
@@ -97,7 +95,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void RemoveRegion(Scene scene)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("UserCommandsModule removing region {0}", scene.RegionInfo.RegionName);
 
             // AKIDO
             m_scenes.Remove(scene.RegionInfo.RegionID);
@@ -105,7 +103,7 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
 
         public void RegionLoaded(Scene scene)
         {
-            if(m_log.IsDebugEnabled)  m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("UserCommandsModule region loaded {0}", scene.RegionInfo.RegionName);
         }
 
         private ScenePresence GetUser(string firstName, string lastName)
@@ -165,6 +163,10 @@ namespace OpenSim.Region.CoreModules.Avatars.Commands
             string regionName
                 = m.Groups["regionName"].Success ? m.Groups["regionName"].Value : user.Scene.RegionInfo.RegionName;
 
+            if (m_log.IsInfoEnabled) 
+                m_log.InfoFormat("UserCommandsModule teleporting {0} to {1},{2},{3} in {4}", 
+                    user.Name, m.Groups["x"], m.Groups["y"], m.Groups["z"], regionName);
+                    
             MainConsole.Instance.Output(
                 "Teleporting {0} to {1},{2},{3} in {4}",
                 user.Name,
