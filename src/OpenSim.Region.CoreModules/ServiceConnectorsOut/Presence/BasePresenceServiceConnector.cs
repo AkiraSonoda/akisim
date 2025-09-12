@@ -61,15 +61,18 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence
         public void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"Not adding to region {scene.Name} - connector disabled");
                 return;
-
-            //            m_log.DebugFormat(
-            //                "[LOCAL PRESENCE CONNECTOR]: Registering IPresenceService to scene {0}", scene.RegionInfo.RegionName);
+            }
 
             scene.RegisterModuleInterface<IPresenceService>(this);
             m_PresenceDetector.AddRegion(scene);
 
-            m_log.InfoFormat("[BASE PRESENCE SERVICE CONNECTOR]: Enabled for region {0}", scene.Name);
+            m_log.InfoFormat("Added to region {0} and registered IPresenceService interface", scene.Name);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"PresenceDetector added to region {scene.Name}");
         }
 
         public void RemoveRegion(Scene scene)
@@ -78,6 +81,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence
                 return;
 
             m_PresenceDetector.RemoveRegion(scene);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Removed from region {scene.Name}, PresenceDetector cleaned up");
         }
 
         public void RegionLoaded(Scene scene)
@@ -85,6 +90,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence
             if (!m_Enabled)
                 return;
 
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Region {scene.Name} loaded successfully");
         }
 
         public void PostInitialise()
@@ -99,37 +106,86 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence
 
         public bool LoginAgent(string userID, UUID sessionID, UUID secureSessionID)
         {
-            m_log.Warn("[BASE PRESENCE SERVICE CONNECTOR]: LoginAgent connector not implemented at the simulators");
+            m_log.Warn("LoginAgent connector not implemented at the simulators");
             return false;
         }
 
         public bool LogoutAgent(UUID sessionID)
         {
-            return m_PresenceService.LogoutAgent(sessionID);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"LogoutAgent for session {sessionID}");
+                
+            bool result = m_PresenceService.LogoutAgent(sessionID);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"LogoutAgent result: {result}");
+            
+            return result;
         }
 
         public bool LogoutRegionAgents(UUID regionID)
         {
-            return m_PresenceService.LogoutRegionAgents(regionID);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"LogoutRegionAgents for region {regionID}");
+                
+            bool result = m_PresenceService.LogoutRegionAgents(regionID);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"LogoutRegionAgents result: {result}");
+            
+            return result;
         }
 
         public bool ReportAgent(UUID sessionID, UUID regionID)
         {
-            return m_PresenceService.ReportAgent(sessionID, regionID);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"ReportAgent for session {sessionID} in region {regionID}");
+                
+            bool result = m_PresenceService.ReportAgent(sessionID, regionID);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"ReportAgent result: {result}");
+            
+            return result;
         }
 
         public PresenceInfo GetAgent(UUID sessionID)
         {
-            return m_PresenceService.GetAgent(sessionID);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetAgent for session {sessionID}");
+                
+            PresenceInfo result = m_PresenceService.GetAgent(sessionID);
+            
+            if (m_log.IsDebugEnabled)
+            {
+                if (result != null)
+                    m_log.Debug($"GetAgent successful - user: {result.UserID}, region: {result.RegionID}");
+                else
+                    m_log.Debug("GetAgent returned null");
+            }
+            
+            return result;
         }
 
         public PresenceInfo[] GetAgents(string[] userIDs)
         {
             // Don't bother potentially making a useless network call if we not going to ask for any users anyway.
             if (userIDs.Length == 0)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("GetAgents called with empty userIDs array, returning empty result");
                 return new PresenceInfo[0];
+            }
 
-            return m_PresenceService.GetAgents(userIDs);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetAgents for {userIDs.Length} users");
+                
+            PresenceInfo[] result = m_PresenceService.GetAgents(userIDs);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"GetAgents returned {result?.Length ?? 0} presence records");
+            
+            return result;
         }
 
         #endregion

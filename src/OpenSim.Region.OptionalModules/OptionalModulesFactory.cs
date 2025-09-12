@@ -36,6 +36,8 @@ using OpenSim.Region.OptionalModules.Avatar.Friends;
 using OpenSim.Region.OptionalModules.Avatar.Commands;
 using OpenSim.Region.OptionalModules.Avatar.Appearance;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -102,6 +104,28 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("RemoteLandServicesConnector disabled - set LandServices = RemoteLandServicesConnector in [Modules] to enable distributed land services");
+            }
+
+            // Load RemoteMuteListServicesConnector if enabled for distributed mute list services
+            if (modulesConfig.GetString("MuteListService", "") == "RemoteMuteListServicesConnector")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RemoteMuteListServicesConnector for distributed mute list services");
+                yield return new RemoteMuteListServicesConnector();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RemoteMuteListServicesConnector disabled - set MuteListService = RemoteMuteListServicesConnector in [Modules] to enable distributed mute list services");
+            }
+
+            // Load RemotePresenceServicesConnector if enabled for distributed presence services
+            if (modulesConfig.GetString("PresenceServices", "") == "RemotePresenceServicesConnector")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RemotePresenceServicesConnector for distributed presence services");
+                yield return new RemotePresenceServicesConnector();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RemotePresenceServicesConnector disabled - set PresenceServices = RemotePresenceServicesConnector in [Modules] to enable distributed presence services");
             }
 
             // Additional optional modules can be added here as needed

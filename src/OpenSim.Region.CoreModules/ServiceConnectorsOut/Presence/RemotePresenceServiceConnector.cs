@@ -66,8 +66,20 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence
 
                     m_PresenceDetector = new PresenceDetector(this);
 
-                    m_log.Info("[REMOTE PRESENCE CONNECTOR]: Remote presence enabled");
+                    m_log.Info("Remote presence connector enabled for distributed presence services");
+                    m_log.Debug("Using PresenceServicesConnector for remote service communication");
+                    m_log.Debug("PresenceDetector configured for automatic presence tracking");
                 }
+                else
+                {
+                    if (m_log.IsDebugEnabled)
+                        m_log.Debug($"Module disabled. PresenceServices = '{name}', expected '{Name}'");
+                }
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("No [Modules] configuration section found, connector disabled");
             }
         }
 

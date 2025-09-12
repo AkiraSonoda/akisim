@@ -65,10 +65,18 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList
            // only active for core mute lists module
             IConfig moduleConfig = source.Configs["Messaging"];
             if (moduleConfig == null)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("[REMOTE MUTE LIST CONNECTOR]: No [Messaging] configuration section found, connector disabled");
                 return;
+            }
 
             if (moduleConfig.GetString("MuteListModule", "None") != "MuteListModule")
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("[REMOTE MUTE LIST CONNECTOR]: MuteListModule not enabled in [Messaging] section, connector disabled");
                 return;
+            }
             
             moduleConfig = source.Configs["Modules"];
             if (moduleConfig != null)
@@ -78,7 +86,19 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList
                 {
                     m_remoteConnector = new MuteListServicesConnector(source);
                     m_Enabled = true;
+                    m_log.Info("[REMOTE MUTE LIST CONNECTOR]: Remote mute list connector enabled for distributed mute list services");
+                    m_log.Debug("[REMOTE MUTE LIST CONNECTOR]: Using MuteListServicesConnector for remote service communication");
                 }
+                else
+                {
+                    if (m_log.IsDebugEnabled)
+                        m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: Module disabled. MuteListService = '{name}', expected '{Name}'");
+                }
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("[REMOTE MUTE LIST CONNECTOR]: No [Modules] configuration section found, connector disabled");
             }
         }
 
@@ -93,22 +113,32 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList
         public void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: Not adding to region {scene.Name} - connector disabled");
                 return;
+            }
 
             scene.RegisterModuleInterface<IMuteListService>(this);
-            m_log.InfoFormat("[MUTELIST CONNECTOR]: Enabled for region {0}", scene.RegionInfo.RegionName);
+            m_log.InfoFormat("[REMOTE MUTE LIST CONNECTOR]: Added to region {0} and registered IMuteListService interface", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
         {
             if (!m_Enabled)
                 return;
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: Removed from region {scene.Name}");
         }
 
         public void RegionLoaded(Scene scene)
         {
             if (!m_Enabled)
                 return;
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: Region {scene.Name} loaded successfully");
         }
 
         #endregion
@@ -118,21 +148,53 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList
         {
             if (!m_Enabled)
                 return null;
-            return m_remoteConnector.MuteListRequest(agentID, crc);
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: MuteListRequest for agent {agentID}, CRC: {crc}");
+                
+            Byte[] result = m_remoteConnector.MuteListRequest(agentID, crc);
+            
+            if (m_log.IsDebugEnabled)
+            {
+                if (result != null)
+                    m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: MuteListRequest successful - returned {result.Length} bytes");
+                else
+                    m_log.Debug("[REMOTE MUTE LIST CONNECTOR]: MuteListRequest returned null");
+            }
+            
+            return result;
         }
 
         public bool UpdateMute(MuteData mute)
         {
             if (!m_Enabled)
                 return false;
-            return m_remoteConnector.UpdateMute(mute);
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: UpdateMute for agent {mute.AgentID}, mute: {mute.MuteID} ({mute.MuteName})");
+                
+            bool result = m_remoteConnector.UpdateMute(mute);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: UpdateMute result: {result}");
+            
+            return result;
         }
 
         public bool RemoveMute(UUID agentID, UUID muteID, string muteName)
         {
             if (!m_Enabled)
                 return false;
-            return m_remoteConnector.RemoveMute(agentID, muteID, muteName);
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: RemoveMute for agent {agentID}, mute: {muteID} ({muteName})");
+                
+            bool result = m_remoteConnector.RemoveMute(agentID, muteID, muteName);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE MUTE LIST CONNECTOR]: RemoveMute result: {result}");
+            
+            return result;
         }
 
         #endregion IMuteListService
