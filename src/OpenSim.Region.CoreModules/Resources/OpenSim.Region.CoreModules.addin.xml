@@ -79,7 +79,6 @@
         <RegionModule id="RemoteGridUserServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.GridUser.RemoteGridUserServicesConnector" />
         <RegionModule id="HGInventoryBroker" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory.HGInventoryBroker" />
         <RegionModule id="RemoteXInventoryServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory.RemoteXInventoryServicesConnector" />
-        <RegionModule id="RemoteLandServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Land.RemoteLandServicesConnector" />
         <RegionModule id="MapImageServiceModule" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage.MapImageServiceModule" />
         <RegionModule id="RemoteMuteListServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList.RemoteMuteListServicesConnector" />
         <RegionModule id="NeighbourServicesOutConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Neighbour.NeighbourServicesOutConnector" />

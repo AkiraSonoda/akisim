@@ -71,8 +71,19 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
                 {
                     // AKIDO: Removed LocalLandServicesConnector instantiation - no longer needed for remote-only operation
                     m_Enabled = true;
-                    m_log.Info("[LAND CONNECTOR]: Remote Land connector enabled");
+                    m_log.Info("[REMOTE LAND CONNECTOR]: Remote Land connector enabled for grid-wide land services");
+                    m_log.Debug("[REMOTE LAND CONNECTOR]: Operating in remote-only mode without local service fallback");
                 }
+                else
+                {
+                    if (m_log.IsDebugEnabled)
+                        m_log.Debug($"[REMOTE LAND CONNECTOR]: Module disabled. LandServices = '{name}', expected '{Name}'");
+                }
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("[REMOTE LAND CONNECTOR]: No [Modules] configuration section found, connector disabled");
             }
         }
 
@@ -87,21 +98,33 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
         public void AddRegion(Scene scene)
         {
             if (!m_Enabled)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"[REMOTE LAND CONNECTOR]: Not adding to region {scene.Name} - connector disabled");
                 return;
+            }
 
             // AKIDO: Removed m_LocalService.AddRegion(scene) call - operating in remote-only mode
             scene.RegisterModuleInterface<ILandService>(this);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE LAND CONNECTOR]: Added to region {scene.Name} and registered ILandService interface");
         }
 
         public void RemoveRegion(Scene scene)
         {
             // AKIDO: Removed m_LocalService.RemoveRegion(scene) call - no local service to clean up
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE LAND CONNECTOR]: Removed from region {scene.Name}");
         }
 
         public void RegionLoaded(Scene scene)
         {
             if (m_Enabled)
+            {
                 m_GridService = scene.GridService;
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"[REMOTE LAND CONNECTOR]: Region {scene.Name} loaded, GridService configured");
+            }
         }
 
 
@@ -110,7 +133,20 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Land
         public override LandData GetLandData(UUID scopeID, ulong regionHandle, uint x, uint y, out byte regionAccess)
         {
             // AKIDO: Removed local service fallback - now operates purely as remote connector
-            return base.GetLandData(scopeID, regionHandle, x, y, out regionAccess);
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"[REMOTE LAND CONNECTOR]: GetLandData request - scopeID: {scopeID}, regionHandle: {regionHandle}, position: ({x},{y})");
+            
+            LandData result = base.GetLandData(scopeID, regionHandle, x, y, out regionAccess);
+            
+            if (m_log.IsDebugEnabled)
+            {
+                if (result != null)
+                    m_log.Debug($"[REMOTE LAND CONNECTOR]: GetLandData successful - parcel: {result.Name}, owner: {result.OwnerID}");
+                else
+                    m_log.Debug("[REMOTE LAND CONNECTOR]: GetLandData returned null");
+            }
+            
+            return result;
         }
         #endregion ILandService
     }

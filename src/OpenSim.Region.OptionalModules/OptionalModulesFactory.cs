@@ -35,6 +35,7 @@ using log4net;
 using OpenSim.Region.OptionalModules.Avatar.Friends;
 using OpenSim.Region.OptionalModules.Avatar.Commands;
 using OpenSim.Region.OptionalModules.Avatar.Appearance;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -90,6 +91,17 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule disabled - set AppearanceInfoModule = true in [Modules] to enable appearance debugging commands");
+            }
+
+            // Load RemoteLandServicesConnector if enabled for distributed land services
+            if (modulesConfig.GetString("LandServices", "") == "RemoteLandServicesConnector")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RemoteLandServicesConnector for distributed land services");
+                yield return new RemoteLandServicesConnector();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RemoteLandServicesConnector disabled - set LandServices = RemoteLandServicesConnector in [Modules] to enable distributed land services");
             }
 
             // Additional optional modules can be added here as needed
