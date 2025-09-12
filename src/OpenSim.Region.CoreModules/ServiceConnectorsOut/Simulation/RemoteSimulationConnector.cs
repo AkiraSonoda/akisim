@@ -73,8 +73,20 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
 
                     m_enabled = true;
 
-                    m_log.Info("[REMOTE SIMULATION CONNECTOR]: Remote simulation enabled.");
+                    m_log.Info("Remote simulation connector enabled for distributed simulation services");
+                    m_log.Debug("Using SimulationServiceConnector for remote service communication");
+                    m_log.Debug("Operating in remote-only mode without local simulation fallback");
                 }
+                else
+                {
+                    if (m_log.IsDebugEnabled)
+                        m_log.Debug($"Module disabled. SimulationServices = '{name}', expected '{Name}'");
+                }
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("No [Modules] configuration section found, connector disabled");
             }
         }
 
@@ -89,14 +101,23 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
         public void AddRegion(Scene scene)
         {
             if (!m_enabled)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"Not adding to region {scene.Name} - connector disabled");
                 return;
+            }
 
             if (!initialized)
             {
                 InitOnce(scene);
                 initialized = true;
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("Remote simulation connector initialized for first region");
             }
             InitEach(scene);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Added to region {scene.Name} and registered ISimulationService interface");
         }
 
         public void RemoveRegion(Scene scene)
@@ -105,6 +126,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             {
                 // AKIDO: Removed m_localBackend.RemoveScene(scene) call - no local backend to clean up
                 scene.UnregisterModuleInterface<ISimulationService>(this);
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug($"Removed from region {scene.Name} and unregistered ISimulationService interface");
             }
         }
 
@@ -112,6 +135,9 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
         {
             if (!m_enabled)
                 return;
+                
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"Region {scene.Name} loaded successfully");
         }
 
         public Type ReplaceableInterface
@@ -161,21 +187,41 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             if (destination == null)
             {
                 reason = "Given destination was null";
-                m_log.DebugFormat("[REMOTE SIMULATION CONNECTOR]: CreateAgent was given a null destination");
+                m_log.Debug("CreateAgent was given a null destination");
                 return false;
             }
 
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"CreateAgent for {aCircuit.AgentID} from {source?.RegionName ?? "unknown"} to {destination.RegionName}");
+
             // AKIDO: Removed local backend fallback - going directly to remote connector
-            return m_remoteConnector.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
+            bool result = m_remoteConnector.CreateAgent(source, destination, aCircuit, teleportFlags, ctx, out reason);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"CreateAgent result: {result}, reason: {reason ?? "none"}");
+                
+            return result;
         }
 
         public bool UpdateAgent(GridRegion destination, AgentData cAgentData, EntityTransferContext ctx)
         {
             if (destination == null)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("UpdateAgent was given a null destination");
                 return false;
+            }
+
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"UpdateAgent for {cAgentData.AgentID} to {destination.RegionName}");
 
             // AKIDO: Removed local backend fallback - going directly to remote connector
-            return m_remoteConnector.UpdateAgent(destination, cAgentData, ctx);
+            bool result = m_remoteConnector.UpdateAgent(destination, cAgentData, ctx);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"UpdateAgent result: {result}");
+                
+            return result;
         }
 
         public bool UpdateAgent(GridRegion destination, AgentPosition cAgentData)
@@ -192,10 +238,22 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation
             reason = "Communications failure";
 
             if (destination == null)
+            {
+                if (m_log.IsDebugEnabled)
+                    m_log.Debug("QueryAccess was given a null destination");
                 return false;
+            }
+
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"QueryAccess for agent {agentID} to {destination.RegionName}, viaTeleport: {viaTeleport}");
 
             // AKIDO: Removed local backend fallback - going directly to remote connector
-            return m_remoteConnector.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, features, ctx, out reason);
+            bool result = m_remoteConnector.QueryAccess(destination, agentID, agentHomeURI, viaTeleport, position, features, ctx, out reason);
+            
+            if (m_log.IsDebugEnabled)
+                m_log.Debug($"QueryAccess result: {result}, reason: {reason ?? "none"}");
+                
+            return result;
         }
 
         public bool ReleaseAgent(UUID origin, UUID id, string uri)

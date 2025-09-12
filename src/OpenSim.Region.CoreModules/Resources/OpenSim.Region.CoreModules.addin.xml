@@ -81,7 +81,6 @@
         <RegionModule id="RemoteXInventoryServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory.RemoteXInventoryServicesConnector" />
         <RegionModule id="MapImageServiceModule" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage.MapImageServiceModule" />
         <RegionModule id="NeighbourServicesOutConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Neighbour.NeighbourServicesOutConnector" />
-        <RegionModule id="RemoteSimulationConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation.RemoteSimulationConnectorModule" />
         <RegionModule id="RemoteUserAccountServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts.RemoteUserAccountServicesConnector" />
         <RegionModule id="LocalUserAliasServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAliases.LocalUserAliasServicesConnector" />
         <RegionModule id="RemoteUserAliasServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAliases.RemoteUserAliasServicesConnector" />

@@ -38,6 +38,7 @@ using OpenSim.Region.OptionalModules.Avatar.Appearance;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -126,6 +127,17 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("RemotePresenceServicesConnector disabled - set PresenceServices = RemotePresenceServicesConnector in [Modules] to enable distributed presence services");
+            }
+
+            // Load RemoteSimulationConnectorModule if enabled for distributed simulation services
+            if (modulesConfig.GetString("SimulationServices", "") == "RemoteSimulationConnectorModule")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RemoteSimulationConnectorModule for distributed simulation services");
+                yield return new RemoteSimulationConnectorModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RemoteSimulationConnectorModule disabled - set SimulationServices = RemoteSimulationConnectorModule in [Modules] to enable distributed simulation services");
             }
 
             // Additional optional modules can be added here as needed
