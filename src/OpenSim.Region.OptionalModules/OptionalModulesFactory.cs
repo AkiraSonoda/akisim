@@ -40,6 +40,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -150,6 +151,17 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("RemoteUserAccountServicesConnector disabled - set UserAccountServices = RemoteUserAccountServicesConnector in [Modules] to enable distributed user account services");
+            }
+
+            // Load RemoteXInventoryServicesConnector if enabled for distributed inventory services
+            if (modulesConfig.GetString("InventoryServices", "") == "RemoteXInventoryServicesConnector")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RemoteXInventoryServicesConnector for distributed inventory services");
+                yield return new RemoteXInventoryServicesConnector();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RemoteXInventoryServicesConnector disabled - set InventoryServices = RemoteXInventoryServicesConnector in [Modules] to enable distributed inventory services");
             }
 
             // Additional optional modules can be added here as needed
