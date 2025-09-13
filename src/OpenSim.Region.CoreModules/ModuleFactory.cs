@@ -89,7 +89,6 @@ using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Inventory;
-using OpenSim.Region.CoreModules.ServiceConnectorsIn.Hypergrid;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -502,11 +501,6 @@ namespace OpenSim.Region.CoreModules
                 yield return new InventoryServiceInConnectorModule();
             }
 
-            // Load HypergridServiceInConnector if enabled
-            if (modulesConfig?.GetBoolean("HypergridServiceInConnector", false) == true)
-            {
-                yield return new HypergridServiceInConnectorModule();
-            }
 
             // Load InventoryServices module based on configuration
             string inventoryServicesModule = modulesConfig?.GetString("InventoryServices", "");
