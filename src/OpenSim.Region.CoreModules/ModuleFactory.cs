@@ -483,7 +483,9 @@ namespace OpenSim.Region.CoreModules
             // Load NeighbourServiceInConnector if enabled
             if (modulesConfig?.GetBoolean("NeighbourServiceInConnector", false) == true)
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading NeighbourServiceInConnectorModule");
                 yield return new NeighbourServiceInConnectorModule();
+                m_log.Info("NeighbourServiceInConnectorModule loaded for incoming neighbour region requests");
             }
 
 
