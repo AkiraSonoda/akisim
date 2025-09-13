@@ -87,10 +87,7 @@ using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
-using OpenSim.Region.CoreModules.ServiceConnectorsIn.Grid;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage;
-using OpenSim.Region.CoreModules.ServiceConnectorsIn.Asset;
-using OpenSim.Region.CoreModules.ServiceConnectorsIn.Authentication;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Inventory;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Hypergrid;
 
@@ -490,11 +487,6 @@ namespace OpenSim.Region.CoreModules
                 yield return new NeighbourServiceInConnectorModule();
             }
 
-            // Load GridInfoServiceInConnector if enabled
-            if (modulesConfig?.GetBoolean("GridInfoServiceInConnector", false) == true)
-            {
-                yield return new GridInfoServiceInConnectorModule();
-            }
 
             // Load MapImageServiceInConnector if enabled
             if (modulesConfig?.GetBoolean("MapImageServiceInConnector", false) == true)
@@ -502,17 +494,7 @@ namespace OpenSim.Region.CoreModules
                 yield return new MapImageServiceInConnectorModule();
             }
 
-            // Load AssetServiceInConnector if enabled
-            if (modulesConfig?.GetBoolean("AssetServiceInConnector", false) == true)
-            {
-                yield return new AssetServiceInConnectorModule();
-            }
 
-            // Load AuthenticationServiceInConnector if enabled
-            if (modulesConfig?.GetBoolean("AuthenticationServiceInConnector", false) == true)
-            {
-                yield return new AuthenticationServiceInConnectorModule();
-            }
 
             // Load InventoryServiceInConnector if enabled
             if (modulesConfig?.GetBoolean("InventoryServiceInConnector", false) == true)
