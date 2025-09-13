@@ -475,7 +475,9 @@ namespace OpenSim.Region.CoreModules
             // Load LandServiceInConnector if enabled
             if (modulesConfig?.GetBoolean("LandServiceInConnector", false) == true)
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading LandServiceInConnectorModule");
                 yield return new LandServiceInConnectorModule();
+                m_log.Info("LandServiceInConnectorModule loaded for incoming land data requests");
             }
 
             // Load NeighbourServiceInConnector if enabled
