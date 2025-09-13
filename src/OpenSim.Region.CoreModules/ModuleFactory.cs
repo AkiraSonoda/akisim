@@ -469,7 +469,9 @@ namespace OpenSim.Region.CoreModules
             // Load SimulationServiceInConnector if enabled
             if (modulesConfig?.GetBoolean("SimulationServiceInConnector", false) == true)
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading SimulationServiceInConnectorModule");
                 yield return new SimulationServiceInConnectorModule();
+                m_log.Info("SimulationServiceInConnectorModule loaded for incoming simulation requests (agent/object transfers)");
             }
 
             // Load LandServiceInConnector if enabled
