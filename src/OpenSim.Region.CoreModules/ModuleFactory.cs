@@ -87,7 +87,6 @@ using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
-using OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -486,11 +485,6 @@ namespace OpenSim.Region.CoreModules
             }
 
 
-            // Load MapImageServiceInConnector if enabled
-            if (modulesConfig?.GetBoolean("MapImageServiceInConnector", false) == true)
-            {
-                yield return new MapImageServiceInConnectorModule();
-            }
 
 
 

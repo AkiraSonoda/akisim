@@ -62,7 +62,6 @@
         <RegionModule id="XMLRPCModule" class="OpenSim.Region.CoreModules.Scripting.XMLRPC.XMLRPCModule" />
         <RegionModule id="AuthenticationServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.Authentication.AuthenticationServiceInConnectorModule" />
         <RegionModule id="LandServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.Land.LandServiceInConnectorModule" />
-        <RegionModule id="MapImageServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage.MapImageServiceInConnectorModule" />
         <RegionModule id="NeighbourServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour.NeighbourServiceInConnectorModule" />
         <RegionModule id="SimulationServiceInConnectorModule" class="OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation.SimulationServiceInConnectorModule" />
         <RegionModule id="RemoteAgentPreferencesServicesConnector" class="OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences.RemoteAgentPreferencesServicesConnector" />
