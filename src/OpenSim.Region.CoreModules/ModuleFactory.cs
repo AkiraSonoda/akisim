@@ -88,7 +88,6 @@ using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.MapImage;
-using OpenSim.Region.CoreModules.ServiceConnectorsIn.Inventory;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -495,11 +494,6 @@ namespace OpenSim.Region.CoreModules
 
 
 
-            // Load InventoryServiceInConnector if enabled
-            if (modulesConfig?.GetBoolean("InventoryServiceInConnector", false) == true)
-            {
-                yield return new InventoryServiceInConnectorModule();
-            }
 
 
             // Load InventoryServices module based on configuration
