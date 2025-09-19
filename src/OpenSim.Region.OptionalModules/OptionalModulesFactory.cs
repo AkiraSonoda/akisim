@@ -41,6 +41,9 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory;
+using OpenSim.Region.CoreModules.World.Archiver;
+using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
+using OpenSim.Region.CoreModules.Framework.Library;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -164,6 +167,28 @@ namespace OpenSim.Region.OptionalModules
                 if (m_log.IsDebugEnabled) m_log.Debug("RemoteXInventoryServicesConnector disabled - set InventoryServices = RemoteXInventoryServicesConnector in [Modules] to enable distributed inventory services");
             }
 
+            // Load InventoryArchiverModule if enabled for inventory archive operations
+            if (modulesConfig.GetBoolean("InventoryArchiverModule", true))  // Default to true for backward compatibility
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading InventoryArchiverModule for inventory archive operations");
+                yield return new InventoryArchiverModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("InventoryArchiverModule disabled - set InventoryArchiverModule = true in [Modules] to enable inventory archive operations");
+            }
+
+            // Load LibraryModule if enabled for library services
+            if (modulesConfig.GetBoolean("LibraryModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading LibraryModule for library services and archive loading");
+                yield return new LibraryModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("LibraryModule disabled - set LibraryModule = true in [Modules] to enable library services");
+            }
+
             // Additional optional modules can be added here as needed
             // Example pattern for future modules:
             /*
@@ -181,8 +206,26 @@ namespace OpenSim.Region.OptionalModules
         /// </summary>
         public static IEnumerable<IRegionModuleBase> CreateOptionalRegionModules(IConfigSource configSource)
         {
+            var modulesConfig = configSource?.Configs["Modules"];
+
+            if (modulesConfig == null)
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("No [Modules] configuration section found, no optional region modules will be loaded");
+                yield break;
+            }
+
+            // Load ArchiverModule if enabled for region archive operations
+            if (modulesConfig.GetBoolean("ArchiverModule", true))  // Default to true for backward compatibility
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading ArchiverModule for region archive operations");
+                yield return new ArchiverModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("ArchiverModule disabled - set ArchiverModule = true in [Modules] to enable region archive operations");
+            }
+
             // Future non-shared optional modules would go here
-            yield break;
         }
     }
 }
