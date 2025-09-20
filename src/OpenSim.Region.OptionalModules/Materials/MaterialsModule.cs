@@ -32,7 +32,6 @@ using System.Net;
 using System.Reflection;
 using System.Text;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using ThreadedClasses;
 using OpenMetaverse;
@@ -48,7 +47,6 @@ using Ionic.Zlib;
 
 namespace OpenSim.Region.OptionalModules.Materials
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MaterialsModule")]
     public class MaterialsModule : INonSharedRegionModule, IMaterialsModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

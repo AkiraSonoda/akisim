@@ -100,6 +100,7 @@ using OpenSim.Region.ClientStack.LindenCaps;
 
 
 
+
 namespace OpenSim.Region.CoreModules
 {
     /// <summary>
@@ -302,6 +303,7 @@ namespace OpenSim.Region.CoreModules
                 yield return new BSScene();
                 yield return new ExtendedPhysics();
             }
+
         }
 
         /// <summary>

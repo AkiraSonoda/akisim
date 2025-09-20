@@ -44,6 +44,13 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Inventory;
 using OpenSim.Region.CoreModules.World.Archiver;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
 using OpenSim.Region.CoreModules.Framework.Library;
+using OpenSim.Region.CoreModules.Avatar.Inventory.Transfer;
+using OpenSim.Region.CoreModules.Asset;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset;
+using OpenSim.Region.OptionalModules.Asset;
+using OpenSim.Region.ClientStack.Linden;
+using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
+using OpenSim.Region.OptionalModules.Materials;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -189,6 +196,86 @@ namespace OpenSim.Region.OptionalModules
                 if (m_log.IsDebugEnabled) m_log.Debug("LibraryModule disabled - set LibraryModule = true in [Modules] to enable library services");
             }
 
+            // Load InventoryTransferModule if enabled for inventory transfer operations
+            if (modulesConfig.GetBoolean("InventoryTransferModule", true))  // Default to true for backward compatibility
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading InventoryTransferModule for inventory transfer operations via instant messages");
+                yield return new InventoryTransferModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("InventoryTransferModule disabled - set InventoryTransferModule = true in [Modules] to enable inventory transfers");
+            }
+
+            // Load FlotsamAssetCache if configured as the AssetCaching module
+            string assetCaching = modulesConfig.GetString("AssetCaching", "");
+            if (assetCaching == "FlotsamAssetCache")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading FlotsamAssetCache for distributed asset caching with memory and file cache support");
+                yield return new FlotsamAssetCache();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("FlotsamAssetCache disabled - set AssetCaching = FlotsamAssetCache in [Modules] to enable distributed asset caching");
+            }
+
+            // Load RegionAssetConnector if configured as the AssetServices module
+            string assetServices = modulesConfig.GetString("AssetServices", "");
+            if (assetServices == "RegionAssetConnector")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading RegionAssetConnector for local and hypergrid asset service connectivity with caching support");
+                yield return new RegionAssetConnector();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("RegionAssetConnector disabled - set AssetServices = RegionAssetConnector in [Modules] to enable asset service connectivity");
+            }
+
+            // Load AssetInfoModule if enabled for asset inspection and debugging commands
+            if (modulesConfig.GetBoolean("AssetInfoModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading AssetInfoModule for asset inspection and debugging commands");
+                yield return new AssetInfoModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("AssetInfoModule disabled - set AssetInfoModule = true in [Modules] to enable asset inspection commands");
+            }
+
+            // Load FetchInventory2Module if enabled for inventory fetching capabilities
+            if (modulesConfig.GetBoolean("FetchInventory2Module", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading FetchInventory2Module for enhanced inventory fetching and library access capabilities");
+                yield return new FetchInventory2Module();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("FetchInventory2Module disabled - set FetchInventory2Module = true in [Modules] to enable inventory fetching capabilities");
+            }
+
+            // Load HGInventoryBroker if configured as the InventoryServices module
+            string inventoryServices = modulesConfig.GetString("InventoryServices", "");
+            if (inventoryServices == "HGInventoryBroker")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading HGInventoryBroker for hypergrid inventory management with local and foreign user support");
+                yield return new HGInventoryBroker();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("HGInventoryBroker disabled - set InventoryServices = HGInventoryBroker in [Modules] to enable hypergrid inventory brokering");
+            }
+
+            // Load DynamicTextureModule if enabled for dynamic texture generation
+            if (modulesConfig.GetBoolean("DynamicTextureModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading DynamicTextureModule for dynamic texture generation with rendering plugin support");
+                yield return new DynamicTextureModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("DynamicTextureModule disabled - set DynamicTextureModule = true in [Modules] to enable dynamic texture generation");
+            }
+
             // Additional optional modules can be added here as needed
             // Example pattern for future modules:
             /*
@@ -223,6 +310,17 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("ArchiverModule disabled - set ArchiverModule = true in [Modules] to enable region archive operations");
+            }
+
+            // Load MaterialsModule if enabled for PBR materials support
+            if (modulesConfig.GetBoolean("MaterialsModule", true))  // Default to true for backward compatibility
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading MaterialsModule for PBR materials and glTF rendering support");
+                yield return new MaterialsModule();
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("MaterialsModule disabled - set MaterialsModule = true in [Modules] to enable PBR materials support");
             }
 
             // Future non-shared optional modules would go here
