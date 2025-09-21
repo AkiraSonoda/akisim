@@ -336,7 +336,114 @@ namespace OpenSim.Region.OptionalModules
                 if (m_log.IsDebugEnabled) m_log.Debug("MaterialsModule disabled - set MaterialsModule = true in [Modules] to enable PBR materials support");
             }
 
+            // Load YEngine script engine if enabled
+            var startupConfig = configSource?.Configs["Startup"];
+            string defaultScriptEngine = startupConfig?.GetString("DefaultScriptEngine", "");
+            var yengineConfig = configSource?.Configs["YEngine"];
+            bool yengineEnabled = yengineConfig?.GetBoolean("Enabled", false) ?? false;
+
+            if (defaultScriptEngine == "YEngine" || yengineEnabled)
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading YEngine script engine");
+                var yengineModule = LoadYEngine();
+                if (yengineModule != null)
+                {
+                    yield return yengineModule;
+                    if (m_log.IsInfoEnabled) m_log.Info("YEngine script engine loaded successfully");
+                }
+                else
+                {
+                    m_log.Warn("YEngine was configured but could not be loaded. Check that OpenSim.Region.ScriptEngine.YEngine.dll is available.");
+                }
+            }
+            else if (!string.IsNullOrEmpty(defaultScriptEngine))
+            {
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("YEngine not loaded - DefaultScriptEngine configured as '{0}'", defaultScriptEngine);
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("YEngine not loaded - no DefaultScriptEngine configured and YEngine not explicitly enabled");
+            }
+
             // Future non-shared optional modules would go here
+        }
+
+        /// <summary>
+        /// Loads YEngine script engine using reflection to avoid circular dependency
+        /// </summary>
+        private static IRegionModuleBase LoadYEngine()
+        {
+            try
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Attempting to load YEngine script engine via reflection");
+
+                // First, try to explicitly load the YEngine assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.ScriptEngine.YEngine.dll");
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("Looking for YEngine assembly at: {0}", assemblyPath);
+
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if (m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded YEngine assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if (m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.ScriptEngine.YEngine.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.ScriptEngine.YEngine.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the YEngine type in any loaded assembly
+                Type yengineType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    yengineType = assembly.GetType("OpenSim.Region.ScriptEngine.Yengine.Yengine");
+                    if (yengineType != null)
+                    {
+                        if (m_log.IsDebugEnabled) m_log.DebugFormat("Found YEngine type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (yengineType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(yengineType) as IRegionModuleBase;
+                    if (moduleInstance != null)
+                    {
+                        if (m_log.IsDebugEnabled) m_log.Debug("Successfully created YEngine instance");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("YEngine type found but could not cast to IRegionModuleBase");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("YEngine type not found in any loaded assembly");
+                    if (m_log.IsDebugEnabled)
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains("YEngine") || assembly.FullName.Contains("ScriptEngine"))
+                                m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load YEngine script engine: {0}", ex.Message);
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("YEngine loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
         }
     }
 }

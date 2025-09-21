@@ -29,7 +29,6 @@
 // but with several changes to be more cross platform.
 
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
@@ -61,12 +60,8 @@ using LSL_Vector = OpenSim.Region.ScriptEngine.Shared.LSL_Types.Vector3;
 
 using SceneScriptEvents = OpenSim.Region.Framework.Scenes.scriptEvents;
 
-[assembly: Addin("YEngine", OpenSim.VersionInfo.VersionNumber)]
-[assembly: AddinDependency("OpenSim.Region.Framework", OpenSim.VersionInfo.VersionNumber)]
-
 namespace OpenSim.Region.ScriptEngine.Yengine
 {
-    [Mono.Addins.Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "YEngine")]
     public partial class Yengine: INonSharedRegionModule, IScriptEngine, IScriptModule
     {
         public static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
