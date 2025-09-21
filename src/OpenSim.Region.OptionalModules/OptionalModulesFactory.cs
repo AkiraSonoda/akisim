@@ -48,6 +48,7 @@ using OpenSim.Region.CoreModules.Avatar.Inventory.Transfer;
 using OpenSim.Region.CoreModules.Asset;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset;
 using OpenSim.Region.OptionalModules.Asset;
+using OpenSim.Region.OptionalModules.Agent.TextureSender;
 using OpenSim.Region.ClientStack.Linden;
 using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
 using OpenSim.Region.OptionalModules.Materials;
@@ -106,6 +107,18 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule disabled - set AppearanceInfoModule = true in [Modules] to enable appearance debugging commands");
+            }
+
+            // Load J2KDecoderCommandModule if enabled for JPEG2000 debugging commands
+            if (modulesConfig.GetBoolean("J2KDecoderCommandModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading J2KDecoderCommandModule for JPEG2000 texture debugging commands");
+                yield return new J2KDecoderCommandModule();
+                if (m_log.IsInfoEnabled) m_log.Info("J2KDecoderCommandModule loaded for JPEG2000 texture debugging and analysis commands");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("J2KDecoderCommandModule disabled - set J2KDecoderCommandModule = true in [Modules] to enable JPEG2000 debugging commands");
             }
 
             // Load RemoteLandServicesConnector if enabled for distributed land services
