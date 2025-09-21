@@ -93,6 +93,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
 using OpenSim.Region.CoreModules.Scripting.ScriptModuleComms;
 using OpenSim.Region.CoreModules.Scripting.WorldComm;
+using OpenSim.Region.CoreModules.Scripting.HttpRequest;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -427,6 +428,29 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("Loading WorldCommModule (no config source - using default)");
                 yield return new WorldCommModule();
                 if(m_log.IsInfoEnabled) m_log.Info("WorldCommModule loaded for LSL script communication, llListen, and chat filtering");
+            }
+
+            // Load HttpRequestModule if enabled for LSL HTTP request functionality and llHTTPRequest
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetBoolean("HttpRequestModule", true) == true)  // Default to true as it's essential for LSL HTTP functionality
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading HttpRequestModule for LSL HTTP requests and web service integration");
+                    yield return new HttpRequestModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("HttpRequestModule loaded for LSL HTTP requests, llHTTPRequest, and web service integration");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("HttpRequestModule disabled - set HttpRequestModule = true in [Modules] to enable LSL HTTP functionality");
+                }
+            }
+            else
+            {
+                // Default to loading if no config source (essential module for script HTTP functionality)
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading HttpRequestModule (no config source - using default)");
+                yield return new HttpRequestModule();
+                if(m_log.IsInfoEnabled) m_log.Info("HttpRequestModule loaded for LSL HTTP requests, llHTTPRequest, and web service integration");
             }
 
         }
