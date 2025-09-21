@@ -24,8 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using Mono.Addins;
-
 using System;
 using System.Reflection;
 using log4net;
@@ -34,12 +32,9 @@ using OpenMetaverse;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using ThreadedClasses;
-// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "JsonStoreModule")]
-
     public class JsonStoreModule  : INonSharedRegionModule, IJsonStoreModule
     {
         private static readonly ILog m_log =

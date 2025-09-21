@@ -52,6 +52,7 @@ using OpenSim.Region.OptionalModules.Agent.TextureSender;
 using OpenSim.Region.ClientStack.Linden;
 using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
 using OpenSim.Region.OptionalModules.Materials;
+using OpenSim.Region.OptionalModules.Scripting.JsonStore;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -363,6 +364,18 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("YEngine not loaded - no DefaultScriptEngine configured and YEngine not explicitly enabled");
+            }
+
+            // Load JsonStoreModule if enabled for JSON data storage functionality
+            if (modulesConfig.GetBoolean("JsonStoreModule", false))  // Default to false - must be explicitly enabled
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading JsonStoreModule for JSON data storage and script integration");
+                yield return new JsonStoreModule();
+                if (m_log.IsInfoEnabled) m_log.Info("JsonStoreModule loaded for JSON data storage, JsonStore LSL functions, and script data persistence");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("JsonStoreModule disabled - set JsonStoreModule = true in [Modules] to enable JSON data storage functionality");
             }
 
             // Future non-shared optional modules would go here
