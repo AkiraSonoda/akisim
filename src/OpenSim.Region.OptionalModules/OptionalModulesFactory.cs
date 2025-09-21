@@ -53,7 +53,6 @@ using OpenSim.Region.ClientStack.Linden;
 using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
 using OpenSim.Region.OptionalModules.Materials;
 using OpenSim.Region.OptionalModules.Scripting.JsonStore;
-using OpenSim.Region.OptionalModules.Scripting.XmlRpcRouterModule;
 using OpenSim.Region.OptionalModules.Scripting.XmlRpcGridRouterModule;
 
 namespace OpenSim.Region.OptionalModules
@@ -402,18 +401,6 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("JsonStoreScriptModule disabled - requires JsonStoreModule = true in [Modules] to enable JsonStore LSL functions");
-            }
-
-            // Load XmlRpcRouter if enabled for XMLRPC routing functionality
-            if (modulesConfig.GetBoolean("XmlRpcRouterModule", false))  // Default to false - must be explicitly enabled
-            {
-                if (m_log.IsDebugEnabled) m_log.Debug("Loading XmlRpcRouter for XMLRPC channel routing and script integration");
-                yield return new XmlRpcRouter();
-                if (m_log.IsInfoEnabled) m_log.Info("XmlRpcRouter loaded for XMLRPC channel routing, script event handling, and external API integration");
-            }
-            else
-            {
-                if (m_log.IsDebugEnabled) m_log.Debug("XmlRpcRouter disabled - set XmlRpcRouterModule = true in [Modules] to enable XMLRPC routing functionality");
             }
 
             // Load XmlRpcGridRouter if enabled for grid-wide XMLRPC routing functionality
