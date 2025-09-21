@@ -31,7 +31,6 @@ using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
-using Mono.Addins;
 
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -40,7 +39,6 @@ using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.OptionalModules.Scripting.XmlRpcRouterModule
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "XmlRpcRouter")]
     public class XmlRpcRouter : INonSharedRegionModule, IXmlRpcRouter
     {
         //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
