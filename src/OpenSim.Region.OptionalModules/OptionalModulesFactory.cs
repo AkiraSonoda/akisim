@@ -54,6 +54,7 @@ using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
 using OpenSim.Region.OptionalModules.Materials;
 using OpenSim.Region.OptionalModules.Scripting.JsonStore;
 using OpenSim.Region.OptionalModules.Scripting.XmlRpcRouterModule;
+using OpenSim.Region.OptionalModules.Scripting.XmlRpcGridRouterModule;
 
 namespace OpenSim.Region.OptionalModules
 {
