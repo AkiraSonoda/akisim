@@ -37,7 +37,6 @@ using CSJ2K;
 using Nini.Config;
 using log4net;
 using Warp3D;
-using Mono.Addins;
 
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -53,7 +52,6 @@ using WarpRenderer = Warp3D.Warp3D;
 
 namespace OpenSim.Region.CoreModules.World.Warp3DMap
 {
-    // [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "Warp3DImageModule")]
     public class Warp3DImageModule : IMapImageGenerator, INonSharedRegionModule
     {
         private static readonly Color4 WATER_COLOR = new Color4(29, 72, 96, 216);

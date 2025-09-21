@@ -32,7 +32,6 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
@@ -46,7 +45,6 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 {
     public delegate void J2KDecodeDelegate(UUID assetID);
 
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "J2KDecoderModule")]
     public class J2KDecoderModule : ISharedRegionModule, IJ2KDecoder
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

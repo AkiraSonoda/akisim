@@ -84,6 +84,7 @@ using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
 using OpenSim.Region.CoreModules.World.WorldMap;
+using OpenSim.Region.CoreModules.World.Warp3DMap;
 using OpenSim.Region.CoreModules.Hypergrid;
 using OpenSim.Region.CoreModules.Framework.Library;
 using OpenSim.Region.CoreModules.Framework.EntityTransfer;
@@ -152,7 +153,7 @@ namespace OpenSim.Region.CoreModules
                 string[] configSections = new string[] { "Map", "Startup" };
                 string worldMapModule = "";
                 if(m_log.IsDebugEnabled) m_log.Debug("Checking WorldMapModule configuration...");
-                
+
                 foreach (var sectionName in configSections)
                 {
                     var section = configSource.Configs[sectionName];
@@ -168,7 +169,7 @@ namespace OpenSim.Region.CoreModules
                         if(m_log.IsDebugEnabled) m_log.DebugFormat("Section [{0}] not found", sectionName);
                     }
                 }
-                
+
                 if (worldMapModule == "HGWorldMap")
                 {
                     if(m_log.IsDebugEnabled) m_log.Debug("Loading HGWorldMapModule");
@@ -187,6 +188,49 @@ namespace OpenSim.Region.CoreModules
             else
             {
                 if(m_log.IsDebugEnabled) m_log.Debug("No config source provided for WorldMapModule");
+            }
+
+            // Load Warp3DImageModule for 3D map tile generation
+            if (configSource != null)
+            {
+                string[] configSections = new string[] { "Map", "Startup" };
+                string mapImageModule = "";
+                if(m_log.IsDebugEnabled) m_log.Debug("Checking MapImageModule configuration...");
+
+                foreach (var sectionName in configSections)
+                {
+                    var section = configSource.Configs[sectionName];
+                    if (section != null)
+                    {
+                        mapImageModule = section.GetString("MapImageModule", "");
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Section [{0}] MapImageModule = '{1}'", sectionName, mapImageModule);
+                        if (!string.IsNullOrEmpty(mapImageModule))
+                            break;
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Section [{0}] not found", sectionName);
+                    }
+                }
+
+                if (mapImageModule == "Warp3DImageModule")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading Warp3DImageModule for 3D map tile generation");
+                    yield return new Warp3DImageModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("Warp3DImageModule loaded for 3D map tile generation with terrain texturing and prim rendering");
+                }
+                else if (!string.IsNullOrEmpty(mapImageModule))
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageModule configured as '{0}' but not 'Warp3DImageModule', skipping", mapImageModule);
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("No MapImageModule configured");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided for MapImageModule");
             }
             
             // TerrainModule temporarily disabled due to System.Drawing.Common version issues
@@ -348,6 +392,18 @@ namespace OpenSim.Region.CoreModules
             // Load modules based on configuration
             var modulesConfig = configSource.Configs["Modules"];
             var messagingConfig = configSource.Configs["Messaging"];
+
+            // Load J2KDecoderModule first - essential for texture decoding functionality
+            if (modulesConfig?.GetBoolean("J2KDecoderModule", true) == true)  // Default to true as it's essential
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading J2KDecoderModule for JPEG2000 texture decoding");
+                yield return new J2KDecoderModule();
+                if(m_log.IsInfoEnabled) m_log.Info("J2KDecoderModule loaded for JPEG2000 texture decoding and layer boundary analysis");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("J2KDecoderModule disabled - texture decoding functionality will be limited");
+            }
 
             // Load AssetService first - required by LibraryModule and other services
             string assetServicesModule = modulesConfig?.GetString("AssetServices", "");
