@@ -94,6 +94,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
 using OpenSim.Region.CoreModules.Scripting.ScriptModuleComms;
 using OpenSim.Region.CoreModules.Scripting.WorldComm;
 using OpenSim.Region.CoreModules.Scripting.HttpRequest;
+using OpenSim.Region.CoreModules.Scripting.XMLRPC;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -451,6 +452,29 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("Loading HttpRequestModule (no config source - using default)");
                 yield return new HttpRequestModule();
                 if(m_log.IsInfoEnabled) m_log.Info("HttpRequestModule loaded for LSL HTTP requests, llHTTPRequest, and web service integration");
+            }
+
+            // Load XMLRPCModule if enabled for XMLRPC functionality and llRemoteData
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetBoolean("XMLRPCModule", true) == true)  // Default to true as it's essential for LSL XMLRPC functionality
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading XMLRPCModule for LSL XMLRPC support and remote data channels");
+                    yield return new XMLRPCModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("XMLRPCModule loaded for LSL XMLRPC support, llRemoteData functions, and external API integration");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("XMLRPCModule disabled - set XMLRPCModule = true in [Modules] to enable LSL XMLRPC functionality");
+                }
+            }
+            else
+            {
+                // Default to loading if no config source (essential module for script XMLRPC functionality)
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading XMLRPCModule (no config source - using default)");
+                yield return new XMLRPCModule();
+                if(m_log.IsInfoEnabled) m_log.Info("XMLRPCModule loaded for LSL XMLRPC support, llRemoteData functions, and external API integration");
             }
 
         }
