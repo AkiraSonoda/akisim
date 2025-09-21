@@ -79,6 +79,7 @@ using OpenSim.Region.CoreModules.World.Serialiser;
 using OpenSim.Region.CoreModules.World.Sound;
 using OpenSim.Region.CoreModules.World.Media.Moap;
 using OpenSim.Region.CoreModules.Scripting.LoadImageURL;
+using OpenSim.Region.CoreModules.Scripting.VectorRender;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
@@ -784,6 +785,18 @@ namespace OpenSim.Region.CoreModules
             else
             {
                 if(m_log.IsDebugEnabled) m_log.Debug("LoadImageURLModule disabled - set LoadImageURLModule = true in [Modules] to enable dynamic texture image loading");
+            }
+
+            // Load VectorRenderModule for dynamic texture generation using vector graphics
+            if (modulesConfig?.GetBoolean("VectorRenderModule", true) == true)  // Default to true for backward compatibility
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading VectorRenderModule for dynamic texture generation using vector graphics");
+                yield return new VectorRenderModule();
+                if(m_log.IsInfoEnabled) m_log.Info("VectorRenderModule loaded for dynamic texture generation using vector graphics");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("VectorRenderModule disabled - set VectorRenderModule = true in [Modules] to enable vector graphics rendering");
             }
         }
 
