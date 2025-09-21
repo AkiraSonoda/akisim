@@ -1,4 +1,4 @@
-# J2KDecoderCommandModule
+# J2KDecoderCommandModule Technical Documentation
 
 ## Overview
 

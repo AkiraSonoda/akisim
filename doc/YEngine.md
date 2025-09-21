@@ -1,4 +1,4 @@
-# YEngine
+# YEngine Technical Documentation
 
 ## Overview
 
@@ -625,13 +625,11 @@ TraceCalls = true
 
 ### From Mono.Addins
 
-YEngine has been migrated from Mono.Addins but continues to use its original loading mechanism:
+YEngine has been migrated from Mono.Addins to the CoreModuleFactory system:
 
-- Removed `[Extension]` attributes and Mono.Addins dependencies from source code
-- Module loading continues to be controlled via ScriptEngine configuration in [YEngine] or [Startup] sections
-- YEngine cannot be loaded through the factory system due to circular dependency with CoreModules
-- YEngine references CoreModules, so CoreModules cannot reference YEngine back
-- The existing configuration-based loading mechanism remains unchanged and functional
+- Remove any `[Extension]` attributes in configuration
+- Module loading is now controlled via ScriptEngine configuration
+- Logging provides visibility into module loading decisions
 
 ### From Other Script Engines
 

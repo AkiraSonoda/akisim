@@ -1,4 +1,4 @@
-# ScriptModuleCommsModule
+# ScriptModuleCommsModule Technical Documentation
 
 ## Overview
 

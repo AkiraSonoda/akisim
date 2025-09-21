@@ -31,14 +31,9 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Nini.Config;
 using OpenMetaverse;
-using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-// AKIDO: clean
-
-// using log4net;
-// using System.Reflection;
 
 
 /*****************************************************
@@ -88,7 +83,6 @@ using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.CoreModules.Scripting.WorldComm
 {
-    [Mono.Addins.Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WorldCommModule")]
     public class WorldCommModule : IWorldComm, INonSharedRegionModule
     {
         // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

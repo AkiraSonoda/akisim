@@ -92,6 +92,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
 using OpenSim.Region.CoreModules.Scripting.ScriptModuleComms;
+using OpenSim.Region.CoreModules.Scripting.WorldComm;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -403,6 +404,29 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("Loading ScriptModuleCommsModule (no config source - using default)");
                 yield return new ScriptModuleCommsModule();
                 if(m_log.IsInfoEnabled) m_log.Info("ScriptModuleCommsModule loaded for script-to-module communication and function registration");
+            }
+
+            // Load WorldCommModule if enabled for LSL script communication and llListen functionality
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetBoolean("WorldCommModule", true) == true)  // Default to true as it's essential for LSL chat functionality
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading WorldCommModule for LSL script communication and chat listening");
+                    yield return new WorldCommModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("WorldCommModule loaded for LSL script communication, llListen, and chat filtering");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("WorldCommModule disabled - set WorldCommModule = true in [Modules] to enable LSL script communication");
+                }
+            }
+            else
+            {
+                // Default to loading if no config source (essential module for script functionality)
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading WorldCommModule (no config source - using default)");
+                yield return new WorldCommModule();
+                if(m_log.IsInfoEnabled) m_log.Info("WorldCommModule loaded for LSL script communication, llListen, and chat filtering");
             }
 
         }
