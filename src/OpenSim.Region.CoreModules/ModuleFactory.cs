@@ -78,6 +78,7 @@ using OpenSim.Region.CoreModules.World.Region;
 using OpenSim.Region.CoreModules.World.Serialiser;
 using OpenSim.Region.CoreModules.World.Sound;
 using OpenSim.Region.CoreModules.World.Media.Moap;
+using OpenSim.Region.CoreModules.Scripting.LoadImageURL;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
@@ -771,6 +772,18 @@ namespace OpenSim.Region.CoreModules
             {
                 if (capsModule != null)
                     yield return capsModule;
+            }
+
+            // Load LoadImageURLModule for dynamic texture loading from URLs
+            if (modulesConfig?.GetBoolean("LoadImageURLModule", true) == true)  // Default to true for backward compatibility
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading LoadImageURLModule for dynamic texture image loading from URLs");
+                yield return new LoadImageURLModule();
+                if(m_log.IsInfoEnabled) m_log.Info("LoadImageURLModule loaded for dynamic texture image loading from URLs");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("LoadImageURLModule disabled - set LoadImageURLModule = true in [Modules] to enable dynamic texture image loading");
             }
         }
 
