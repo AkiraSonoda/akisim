@@ -24,8 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using Mono.Addins;
-
 using System;
 using System.Reflection;
 using System.Threading;
@@ -44,8 +42,6 @@ using System.Text.RegularExpressions;
 
 namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "JsonStoreCommandsModule")]
-
     public class JsonStoreCommandsModule  : INonSharedRegionModule
     {
         private static readonly ILog m_log =
