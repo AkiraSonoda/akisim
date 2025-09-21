@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using Mono.Addins;
 
 using System;
 using System.Reflection;
@@ -46,7 +45,6 @@ using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.OptionalModules.Scripting.JsonStore
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "JsonStoreScriptModule")]
 
     public class JsonStoreScriptModule  : INonSharedRegionModule
     {

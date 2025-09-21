@@ -390,6 +390,18 @@ namespace OpenSim.Region.OptionalModules
                 if (m_log.IsDebugEnabled) m_log.Debug("JsonStoreCommandsModule disabled - requires JsonStoreModule = true in [Modules] to enable JsonStore console commands");
             }
 
+            // Load JsonStoreScriptModule if JsonStore is enabled for LSL function support
+            if (modulesConfig.GetBoolean("JsonStoreModule", false))  // Depends on JsonStore being enabled
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading JsonStoreScriptModule for JsonStore LSL functions and script integration");
+                yield return new JsonStoreScriptModule();
+                if (m_log.IsInfoEnabled) m_log.Info("JsonStoreScriptModule loaded for JsonStore LSL functions, script data operations, and notecard integration");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("JsonStoreScriptModule disabled - requires JsonStoreModule = true in [Modules] to enable JsonStore LSL functions");
+            }
+
             // Future non-shared optional modules would go here
         }
 
