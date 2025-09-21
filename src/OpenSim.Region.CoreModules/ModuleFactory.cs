@@ -77,6 +77,7 @@ using OpenSim.Region.CoreModules.World.Permissions;
 using OpenSim.Region.CoreModules.World.Region;
 using OpenSim.Region.CoreModules.World.Serialiser;
 using OpenSim.Region.CoreModules.World.Sound;
+using OpenSim.Region.CoreModules.World.Media.Moap;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
@@ -302,6 +303,36 @@ namespace OpenSim.Region.CoreModules
                 // Default to BulletSim if no config provided
                 yield return new BSScene();
                 yield return new ExtendedPhysics();
+            }
+
+            // Load MoapModule if enabled for Media on a Prim functionality
+            if (configSource != null)
+            {
+                var mediaConfig = configSource.Configs["MediaOnAPrim"];
+                if (mediaConfig != null)
+                {
+                    bool enableMediaOnAPrim = mediaConfig.GetBoolean("Enabled", false);
+                    if (enableMediaOnAPrim)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Loading MoapModule for Media on a Prim functionality");
+                        yield return new MoapModule();
+                        if(m_log.IsInfoEnabled) m_log.Info("MoapModule loaded for Media on a Prim (MOAP) functionality");
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("MoapModule disabled in configuration");
+                    }
+                }
+                else
+                {
+                    // Default disabled if no MediaOnAPrim config section (matches original behavior)
+                    if(m_log.IsDebugEnabled) m_log.Debug("MoapModule not loaded - no [MediaOnAPrim] configuration section found");
+                }
+            }
+            else
+            {
+                // Default disabled if no config source (matches original behavior)
+                if(m_log.IsDebugEnabled) m_log.Debug("MoapModule not loaded - no config source provided");
             }
 
         }
