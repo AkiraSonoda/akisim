@@ -91,6 +91,7 @@ using OpenSim.Region.CoreModules.Framework.EntityTransfer;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsIn.Neighbour;
+using OpenSim.Region.CoreModules.Scripting.ScriptModuleComms;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -379,6 +380,29 @@ namespace OpenSim.Region.CoreModules
             {
                 // Default disabled if no config source (matches original behavior)
                 if(m_log.IsDebugEnabled) m_log.Debug("MoapModule not loaded - no config source provided");
+            }
+
+            // Load ScriptModuleCommsModule if enabled for script-to-module communication and function registration
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetBoolean("ScriptModuleCommsModule", true) == true)  // Default to true as it's essential for script interop
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading ScriptModuleCommsModule for script-to-module communication");
+                    yield return new ScriptModuleCommsModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("ScriptModuleCommsModule loaded for script-to-module communication and function registration");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("ScriptModuleCommsModule disabled - set ScriptModuleCommsModule = true in [Modules] to enable script-to-module communication");
+                }
+            }
+            else
+            {
+                // Default to loading if no config source (essential module)
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading ScriptModuleCommsModule (no config source - using default)");
+                yield return new ScriptModuleCommsModule();
+                if(m_log.IsInfoEnabled) m_log.Info("ScriptModuleCommsModule loaded for script-to-module communication and function registration");
             }
 
         }

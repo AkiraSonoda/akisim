@@ -32,16 +32,13 @@ using Nini.Config;
 using log4net;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using Mono.Addins;
 using OpenMetaverse;
 using System.Linq;
 using System.Linq.Expressions;
 using ThreadedClasses;
-// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.ScriptModuleComms
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ScriptModuleCommsModule")]
     public class ScriptModuleCommsModule : INonSharedRegionModule, IScriptModuleComms
     {
         private static readonly ILog m_log =
