@@ -259,7 +259,30 @@ namespace OpenSim.Region.CoreModules
                 yield return new TerrainModule();
                 if(m_log.IsInfoEnabled) m_log.Info("TerrainModule loaded by default for essential terrain functionality");
             }
-            
+
+            // Load VegetationModule if enabled for tree and grass creation functionality
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetBoolean("VegetationModule", true) == true)  // Default to true as it's essential for vegetation functionality
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading VegetationModule for tree and grass creation");
+                    yield return new VegetationModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("VegetationModule loaded for tree and grass creation, phantom vegetation objects, and PCode support");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("VegetationModule disabled - vegetation creation functionality will be limited");
+                }
+            }
+            else
+            {
+                // Default behavior when no config source - load VegetationModule as it's essential
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, loading VegetationModule by default");
+                yield return new VegetationModule();
+                if(m_log.IsInfoEnabled) m_log.Info("VegetationModule loaded by default for essential vegetation functionality");
+            }
+
             // Essential capabilities module for viewer functionality
             yield return new CapabilitiesModule();
             
