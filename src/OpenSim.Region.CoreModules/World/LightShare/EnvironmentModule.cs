@@ -38,7 +38,6 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using OSDArray = OpenMetaverse.StructuredData.OSDArray;
@@ -48,8 +47,6 @@ using MethodImplOptions = System.Runtime.CompilerServices.MethodImplOptions;
 
 namespace OpenSim.Region.CoreModules.World.LightShare
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EnvironmentModule")]
-
     public class EnvironmentModule : INonSharedRegionModule, IEnvironmentModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

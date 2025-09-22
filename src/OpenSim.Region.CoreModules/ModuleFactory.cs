@@ -80,6 +80,7 @@ using OpenSim.Region.CoreModules.World.Sound;
 using OpenSim.Region.CoreModules.World.Media.Moap;
 using OpenSim.Region.CoreModules.Scripting.LoadImageURL;
 using OpenSim.Region.CoreModules.Scripting.VectorRender;
+using OpenSim.Region.CoreModules.World.LightShare;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
@@ -281,6 +282,50 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, loading VegetationModule by default");
                 yield return new VegetationModule();
                 if(m_log.IsInfoEnabled) m_log.Info("VegetationModule loaded by default for essential vegetation functionality");
+            }
+
+            // Load WindModule if enabled for wind simulation and environmental effects
+            if (configSource != null)
+            {
+                var windConfig = configSource.Configs["Wind"];
+                if (windConfig?.GetBoolean("enabled", true) == true)  // Default to true as wind is part of environmental simulation
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading WindModule for wind simulation and environmental effects");
+                    yield return new WindModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("WindModule loaded for wind simulation, environmental effects, and pluggable wind models");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("WindModule disabled - wind simulation functionality will be unavailable");
+                }
+            }
+            else
+            {
+                // Default behavior when no config source - load WindModule as it's part of environmental simulation
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, loading WindModule by default");
+                yield return new WindModule();
+                if(m_log.IsInfoEnabled) m_log.Info("WindModule loaded by default for essential environmental wind simulation");
+            }
+
+            // Load EnvironmentModule if enabled for EEP and Windlight environment settings
+            if (configSource != null)
+            {
+                var clientStackConfig = configSource.Configs["ClientStack.LindenCaps"];
+                if (clientStackConfig?.GetString("Cap_EnvironmentSettings", string.Empty).Equals("localhost") == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading EnvironmentModule for EEP and Windlight environment settings");
+                    yield return new EnvironmentModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("EnvironmentModule loaded for EEP environment settings, day/night cycles, and legacy Windlight support");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("EnvironmentModule disabled - Cap_EnvironmentSettings not set to localhost");
+                }
+            }
+            else
+            {
+                // Default behavior when no config source - EnvironmentModule disabled by default due to capability requirement
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, EnvironmentModule not loaded (requires Cap_EnvironmentSettings = localhost)");
             }
 
             // Essential capabilities module for viewer functionality

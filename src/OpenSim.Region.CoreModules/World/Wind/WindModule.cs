@@ -29,7 +29,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -37,11 +36,11 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
 using OpenSim.Region.CoreModules.World.Wind;
+using OpenSim.Region.CoreModules.World.Wind.Plugins;
 
 namespace OpenSim.Region.CoreModules
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WindModule")]
-    public class WindModule : IWindModule
+    public class WindModule : INonSharedRegionModule, IWindModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
@@ -98,7 +97,14 @@ namespace OpenSim.Region.CoreModules
             m_scene = scene;
             m_frame = 0;
             // Register all the Wind Model Plug-ins
-            foreach (IWindModelPlugin windPlugin in AddinManager.GetExtensionObjects("/OpenSim/WindModule", false))
+            // Direct instantiation of available wind plugins to replace Mono.Addins
+            IWindModelPlugin[] windPlugins = new IWindModelPlugin[]
+            {
+                new SimpleRandomWind(),
+                new ConfigurableWind()
+            };
+
+            foreach (IWindModelPlugin windPlugin in windPlugins)
             {
                 m_log.InfoFormat("[WIND] Found Plugin: {0}", windPlugin.Name);
                 m_availableWindPlugins.Add(windPlugin.Name, windPlugin);
