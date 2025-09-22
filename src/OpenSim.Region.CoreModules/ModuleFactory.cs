@@ -237,8 +237,28 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("No config source provided for MapImageModule");
             }
             
-            // TerrainModule temporarily disabled due to System.Drawing.Common version issues
-            // yield return new TerrainModule();
+            // Load TerrainModule if enabled for terrain editing and management functionality
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetBoolean("TerrainModule", true) == true)  // Default to true as it's essential for terrain functionality
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading TerrainModule for terrain editing, height maps, and land management");
+                    yield return new TerrainModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("TerrainModule loaded for terrain editing, RAW/R32/JPG/BMP/TIFF file support, and console commands");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("TerrainModule disabled - terrain editing functionality will be limited");
+                }
+            }
+            else
+            {
+                // Default behavior when no config source - load TerrainModule as it's essential
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, loading TerrainModule by default");
+                yield return new TerrainModule();
+                if(m_log.IsInfoEnabled) m_log.Info("TerrainModule loaded by default for essential terrain functionality");
+            }
             
             // Essential capabilities module for viewer functionality
             yield return new CapabilitiesModule();
