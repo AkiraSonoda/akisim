@@ -54,6 +54,7 @@ using OpenSim.Region.CoreModules.Scripting.DynamicTexture;
 using OpenSim.Region.OptionalModules.Materials;
 using OpenSim.Region.OptionalModules.Scripting.JsonStore;
 using OpenSim.Region.OptionalModules.Scripting.XmlRpcGridRouterModule;
+using OpenSim.Region.OptionalModules.World.TreePopulator;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -413,6 +414,18 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("XmlRpcGridRouter disabled - set XmlRpcGridRouterModule = true in [Modules] to enable grid-wide XMLRPC routing");
+            }
+
+            // Load TreePopulatorModule if enabled for automated tree growth and management functionality
+            if (modulesConfig.GetBoolean("TreePopulatorModule", false))  // Default to false - must be explicitly enabled
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading TreePopulatorModule for automated tree growth, seeding, and lifecycle management");
+                yield return new TreePopulatorModule();
+                if (m_log.IsInfoEnabled) m_log.Info("TreePopulatorModule loaded for automated tree growth, copse management, and vegetation simulation");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("TreePopulatorModule disabled - set TreePopulatorModule = true in [Modules] to enable automated tree population features");
             }
 
             // Future non-shared optional modules would go here
