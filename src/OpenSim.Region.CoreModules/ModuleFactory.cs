@@ -328,6 +328,27 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, EnvironmentModule not loaded (requires Cap_EnvironmentSettings = localhost)");
             }
 
+            // Load DefaultDwellModule if enabled for parcel dwell (popularity) tracking
+            if (configSource != null)
+            {
+                var dwellConfig = configSource.Configs["Dwell"];
+                if (dwellConfig?.GetString("DwellModule", "DefaultDwellModule") == "DefaultDwellModule")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading DefaultDwellModule for parcel dwell tracking and land popularity");
+                    yield return new DefaultDwellModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("DefaultDwellModule loaded for parcel dwell tracking, land popularity metrics, and client dwell requests");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DefaultDwellModule disabled - DwellModule not set to DefaultDwellModule");
+                }
+            }
+            else
+            {
+                // Default behavior when no config source - DefaultDwellModule disabled by default
+                if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, DefaultDwellModule not loaded (requires [Dwell] section)");
+            }
+
             // Essential capabilities module for viewer functionality
             yield return new CapabilitiesModule();
             
