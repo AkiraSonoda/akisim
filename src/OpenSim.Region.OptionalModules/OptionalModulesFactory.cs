@@ -55,6 +55,7 @@ using OpenSim.Region.OptionalModules.Materials;
 using OpenSim.Region.OptionalModules.Scripting.JsonStore;
 using OpenSim.Region.OptionalModules.Scripting.XmlRpcGridRouterModule;
 using OpenSim.Region.OptionalModules.World.TreePopulator;
+using OpenSim.Region.OptionalModules.World.MoneyModule;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -290,6 +291,19 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("DynamicTextureModule disabled - set DynamicTextureModule = true in [Modules] to enable dynamic texture generation");
+            }
+
+            // Load SampleMoneyModule if configured as the EconomyModule for basic economy functionality
+            string economyModule = modulesConfig.GetString("EconomyModule", "");
+            if (economyModule == "SampleMoneyModule")
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading SampleMoneyModule for basic economy and currency functionality with XMLRPC support");
+                yield return new SampleMoneyModule();
+                if (m_log.IsInfoEnabled) m_log.Info("SampleMoneyModule loaded for basic economy, currency transactions, XMLRPC handlers, and money balance management");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("SampleMoneyModule disabled - set EconomyModule = SampleMoneyModule in [Modules] to enable basic economy functionality");
             }
 
             // Additional optional modules can be added here as needed
