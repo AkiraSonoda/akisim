@@ -349,6 +349,11 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsDebugEnabled) m_log.Debug("No config source provided, DefaultDwellModule not loaded (requires [Dwell] section)");
             }
 
+            // Load BuySellModule for object buying and selling functionality (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading BuySellModule for object transactions and marketplace functionality");
+            yield return new BuySellModule();
+            if(m_log.IsInfoEnabled) m_log.Info("BuySellModule loaded for object buying/selling, marketplace transactions, and permission handling");
+
             // Essential capabilities module for viewer functionality
             yield return new CapabilitiesModule();
             
