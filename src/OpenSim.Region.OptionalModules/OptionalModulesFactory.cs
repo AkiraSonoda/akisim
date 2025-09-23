@@ -35,6 +35,7 @@ using log4net;
 using OpenSim.Region.OptionalModules.Avatar.Friends;
 using OpenSim.Region.OptionalModules.Avatar.Commands;
 using OpenSim.Region.OptionalModules.Avatar.Appearance;
+using OpenSim.Region.OptionalModules.Avatar.Animations;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Presence;
@@ -56,6 +57,8 @@ using OpenSim.Region.OptionalModules.Scripting.JsonStore;
 using OpenSim.Region.OptionalModules.Scripting.XmlRpcGridRouterModule;
 using OpenSim.Region.OptionalModules.World.TreePopulator;
 using OpenSim.Region.OptionalModules.World.MoneyModule;
+using OpenSim.Region.OptionalModules.ViewerSupport;
+using OpenSim.Region.OptionalModules.World.SceneCommands;
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -111,6 +114,18 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("AppearanceInfoModule disabled - set AppearanceInfoModule = true in [Modules] to enable appearance debugging commands");
+            }
+
+            // Load AnimationsCommandModule if enabled for animation debugging commands
+            if (modulesConfig.GetBoolean("AnimationsCommandModule", false))
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading AnimationsCommandModule for avatar animation debugging and inspection commands");
+                yield return new AnimationsCommandModule();
+                if (m_log.IsInfoEnabled) m_log.Info("AnimationsCommandModule loaded for avatar animation debugging, animation inspection, and animator state analysis");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("AnimationsCommandModule disabled - set AnimationsCommandModule = true in [Modules] to enable animation debugging commands");
             }
 
             // Load J2KDecoderCommandModule if enabled for JPEG2000 debugging commands
@@ -306,6 +321,19 @@ namespace OpenSim.Region.OptionalModules
                 if (m_log.IsDebugEnabled) m_log.Debug("SampleMoneyModule disabled - set EconomyModule = SampleMoneyModule in [Modules] to enable basic economy functionality");
             }
 
+            // Load GodNamesModule if enabled for viewer god name display functionality
+            var godNamesConfig = configSource?.Configs["GodNames"];
+            if (godNamesConfig?.GetBoolean("Enabled", false) == true)
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading GodNamesModule for viewer god name display and god user identification");
+                yield return new GodNamesModule();
+                if (m_log.IsInfoEnabled) m_log.Info("GodNamesModule loaded for viewer god name display, god user identification, and simulator features integration");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("GodNamesModule disabled - set Enabled = true in [GodNames] section to enable god name display functionality");
+            }
+
             // Additional optional modules can be added here as needed
             // Example pattern for future modules:
             /*
@@ -440,6 +468,18 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("TreePopulatorModule disabled - set TreePopulatorModule = true in [Modules] to enable automated tree population features");
+            }
+
+            // Load SceneCommandsModule if enabled for scene debugging and management commands
+            if (modulesConfig.GetBoolean("SceneCommandsModule", false))  // Default to false - must be explicitly enabled
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading SceneCommandsModule for scene debugging and management console commands");
+                yield return new SceneCommandsModule();
+                if (m_log.IsInfoEnabled) m_log.Info("SceneCommandsModule loaded for scene debugging, runtime configuration, and diagnostic commands");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("SceneCommandsModule disabled - set SceneCommandsModule = true in [Modules] to enable scene debugging commands");
             }
 
             // Future non-shared optional modules would go here

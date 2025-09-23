@@ -29,7 +29,6 @@ using System;
 using System.Reflection;
 using System.Text;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -39,19 +38,17 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Scenes.Animation;
 using ThreadedClasses;
 using AnimationSet = OpenSim.Region.Framework.Scenes.Animation.AnimationSet;
-// AKIDO: clean
 
 namespace OpenSim.Region.OptionalModules.Avatar.Animations
 {
     /// <summary>
     /// A module that just holds commands for inspecting avatar animations.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AnimationsCommandModule")]
     public class AnimationsCommandModule : ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>(); // AKIDO
+        private RwLockedList<Scene> m_scenes = new RwLockedList<Scene>();
 
         public string Name { get { return "Animations Command Module"; } }
 
@@ -59,37 +56,35 @@ namespace OpenSim.Region.OptionalModules.Avatar.Animations
 
         public void Initialise(IConfigSource source)
         {
-            m_log.Debug("INITIALIZED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("AnimationsCommandModule: Initializing avatar animation debugging module");
         }
 
         public void PostInitialise()
         {
-           m_log.Debug("POST INITIALIZED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("AnimationsCommandModule: Post-initialization completed");
         }
 
         public void Close()
         {
-            m_log.Debug("CLOSED MODULE");
+            if (m_log.IsDebugEnabled) m_log.Debug("AnimationsCommandModule: Shutting down avatar animation debugging module");
+            m_scenes.Clear();
         }
 
         public void AddRegion(Scene scene)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} ADDED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AnimationsCommandModule: Adding region '{0}' for animation debugging", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} REMOVED", scene.RegionInfo.RegionName);
-
-            // AKIDO
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AnimationsCommandModule: Removing region '{0}' from animation debugging", scene.RegionInfo.RegionName);
             m_scenes.Remove(scene);
         }
 
         public void RegionLoaded(Scene scene)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("REGION {0} LOADED", scene.RegionInfo.RegionName);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AnimationsCommandModule: Region '{0}' loaded, registering animation debugging commands", scene.RegionInfo.RegionName);
 
-            // AKIDO
             m_scenes.Add(scene);
 
             scene.AddCommand(
@@ -100,6 +95,8 @@ namespace OpenSim.Region.OptionalModules.Avatar.Animations
                 + "Please note that for inventory animations, the animation name is the name under which the animation was originally uploaded\n"
                 + ", which is not necessarily the current inventory name.",
                 HandleShowAnimationsCommand);
+
+            if (m_log.IsInfoEnabled) m_log.InfoFormat("AnimationsCommandModule: Animation debugging commands registered for region '{0}'", scene.RegionInfo.RegionName);
         }
 
         protected void HandleShowAnimationsCommand(string module, string[] cmd)
@@ -119,26 +116,38 @@ namespace OpenSim.Region.OptionalModules.Avatar.Animations
                 targetNameSupplied = true;
                 optionalTargetFirstName = cmd[2];
                 optionalTargetLastName = cmd[3];
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("AnimationsCommandModule: Showing animations for specific user: {0} {1}", optionalTargetFirstName, optionalTargetLastName);
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("AnimationsCommandModule: Showing animations for all users in all regions");
             }
 
             StringBuilder sb = new StringBuilder();
+            int avatarCount = 0;
 
-            // AKIDO
             foreach (Scene scene in m_scenes)
             {
                 if (targetNameSupplied)
                 {
                     ScenePresence sp = scene.GetScenePresence(optionalTargetFirstName, optionalTargetLastName);
                     if (sp != null && !sp.IsChildAgent)
+                    {
                         GetAttachmentsReport(sp, sb);
+                        avatarCount++;
+                    }
                 }
                 else
                 {
-                    scene.ForEachRootScenePresence(sp => GetAttachmentsReport(sp, sb));
+                    scene.ForEachRootScenePresence(sp =>
+                    {
+                        GetAttachmentsReport(sp, sb);
+                        avatarCount++;
+                    });
                 }
             }
-            // AKIDO
 
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("AnimationsCommandModule: Generated animation report for {0} avatars", avatarCount);
             MainConsole.Instance.Output(sb.ToString());
         }
 

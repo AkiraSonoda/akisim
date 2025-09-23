@@ -41,11 +41,9 @@ using OpenSim.Framework.Console;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Timer=System.Timers.Timer;
-using Mono.Addins;
 
 namespace OpenSim.Region.CoreModules.World.Region
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RestartModule")]
     public class RestartModule : INonSharedRegionModule, IRestartModule
     {
         private static readonly ILog m_log =
@@ -66,25 +64,48 @@ namespace OpenSim.Region.CoreModules.World.Region
 
         public void Initialise(IConfigSource config)
         {
+            if (m_log.IsDebugEnabled) m_log.Debug("RestartModule: Initializing region restart management module");
+
             IConfig restartConfig = config.Configs["RestartModule"];
             if (restartConfig != null)
             {
                 m_MarkerPath = restartConfig.GetString("MarkerPath", String.Empty);
+                if (m_log.IsDebugEnabled && !string.IsNullOrEmpty(m_MarkerPath))
+                    m_log.DebugFormat("RestartModule: Using marker file path: {0}", m_MarkerPath);
             }
+
             IConfig startupConfig = config.Configs["Startup"];
-            m_shortCircuitDelays = startupConfig.GetBoolean("SkipDelayOnEmptyRegion", false);
-            m_rebootAll = startupConfig.GetBoolean("InworldRestartShutsDown", false);
+            if (startupConfig != null)
+            {
+                m_shortCircuitDelays = startupConfig.GetBoolean("SkipDelayOnEmptyRegion", false);
+                m_rebootAll = startupConfig.GetBoolean("InworldRestartShutsDown", false);
+
+                if (m_log.IsDebugEnabled)
+                {
+                    m_log.DebugFormat("RestartModule: SkipDelayOnEmptyRegion = {0}", m_shortCircuitDelays);
+                    m_log.DebugFormat("RestartModule: InworldRestartShutsDown = {0}", m_rebootAll);
+                }
+            }
         }
 
         public void AddRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Adding region '{0}' for restart management", scene.RegionInfo.RegionName);
+
             if (m_MarkerPath != String.Empty)
-                File.Delete(Path.Combine(m_MarkerPath,
-                        scene.RegionInfo.RegionID.ToString()));
+            {
+                string markerFile = Path.Combine(m_MarkerPath, scene.RegionInfo.RegionID.ToString());
+                if (File.Exists(markerFile))
+                {
+                    File.Delete(markerFile);
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Removed existing marker file for region {0}", scene.RegionInfo.RegionName);
+                }
+            }
 
             m_Scene = scene;
 
             scene.RegisterModuleInterface<IRestartModule>(this);
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Registered IRestartModule interface for region '{0}'", scene.RegionInfo.RegionName);
             MainConsole.Instance.Commands.AddCommand("Regions",
                     false, "region restart bluebox",
                     "region restart bluebox <message> <delta seconds>+",
@@ -107,15 +128,38 @@ namespace OpenSim.Region.CoreModules.World.Region
 
         public void RegionLoaded(Scene scene)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Region '{0}' loaded, initializing dialog module interface", scene.RegionInfo.RegionName);
             m_DialogModule = m_Scene.RequestModuleInterface<IDialogModule>();
+            if (m_DialogModule != null)
+            {
+                if (m_log.IsInfoEnabled) m_log.InfoFormat("RestartModule: Region '{0}' ready for restart management with dialog notifications", scene.RegionInfo.RegionName);
+            }
+            else
+            {
+                m_log.WarnFormat("RestartModule: No dialog module found for region '{0}' - restart notifications will not be available", scene.RegionInfo.RegionName);
+            }
         }
 
         public void RemoveRegion(Scene scene)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Removing region '{0}' from restart management", scene.RegionInfo.RegionName);
+            if (m_CountdownTimer != null)
+            {
+                m_CountdownTimer.Stop();
+                m_CountdownTimer = null;
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Cancelled active restart timer for region '{0}'", scene.RegionInfo.RegionName);
+            }
         }
 
         public void Close()
         {
+            if (m_log.IsDebugEnabled) m_log.Debug("RestartModule: Shutting down restart management module");
+            if (m_CountdownTimer != null)
+            {
+                m_CountdownTimer.Stop();
+                m_CountdownTimer = null;
+                if (m_log.IsDebugEnabled) m_log.Debug("RestartModule: Cancelled restart timer during shutdown");
+            }
         }
 
         public string Name
@@ -135,14 +179,20 @@ namespace OpenSim.Region.CoreModules.World.Region
 
         public void ScheduleRestart(UUID initiator, string message, int[] alerts, bool notice)
         {
+            if (m_log.IsInfoEnabled)
+                m_log.InfoFormat("RestartModule: Scheduling restart for region '{0}' - Initiator: {1}, Message: '{2}', Notice: {3}",
+                    m_Scene.RegionInfo.RegionName, initiator, message, notice);
+
             if (m_CountdownTimer != null)
             {
                 m_CountdownTimer.Stop();
                 m_CountdownTimer = null;
+                if (m_log.IsDebugEnabled) m_log.Debug("RestartModule: Cancelled existing restart timer");
             }
 
             if (alerts == null)
             {
+                if (m_log.IsInfoEnabled) m_log.InfoFormat("RestartModule: Immediate restart requested for region '{0}'", m_Scene.RegionInfo.RegionName);
                 CreateMarkerFile();
                 m_Scene.RestartNow();
                 return;
@@ -158,10 +208,15 @@ namespace OpenSim.Region.CoreModules.World.Region
 
             if (m_Alerts[0] == 0)
             {
+                if (m_log.IsInfoEnabled) m_log.InfoFormat("RestartModule: Zero-delay restart scheduled for region '{0}'", m_Scene.RegionInfo.RegionName);
                 CreateMarkerFile();
                 m_Scene.RestartNow();
                 return;
             }
+
+            if (m_log.IsDebugEnabled)
+                m_log.DebugFormat("RestartModule: Restart countdown started for region '{0}' with {1} alert intervals: [{2}]",
+                    m_Scene.RegionInfo.RegionName, m_Alerts.Count, string.Join(", ", m_Alerts));
 
             int nextInterval = DoOneNotice(true);
 
@@ -287,17 +342,34 @@ namespace OpenSim.Region.CoreModules.World.Region
 
         public void AbortRestart(string message)
         {
+            if (m_log.IsInfoEnabled) m_log.InfoFormat("RestartModule: Aborting restart for region '{0}' - Message: '{1}'", m_Scene.RegionInfo.RegionName, message);
+
             if (m_CountdownTimer != null)
             {
                 m_CountdownTimer.Stop();
                 m_CountdownTimer = null;
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Cancelled restart timer for region '{0}'", m_Scene.RegionInfo.RegionName);
+
                 if (m_DialogModule != null && message != String.Empty)
+                {
                     m_DialogModule.SendNotificationToUsersInRegion(UUID.Zero, "System", message);
-                    //m_DialogModule.SendGeneralAlert(message);
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Sent abort notification to users in region '{0}'", m_Scene.RegionInfo.RegionName);
+                }
             }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: No active restart timer found for region '{0}' during abort", m_Scene.RegionInfo.RegionName);
+            }
+
             if (m_MarkerPath != String.Empty)
-                File.Delete(Path.Combine(m_MarkerPath,
-                        m_Scene.RegionInfo.RegionID.ToString()));
+            {
+                string markerFile = Path.Combine(m_MarkerPath, m_Scene.RegionInfo.RegionID.ToString());
+                if (File.Exists(markerFile))
+                {
+                    File.Delete(markerFile);
+                    if (m_log.IsDebugEnabled) m_log.DebugFormat("RestartModule: Removed restart marker file for region '{0}'", m_Scene.RegionInfo.RegionName);
+                }
+            }
         }
 
         private void HandleRegionRestart(string module, string[] args)

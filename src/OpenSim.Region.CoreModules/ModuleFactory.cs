@@ -68,6 +68,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences;
+using OpenSim.Region.CoreModules.World;
 using OpenSim.Region.CoreModules.World.Archiver;
 using OpenSim.Region.CoreModules.World.Estate;
 using OpenSim.Region.CoreModules.World.Land;
@@ -138,7 +139,27 @@ namespace OpenSim.Region.CoreModules
             yield return new PrimCountModule();
             yield return new DefaultPermissionsModule();
             yield return new SoundModule();
-            
+
+            // Load GodsModule for god powers and administrative controls (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading GodsModule for god powers, user kicking, and administrative controls");
+            yield return new GodsModule();
+            if(m_log.IsInfoEnabled) m_log.Info("GodsModule loaded for god powers, kick/freeze functionality, and grid-wide administrative controls");
+
+            // Load ObjectCommandsModule for object manipulation console commands (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading ObjectCommandsModule for object manipulation and inspection console commands");
+            yield return new ObjectCommandsModule();
+            if(m_log.IsInfoEnabled) m_log.Info("ObjectCommandsModule loaded for object show, delete, dump commands and scene object management");
+
+            // Load RegionCommandsModule for region management console commands (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading RegionCommandsModule for region information and management console commands");
+            yield return new RegionCommandsModule();
+            if(m_log.IsInfoEnabled) m_log.Info("RegionCommandsModule loaded for region show, set, neighbor commands and scene statistics");
+
+            // Load RestartModule for region restart management (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading RestartModule for region restart scheduling, countdown timers, and shutdown coordination");
+            yield return new RestartModule();
+            if(m_log.IsInfoEnabled) m_log.Info("RestartModule loaded for region restart commands, scheduled shutdowns, and graceful restart coordination");
+
             // Load LocalAuthorizationServicesConnector based on configuration
             if (configSource != null)
             {
@@ -612,6 +633,11 @@ namespace OpenSim.Region.CoreModules
             yield return new InstantMessageModule();
             yield return new MuteListModule();
             yield return new PresenceModule();
+
+            // Load AccessModule for login control and region access management (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading AccessModule for login control and region access management");
+            yield return new AccessModule();
+            if(m_log.IsInfoEnabled) m_log.Info("AccessModule loaded for login enable/disable console commands and region access control");
 
             // Load XMLRPCModule if enabled for XMLRPC functionality and llRemoteData
             if (modulesConfig?.GetBoolean("XMLRPCModule", true) == true)  // Default to true as it's essential for LSL XMLRPC functionality
