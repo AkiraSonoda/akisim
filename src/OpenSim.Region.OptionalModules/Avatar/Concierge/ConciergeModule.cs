@@ -34,7 +34,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using Nwc.XmlRpc;
 using OpenMetaverse;
@@ -48,7 +47,6 @@ using ThreadedClasses;
 
 namespace OpenSim.Region.OptionalModules.Avatar.Concierge
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ConciergeModule")]
     public class ConciergeModule : ChatModule, ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

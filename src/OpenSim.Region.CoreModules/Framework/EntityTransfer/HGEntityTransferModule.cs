@@ -41,14 +41,12 @@ using OpenSim.Server.Base;
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 
 
 namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "HGEntityTransferModule")]
     public class HGEntityTransferModule : EntityTransferModule, IUserAgentVerificationModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

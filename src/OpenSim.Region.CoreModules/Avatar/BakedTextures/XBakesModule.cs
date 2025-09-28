@@ -41,11 +41,9 @@ using OpenSim.Framework.ServiceAuth;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
-using Mono.Addins;
 
 namespace OpenSim.Region.CoreModules.Avatar.BakedTextures
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "XBakes.Module")]
     public class XBakesModule : INonSharedRegionModule, IBakedTextureModule
     {
         protected Scene m_Scene;

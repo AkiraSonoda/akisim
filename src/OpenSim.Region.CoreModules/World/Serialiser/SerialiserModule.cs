@@ -31,7 +31,6 @@ using System.IO;
 using System.Reflection;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 using OpenMetaverse;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
@@ -41,7 +40,6 @@ using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.World.Serialiser
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "SerialiserModule")]
     public class SerialiserModule : ISharedRegionModule, IRegionSerialiserModule
     {
         private static readonly ILog m_log =

@@ -34,7 +34,6 @@ using System.Reflection;
 using System.Text;
 using System.Net;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -81,7 +80,6 @@ namespace OpenSim.Region.CoreModules.Scripting.LSLHttp
     /// <summary>
     /// This module provides external URLs for in-world scripts.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UrlModule")]
     public class UrlModule : ISharedRegionModule, IUrlModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

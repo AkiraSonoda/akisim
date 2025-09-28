@@ -32,7 +32,6 @@ using System.Timers;
 using System.Drawing;
 using System.Drawing.Imaging;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -50,7 +49,6 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
     /// <remarks>
     /// </remarks>
 
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MapImageServiceModule")]
 
     public class MapImageServiceModule : IMapImageUploadModule, ISharedRegionModule
     {
@@ -72,7 +70,20 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
         public Type ReplaceableInterface { get { return null; } }
         public string Name { get { return "MapImageServiceModule"; } }
         public void RegionLoaded(Scene scene) { }
-        public void Close() { }
+        public void Close()
+        {
+            if(m_log.IsDebugEnabled) m_log.Debug("Closing MapImageServiceModule - stopping map tile refresh timer and cleaning up resources");
+
+            if (m_refreshTimer != null)
+            {
+                m_refreshTimer.Stop();
+                m_refreshTimer.Dispose();
+                m_refreshTimer = null;
+                if(m_log.IsDebugEnabled) m_log.Debug("Map tile refresh timer stopped and disposed");
+            }
+
+            if(m_log.IsDebugEnabled) m_log.Debug("MapImageServiceModule shutdown completed");
+        }
         public void PostInitialise() { }
 
         ///<summary>
@@ -80,31 +91,50 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
         ///</summary>
         public void Initialise(IConfigSource source)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug("Initializing MapImageServiceModule for map tile upload and management services");
+
             IConfig moduleConfig = source.Configs["Modules"];
             if (moduleConfig != null)
             {
                 string name = moduleConfig.GetString("MapImageService", "");
                 if (name != Name)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageServiceModule disabled - configured service is '{0}', expected '{1}'", name, Name);
                     return;
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("No [Modules] configuration section found - MapImageServiceModule may not be properly configured");
             }
 
             IConfig config = source.Configs["MapImageService"];
             if (config == null)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("MapImageServiceModule disabled - no [MapImageService] configuration section found");
                 return;
+            }
 
-            int refreshminutes = Convert.ToInt32(config.GetString("RefreshTime"));
+            string refreshTimeStr = config.GetString("RefreshTime", "0");
+            int refreshminutes;
+            if (!int.TryParse(refreshTimeStr, out refreshminutes))
+            {
+                m_log.WarnFormat("Invalid refresh time '{0}' given in config. Module disabled.", refreshTimeStr);
+                return;
+            }
             if (refreshminutes < 0)
             {
-                m_log.WarnFormat("Negative refresh time given in config. Module disabled.");
+                m_log.WarnFormat("Negative refresh time {0} given in config. Module disabled.", refreshminutes);
                 return;
             }
 
             string service = config.GetString("LocalServiceModule", string.Empty);
             if (service.Length == 0)
             {
-                m_log.WarnFormat("No service dll given in config. Unable to proceed.");
+                m_log.WarnFormat("No LocalServiceModule dll given in config. Unable to proceed.");
                 return;
             }
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Loading map image service from: {0}", service);
 
             Object[] args = new Object[] { source };
             m_MapService = ServerUtils.LoadPlugin<IMapImageService>(service, args);
@@ -113,11 +143,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                 m_log.WarnFormat("Unable to load LocalServiceModule from {0}. MapService module disabled. Please fix the configuration.", service);
                 return;
             }
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded map image service from: {0}", service);
 
             // we don't want the timer if the interval is zero, but we still want this module enables
             if(refreshminutes > 0)
             {
                 m_refreshtime = refreshminutes * 60 * 1000; // convert from minutes to ms
+
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Setting up map tile refresh timer with interval: {0} minutes ({1} ms)", refreshminutes, m_refreshtime);
 
                 m_refreshTimer = new System.Timers.Timer();
                 m_refreshTimer.Enabled = true;
@@ -125,15 +158,15 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                 m_refreshTimer.Interval = m_refreshtime;
                 m_refreshTimer.Elapsed += new ElapsedEventHandler(HandleMaptileRefresh);
 
-
-                m_log.InfoFormat("enabled with refresh time {0} min and service object {1}",
+                if(m_log.IsInfoEnabled) m_log.InfoFormat("MapImageServiceModule enabled with refresh time {0} min and service object {1}",
                              refreshminutes, service);
             }
             else
             {
-                m_log.InfoFormat("enabled with no refresh and service object {0}", service);
+                if(m_log.IsInfoEnabled) m_log.InfoFormat("MapImageServiceModule enabled with no automatic refresh and service object {0}", service);
             }
             m_enabled = true;
+            if(m_log.IsDebugEnabled) m_log.Debug("MapImageServiceModule initialization completed successfully");
         }
 
         ///<summary>
@@ -143,6 +176,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
         {
             if (!m_enabled)
                 return;
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding MapImageServiceModule to region {0} - registering map upload interface", scene.RegionInfo.RegionName);
 
             // Every shared region module has to maintain an indepedent list of
             // currently running regions
@@ -154,8 +189,10 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             // AKIDO re-adding the old Handling because we require the static maptiles
             scene.EventManager.OnRegionReadyStatusChange += s => { if (s.Ready) UploadMapTile(s); };
             // AKIDO
-            
+
             scene.RegisterModuleInterface<IMapImageUploadModule>(this);
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("MapImageServiceModule added to region {0} - map tile upload services available", scene.RegionInfo.RegionName);
         }
 
         ///<summary>
@@ -166,8 +203,12 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             if (! m_enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Removing MapImageServiceModule from region {0} - unregistering map upload interface", scene.RegionInfo.RegionName);
+
             // AKIDO
             m_scenes.Remove(scene.RegionInfo.RegionID);
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageServiceModule removed from region {0}", scene.RegionInfo.RegionName);
         }
 
         #endregion ISharedRegionModule
@@ -183,29 +224,38 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             if (m_lastrefresh > 0 && Util.EnvironmentTickCountSubtract(m_lastrefresh) < m_refreshtime)
                 return;
 
-            m_log.Debug("map refresh!");
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Starting automatic map tile refresh for {0} regions", m_scenes.Count);
+
             // AKIDO
+            int successCount = 0;
+            int errorCount = 0;
             foreach (IScene scene in m_scenes.Values)
             {
                 try
                 {
                     UploadMapTile(scene);
+                    successCount++;
                 }
                 catch (Exception ex)
                 {
-                    m_log.WarnFormat("something bad happened {0}", ex.Message);
+                    errorCount++;
+                    m_log.WarnFormat("Map tile refresh failed for region {0}: {1}", scene.RegionInfo.RegionName, ex.Message);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Map tile refresh exception details: {0}", ex);
                 }
             }
             // AKIDO
 
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("Map tile refresh completed - {0} successful, {1} errors", successCount, errorCount);
             m_lastrefresh = Util.EnvironmentTickCount();
         }
 
         public void UploadMapTile(IScene scene, Bitmap mapTile)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Starting map tile upload for region {1}", LogHeader, scene.RegionInfo.RegionName);
+
             if (mapTile == null)
             {
-                m_log.WarnFormat("{0} Cannot upload null image", LogHeader);
+                m_log.WarnFormat("{0} Cannot upload null image for region {1}", LogHeader, scene.RegionInfo.RegionName);
                 return;
             }
 
@@ -216,10 +266,11 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             // If the region/maptile is legacy sized, just upload the one tile like it has always been done
             if (mapTile.Width == Constants.RegionSize && mapTile.Height == Constants.RegionSize)
             {
-                m_log.DebugFormat("{0} Upload maptile for {1}", LogHeader, scene.Name);
-                ConvertAndUploadMaptile(scene, mapTile,
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Uploading single legacy-sized map tile ({1}x{2}) for region {3}", LogHeader, mapTile.Width, mapTile.Height, scene.Name);
+                bool success = ConvertAndUploadMaptile(scene, mapTile,
                                         scene.RegionInfo.RegionLocX, scene.RegionInfo.RegionLocY,
                                         scene.RegionInfo.RegionName);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Single map tile upload for {1}: {2}", LogHeader, scene.Name, success ? "successful" : "failed");
             }
             else
             {
@@ -264,42 +315,59 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
         public void UploadMapTile(IScene scene)
         {
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "{0}: upload maptile for {1}", LogHeader, scene.RegionInfo.RegionName);
+                "{0} Starting map tile generation and upload for region {1}", LogHeader, scene.RegionInfo.RegionName);
 
             // Create a JPG map tile and upload it to the AddMapTile API
             IMapImageGenerator tileGenerator = scene.RequestModuleInterface<IMapImageGenerator>();
             if (tileGenerator == null)
             {
-                m_log.WarnFormat("{0} Cannot upload map tile without an ImageGenerator", LogHeader);
+                m_log.WarnFormat("{0} Cannot upload map tile for region {1} - no IMapImageGenerator available", LogHeader, scene.RegionInfo.RegionName);
                 return;
             }
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Found map image generator for region {1}", LogHeader, scene.RegionInfo.RegionName);
 
             using (Bitmap mapTile = tileGenerator.CreateMapTile())
             {
                 // The MapImageModule will return a null if the user has chosen not to create map tiles and there
                 // is no static map tile.
                 if (mapTile == null)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} No map tile generated for region {1} - tile generation may be disabled or failed", LogHeader, scene.RegionInfo.RegionName);
                     return;
+                }
 
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Map tile generated successfully for region {1} - size: {2}x{3}", LogHeader, scene.RegionInfo.RegionName, mapTile.Width, mapTile.Height);
                 UploadMapTile(scene, mapTile);
             }
         }
 
         private bool ConvertAndUploadMaptile(IScene scene, Image tileImage, uint locX, uint locY, string regionName)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Converting and uploading map tile for {1} at location {2},{3}", LogHeader, regionName, locX, locY);
+
             byte[] jpgData = Utils.EmptyBytes;
 
-            using (MemoryStream stream = new MemoryStream())
+            try
             {
-                tileImage.Save(stream, ImageFormat.Jpeg);
-                jpgData = stream.ToArray();
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    tileImage.Save(stream, ImageFormat.Jpeg);
+                    jpgData = stream.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("{0} Failed to convert tile image to JPEG for region {1}: {2}", LogHeader, regionName, ex.Message);
+                return false;
             }
 
             if (jpgData == Utils.EmptyBytes)
             {
-                m_log.WarnFormat("{0} Tile image generation failed for region {1}", LogHeader, regionName);
+                m_log.WarnFormat("{0} Tile image JPEG conversion resulted in empty data for region {1}", LogHeader, regionName);
                 return false;
             }
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} JPEG conversion successful for {1} - size: {2} bytes", LogHeader, regionName, jpgData.Length);
 
             string reason = string.Empty;
             if (!m_MapService.AddMapTile((int)locX, (int)locY, jpgData, scene.RegionInfo.ScopeID, out reason))
@@ -308,6 +376,8 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                     regionName, locX, locY, reason);
                 return false;
             }
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Map tile upload successful for {1} at {2},{3}", LogHeader, regionName, locX, locY);
             return true;
         }
     }

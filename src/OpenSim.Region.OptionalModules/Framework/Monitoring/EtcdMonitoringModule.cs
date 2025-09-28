@@ -30,7 +30,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -48,7 +47,6 @@ namespace OpenSim.Region.OptionalModules.Framework.Monitoring
     /// Allows to store monitoring data in etcd, a high availability
     /// name-value store.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EtcdMonitoringModule")]
     public class EtcdMonitoringModule : INonSharedRegionModule, IEtcdModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -71,20 +69,30 @@ namespace OpenSim.Region.OptionalModules.Framework.Monitoring
 
         public void Initialise(IConfigSource source)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug("Initializing EtcdMonitoringModule for high-availability monitoring data storage");
+
             if (source.Configs["Etcd"] == null)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("EtcdMonitoringModule disabled - no [Etcd] configuration section found");
                 return;
+            }
 
             IConfig etcdConfig = source.Configs["Etcd"];
 
             string etcdUrls = etcdConfig.GetString("EtcdUrls", String.Empty);
             if (etcdUrls.Length == 0)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("EtcdMonitoringModule disabled - no EtcdUrls configured in [Etcd] section");
                 return;
+            }
 
             m_etcdBasePath = etcdConfig.GetString("BasePath", m_etcdBasePath);
             m_appendRegionID = etcdConfig.GetBoolean("AppendRegionID", m_appendRegionID);
 
             if (!m_etcdBasePath.EndsWith("/"))
                 m_etcdBasePath += "/";
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("EtcdMonitoringModule configuration: URLs={0}, BasePath={1}, AppendRegionID={2}", etcdUrls, m_etcdBasePath, m_appendRegionID);
 
             try
             {
@@ -94,19 +102,23 @@ namespace OpenSim.Region.OptionalModules.Framework.Monitoring
                     uris.Add(new Uri(endpoint.Trim()));
 
                 m_client = new EtcdClient(uris.ToArray(), new DefaultSerializer(), new DefaultSerializer());
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("EtcdMonitoringModule successfully connected to etcd cluster with {0} endpoints", endpoints.Length);
             }
             catch (Exception e)
             {
-                m_log.DebugFormat("[ETCD]: Error initializing connection: " + e.ToString());
+                m_log.ErrorFormat("Error initializing connection to etcd cluster: {0}", e.ToString());
                 return;
             }
 
-            m_log.DebugFormat("[ETCD]: Etcd module configured");
+            m_log.InfoFormat("EtcdMonitoringModule initialized successfully - connected to etcd cluster for monitoring data storage");
             m_enabled = true;
         }
 
         public void Close()
         {
+            if (m_enabled && m_log.IsDebugEnabled)
+                m_log.Debug("EtcdMonitoringModule closing - cleaning up etcd connections");
+
             //m_client = null;
             m_scene = null;
         }
@@ -117,26 +129,33 @@ namespace OpenSim.Region.OptionalModules.Framework.Monitoring
 
             if (m_enabled)
             {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding EtcdMonitoringModule to region {0} - setting up etcd monitoring data storage", scene.RegionInfo.RegionName);
+
                 if (m_appendRegionID)
                     m_etcdBasePath += m_scene.RegionInfo.RegionID.ToString() + "/";
 
-                m_log.DebugFormat("[ETCD]: Using base path {0} for all keys", m_etcdBasePath);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Using base path {0} for all keys in region {1}", m_etcdBasePath, scene.RegionInfo.RegionName);
 
                 try
                 {
                     m_client.Advanced.CreateDirectory(new CreateDirectoryRequest() {Key = m_etcdBasePath});
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully created base directory {0} in etcd", m_etcdBasePath);
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("Exception trying to create base path {0}: " + e.ToString(), m_etcdBasePath);
+                    m_log.ErrorFormat("Exception trying to create base path {0} in etcd: {1}", m_etcdBasePath, e.ToString());
                 }
 
                 scene.RegisterModuleInterface<IEtcdModule>(this);
+
+                if(m_log.IsInfoEnabled) m_log.InfoFormat("EtcdMonitoringModule added to region {0} - etcd monitoring data storage available at base path {1}", scene.RegionInfo.RegionName, m_etcdBasePath);
             }
         }
 
         public void RemoveRegion(Scene scene)
         {
+            if (m_enabled && m_log.IsDebugEnabled)
+                m_log.DebugFormat("Removing EtcdMonitoringModule from region {0} - etcd monitoring data storage no longer available", scene.RegionInfo.RegionName);
         }
 
         public void RegionLoaded(Scene scene)
@@ -150,46 +169,83 @@ namespace OpenSim.Region.OptionalModules.Framework.Monitoring
 
         public bool Store(string k, string v, int ttl)
         {
-            Response resp = m_client.Advanced.SetKey(new SetKeyRequest() { Key = m_etcdBasePath + k, Value = v, TimeToLive = ttl });
+            string fullKey = m_etcdBasePath + k;
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Storing key {0} with value {1} (TTL: {2})", fullKey, v, ttl > 0 ? ttl.ToString() : "none");
+
+            Response resp = m_client.Advanced.SetKey(new SetKeyRequest() { Key = fullKey, Value = v, TimeToLive = ttl });
 
             if (resp == null)
-                return false;
-
-            if (resp.ErrorCode.HasValue)
             {
-                m_log.DebugFormat("[ETCD]: Error {0} ({1}) storing {2} => {3}", resp.Cause, (int)resp.ErrorCode, m_etcdBasePath + k, v);
-
+                m_log.WarnFormat("Null response when storing key {0}", fullKey);
                 return false;
             }
 
+            if (resp.ErrorCode.HasValue)
+            {
+                m_log.WarnFormat("Error {0} ({1}) storing {2} => {3}", resp.Cause, (int)resp.ErrorCode, fullKey, v);
+                return false;
+            }
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully stored key {0}", fullKey);
             return true;
         }
 
         public string Get(string k)
         {
-            Response resp = m_client.Advanced.GetKey(new GetKeyRequest() { Key = m_etcdBasePath + k });
+            string fullKey = m_etcdBasePath + k;
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Getting key {0}", fullKey);
+
+            Response resp = m_client.Advanced.GetKey(new GetKeyRequest() { Key = fullKey });
 
             if (resp == null)
-                return String.Empty;
-
-            if (resp.ErrorCode.HasValue)
             {
-                m_log.DebugFormat("[ETCD]: Error {0} ({1}) getting {2}", resp.Cause, (int)resp.ErrorCode, m_etcdBasePath + k);
-
+                m_log.WarnFormat("Null response when getting key {0}", fullKey);
                 return String.Empty;
             }
 
+            if (resp.ErrorCode.HasValue)
+            {
+                m_log.WarnFormat("Error {0} ({1}) getting {2}", resp.Cause, (int)resp.ErrorCode, fullKey);
+                return String.Empty;
+            }
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully retrieved key {0} with value {1}", fullKey, resp.Node.Value);
             return resp.Node.Value;
         }
 
         public void Delete(string k)
         {
-            m_client.Advanced.DeleteKey(new DeleteKeyRequest() { Key = m_etcdBasePath + k });
+            string fullKey = m_etcdBasePath + k;
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Deleting key {0}", fullKey);
+
+            try
+            {
+                m_client.Advanced.DeleteKey(new DeleteKeyRequest() { Key = fullKey });
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully deleted key {0}", fullKey);
+            }
+            catch (Exception e)
+            {
+                m_log.WarnFormat("Error deleting key {0}: {1}", fullKey, e.Message);
+            }
         }
 
         public void Watch(string k, Action<string> callback)
         {
-            m_client.Advanced.WatchKey(new WatchKeyRequest() { Key = m_etcdBasePath + k, Callback = (x) => { callback(x.Node.Value); } });
+            string fullKey = m_etcdBasePath + k;
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Setting up watch on key {0}", fullKey);
+
+            try
+            {
+                m_client.Advanced.WatchKey(new WatchKeyRequest() { Key = fullKey, Callback = (x) => {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Watch triggered for key {0} with value {1}", fullKey, x.Node.Value);
+                    callback(x.Node.Value);
+                } });
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Watch successfully established on key {0}", fullKey);
+            }
+            catch (Exception e)
+            {
+                m_log.WarnFormat("Error setting up watch on key {0}: {1}", fullKey, e.Message);
+            }
         }
     }
 }

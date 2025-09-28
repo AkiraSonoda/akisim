@@ -29,7 +29,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
@@ -41,12 +40,11 @@ using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.CoreModules.Framework.DynamicAttributes.DAExampleModule
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "DAExampleModule")]
     public class DAExampleModule : INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private readonly bool ENABLED = false;   // enable for testing
+        private bool m_Enabled = false;
 
         public const string Namespace = "Example";
         public const string StoreName = "DA";
@@ -57,11 +55,22 @@ namespace OpenSim.Region.CoreModules.Framework.DynamicAttributes.DAExampleModule
         public string Name { get { return "DAExample Module"; } }
         public Type ReplaceableInterface { get { return null; } }
 
-        public void Initialise(IConfigSource source) {}
+        public void Initialise(IConfigSource source)
+        {
+            IConfig moduleConfig = source.Configs["DAExampleModule"];
+            if (moduleConfig != null)
+            {
+                m_Enabled = moduleConfig.GetBoolean("enabled", false);
+                if (m_Enabled)
+                {
+                    m_log.Info("[DA EXAMPLE MODULE]: DAExampleModule enabled for dynamic attributes demonstration");
+                }
+            }
+        }
 
         public void AddRegion(Scene scene)
         {
-            if (ENABLED)
+            if (m_Enabled)
             {
                 m_scene = scene;
                 m_scene.EventManager.OnSceneGroupMove += OnSceneGroupMove;
@@ -73,7 +82,7 @@ namespace OpenSim.Region.CoreModules.Framework.DynamicAttributes.DAExampleModule
 
         public void RemoveRegion(Scene scene)
         {
-            if (ENABLED)
+            if (m_Enabled)
             {
                 m_scene.EventManager.OnSceneGroupMove -= OnSceneGroupMove;
             }

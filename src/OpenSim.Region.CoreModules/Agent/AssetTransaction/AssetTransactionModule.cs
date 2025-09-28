@@ -33,13 +33,11 @@ using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using Mono.Addins;
 using ThreadedClasses;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Agent.AssetTransaction
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AssetTransactionModule")]
     public class AssetTransactionModule : INonSharedRegionModule,
             IAgentAssetTransactions
     {

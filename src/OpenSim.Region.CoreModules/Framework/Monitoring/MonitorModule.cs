@@ -41,11 +41,8 @@ using OpenSim.Region.CoreModules.Framework.Monitoring.Alerts;
 using OpenSim.Region.CoreModules.Framework.Monitoring.Monitors;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using Mono.Addins;
-
 namespace OpenSim.Region.CoreModules.Framework.Monitoring
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MonitorModule")]
     public class MonitorModule : INonSharedRegionModule
     {
         /// <summary>
@@ -76,20 +73,28 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
 
         public void Initialise(IConfigSource source)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug("Initializing MonitorModule for region health monitoring and statistics collection");
+
             IConfig cnfg = source.Configs["Monitoring"];
 
             if (cnfg != null)
                 Enabled = cnfg.GetBoolean("Enabled", true);
 
             if (!Enabled)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("MonitorModule disabled by configuration - no monitoring functionality will be available");
                 return;
+            }
 
+            if(m_log.IsDebugEnabled) m_log.Debug("MonitorModule initialized successfully - monitoring functionality enabled");
         }
 
         public void AddRegion(Scene scene)
         {
             if (!Enabled)
                 return;
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding MonitorModule to region {0} - setting up monitors and web handlers", scene.RegionInfo.RegionName);
 
             m_scene = scene;
 
@@ -104,6 +109,8 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
 
             AddMonitors();
             RegisterStatsManagerRegionStatistics();
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("MonitorModule added to region {0} - health monitoring, console commands, and web stats endpoints available", scene.RegionInfo.RegionName);
         }
 
         public void RemoveRegion(Scene scene)
@@ -111,12 +118,16 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
             if (!Enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Removing MonitorModule from region {0} - cleaning up handlers and statistics", scene.RegionInfo.RegionName);
+
             MainServer.Instance.RemoveHTTPHandler("GET", "/monitorstats/" + m_scene.RegionInfo.RegionID);
             MainServer.Instance.RemoveHTTPHandler("GET", "/monitorstats/" + Uri.EscapeDataString(m_scene.RegionInfo.RegionName));
 
             UnRegisterStatsManagerRegionStatistics();
 
             m_scene = null;
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("MonitorModule removed from region {0} - monitoring functionality disabled", scene.RegionInfo.RegionName);
         }
 
         public void Close()
@@ -141,6 +152,8 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
 
         public void AddMonitors()
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding performance monitors for region {0}", m_scene.RegionInfo.RegionName);
+
             m_staticMonitors.Add(new AgentCountMonitor(m_scene));
             m_staticMonitors.Add(new ChildAgentCountMonitor(m_scene));
             m_staticMonitors.Add(new GCMemoryMonitor());
@@ -312,6 +325,8 @@ namespace OpenSim.Region.CoreModules.Framework.Monitoring
             {
                 alert.OnTriggerAlert += OnTriggerAlert;
             }
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("Added {0} performance monitors and {1} alerts for region {2}", m_staticMonitors.Count, m_alerts.Count, m_scene.RegionInfo.RegionName);
         }
 
         public void DebugMonitors(string module, string[] args)

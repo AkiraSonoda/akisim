@@ -44,7 +44,6 @@ using Nini.Config;
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement
 {
-    // [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "HGUserManagementModule")]
     public class HGUserManagementModule : UserManagementModule, ISharedRegionModule, IUserManagement
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

@@ -104,7 +104,8 @@ namespace OpenSim.Region.DataSnapshot
             if (!m_configLoaded)
             {
                 m_configLoaded = true;
-                //m_log.Debug("Loading configuration");
+                if(m_log.IsDebugEnabled) m_log.Debug("Initializing DataSnapshotManager for external data generation and region indexing");
+
                 //Read from the config for options
                 // AKIDO
                 try
@@ -152,6 +153,14 @@ namespace OpenSim.Region.DataSnapshot
                     m_enabled = false;
                     return;
                 }
+
+                if (!m_enabled)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DataSnapshotManager disabled - set index_sims = true in [DataSnapshot] to enable external data generation");
+                    return;
+                }
+
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("DataSnapshotManager initialized successfully - external data generation enabled, exposure level: {0}", m_exposure_level);
                 // AKIDO
             }
         }
@@ -161,17 +170,21 @@ namespace OpenSim.Region.DataSnapshot
             if (!m_enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding DataSnapshotManager to region {0} - setting up snapshot collection and data providers", scene.RegionInfo.RegionName);
+
             m_scenes.Add(scene);
 
             if (m_snapStore == null)
             {
                 m_hostname = scene.RegionInfo.ExternalHostName;
                 m_snapStore = new SnapshotStore(m_snapsDir, m_gridinfo);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("DataSnapshotManager created snapshot store with hostname {0} and cache directory {1}", m_hostname, m_snapsDir);
             }
 
             m_snapStore.AddScene(scene);
 
             Assembly currentasm = Assembly.GetExecutingAssembly();
+            int providersAdded = 0;
 
             foreach (Type pluginType in currentasm.GetTypes())
             {
@@ -187,14 +200,15 @@ namespace OpenSim.Region.DataSnapshot
 
                             m_dataproviders.Add(module);
                             m_snapStore.AddProvider(module);
+                            providersAdded++;
 
-                            if(m_log.IsDebugEnabled) m_log.DebugFormat("Added new data provider type: {0}", 
+                            if(m_log.IsDebugEnabled) m_log.DebugFormat("Added data snapshot provider: {0}",
                                 pluginType.Name);
                         }
                     }
                 }
             }
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Module added to Scene {0}.", scene.RegionInfo.RegionName);
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("DataSnapshotManager added to region {0} - {1} data providers loaded, managing {2} total regions", scene.RegionInfo.RegionName, providersAdded, m_scenes.Count);
         }
 
         public void RemoveRegion(Scene scene)
@@ -202,7 +216,8 @@ namespace OpenSim.Region.DataSnapshot
             if (!m_enabled)
                 return;
 
-            m_log.Info("Region " + scene.RegionInfo.RegionName + " is being removed, removing from indexing");
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Removing DataSnapshotManager from region {0} - cleaning up data providers and snapshots", scene.RegionInfo.RegionName);
+
             Scene restartedScene = SceneForUUID(scene.RegionInfo.RegionID);
 
             m_scenes.Remove(restartedScene);
@@ -223,9 +238,12 @@ namespace OpenSim.Region.DataSnapshot
             {
                 m_dataproviders.Remove(provider);
                 m_snapStore.RemoveProvider(provider);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Removed data snapshot provider: {0}", provider.GetType().Name);
             }
 
             m_snapStore.RemoveScene(restartedScene);
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("DataSnapshotManager removed from region {0} - {1} providers removed, now managing {2} total regions", scene.RegionInfo.RegionName, providersToRemove.Count, m_scenes.Count);
         }
 
         public void PostInitialise()
@@ -239,13 +257,19 @@ namespace OpenSim.Region.DataSnapshot
 
             if (!m_servicesNotified)
             {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("DataSnapshotManager region {0} loaded - setting up HTTP handlers and notifying data services", scene.RegionInfo.RegionName);
+
                 //Hand it the first scene, assuming that all scenes have the same BaseHTTPServer
                 new DataRequestHandler(scene, this);
 
                 if (m_dataServices != "" && m_dataServices != "noservices")
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("DataSnapshotManager notifying data services: {0}", m_dataServices);
                     NotifyDataServices(m_dataServices, "online");
+                }
 
                 m_servicesNotified = true;
+                if(m_log.IsInfoEnabled) m_log.Info("DataSnapshotManager HTTP endpoints registered and data services notified");
             }
         }
 
@@ -254,8 +278,15 @@ namespace OpenSim.Region.DataSnapshot
             if (!m_enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.Debug("Closing DataSnapshotManager - notifying data services of offline status");
+
             if (m_enabled && m_dataServices != "" && m_dataServices != "noservices")
+            {
                 NotifyDataServices(m_dataServices, "offline");
+                if(m_log.IsDebugEnabled) m_log.Debug("DataSnapshotManager notified data services of offline status");
+            }
+
+            if(m_log.IsDebugEnabled) m_log.Debug("DataSnapshotManager cleanup completed");
         }
 
         public string Name
@@ -432,7 +463,7 @@ namespace OpenSim.Region.DataSnapshot
 
                     // This is not quite working, so...
                     // string responseStr = Util.UTF8.GetString(response);
-                    m_log.Info("data service " + url + " notified. Secret: " + m_Secret);
+                    if(m_log.IsInfoEnabled) m_log.InfoFormat("DataSnapshotManager notified data service {0} of {1} status. Secret: {2}", url, serviceName, m_Secret);
                 }
             }
         }
@@ -477,7 +508,7 @@ namespace OpenSim.Region.DataSnapshot
 
         public void MakeEverythingStale()
         {
-            m_log.Debug("Marking all scenes as stale.");
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("DataSnapshotManager marking all {0} scenes as stale for snapshot regeneration", m_scenes.Count);
             foreach (Scene scene in m_scenes)
             {
                 m_snapStore.ForceSceneStale(scene);

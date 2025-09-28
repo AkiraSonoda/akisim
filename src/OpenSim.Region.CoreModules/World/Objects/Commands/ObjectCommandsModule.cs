@@ -34,7 +34,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 using log4net;
-using Mono.Addins;
 using NDesk.Options;
 using Nini.Config;
 using OpenMetaverse;
@@ -50,7 +49,6 @@ namespace OpenSim.Region.CoreModules.World.Objects.Commands
     /// <summary>
     /// A module that holds commands for manipulating objects in the scene.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "ObjectCommandsModule")]
     public class ObjectCommandsModule : INonSharedRegionModule
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

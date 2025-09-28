@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using Nini.Config;
 using log4net;
@@ -40,7 +41,9 @@ using OpenSim.Region.CoreModules.Framework;
 using OpenSim.Region.CoreModules.Agent.Xfer;
 using OpenSim.Region.CoreModules.Avatar.Attachments;
 using OpenSim.Region.CoreModules.Avatar.AvatarFactory;
+using OpenSim.Region.CoreModules.Avatar.BakedTextures;
 using OpenSim.Region.CoreModules.Avatar.Chat;
+using OpenSim.Region.CoreModules.Avatar.Combat.CombatModule;
 using OpenSim.Region.CoreModules.Avatar.Dialog;
 using OpenSim.Region.CoreModules.Scripting.EmailModules;
 using OpenSim.Region.CoreModules.Avatar.Friends;
@@ -52,6 +55,10 @@ using OpenSim.Region.CoreModules.Avatar.Inventory.Archiver;
 using OpenSim.Region.CoreModules.Avatar.Inventory.Transfer;
 using OpenSim.Region.CoreModules.Avatar.UserProfiles;
 using OpenSim.Region.CoreModules.Framework.InventoryAccess;
+using OpenSim.Region.CoreModules.Framework.Monitoring;
+using OpenSim.Region.CoreModules.Framework.Search;
+using OpenSim.Region.CoreModules.Framework.DynamicAttributes;
+using OpenSim.Region.Framework.DynamicAttributes;
 // BinaryLoggingModule not found in this project
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Authentication;
@@ -68,6 +75,7 @@ using OpenSim.Region.CoreModules.ServiceConnectorsOut.Simulation;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.UserAccounts;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.MuteList;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.AgentPreferences;
+using OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage;
 using OpenSim.Region.CoreModules.World;
 using OpenSim.Region.CoreModules.World.Archiver;
 using OpenSim.Region.CoreModules.World.Estate;
@@ -82,6 +90,7 @@ using OpenSim.Region.CoreModules.World.Media.Moap;
 using OpenSim.Region.CoreModules.Scripting.LoadImageURL;
 using OpenSim.Region.CoreModules.Scripting.VectorRender;
 using OpenSim.Region.CoreModules.World.LightShare;
+using OpenSim.Region.CoreModules.World.LegacyMap;
 using OpenSim.Region.CoreModules.World.Terrain;
 using OpenSim.Region.CoreModules.World.Vegetation;
 using OpenSim.Region.CoreModules.World.Wind;
@@ -97,6 +106,7 @@ using OpenSim.Region.CoreModules.Scripting.ScriptModuleComms;
 using OpenSim.Region.CoreModules.Scripting.WorldComm;
 using OpenSim.Region.CoreModules.Scripting.HttpRequest;
 using OpenSim.Region.CoreModules.Scripting.XMLRPC;
+using OpenSim.Region.CoreModules.Scripting.LSLHttp;
 
 // Physics modules
 using OpenSim.Region.PhysicsModule.BulletS;
@@ -107,6 +117,8 @@ using OpenSim.Region.PhysicsModule.ubODEMeshing;
 // Caps modules
 using OpenSim.Region.ClientStack.Linden;
 using OpenSim.Region.ClientStack.LindenCaps;
+
+// Note: Optional modules are loaded via reflection to avoid circular dependencies
 
 
 
@@ -135,10 +147,106 @@ namespace OpenSim.Region.CoreModules
             yield return new GesturesModule();
             yield return new BasicInventoryAccessModule();
             yield return new HGInventoryAccessModule();
+
+            // Load XBakesModule based on configuration for external baked texture storage
+            if (configSource != null)
+            {
+                var xBakesConfig = configSource.Configs["XBakes"];
+                if (xBakesConfig != null)
+                {
+                    string xBakesURL = xBakesConfig.GetString("URL", String.Empty);
+                    if (!string.IsNullOrEmpty(xBakesURL))
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Loading XBakesModule for external baked texture storage and caching");
+                        yield return new XBakesModule();
+                        if(m_log.IsInfoEnabled) m_log.Info("XBakesModule loaded for external baked texture storage, avatar appearance caching, and texture optimization");
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("XBakesModule not loaded - no URL configured in [XBakes] section");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("XBakesModule not loaded - no [XBakes] configuration section found");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("XBakesModule not loaded - no configuration source provided");
+            }
+
+            // Load DAExampleModule if enabled for dynamic attributes demonstration
+            if (configSource != null)
+            {
+                var daExampleConfig = configSource.Configs["DAExampleModule"];
+                if (daExampleConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading DAExampleModule for dynamic attributes demonstration");
+                    yield return new OpenSim.Region.CoreModules.Framework.DynamicAttributes.DAExampleModule.DAExampleModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("DAExampleModule loaded for dynamic attributes tracking and object move counting");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DAExampleModule not loaded - set enabled = true in [DAExampleModule] section to enable dynamic attributes example");
+                }
+            }
+
+            // Load DOExampleModule if enabled for dynamic objects demonstration
+            if (configSource != null)
+            {
+                var doExampleConfig = configSource.Configs["DOExampleModule"];
+                if (doExampleConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading DOExampleModule for dynamic objects demonstration");
+                    yield return new OpenSim.Region.Framework.DynamicAttributes.DOExampleModule.DOExampleModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("DOExampleModule loaded for dynamic objects tracking and in-memory object management");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DOExampleModule not loaded - set enabled = true in [DOExampleModule] section to enable dynamic objects example");
+                }
+            }
+
             yield return new LandManagementModule();
             yield return new PrimCountModule();
             yield return new DefaultPermissionsModule();
             yield return new SoundModule();
+
+            // Load EstateManagementModule for essential estate management functionality (always enabled)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading EstateManagementModule for estate settings, access controls, and management functionality");
+            yield return new EstateManagementModule();
+            if(m_log.IsInfoEnabled) m_log.Info("EstateManagementModule loaded for estate settings, ban/access lists, teleport controls, and estate messaging");
+
+            // Load PrimLimitsModule based on configuration
+            if (configSource != null)
+            {
+                string permissionModules = Util.GetConfigVarFromSections<string>(configSource, "permissionmodules",
+                    new string[] { "Startup", "Permissions" }, "DefaultPermissionsModule");
+
+                if (!string.IsNullOrEmpty(permissionModules) && permissionModules.Contains("PrimLimitsModule"))
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading PrimLimitsModule for parcel prim limits enforcement");
+                    var primLimitsModuleInstance = LoadPrimLimitsModule();
+                    if (primLimitsModuleInstance != null)
+                    {
+                        yield return primLimitsModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("PrimLimitsModule loaded for parcel prim limits, object rezzing restrictions, and capacity management");
+                    }
+                    else
+                    {
+                        m_log.Warn("PrimLimitsModule was configured in permissionmodules but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("PrimLimitsModule not loaded - not specified in permissionmodules configuration");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("PrimLimitsModule not loaded - no configuration source provided");
+            }
 
             // Load GodsModule for god powers and administrative controls (always enabled)
             if(m_log.IsDebugEnabled) m_log.Debug("Loading GodsModule for god powers, user kicking, and administrative controls");
@@ -210,6 +318,8 @@ namespace OpenSim.Region.CoreModules
                 {
                     if(m_log.IsDebugEnabled) m_log.DebugFormat("No WorldMapModule loaded - configured value: '{0}'", worldMapModule);
                 }
+
+                // Note: MapSearchModule is now loaded in CreateSharedModules as it implements ISharedRegionModule
             }
             else
             {
@@ -245,9 +355,15 @@ namespace OpenSim.Region.CoreModules
                     yield return new Warp3DImageModule();
                     if(m_log.IsInfoEnabled) m_log.Info("Warp3DImageModule loaded for 3D map tile generation with terrain texturing and prim rendering");
                 }
+                else if (mapImageModule == "MapImageModule")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading legacy MapImageModule for basic 2D map tile generation");
+                    yield return new MapImageModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("MapImageModule loaded for legacy 2D map tile generation with basic terrain and prim rendering");
+                }
                 else if (!string.IsNullOrEmpty(mapImageModule))
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageModule configured as '{0}' but not 'Warp3DImageModule', skipping", mapImageModule);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageModule configured as '{0}' but not recognized (supported: 'Warp3DImageModule', 'MapImageModule'), skipping", mapImageModule);
                 }
                 else
                 {
@@ -589,6 +705,216 @@ namespace OpenSim.Region.CoreModules
                 if(m_log.IsInfoEnabled) m_log.Info("HttpRequestModule loaded for LSL HTTP requests, llHTTPRequest, and web service integration");
             }
 
+            // Note: UrlModule is now loaded in CreateSharedModules as it implements ISharedRegionModule
+
+            // Note: BasicSearchModule is now loaded in CreateSharedModules as it implements ISharedRegionModule
+
+            // Load MonitorModule if enabled for region monitoring and statistics
+            if (configSource != null)
+            {
+                var monitoringConfig = configSource.Configs["Monitoring"];
+                if (monitoringConfig?.GetBoolean("Enabled", true) == true)  // Default to true as it's essential for monitoring
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading MonitorModule for region health monitoring and statistics collection");
+                    yield return new MonitorModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("MonitorModule loaded for region health monitoring, performance statistics, and console commands");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("MonitorModule disabled - set Enabled = true in [Monitoring] to enable region monitoring");
+                }
+            }
+            else
+            {
+                // Default to loading if no config source (essential module for monitoring)
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading MonitorModule (no config source - using default)");
+                yield return new MonitorModule();
+                if(m_log.IsInfoEnabled) m_log.Info("MonitorModule loaded for region health monitoring and performance statistics");
+            }
+
+            // Load EtcdMonitoringModule based on configuration
+            if (configSource != null)
+            {
+                var etcdConfig = configSource.Configs["Etcd"];
+                if (etcdConfig != null)
+                {
+                    string etcdUrls = etcdConfig.GetString("EtcdUrls", String.Empty);
+                    if (!string.IsNullOrEmpty(etcdUrls))
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Loading EtcdMonitoringModule for etcd-based monitoring data storage");
+                        var etcdModuleInstance = LoadEtcdMonitoringModule();
+                        if (etcdModuleInstance != null)
+                        {
+                            yield return etcdModuleInstance;
+                            if(m_log.IsInfoEnabled) m_log.Info("EtcdMonitoringModule loaded for high-availability monitoring data storage in etcd");
+                        }
+                        else
+                        {
+                            m_log.Warn("EtcdMonitoringModule was configured ([Etcd] EtcdUrls specified) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll and netcd dependencies are available.");
+                        }
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("EtcdMonitoringModule not loaded - no EtcdUrls configured in [Etcd] section");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("EtcdMonitoringModule not loaded - no [Etcd] configuration section found");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("EtcdMonitoringModule not loaded - no configuration source provided");
+            }
+
+            // Load RegionReadyModule based on configuration
+            if (configSource != null)
+            {
+                var regionReadyConfig = configSource.Configs["RegionReady"];
+                if (regionReadyConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading RegionReadyModule for region startup coordination and readiness notifications");
+                    var regionReadyModuleInstance = LoadRegionReadyModule();
+                    if (regionReadyModuleInstance != null)
+                    {
+                        yield return regionReadyModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("RegionReadyModule loaded for region startup coordination, script compilation monitoring, and readiness notifications");
+                    }
+                    else
+                    {
+                        m_log.Warn("RegionReadyModule was configured ([RegionReady] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("RegionReadyModule disabled - set enabled = true in [RegionReady] to enable region readiness coordination");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("RegionReadyModule not loaded - no configuration source provided");
+            }
+
+            // Load WorldViewModule based on configuration
+            if (configSource != null)
+            {
+                var modulesConfig = configSource.Configs["Modules"];
+                if (modulesConfig?.GetString("WorldViewModule", String.Empty) == "WorldViewModule")
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading WorldViewModule for HTTP-based world view image generation");
+                    var worldViewModuleInstance = LoadWorldViewModule();
+                    if (worldViewModuleInstance != null)
+                    {
+                        yield return worldViewModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("WorldViewModule loaded for HTTP world view endpoints and image generation");
+                    }
+                    else
+                    {
+                        m_log.Warn("WorldViewModule was configured ([Modules] WorldViewModule = WorldViewModule) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("WorldViewModule not loaded - set WorldViewModule = WorldViewModule in [Modules] section to enable world view functionality");
+                }
+            }
+
+            // Load DynamicFloaterModule based on configuration
+            if (configSource != null)
+            {
+                var dynamicFloaterConfig = configSource.Configs["DynamicFloaterModule"];
+                if (dynamicFloaterConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading DynamicFloaterModule for dynamic UI floater and dialog support");
+                    var dynamicFloaterModuleInstance = LoadDynamicFloaterModule();
+                    if (dynamicFloaterModuleInstance != null)
+                    {
+                        yield return dynamicFloaterModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("DynamicFloaterModule loaded for dynamic floater dialogs, XML-based UI elements, and viewer integration");
+                    }
+                    else
+                    {
+                        m_log.Warn("DynamicFloaterModule was configured ([DynamicFloaterModule] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DynamicFloaterModule not loaded - set enabled = true in [DynamicFloaterModule] section to enable dynamic floater support");
+                }
+            }
+
+            // Load DynamicMenuModule based on configuration
+            if (configSource != null)
+            {
+                var dynamicMenuConfig = configSource.Configs["DynamicMenuModule"];
+                if (dynamicMenuConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading DynamicMenuModule for dynamic viewer menu customization and script integration");
+                    var dynamicMenuModuleInstance = LoadDynamicMenuModule();
+                    if (dynamicMenuModuleInstance != null)
+                    {
+                        yield return dynamicMenuModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("DynamicMenuModule loaded for viewer menu customization, permission-based menu items, and script-driven menu actions");
+                    }
+                    else
+                    {
+                        m_log.Warn("DynamicMenuModule was configured ([DynamicMenuModule] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DynamicMenuModule not loaded - set enabled = true in [DynamicMenuModule] section to enable dynamic menu support");
+                }
+            }
+
+            // Load SpecialUIModule based on configuration
+            if (configSource != null)
+            {
+                var specialUIConfig = configSource.Configs["SpecialUIModule"];
+                if (specialUIConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading SpecialUIModule for custom viewer UI elements and toolbar customization");
+                    var specialUIModuleInstance = LoadSpecialUIModule();
+                    if (specialUIModuleInstance != null)
+                    {
+                        yield return specialUIModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("SpecialUIModule loaded for viewer UI customization, toolbar panels, and user-level-based UI elements");
+                    }
+                    else
+                    {
+                        m_log.Warn("SpecialUIModule was configured ([SpecialUIModule] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("SpecialUIModule not loaded - set enabled = true in [SpecialUIModule] section to enable special UI support");
+                }
+            }
+
+            // Load CameraOnlyModeModule based on configuration
+            if (configSource != null)
+            {
+                var cameraOnlyConfig = configSource.Configs["CameraOnlyModeModule"];
+                if (cameraOnlyConfig?.GetBoolean("enabled", false) == true)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading CameraOnlyModeModule for viewer camera-only mode support");
+                    var cameraOnlyModuleInstance = LoadCameraOnlyModeModule();
+                    if (cameraOnlyModuleInstance != null)
+                    {
+                        yield return cameraOnlyModuleInstance;
+                        if(m_log.IsInfoEnabled) m_log.Info("CameraOnlyModeModule loaded for camera-only mode and viewer feature control");
+                    }
+                    else
+                    {
+                        m_log.Warn("CameraOnlyModeModule was configured ([CameraOnlyModeModule] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("CameraOnlyModeModule not loaded - set enabled = true in [CameraOnlyModeModule] section to enable camera-only mode");
+                }
+            }
 
         }
 
@@ -629,10 +955,29 @@ namespace OpenSim.Region.CoreModules
 
             // Always load core modules that don't have configuration options
             yield return new ChatModule();
+            yield return new CombatModule();
             yield return new InventoryTransferModule();
             yield return new InstantMessageModule();
             yield return new MuteListModule();
             yield return new PresenceModule();
+
+            // Load CallingCardModule based on configuration for calling card functionality
+            var callingCardConfig = configSource?.Configs["XCallingCard"];
+            if (callingCardConfig?.GetBoolean("Enabled", true) == true)  // Default to true for avatar functionality
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading CallingCardModule for calling card creation, offers, and friendship management");
+                yield return new CallingCardModule();
+                if(m_log.IsInfoEnabled) m_log.Info("CallingCardModule loaded for calling card offers, inventory management, and friendship integration");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("CallingCardModule disabled - set Enabled = true in [XCallingCard] section to enable calling card functionality");
+            }
+
+            // Load IPBanModule for IP and hostname based access control (always enabled for security)
+            if(m_log.IsDebugEnabled) m_log.Debug("Loading IPBanModule for IP and hostname based access control");
+            yield return new IPBanModule();
+            if(m_log.IsInfoEnabled) m_log.Info("IPBanModule loaded for IP blocking, hostname filtering, and estate ban enforcement");
 
             // Load AccessModule for login control and region access management (always enabled)
             if(m_log.IsDebugEnabled) m_log.Debug("Loading AccessModule for login control and region access management");
@@ -649,6 +994,18 @@ namespace OpenSim.Region.CoreModules
             else
             {
                 if(m_log.IsDebugEnabled) m_log.Debug("XMLRPCModule disabled - set XMLRPCModule = true in [Modules] to enable LSL XMLRPC functionality");
+            }
+
+            // Load UrlModule if enabled for LSL HTTP-In functionality and llRequestURL/llRequestSecureURL
+            if (modulesConfig?.GetBoolean("UrlModule", true) == true)  // Default to true as it's essential for LSL HTTP-In functionality
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading UrlModule for LSL HTTP-In functionality and external URL management");
+                yield return new UrlModule();
+                if(m_log.IsInfoEnabled) m_log.Info("UrlModule loaded for LSL HTTP-In functionality, llRequestURL, llRequestSecureURL, and external HTTP endpoints");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("UrlModule disabled - set UrlModule = true in [Modules] to enable LSL HTTP-In functionality");
             }
 
             // Load EmailModule based on configuration
@@ -695,7 +1052,33 @@ namespace OpenSim.Region.CoreModules
             
             // Load AgentPreferencesModule directly for reliable loading
             yield return new AgentPreferencesModule();
-            
+
+            // Load ServiceThrottleModule for grid service request throttling and performance optimization
+            if (configSource != null)
+            {
+                // ServiceThrottleModule is typically enabled by default for performance optimization
+                var serviceThrottleConfig = configSource.Configs["ServiceThrottle"];
+                bool enableServiceThrottle = serviceThrottleConfig?.GetBoolean("Enabled", true) ?? true; // Default to enabled
+
+                if (enableServiceThrottle)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading ServiceThrottleModule for grid service request throttling and performance optimization");
+                    yield return new ServiceThrottleModule();
+                    if(m_log.IsInfoEnabled) m_log.Info("ServiceThrottleModule loaded for grid service throttling, region handle requests, and job queue management");
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("ServiceThrottleModule disabled - set Enabled = true in [ServiceThrottle] to enable service throttling");
+                }
+            }
+            else
+            {
+                // Default to loading if no config source (essential module for performance)
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading ServiceThrottleModule (no config source - using default)");
+                yield return new ServiceThrottleModule();
+                if(m_log.IsInfoEnabled) m_log.Info("ServiceThrottleModule loaded for grid service throttling and performance optimization");
+            }
+
             var groupsConfig = configSource.Configs["Groups"];
 
             // Load Friends module based on configuration
@@ -759,7 +1142,17 @@ namespace OpenSim.Region.CoreModules
             string gridServicesModule = modulesConfig?.GetString("GridServices", "");
             if (gridServicesModule == "RegionGridServicesConnector")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading RegionGridServicesConnector for grid service communication and region discovery");
                 yield return new RegionGridServicesConnector();
+                if(m_log.IsInfoEnabled) m_log.Info("RegionGridServicesConnector loaded for grid service interface, region lookups, neighbor discovery, and Hypergrid support");
+            }
+            else if (!string.IsNullOrEmpty(gridServicesModule))
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("RegionGridServicesConnector not loaded - GridServices configured as '{0}', expected 'RegionGridServicesConnector'", gridServicesModule);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("RegionGridServicesConnector not loaded - no GridServices configured");
             }
 
             // Load UserAccountService module based on configuration
@@ -773,7 +1166,17 @@ namespace OpenSim.Region.CoreModules
             string neighbourServicesModule = modulesConfig?.GetString("NeighbourServices", "");
             if (neighbourServicesModule == "NeighbourServicesOutConnector")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading NeighbourServicesOutConnector for cross-region neighbor communication and discovery");
                 yield return new NeighbourServicesOutConnector();
+                if(m_log.IsInfoEnabled) m_log.Info("NeighbourServicesOutConnector loaded for neighbor hello protocol, region discovery, and cross-region coordination");
+            }
+            else if (!string.IsNullOrEmpty(neighbourServicesModule))
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("NeighbourServicesOutConnector not loaded - NeighbourServices configured as '{0}', expected 'NeighbourServicesOutConnector'", neighbourServicesModule);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("NeighbourServicesOutConnector not loaded - no NeighbourServices configured");
             }
 
             // Load SimulationServices module based on configuration
@@ -888,6 +1291,43 @@ namespace OpenSim.Region.CoreModules
                 m_log.Info("RemoteAgentPreferencesServicesConnector loaded for remote agent preferences handling");
             }
 
+            // Load MapImageService module based on configuration
+            string mapImageServicesModule = modulesConfig?.GetString("MapImageService", "");
+            if (mapImageServicesModule == "MapImageServiceModule")
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading MapImageServiceModule for map tile upload and management");
+                yield return new MapImageServiceModule();
+                m_log.Info("MapImageServiceModule loaded for map tile upload and management services");
+            }
+
+            // Load MapSearchModule - provides map search functionality for WorldMap modules
+            // MapSearchModule works with any WorldMap implementation to provide region search capabilities
+            var worldMapModuleConfig = configSource?.Configs["Map"] ?? configSource?.Configs["Startup"];
+            string worldMapModuleName = worldMapModuleConfig?.GetString("WorldMapModule", "");
+            if (!string.IsNullOrEmpty(worldMapModuleName) && (worldMapModuleName == "WorldMap" || worldMapModuleName == "HGWorldMap"))
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading MapSearchModule for map search functionality");
+                yield return new MapSearchModule();
+                m_log.Info("MapSearchModule loaded for region search capabilities");
+            }
+
+            // Load BasicSearchModule based on configuration
+            string searchModule = modulesConfig?.GetString("SearchModule", "");
+            if (searchModule == "BasicSearchModule")
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading BasicSearchModule for people and groups search functionality");
+                yield return new BasicSearchModule();
+                if(m_log.IsInfoEnabled) m_log.Info("BasicSearchModule loaded for people and groups search capabilities");
+            }
+            else if (!string.IsNullOrEmpty(searchModule))
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("BasicSearchModule not loaded - SearchModule configured as '{0}', expected 'BasicSearchModule'", searchModule);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("BasicSearchModule not loaded - no SearchModule configured");
+            }
+
             // Load ViewerStatsModule (WebStatsModule) based on configuration
             // WebStatsModule checks for [WebStats] enabled = true in its own Initialise method
             var webStatsConfig = configSource?.Configs["WebStats"];
@@ -933,16 +1373,53 @@ namespace OpenSim.Region.CoreModules
             // Load NPCModule based on configuration
             if (modulesConfig?.GetBoolean("NPCModule", false) == true)
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading NPCModule for non-player character creation and management");
                 var npcModuleInstance = LoadNPCModule();
                 if (npcModuleInstance != null)
                 {
                     yield return npcModuleInstance;
+                    if(m_log.IsInfoEnabled) m_log.Info("NPCModule loaded for NPC creation, appearance management, movement control, and communication capabilities");
                 }
                 else
                 {
-                    m_log.Warn("NPCModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                    m_log.Warn("NPCModule was configured ([Modules] NPCModule = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
                 }
             }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("NPCModule not loaded - set NPCModule = true in [Modules] to enable NPC support");
+            }
+
+            // Load ConciergeModule based on configuration
+            var conciergeConfig = configSource?.Configs["Concierge"];
+            if (conciergeConfig?.GetBoolean("enabled", false) == true)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading ConciergeModule for avatar welcome messages and region announcements");
+                var conciergeModuleInstance = LoadConciergeModule();
+                if (conciergeModuleInstance != null)
+                {
+                    yield return conciergeModuleInstance;
+                    if(m_log.IsInfoEnabled) m_log.Info("ConciergeModule loaded for avatar greetings, announcements, and chat integration");
+                }
+                else
+                {
+                    m_log.Warn("ConciergeModule was configured ([Concierge] enabled = true) but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("ConciergeModule not loaded - set enabled = true in [Concierge] section to enable concierge features");
+            }
+
+            // Note: WorldViewModule is now loaded in CreateNonSharedModules as it implements INonSharedRegionModule
+
+            // Note: CameraOnlyModeModule is now loaded in CreateNonSharedModules as it implements INonSharedRegionModule
+
+            // Note: DynamicFloaterModule is now loaded in CreateNonSharedModules as it implements INonSharedRegionModule
+
+            // Note: DynamicMenuModule is now loaded in CreateNonSharedModules as it implements INonSharedRegionModule
+
+            // Note: SpecialUIModule is now loaded in CreateNonSharedModules as it implements INonSharedRegionModule
 
             // Load BetaGridLikeMoneyModule (SampleMoneyModule) - dynamic loading with fallback behavior
             string economyModule = modulesConfig?.GetString("economymodule", "");
@@ -1080,6 +1557,89 @@ namespace OpenSim.Region.CoreModules
             {
                 if(m_log.IsDebugEnabled) m_log.Debug("VectorRenderModule disabled - set VectorRenderModule = true in [Modules] to enable vector graphics rendering");
             }
+
+            // Load SerialiserModule for region and object serialization (XML export/import)
+            if (modulesConfig?.GetBoolean("SerialiserModule", true) == true)  // Default to true for backward compatibility
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading SerialiserModule for region and object serialization to XML format");
+                yield return new SerialiserModule();
+                if(m_log.IsInfoEnabled) m_log.Info("SerialiserModule loaded for XML-based region exports, object serialization, and scene data archival");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("SerialiserModule disabled - set SerialiserModule = true in [Modules] to enable XML serialization functionality");
+            }
+
+            // Note: EtcdMonitoringModule is now loaded in CreateNonSharedModules as it implements INonSharedRegionModule
+
+            // Load AutoBackupModule based on configuration
+            var autoBackupConfig = configSource?.Configs["AutoBackupModule"];
+            if (autoBackupConfig?.GetBoolean("AutoBackupModuleEnabled", false) == true)
+            {
+                var autoBackupModule = LoadAutoBackupModule();
+                if (autoBackupModule != null)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading AutoBackupModule for automated region backup scheduling and OAR generation");
+                    yield return autoBackupModule;
+                    if(m_log.IsInfoEnabled) m_log.Info("AutoBackupModule loaded for scheduled region backups, file retention management, and post-backup script execution");
+                }
+                else
+                {
+                    m_log.Warn("AutoBackupModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("AutoBackupModule not loaded - set AutoBackupModuleEnabled = true in [AutoBackupModule] section to enable automated backup functionality");
+            }
+
+            // Load WebSocketEchoModule for WebSocket testing and development (example module)
+            var webSocketEchoConfig = configSource?.Configs["WebSocketEcho"];
+            if (webSocketEchoConfig != null)
+            {
+                var webSocketEchoModule = LoadWebSocketEchoModule();
+                if (webSocketEchoModule != null)
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("Loading WebSocketEchoModule for WebSocket echo testing and development");
+                    yield return webSocketEchoModule;
+                    if(m_log.IsInfoEnabled) m_log.Info("WebSocketEchoModule loaded for WebSocket echo functionality at /echo endpoint");
+                }
+                else
+                {
+                    m_log.Warn("WebSocketEchoModule was configured but could not be loaded. Check that OpenSim.Region.OptionalModules.dll is available.");
+                }
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("WebSocketEchoModule not loaded - add [WebSocketEcho] section to enable WebSocket echo testing functionality");
+            }
+
+            // Load EstateModule based on configuration for estate management communication
+            var estateConfig = configSource?.Configs["Estates"];
+            if (estateConfig?.GetString("EstateCommunicationsHandler", "EstateModule") == "EstateModule" || estateConfig == null)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading EstateModule for estate communications, region info updates, and estate management");
+                yield return new EstateModule();
+                if(m_log.IsInfoEnabled) m_log.Info("EstateModule loaded for estate communication handlers, teleport management, and cross-region estate coordination");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("EstateModule not loaded - EstateCommunicationsHandler configured as '{0}', expected 'EstateModule'", estateConfig.GetString("EstateCommunicationsHandler", ""));
+            }
+
+            // Load LindenUDPInfoModule for UDP stack monitoring and diagnostics via reflection
+            // This module provides console commands for inspecting UDP client queues, throttles, and statistics
+            var lindenUDPInfoModule = LoadLindenUDPInfoModule();
+            if (lindenUDPInfoModule != null)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading LindenUDPInfoModule for UDP stack diagnostics and monitoring commands");
+                yield return lindenUDPInfoModule;
+                if(m_log.IsInfoEnabled) m_log.Info("LindenUDPInfoModule loaded for UDP queue inspection, throttle monitoring, and client diagnostics");
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("LindenUDPInfoModule not available - UDP diagnostics will not be available");
+            }
         }
 
         /// <summary>
@@ -1160,24 +1720,72 @@ namespace OpenSim.Region.CoreModules
         {
             try
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load NPCModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
                 // Try to find the NPCModule type in any loaded assembly
                 Type npcModuleType = null;
                 foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
                 {
                     npcModuleType = assembly.GetType("OpenSim.Region.OptionalModules.World.NPC.NPCModule");
                     if (npcModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found NPCModule type in assembly: {0}", assembly.FullName);
                         break;
+                    }
                 }
 
                 if (npcModuleType != null)
                 {
                     var moduleInstance = Activator.CreateInstance(npcModuleType) as ISharedRegionModule;
-                    return moduleInstance;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully created NPCModule instance");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("NPCModule type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("NPCModule type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled)
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains("Optional"))
+                                m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                m_log.WarnFormat("Could not load NPCModule: {0}", ex.Message);
+                m_log.ErrorFormat("Failed to load NPCModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("NPCModule loading exception details: {0}", ex.ToString());
             }
 
             return null;
@@ -1547,6 +2155,162 @@ namespace OpenSim.Region.CoreModules
         }
 
         /// <summary>
+        /// Loads RegionReadyModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadRegionReadyModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load RegionReadyModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the RegionReadyModule type in any loaded assembly
+                Type regionReadyModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    regionReadyModuleType = assembly.GetType("OpenSim.Region.OptionalModules.Scripting.RegionReady.RegionReadyModule");
+                    if (regionReadyModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found RegionReadyModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (regionReadyModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(regionReadyModuleType) as INonSharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully created RegionReadyModule instance");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("RegionReadyModule type found but could not cast to INonSharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("RegionReadyModule type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled)
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains("Optional"))
+                                m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load RegionReadyModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("RegionReadyModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads EtcdMonitoringModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadEtcdMonitoringModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load EtcdMonitoringModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the EtcdMonitoringModule type in any loaded assembly
+                Type etcdModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    etcdModuleType = assembly.GetType("OpenSim.Region.OptionalModules.Framework.Monitoring.EtcdMonitoringModule");
+                    if (etcdModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found EtcdMonitoringModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (etcdModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(etcdModuleType) as INonSharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully created EtcdMonitoringModule instance");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("EtcdMonitoringModule type found but could not cast to INonSharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("EtcdMonitoringModule type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled)
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains("Optional"))
+                                m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load EtcdMonitoringModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("EtcdMonitoringModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Loads VivoxVoiceModule using reflection to avoid hard dependency
         /// </summary>
         private static ISharedRegionModule LoadVivoxVoiceModule()
@@ -1667,6 +2431,585 @@ namespace OpenSim.Region.CoreModules
             }
 
             return modules;
+        }
+
+        /// <summary>
+        /// Loads PrimLimitsModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadPrimLimitsModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load PrimLimitsModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the PrimLimitsModule type in any loaded assembly
+                Type primLimitsModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    primLimitsModuleType = assembly.GetType("OpenSim.Region.OptionalModules.PrimLimitsModule");
+                    if (primLimitsModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found PrimLimitsModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (primLimitsModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(primLimitsModuleType) as INonSharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully created PrimLimitsModule instance");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("PrimLimitsModule type found but could not cast to INonSharedRegionModule");
+                    }
+                }
+                else
+                {
+                    m_log.Warn("PrimLimitsModule type not found in any loaded assembly");
+                    if(m_log.IsDebugEnabled)
+                    {
+                        m_log.Debug("Available assemblies:");
+                        foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                        {
+                            if (assembly.FullName.Contains("Optional"))
+                                m_log.DebugFormat("  - {0}", assembly.FullName);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load PrimLimitsModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("PrimLimitsModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads ConciergeModule using reflection to avoid hard dependency
+        /// </summary>
+        private static ISharedRegionModule LoadConciergeModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load ConciergeModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the ConciergeModule type in any loaded assembly
+                Type conciergeModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    conciergeModuleType = assembly.GetType("OpenSim.Region.OptionalModules.Avatar.Concierge.ConciergeModule");
+                    if (conciergeModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found ConciergeModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (conciergeModuleType != null)
+                {
+                    var moduleInstance = (ISharedRegionModule)Activator.CreateInstance(conciergeModuleType);
+                    if(m_log.IsDebugEnabled) m_log.Debug("Successfully created ConciergeModule instance");
+                    return moduleInstance;
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("ConciergeModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load ConciergeModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("ConciergeModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads WorldViewModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadWorldViewModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load WorldViewModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the WorldViewModule type in any loaded assembly
+                Type worldViewModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    worldViewModuleType = assembly.GetType("OpenSim.Region.OptionalModules.World.WorldView.WorldViewModule");
+                    if (worldViewModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found WorldViewModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (worldViewModuleType != null)
+                {
+                    var moduleInstance = (INonSharedRegionModule)Activator.CreateInstance(worldViewModuleType);
+                    if(m_log.IsDebugEnabled) m_log.Debug("Successfully created WorldViewModule instance");
+                    return moduleInstance;
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("WorldViewModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load WorldViewModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("WorldViewModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads DynamicFloaterModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadDynamicFloaterModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load DynamicFloaterModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the DynamicFloaterModule type in any loaded assembly
+                Type dynamicFloaterModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    dynamicFloaterModuleType = assembly.GetType("OpenSim.Region.OptionalModules.ViewerSupport.DynamicFloaterModule");
+                    if (dynamicFloaterModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found DynamicFloaterModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (dynamicFloaterModuleType != null)
+                {
+                    var moduleInstance = (INonSharedRegionModule)Activator.CreateInstance(dynamicFloaterModuleType);
+                    if(m_log.IsDebugEnabled) m_log.Debug("Successfully created DynamicFloaterModule instance");
+                    return moduleInstance;
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DynamicFloaterModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load DynamicFloaterModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("DynamicFloaterModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads DynamicMenuModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadDynamicMenuModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load DynamicMenuModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the DynamicMenuModule type in any loaded assembly
+                Type dynamicMenuModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    dynamicMenuModuleType = assembly.GetType("OpenSim.Region.OptionalModules.ViewerSupport.DynamicMenuModule");
+                    if (dynamicMenuModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found DynamicMenuModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (dynamicMenuModuleType != null)
+                {
+                    var moduleInstance = (INonSharedRegionModule)Activator.CreateInstance(dynamicMenuModuleType);
+                    if(m_log.IsDebugEnabled) m_log.Debug("Successfully created DynamicMenuModule instance");
+                    return moduleInstance;
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("DynamicMenuModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load DynamicMenuModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("DynamicMenuModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads SpecialUIModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadSpecialUIModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load SpecialUIModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the SpecialUIModule type in any loaded assembly
+                Type specialUIModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    specialUIModuleType = assembly.GetType("OpenSim.Region.OptionalModules.ViewerSupport.SpecialUIModule");
+                    if (specialUIModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found SpecialUIModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (specialUIModuleType != null)
+                {
+                    var moduleInstance = (INonSharedRegionModule)Activator.CreateInstance(specialUIModuleType);
+                    if(m_log.IsDebugEnabled) m_log.Debug("Successfully created SpecialUIModule instance");
+                    return moduleInstance;
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("SpecialUIModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load SpecialUIModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("SpecialUIModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads CameraOnlyModeModule using reflection to avoid hard dependency
+        /// </summary>
+        private static INonSharedRegionModule LoadCameraOnlyModeModule()
+        {
+            try
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Attempting to load CameraOnlyModeModule via reflection");
+
+                // First, try to explicitly load the OptionalModules assembly if not already loaded
+                try
+                {
+                    var assemblyPath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "OpenSim.Region.OptionalModules.dll");
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Looking for OptionalModules assembly at: {0}", assemblyPath);
+                    if (System.IO.File.Exists(assemblyPath))
+                    {
+                        var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully loaded OptionalModules assembly: {0}", assembly.FullName);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("OpenSim.Region.OptionalModules.dll not found in base directory");
+                    }
+                }
+                catch (Exception loadEx)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Could not load OpenSim.Region.OptionalModules.dll: {0}", loadEx.Message);
+                }
+
+                // Try to find the CameraOnlyModeModule type in any loaded assembly
+                Type cameraOnlyModeModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    cameraOnlyModeModuleType = assembly.GetType("OpenSim.Region.OptionalModules.ViewerSupport.CameraOnlyModeModule");
+                    if (cameraOnlyModeModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found CameraOnlyModeModule type in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (cameraOnlyModeModuleType != null)
+                {
+                    var moduleInstance = (INonSharedRegionModule)Activator.CreateInstance(cameraOnlyModeModuleType);
+                    if(m_log.IsDebugEnabled) m_log.Debug("Successfully created CameraOnlyModeModule instance");
+                    return moduleInstance;
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("CameraOnlyModeModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.ErrorFormat("Failed to load CameraOnlyModeModule: {0}", ex.Message);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("CameraOnlyModeModule loading exception details: {0}", ex.ToString());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads LindenUDPInfoModule using reflection to avoid hard dependency on OptionalModules
+        /// </summary>
+        private static ISharedRegionModule LoadLindenUDPInfoModule()
+        {
+            try
+            {
+                // Try to find the LindenUDPInfoModule type in any loaded assembly
+                Type lindenUDPInfoModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    lindenUDPInfoModuleType = assembly.GetType("OpenSim.Region.OptionalModules.UDP.Linden.LindenUDPInfoModule");
+                    if (lindenUDPInfoModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found LindenUDPInfoModule in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (lindenUDPInfoModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(lindenUDPInfoModuleType) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded LindenUDPInfoModule");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("LindenUDPInfoModule type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("LindenUDPInfoModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load LindenUDPInfoModule: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads AutoBackupModule using reflection to avoid hard dependency on OptionalModules
+        /// </summary>
+        private static ISharedRegionModule LoadAutoBackupModule()
+        {
+            try
+            {
+                // Try to find the AutoBackupModule type in any loaded assembly
+                Type autoBackupModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    autoBackupModuleType = assembly.GetType("OpenSim.Region.OptionalModules.World.AutoBackup.AutoBackupModule");
+                    if (autoBackupModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found AutoBackupModule in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (autoBackupModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(autoBackupModuleType) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded AutoBackupModule");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("AutoBackupModule type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("AutoBackupModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load AutoBackupModule: {0}", ex.Message);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Loads WebSocketEchoModule using reflection to avoid hard dependency on OptionalModules
+        /// </summary>
+        private static ISharedRegionModule LoadWebSocketEchoModule()
+        {
+            try
+            {
+                // Try to find the WebSocketEchoModule type in any loaded assembly
+                Type webSocketEchoModuleType = null;
+                foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    webSocketEchoModuleType = assembly.GetType("OpenSim.Region.OptionalModules.Example.WebSocketEchoTest.WebSocketEchoModule");
+                    if (webSocketEchoModuleType != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Found WebSocketEchoModule in assembly: {0}", assembly.FullName);
+                        break;
+                    }
+                }
+
+                if (webSocketEchoModuleType != null)
+                {
+                    var moduleInstance = Activator.CreateInstance(webSocketEchoModuleType) as ISharedRegionModule;
+                    if (moduleInstance != null)
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Successfully loaded WebSocketEchoModule");
+                        return moduleInstance;
+                    }
+                    else
+                    {
+                        m_log.Warn("WebSocketEchoModule type found but could not cast to ISharedRegionModule");
+                    }
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.Debug("WebSocketEchoModule type not found in any loaded assembly");
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("Could not load WebSocketEchoModule: {0}", ex.Message);
+            }
+
+            return null;
         }
     }
 }

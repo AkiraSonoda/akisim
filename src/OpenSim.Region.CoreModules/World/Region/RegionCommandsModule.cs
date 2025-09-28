@@ -31,7 +31,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using log4net;
-using Mono.Addins;
 using NDesk.Options;
 using Nini.Config;
 using OpenMetaverse;
@@ -42,12 +41,11 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 
-namespace OpenSim.Region.CoreModules.World.Objects.Commands
+namespace OpenSim.Region.CoreModules.World.Region
 {
     /// <summary>
     /// A module that holds commands for manipulating objects in the scene.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RegionCommandsModule")]
     public class RegionCommandsModule : INonSharedRegionModule
     {
         private Scene m_scene;

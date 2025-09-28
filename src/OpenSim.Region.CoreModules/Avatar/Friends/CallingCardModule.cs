@@ -35,14 +35,12 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
-using Mono.Addins;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 using ThreadedClasses;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.Friends
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "XCallingCard")]
     public class CallingCardModule : ISharedRegionModule, ICallingCardModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

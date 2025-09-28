@@ -44,13 +44,11 @@ using OpenMetaverse;
 using OpenMetaverse.Packets;
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 
 using DirFindFlags = OpenMetaverse.DirectoryManager.DirFindFlags;
 
 namespace OpenSim.Region.CoreModules.Framework.Search
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "BasicSearchModule")]
     public class BasicSearchModule : ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -260,7 +258,13 @@ namespace OpenSim.Region.CoreModules.Framework.Search
                 }
 
                 // TODO: This currently ignores pretty much all the query flags including Mature and sort order
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Sending {0} groups search results to {1} for query '{2}'", result.Length, remoteClient.Name, queryText);
                 remoteClient.SendDirGroupsReply(queryID, result);
+                if(m_log.IsInfoEnabled) m_log.InfoFormat("Groups search completed for '{0}' by {1} - {2} results sent", queryText, remoteClient.Name, result.Length);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Unsupported search type requested by {0} - flags: {1}", remoteClient.Name, queryFlags);
             }
         }
 

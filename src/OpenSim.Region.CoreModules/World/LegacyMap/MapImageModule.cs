@@ -30,7 +30,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reflection;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
@@ -61,7 +60,6 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
         public face[] trns;
     }
 
-    // [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MapImageModule")]
     public class MapImageModule : IMapImageGenerator, INonSharedRegionModule
     {
         private static readonly ILog m_log =
@@ -92,14 +90,19 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
             if (generateMaptiles)
             {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Creating map tile for region {0} - dynamic generation enabled", m_scene.RegionInfo.RegionName);
+
                 if (String.IsNullOrEmpty(m_scene.RegionInfo.MaptileStaticFile))
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Using dynamic map tile generation for region {0} - no static file configured", m_scene.RegionInfo.RegionName);
                     if (textureTerrain)
                     {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Using TexturedMapTileRenderer for terrain rendering");
                         terrainRenderer = new TexturedMapTileRenderer();
                     }
                     else
                     {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Using ShadedMapTileRenderer for terrain rendering");
                         terrainRenderer = new ShadedMapTileRenderer();
                     }
 
@@ -115,11 +118,18 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                     //m_log.InfoFormat("[MAPTILE] generation of 10 maptiles needed {0} ms", t);
                     if (drawPrimVolume)
                     {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Drawing object volumes on map tile");
                         DrawObjectVolume(m_scene, mapbmp);
+                    }
+                    else
+                    {
+                        if(m_log.IsDebugEnabled) m_log.Debug("Skipping object volume rendering - DrawPrimOnMapTile disabled");
                     }
                 }
                 else
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Using static map image file for region {0}: {1}", m_scene.RegionInfo.RegionName, m_scene.RegionInfo.MaptileStaticFile);
+
                     try
                     {
                         mapbmp = new Bitmap(m_scene.RegionInfo.MaptileStaticFile);
@@ -141,6 +151,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             }
             else
             {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Map tile generation disabled for region {0} - using terrain texture {1}", m_scene.RegionInfo.RegionName, m_scene.RegionInfo.RegionSettings.TerrainImageID);
                 mapbmp = FetchTexture(m_scene.RegionInfo.RegionSettings.TerrainImageID);
             }
 
@@ -149,12 +160,22 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
         public byte[] WriteJpeg2000Image()
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Encoding map tile to JPEG2000 format for region {0}", m_scene?.RegionInfo?.RegionName ?? "unknown");
+
             try
             {
                 using (Bitmap mapbmp = CreateMapTile())
                 {
                     if (mapbmp != null)
-                        return OpenJPEG.EncodeFromImage(mapbmp, false);
+                    {
+                        byte[] result = OpenJPEG.EncodeFromImage(mapbmp, false);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Successfully encoded map tile to JPEG2000 - size: {0} bytes", result?.Length ?? 0);
+                        return result;
+                    }
+                    else
+                    {
+                        if(m_log.IsWarnEnabled) m_log.WarnFormat("Failed to create map tile bitmap for region {0} - cannot encode to JPEG2000", m_scene?.RegionInfo?.RegionName ?? "unknown");
+                    }
                 }
             }
             catch (Exception e) // LEGIT: Catching problems caused by OpenJPEG p/invoke
@@ -171,13 +192,21 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
         public void Initialise(IConfigSource source)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug("Initializing MapImageModule for legacy 2D map tile generation");
+
             m_config = source;
 
-            if (Util.GetConfigVarFromSections<string>(
-                m_config, "MapImageModule", new string[] { "Startup", "Map" }, "MapImageModule") != "MapImageModule")
+            string configuredModule = Util.GetConfigVarFromSections<string>(
+                m_config, "MapImageModule", new string[] { "Startup", "Map" }, "MapImageModule");
+
+            if (configuredModule != "MapImageModule")
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageModule disabled - configured module is '{0}', expected 'MapImageModule'", configuredModule);
                 return;
+            }
 
             m_Enabled = true;
+            if(m_log.IsDebugEnabled) m_log.Debug("MapImageModule initialized successfully for legacy 2D map tile generation");
         }
 
         public void AddRegion(Scene scene)
@@ -185,9 +214,13 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             if (!m_Enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding MapImageModule to region {0} - registering map tile generation interface", scene.RegionInfo.RegionName);
+
             m_scene = scene;
 
             m_scene.RegisterModuleInterface<IMapImageGenerator>(this);
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("MapImageModule added to region {0} - legacy map tile generation available", scene.RegionInfo.RegionName);
         }
 
         public void RegionLoaded(Scene scene)
@@ -196,10 +229,17 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
         public void RemoveRegion(Scene scene)
         {
+            if (!m_Enabled)
+                return;
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Removing MapImageModule from region {0} - unregistering map tile generation interface", scene.RegionInfo.RegionName);
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("MapImageModule removed from region {0}", scene.RegionInfo.RegionName);
         }
 
         public void Close()
         {
+            if(m_log.IsDebugEnabled) m_log.Debug("Closing MapImageModule - legacy map tile generation shutdown");
         }
 
         public string Name

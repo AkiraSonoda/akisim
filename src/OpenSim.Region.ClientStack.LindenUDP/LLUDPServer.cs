@@ -41,7 +41,6 @@ using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
 using OpenMetaverse;
-using Mono.Addins;
 
 
 namespace OpenSim.Region.ClientStack.LindenUDP
@@ -49,7 +48,6 @@ namespace OpenSim.Region.ClientStack.LindenUDP
     /// <summary>
     /// A shim around LLUDPServer that implements the IClientNetworkServer interface
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "LLUDPServerShim")]
     public class LLUDPServerShim : INonSharedRegionModule
     {
         protected IConfigSource m_Config;

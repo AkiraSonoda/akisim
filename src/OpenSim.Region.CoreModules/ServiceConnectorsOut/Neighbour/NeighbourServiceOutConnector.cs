@@ -26,7 +26,6 @@
  */
 
 using log4net;
-using Mono.Addins;
 using System;
 using System.Reflection;
 using System.Collections.Generic;
@@ -40,7 +39,6 @@ using OpenSim.Services.Interfaces;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Neighbour
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "NeighbourServicesOutConnector")]
     public class NeighbourServicesOutConnector :
             NeighbourServicesConnector, ISharedRegionModule, INeighbourService
     {

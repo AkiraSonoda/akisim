@@ -31,15 +31,12 @@ using System.Reflection;
 using Nini.Config;
 using OpenMetaverse;
 using log4net;
-using Mono.Addins;
-
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.CoreModules.World.Sound
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "SoundModule")]
     public class SoundModule : INonSharedRegionModule, ISoundModule
     {
         //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

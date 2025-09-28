@@ -33,7 +33,6 @@ using System.Reflection;
 using System.Timers;
 using System.Text.RegularExpressions;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -92,7 +91,6 @@ namespace OpenSim.Region.OptionalModules.World.AutoBackup
     ///     "Sequential": A number is appended to the file name. So if RegionName_x.oar exists, we'll save to RegionName_{x+1}.oar next. An existing file will never be overwritten.
     ///     "Overwrite": Always save to file named "${AutoBackupDir}/RegionName.oar", even if we have to overwrite an existing file.
     /// </remarks>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "AutoBackupModule")]
     public class AutoBackupModule : ISharedRegionModule
     {
         private static readonly ILog m_log =

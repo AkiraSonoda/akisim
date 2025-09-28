@@ -29,7 +29,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Packets;
@@ -45,7 +44,6 @@ namespace OpenSim.Region.Framework.DynamicAttributes.DOExampleModule
     /// <summary>
     /// Example module for experimenting with and demonstrating dynamic object ideas.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "DOExampleModule")]
     public class DOExampleModule : INonSharedRegionModule
     {
         public class MyObject
@@ -60,7 +58,7 @@ namespace OpenSim.Region.Framework.DynamicAttributes.DOExampleModule
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static readonly bool ENABLED = false;   // enable for testing
+        private bool m_Enabled = false;
 
         private Scene m_scene;
         private IDialogModule m_dialogMod;
@@ -68,11 +66,22 @@ namespace OpenSim.Region.Framework.DynamicAttributes.DOExampleModule
         public string Name { get { return "DO"; } }
         public Type ReplaceableInterface { get { return null; } }
 
-        public void Initialise(IConfigSource source) {}
+        public void Initialise(IConfigSource source)
+        {
+            IConfig moduleConfig = source.Configs["DOExampleModule"];
+            if (moduleConfig != null)
+            {
+                m_Enabled = moduleConfig.GetBoolean("enabled", false);
+                if (m_Enabled)
+                {
+                    m_log.Info("[DO EXAMPLE MODULE]: DOExampleModule enabled for dynamic objects demonstration");
+                }
+            }
+        }
 
         public void AddRegion(Scene scene)
         {
-            if (ENABLED)
+            if (m_Enabled)
             {
                 m_scene = scene;
                 m_scene.EventManager.OnObjectAddedToScene += OnObjectAddedToScene;
@@ -83,8 +92,9 @@ namespace OpenSim.Region.Framework.DynamicAttributes.DOExampleModule
 
         public void RemoveRegion(Scene scene)
         {
-            if (ENABLED)
+            if (m_Enabled)
             {
+                m_scene.EventManager.OnObjectAddedToScene -= OnObjectAddedToScene;
                 m_scene.EventManager.OnSceneGroupMove -= OnSceneGroupMove;
             }
         }

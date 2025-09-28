@@ -28,7 +28,6 @@
 using System;
 using System.Reflection;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
@@ -55,7 +54,6 @@ namespace OpenSim.Region.OptionalModules.Example.BareBonesNonShared
     /// When the module is enabled it will print messages when it receives certain events to the screen and the log
     /// file.
     /// </remarks>
-    //[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "BareBonesNonSharedModule")]
     public class BareBonesNonSharedModule : INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

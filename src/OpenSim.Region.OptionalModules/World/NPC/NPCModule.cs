@@ -31,7 +31,6 @@ using System.Reflection;
 
 using log4net;
 using Nini.Config;
-using Mono.Addins;
 using OpenMetaverse;
 
 using OpenSim.Region.Framework.Interfaces;
@@ -41,7 +40,6 @@ using ThreadedClasses;
 
 namespace OpenSim.Region.OptionalModules.World.NPC
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "NPCModule")]
     public class NPCModule : INPCModule, ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

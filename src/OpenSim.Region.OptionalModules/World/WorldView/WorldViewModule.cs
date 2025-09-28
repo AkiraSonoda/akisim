@@ -32,7 +32,6 @@ using System.Drawing.Imaging;
 using System.Reflection;
 using System.IO;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
@@ -46,7 +45,6 @@ using OpenSim.Services.Interfaces;
 
 namespace OpenSim.Region.OptionalModules.World.WorldView
 {
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WorldViewModule")]
     public class WorldViewModule : INonSharedRegionModule
     {
         private static readonly ILog m_log =

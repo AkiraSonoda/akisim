@@ -76,10 +76,20 @@ namespace OpenSim.Region.UserStatistics
 
         public virtual void Initialise(IConfigSource config)
         {
+            if(m_log.IsDebugEnabled) m_log.Debug("Initializing WebStatsModule for viewer statistics collection and web-based reporting");
+
             IConfig cnfg = config.Configs["WebStats"];
 
             if (cnfg != null)
                 enabled = cnfg.GetBoolean("enabled", false);
+
+            if (!enabled)
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("WebStatsModule disabled - set enabled = true in [WebStats] to enable viewer statistics collection");
+                return;
+            }
+
+            if(m_log.IsDebugEnabled) m_log.Debug("WebStatsModule initialized successfully - viewer statistics collection enabled");
         }
 
         public virtual void PostInitialise()
@@ -87,13 +97,25 @@ namespace OpenSim.Region.UserStatistics
             if (!enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.Debug("Post-initializing WebStatsModule - setting up database, reports, and HTTP handlers");
+
             DllmapConfigHelper.RegisterAssembly(typeof(SQLiteConnection).Assembly);
 
             //IConfig startupConfig = config.Configs["Startup"];
 
-            dbConn = new SQLiteConnection("URI=file:LocalUserStatistics.db,version=3");
-            dbConn.Open();
-            CreateTables(dbConn);
+            try
+            {
+                dbConn = new SQLiteConnection("URI=file:LocalUserStatistics.db,version=3");
+                dbConn.Open();
+                CreateTables(dbConn);
+                if(m_log.IsDebugEnabled) m_log.Debug("WebStatsModule database initialized successfully");
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("WebStatsModule failed to initialize database: {0}", e.Message);
+                enabled = false;
+                return;
+            }
 
             Prototype_distributor protodep = new Prototype_distributor();
             Updater_distributor updatedep = new Updater_distributor();
@@ -127,12 +149,16 @@ namespace OpenSim.Region.UserStatistics
 
             MainServer.Instance.AddHTTPHandler("/SStats", HandleStatsRequest);
             MainServer.Instance.AddHTTPHandler("/VS", HandleUnknownCAPSRequest);
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("WebStatsModule post-initialization complete - {0} reports available, HTTP endpoints /SStats and /VS registered", reports.Count);
         }
 
         public virtual void AddRegion(Scene scene)
         {
             if (!enabled)
                 return;
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Adding WebStatsModule to region {0} - setting up statistics collection and caps handlers", scene.RegionInfo.RegionName);
 
             lock (m_scenes)
             {
@@ -147,6 +173,8 @@ namespace OpenSim.Region.UserStatistics
                 scene.EventManager.OnMakeRootAgent += OnMakeRootAgent;
                 scene.StatsReporter.OnSendStatsResult += ReceiveClassicSimStatsPacket;
             }
+
+            if(m_log.IsInfoEnabled) m_log.InfoFormat("WebStatsModule added to region {0} - viewer statistics collection active, managing {1} total regions", scene.RegionInfo.RegionName, m_scenes.Count);
         }
 
         public void RegionLoaded(Scene scene)
@@ -158,12 +186,16 @@ namespace OpenSim.Region.UserStatistics
             if (!enabled)
                 return;
 
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("Removing WebStatsModule from region {0} - cleaning up statistics collection", scene.RegionInfo.RegionName);
+
             lock (m_scenes)
             {
                 m_scenes.Remove(scene);
                 updateLogMod = m_scenes.Count * 2;
                 m_simstatsCounters.Remove(scene.RegionInfo.RegionID);
             }
+
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("WebStatsModule removed from region {0} - now managing {1} total regions", scene.RegionInfo.RegionName, m_scenes.Count);
         }
 
         public virtual void Close()
@@ -171,12 +203,25 @@ namespace OpenSim.Region.UserStatistics
             if (!enabled)
                 return;
 
-            dbConn.Close();
-            dbConn.Dispose();
+            if(m_log.IsDebugEnabled) m_log.Debug("Closing WebStatsModule - cleaning up database connections and clearing collections");
+
+            try
+            {
+                dbConn.Close();
+                dbConn.Dispose();
+                if(m_log.IsDebugEnabled) m_log.Debug("WebStatsModule database connection closed successfully");
+            }
+            catch (Exception e)
+            {
+                m_log.WarnFormat("WebStatsModule encountered error closing database: {0}", e.Message);
+            }
+
             m_sessions.Clear();
             m_scenes.Clear();
             reports.Clear();
             m_simstatsCounters.Clear();
+
+            if(m_log.IsDebugEnabled) m_log.Debug("WebStatsModule cleanup completed");
         }
 
         public virtual string Name
@@ -370,9 +415,7 @@ namespace OpenSim.Region.UserStatistics
 
         private void OnMakeRootAgent(ScenePresence agent)
         {
-//            m_log.DebugFormat(
-//                "[WEB STATS MODULE]: Looking for session {0} for {1} in {2}",
-//                agent.ControllingClient.SessionId, agent.Name, agent.Scene.Name);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("WebStatsModule tracking new root agent {0} {1} in region {2}", agent.Firstname, agent.Lastname, agent.Scene.Name);
 
             lock (m_sessions)
             {
@@ -387,10 +430,12 @@ namespace OpenSim.Region.UserStatistics
                     uid.session_data = usd;
 
                     m_sessions.Add(agent.UUID, uid);
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("WebStatsModule created new session for agent {0} {1}", agent.Firstname, agent.Lastname);
                 }
                 else
                 {
                     uid = m_sessions[agent.UUID];
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("WebStatsModule found existing session for agent {0} {1}", agent.Firstname, agent.Lastname);
                 }
 
                 uid.region_id = agent.Scene.RegionInfo.RegionID;
@@ -404,6 +449,7 @@ namespace OpenSim.Region.UserStatistics
             {
                 if (m_sessions.ContainsKey(agentID) && m_sessions[agentID].region_id == scene.RegionInfo.RegionID)
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("WebStatsModule removing session for agent {0} from region {1}", agentID, scene.RegionInfo.RegionName);
                     m_sessions.Remove(agentID);
                 }
             }

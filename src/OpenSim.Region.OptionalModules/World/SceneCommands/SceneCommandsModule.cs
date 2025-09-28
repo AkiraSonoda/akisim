@@ -32,7 +32,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using log4net;
-using Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
@@ -41,12 +40,11 @@ using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
-namespace OpenSim.Region.OptionalModules.Avatar.Attachments
+namespace OpenSim.Region.OptionalModules.World.SceneCommands
 {
     /// <summary>
-    /// A module that just holds commands for inspecting avatar appearance.
+    /// A module that holds commands for managing and debugging scene options.
     /// </summary>
-    [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "SceneCommandsModule")]
     public class SceneCommandsModule : ISceneCommandsModule, INonSharedRegionModule
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

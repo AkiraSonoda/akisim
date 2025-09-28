@@ -41,7 +41,6 @@ using ThreadedClasses;
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement
 {
-    // [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UserManagementModule")]
     public class UserManagementModule : ISharedRegionModule, IUserManagement, IPeople
     {
         private const int BADURLEXPIRE = 2 * 60;
