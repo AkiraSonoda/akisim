@@ -1703,7 +1703,7 @@ namespace OpenSim.Region.Framework.Scenes
                     terrainMS = (float)(nowMS - lastMS);
                     lastMS = nowMS;
 
-                    if (PhysicsEnabled && Frame % m_update_physics == 0)
+                    if (m_physicsEnabled && Frame % m_update_physics == 0)
                         m_sceneGraph.UpdatePreparePhysics();
 
                     nowMS = Util.GetTimeStampMS();
@@ -1740,10 +1740,9 @@ namespace OpenSim.Region.Framework.Scenes
 
                     // Perform the main physics update.  This will do the actual work of moving objects and avatars according to their
                     // velocity
-                    if (Frame % m_update_physics == 0)
+                    if (m_physicsEnabled && Frame % m_update_physics == 0)
                     {
-                        if (PhysicsEnabled)
-                            physicsFPS = m_sceneGraph.UpdatePhysics(FrameTime);
+                        physicsFPS = m_sceneGraph.UpdatePhysics(FrameTime);
                     }
 
                     nowMS = Util.GetTimeStampMS();
@@ -3935,6 +3934,8 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool NewUserConnection(AgentCircuitData acd, uint teleportFlags, GridRegion source, out string reason, bool requirePresenceLookup)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("NewUserConnection"); 
+            
             bool vialogin = (teleportFlags & (uint)(TPFlags.ViaLogin | TPFlags.ViaHGLogin)) != 0;
             bool viahome = (teleportFlags & (uint)TPFlags.ViaHome) != 0;
             //bool godlike = ((teleportFlags & (uint)TPFlags.Godlike) != 0);
@@ -5202,6 +5203,8 @@ Label_GroupsDone:
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ScenePresence GetScenePresence(UUID agentID)
         {
+            // AKIDO do not enable because it's called frequently.
+            // if (m_log.IsDebugEnabled) m_log.Debug($"GetScenePresence({agentID})"); 
             return m_sceneGraph.GetScenePresence(agentID);
         }
 
@@ -6017,6 +6020,7 @@ Label_GroupsDone:
         // check access to land.
         public bool CheckLandPositionAccess(UUID agentID, bool NotCrossing, bool checkTeleHub, bool checkRegionAgentCount, Vector3 position, out string reason)
         {
+            if (m_log.IsDebugEnabled) m_log.DebugFormat("Checking land access for agent {0} in region {1}", agentID, RegionInfo.RegionName);
             reason = string.Empty;
 
             if (Permissions.IsGod(agentID))

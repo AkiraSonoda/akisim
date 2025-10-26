@@ -29,8 +29,8 @@ namespace OpenSim
 {
     public class VersionInfo
     {
-        public const string VersionNumber = "0.9.3.0";
-        public const string AssemblyVersionNumber = "0.9.3.0";
+        public const string VersionNumber = "0.9.3.1";
+        public const string AssemblyVersionNumber = "0.9.3.1";
 
         public const Flavour VERSION_FLAVOUR = Flavour.DotnetArriba;
 
@@ -59,7 +59,7 @@ namespace OpenSim
             return versionString.PadRight(VERSIONINFO_VERSION_LENGTH);
         }
 
-        public const int VERSIONINFO_VERSION_LENGTH = 30;
+        public const int VERSIONINFO_VERSION_LENGTH = 32;
 
         /// <value>
         /// This is the external interface version.  It is separate from the OpenSimulator project version.

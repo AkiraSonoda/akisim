@@ -3247,6 +3247,11 @@ namespace OpenSim.Framework
 
         public static void InitThreadPool(int minThreads, int maxThreads)
         {
+            if (m_log.IsDebugEnabled)
+            {
+                m_log.Debug($"InitThreadPool(minThreads: {maxThreads}, maxThreads: {maxThreads})");
+            }
+            
             if (maxThreads < 2)
                 throw new ArgumentOutOfRangeException(nameof(maxThreads), "maxThreads must be greater than 2");
 

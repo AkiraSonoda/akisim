@@ -7,10 +7,10 @@ endif
 
 # Default to Linux paths
 PACKAGING_DIR := $(HOME)/opensim/packaging
-SOURCE_DIR := $(HOME)/src/akisim
-DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/dereos_kosuai
-SRC_BIN := $(HOME)/src/akisim/bin
-DEST_DIR := $(HOME)/opensim/grid/akisim
+SOURCE_DIR := $(HOME)/src/0.9.3.0_akisim/akisim
+DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/akisim_phpgrid_lin
+SRC_BIN := $(HOME)/src/0.9.3.0_akisim/akisim/bin
+DEST_DIR := $(HOME)/opensim/grid/working
 
 # Override with Windows paths if on Windows
 ifeq ($(OS),Windows_NT)

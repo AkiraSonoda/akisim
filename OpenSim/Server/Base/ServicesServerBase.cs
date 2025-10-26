@@ -180,9 +180,10 @@ namespace OpenSim.Server.Base
             RegisterCommonAppenders(startupConfig);
             LogEnvironmentInformation();
 
-            if (startupConfig.GetString("PIDFile", String.Empty) != String.Empty)
+            string pidfile = startupConfig.GetString("PIDFile", string.Empty);
+            if (pidfile.Length > 0)
             {
-                CreatePIDFile(startupConfig.GetString("PIDFile"));
+                CreatePIDFile(pidfile);
             }
 
             RegisterCommonCommands();
@@ -202,8 +203,9 @@ namespace OpenSim.Server.Base
 
         public virtual int Run()
         {
-            Watchdog.Enabled = true;
-            MemoryWatchdog.Enabled = true;
+            // TODO re-enable watchdog and memory watchdog later
+            Watchdog.Enabled = false;
+            MemoryWatchdog.Enabled = false;
 
             while (m_Running)
             {
