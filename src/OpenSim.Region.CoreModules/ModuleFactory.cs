@@ -1181,9 +1181,25 @@ namespace OpenSim.Region.CoreModules
 
             // Load SimulationServices module based on configuration
             string simulationServicesModule = modulesConfig?.GetString("SimulationServices", "");
-            if (simulationServicesModule == "RemoteSimulationConnectorModule")
+            if (simulationServicesModule == "LocalSimulationConnectorModule")
             {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading LocalSimulationConnectorModule for local region-to-region communication");
+                yield return new LocalSimulationConnectorModule();
+                if(m_log.IsInfoEnabled) m_log.Info("LocalSimulationConnectorModule loaded for local simulation services (agent transfers, object crossing, and region queries)");
+            }
+            else if (simulationServicesModule == "RemoteSimulationConnectorModule")
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("Loading RemoteSimulationConnectorModule for remote grid communication");
                 yield return new RemoteSimulationConnectorModule();
+                if(m_log.IsInfoEnabled) m_log.Info("RemoteSimulationConnectorModule loaded for remote simulation services (inter-grid agent transfers and object crossing)");
+            }
+            else if (!string.IsNullOrEmpty(simulationServicesModule))
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("SimulationServices module not loaded - configured as '{0}', expected 'LocalSimulationConnectorModule' or 'RemoteSimulationConnectorModule'", simulationServicesModule);
+            }
+            else
+            {
+                if(m_log.IsDebugEnabled) m_log.Debug("SimulationServices module not loaded - no SimulationServices configured in [Modules]");
             }
 
             // Load SimulationServiceInConnector if enabled

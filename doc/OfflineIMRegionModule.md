@@ -1,648 +1,425 @@
-# OfflineIMRegionModule Technical Documentation
+# Offline IM Region Module V2
 
 ## Overview
 
-The OfflineIMRegionModule is a shared region module that provides offline instant messaging capabilities for OpenSimulator. It enables avatars to receive instant messages even when they are not online, storing messages for later delivery when the recipient logs in. The module supports both local database storage and remote service-based storage through connectors.
+The Offline IM Region Module V2 provides offline instant messaging capabilities for Akisim, allowing users to receive messages that were sent while they were offline. This module stores undelivered instant messages and delivers them when the recipient logs in, ensuring no messages are lost due to user unavailability.
 
-## Module Classification
+## Key Features
 
-- **Type**: ISharedRegionModule, IOfflineIMService
-- **Namespace**: OpenSim.OfflineIM
-- **Assembly**: OpenSim.Addons.OfflineIM
-- **Factory Integration**: ✅ Integrated in ModuleFactory.cs with configuration-based loading
+- **Message Storage** - Stores instant messages when recipients are offline
+- **Automatic Delivery** - Delivers stored messages upon user login
+- **Flexible Backend** - Supports both local and remote storage services
+- **Group Message Support** - Optional offline delivery for group notices and invitations
+- **Inventory Offers** - Special handling for inventory transfer messages
+- **Delivery Notifications** - Notifies senders when messages are stored offline
+
+## Architecture
+
+### Module Information
+- **Namespace**: `OpenSim.OfflineIM`
+- **Assembly**: `OpenSim.Addons.OfflineIM.dll`
+- **Module Name**: `Offline Message Module V2`
+- **Implements**: `ISharedRegionModule`, `IOfflineIMService`
+- **Loading**: Loaded via ModuleFactory using reflection (no Mono.Addins dependency)
+
+### Dependencies
+- **IMessageTransferModule** - Grid message delivery and undelivered message notifications
+- **IOfflineIMService** - Backend storage service (local or remote)
+- **Scene** - Region scene management and event handling
+- **IClientAPI** - Client connection and message delivery
+
+## Configuration
+
+### Required Configuration
+```ini
+[Messaging]
+OfflineMessageModule = "Offline Message Module V2"
+OfflineMessageURL = ""  ; Empty for local storage, set URL for remote service
+ForwardOfflineGroupMessages = true
+```
+
+### Configuration Parameters
+
+| Parameter | Description | Default | Required |
+|-----------|-------------|---------|----------|
+| `OfflineMessageModule` | Module name to enable offline IM | "" | **Yes** |
+| `OfflineMessageURL` | Remote service URL (empty for local storage) | "" | No |
+| `ForwardOfflineGroupMessages` | Store offline group notices/invitations | true | No |
+
+### Storage Backend Selection
+
+#### Local Storage Mode
+```ini
+[Messaging]
+OfflineMessageModule = "Offline Message Module V2"
+OfflineMessageURL = ""
+```
+Uses `OfflineIMService` with local database storage.
+
+#### Remote Storage Mode
+```ini
+[Messaging]
+OfflineMessageModule = "Offline Message Module V2"
+OfflineMessageURL = "http://robust.server:8003"
+```
+Uses `OfflineIMServiceRemoteConnector` to connect to remote Robust service.
+
+### Important Notes
+- The module name must exactly match `"Offline Message Module V2"` to be loaded by ModuleFactory
+- Empty `OfflineMessageURL` enables local storage mode
+- Group message forwarding can be disabled by setting `ForwardOfflineGroupMessages = false`
+- The module requires `IMessageTransferModule` to be loaded and active
 
 ## Core Functionality
 
-### Primary Purpose
+### Message Storage
+The module intercepts undelivered messages via the `IMessageTransferModule.OnUndeliveredMessage` event and stores the following message types:
 
-The OfflineIMRegionModule serves as the central hub for offline instant message management in OpenSimulator grids. It intercepts instant messages intended for offline users, stores them persistently, and delivers them when recipients come online. The module provides both local storage capabilities and integration with external IM services through configurable connectors.
+1. **MessageFromAgent** - Standard peer-to-peer instant messages
+2. **MessageFromObject** - Messages from scripted objects
+3. **GroupNotice** - Group announcements (if enabled)
+4. **GroupInvitation** - Group join invitations (if enabled)
+5. **InventoryOffered** - Inventory transfer requests
 
-### Key Features
+Messages are stored with complete metadata including:
+- Sender and recipient UUIDs
+- Message content and dialog type
+- Timestamp and session information
+- Offline status flag
 
-1. **Offline Message Storage**: Persistent storage of instant messages for offline recipients
-2. **Online Status Detection**: Real-time monitoring of avatar online/offline status
-3. **Message Delivery**: Automatic delivery of stored messages upon user login
-4. **Service Connector Support**: Integration with external IM services via HTTP connectors
-5. **Local Database Storage**: Direct database storage for standalone deployments
-6. **Message Limiting**: Configurable limits on stored messages per user
-7. **Cross-Region Support**: Shared module design for multi-region grids
-8. **Grid Service Integration**: Seamless integration with grid-based user services
+### Message Retrieval
+Upon client login, the module:
 
-## Technical Architecture
+1. **Detects Login** - Listens to `IClientAPI.OnRetrieveInstantMessages` event
+2. **Fetches Messages** - Queries backend service for stored messages
+3. **Delivers Messages** - Sends each message to the client
+4. **Routing Logic**:
+   - **InventoryOffered** → Direct delivery via `SendInstantMessage()`
+   - **Other Types** → Scene event system via `TriggerIncomingInstantMessage()`
 
-### Module Lifecycle
+### Delivery Notifications
+When a message is stored offline, the sender receives an automatic notification:
+
+```
+"User is not logged in. Message saved."
+```
+
+Or if storage fails:
+
+```
+"User is not logged in. Message not saved: [reason]"
+```
+
+Notifications are sent only for `MessageFromAgent` type messages.
+
+## Performance Characteristics
+
+### Storage Performance
+- **Asynchronous Storage** - Message storage does not block message transfer
+- **Database Backed** - Uses optimized database queries for storage/retrieval
+- **Batch Retrieval** - All messages for a user fetched in single query
+
+### Delivery Performance
+- **Login-Time Delivery** - All messages delivered during login sequence
+- **Event-Driven** - Uses scene event system for proper module coordination
+- **Minimal Latency** - Direct database access for local storage mode
+
+### Scalability Features
+- **Remote Service Support** - Can offload storage to dedicated Robust service
+- **Per-Region Isolation** - Each region manages its own message handling
+- **Shared Backend** - Multiple regions can share remote storage service
+
+## API Reference
+
+### Public Methods
+
+#### `GetMessages(UUID principalID)`
+Retrieves all stored offline messages for the specified user.
+
+**Parameters:**
+- `principalID` - UUID of the user
+
+**Returns:** `List<GridInstantMessage>` - List of stored messages
+
+#### `StoreMessage(GridInstantMessage im, out string reason)`
+Stores an instant message for offline delivery.
+
+**Parameters:**
+- `im` - The instant message to store
+- `reason` - Output parameter with error reason if storage fails
+
+**Returns:** `bool` - True if message stored successfully
+
+#### `DeleteMessages(UUID userID)`
+Deletes all stored messages for the specified user.
+
+**Parameters:**
+- `userID` - UUID of the user
+
+**Note:** Messages are typically deleted after successful delivery.
+
+### Events Handled
+- `OnNewClient` - Registers message retrieval handler for new clients
+- `OnUndeliveredMessage` - Captures undelivered messages for storage
+- `OnRetrieveInstantMessages` - Triggers message delivery on client login
+
+## Module Lifecycle
+
+### Initialization Phase
+1. **Config Check** - Validates `[Messaging]` section exists
+2. **Name Validation** - Confirms `OfflineMessageModule = "Offline Message Module V2"`
+3. **Backend Selection** - Creates local or remote service connector
+4. **Enable Flag** - Sets `m_Enabled = true` if configuration valid
+
+### Region Integration
+1. **AddRegion** - Registers `IOfflineIMService` interface and event handlers
+2. **RegionLoaded** - Validates `IMessageTransferModule` availability
+3. **RemoveRegion** - Unregisters event handlers and cleans up
+
+### Loading via ModuleFactory
+The module is loaded using reflection in `ModuleFactory.cs` (line 1107):
 
 ```csharp
-// Module initialization sequence for shared modules
-1. Initialise(IConfigSource) - Configuration loading and service setup
-2. AddRegion(Scene) - Register module interface and scene association
-3. RegionLoaded(Scene) - Final region-specific setup
-4. PostInitialise() - Post-initialization setup (no-op)
-5. RemoveRegion(Scene) - Scene cleanup and event unsubscription
-6. Close() - Module cleanup (no-op)
-```
-
-### Interface Implementation
-
-The module implements two key interfaces:
-
-#### ISharedRegionModule
-Provides shared functionality across multiple regions in a grid.
-
-#### IOfflineIMService
-Defines the offline instant messaging service contract:
-
-```csharp
-public interface IOfflineIMService
+// Try to load OfflineIMRegionModule using reflection to avoid hard dependency
+var offlineIMModuleInstance = LoadOfflineIMModuleV2();
+if (offlineIMModuleInstance != null)
 {
-    bool StoreMessage(GridInstantMessage im, out string reason);
-    List<GridInstantMessage> GetMessages(UUID principalID, out string reason);
-    bool DeleteMessages(UUID userID);
+    yield return offlineIMModuleInstance;
 }
 ```
 
-### Configuration Architecture
+This approach:
+- Eliminates Mono.Addins dependency
+- Allows optional deployment (module can be missing)
+- Enables runtime assembly loading
+- Supports dynamic configuration-based loading
 
-```csharp
-public void Initialise(IConfigSource config)
-{
-    IConfig cnf = config.Configs["Messaging"];
-    if (cnf == null) return;
+## Message Flow Diagrams
 
-    if (cnf.GetString("OfflineMessageModule", "") != "Offline Message Module V2") return;
-
-    m_Enabled = true;
-    string connectorName = cnf.GetString("OfflineMessageConnector", "OpenSim.Addons.OfflineIM.dll:OpenSim.OfflineIM.OfflineIMServiceConnector");
-
-    // Load connector using reflection
-    m_Connector = LoadConnector(cnf, connectorName);
-    m_MaxRetrieval = cnf.GetInt("MaxRetrieval", 20);
-}
+### Outbound Message Flow (Storing Offline)
+```
+Client A sends IM → IMessageTransferModule
+                          ↓
+                    Recipient offline?
+                          ↓
+                    OnUndeliveredMessage event
+                          ↓
+                    OfflineIMRegionModule.UndeliveredMessage()
+                          ↓
+                    Filter by message type
+                          ↓
+                    StoreMessage(im, out reason)
+                          ↓
+                    Database/Remote Storage
+                          ↓
+                    Send notification to Client A
 ```
 
-## Configuration System
-
-### Module Configuration
-
-#### Required Configuration ([Messaging] section)
-- **OfflineMessageModule**: `string` - Must be "Offline Message Module V2" to enable the module
-- **OfflineMessageConnector**: `string` - Connector specification for message storage
-
-#### Optional Configuration Parameters
-- **MaxRetrieval**: `int` - Maximum number of messages to retrieve per request (default: 20)
-
-### Configuration Examples
-
-#### Local Database Storage
-```ini
-[Messaging]
-OfflineMessageModule = Offline Message Module V2
-OfflineMessageConnector = OpenSim.Addons.OfflineIM.dll:OpenSim.OfflineIM.OfflineIMServiceConnector
-
-# Local database configuration
-[OfflineIM]
-StorageProvider = OpenSim.Data.MySQL.dll:MySQLOfflineIMData
-ConnectionString = "Data Source=localhost;Database=opensim;User ID=opensim;Password=secret;"
+### Inbound Message Flow (Delivery on Login)
+```
+Client B logs in → OnNewClient event
+                          ↓
+                    Register OnRetrieveInstantMessages
+                          ↓
+                    Client requests messages
+                          ↓
+                    GetMessages(clientID)
+                          ↓
+                    Database/Remote Storage
+                          ↓
+                    For each message:
+                      - InventoryOffered → Direct delivery
+                      - Others → Scene event system
+                          ↓
+                    Message delivered to Client B
 ```
 
-#### Remote Service Integration
-```ini
-[Messaging]
-OfflineMessageModule = Offline Message Module V2
-OfflineMessageConnector = OpenSim.Addons.OfflineIM.dll:OpenSim.OfflineIM.OfflineIMServiceRemoteConnector
+## Integration with Service Layer
 
-# Remote service configuration
-[OfflineIM]
-OfflineMessageURL = http://robust-server:8003/offlineIM
-MaxRetrieval = 30
+### Local Service (OfflineIMService)
+Located in `src/OpenSim.Addons.OfflineIM/Service/OfflineIMService.cs`
+
+**Features:**
+- Direct database access via `IOfflineIMData`
+- Supports MySQL, SQLite, PostgreSQL
+- Uses `GridInstantMessage` serialization utilities
+
+### Remote Service (OfflineIMServiceRemoteConnector)
+Located in `src/OpenSim.Addons.OfflineIM/Remote/OfflineIMServiceRemoteConnector.cs`
+
+**Features:**
+- HTTP-based communication with Robust service
+- XML-RPC protocol for message serialization
+- Optional BasicHttpAuthentication support
+- Handles GET (retrieve), STORE, and DELETE operations
+
+## Debug and Logging
+
+### Log Prefixes
+- `[OfflineIM.V2]` - Main module operations
+- `[OfflineIM.V2.RemoteConnector]` - Remote service connector
+
+### Key Log Messages
+
+**Initialization:**
+```
+[OfflineIM.V2]: Offline messages enabled by Offline Message Module V2
 ```
 
-#### Grid Service Integration
-```ini
-[Messaging]
-OfflineMessageModule = Offline Message Module V2
-OfflineMessageConnector = OpenSim.Services.Connectors.dll:OpenSim.Services.Connectors.InstantMessage.OfflineIMServiceConnector
-
-# Grid service configuration
-[OfflineIM]
-LocalServiceModule = OpenSim.Services.OfflineIMService.dll:OpenSim.Services.OfflineIMService.OfflineIMService
-StorageProvider = OpenSim.Data.MySQL.dll:MySQLOfflineIMData
-ConnectionString = "Data Source=localhost;Database=opensim;User ID=opensim;Password=secret;"
+**Message Retrieval:**
+```
+[OfflineIM.V2]: Retrieving stored messages for <UUID>
+[OfflineIM.V2]: WARNING null message list.
 ```
 
-## Message Processing Architecture
-
-### Instant Message Interception
-
-```csharp
-private void OnIncomingInstantMessage(GridInstantMessage im)
-{
-    if (im.dialog != (byte)InstantMessageDialog.MessageFromAgent &&
-        im.dialog != (byte)InstantMessageDialog.MessageFromObject)
-        return;
-
-    Scene scene = FindScene(new UUID(im.fromAgentID));
-    if (scene == null) scene = m_SceneList[0];
-
-    bool online = false;
-    if (scene.Services.PresenceService != null)
-        online = scene.Services.PresenceService.GetAgent(new UUID(im.toAgentID)) != null;
-
-    if (!online)
-    {
-        string reason;
-        bool success = m_Connector.StoreMessage(im, out reason);
-        if (!success)
-            m_log.ErrorFormat("[OFFLINE MESSAGING]: Unable to save message from {0} to {1}. Reason: {2}", im.fromAgentName, im.toAgentName, reason);
-    }
-}
+**Dependency Issues:**
+```
+[OfflineIM.V2]: No message transfer module is enabled. Disabling offline messages
 ```
 
-### Message Retrieval and Delivery
-
-```csharp
-private void RetrieveInstantMessages(IClientAPI client)
-{
-    if (m_Connector == null) return;
-
-    string reason;
-    List<GridInstantMessage> msglist = m_Connector.GetMessages(client.AgentId, out reason);
-
-    if (msglist != null)
-    {
-        foreach (GridInstantMessage im in msglist)
-        {
-            if (im.dialog == (byte)InstantMessageDialog.InventoryOffered)
-                client.SendInstantMessage(im);
-            else
-                client.SendInstantMessage(im);
-        }
-
-        m_Connector.DeleteMessages(client.AgentId);
-    }
-}
+**Remote Connector:**
 ```
-
-## Connector Architecture
-
-### Connector Loading System
-
-```csharp
-private IOfflineIMService LoadConnector(IConfig config, string connectorName)
-{
-    string[] parts = connectorName.Split(':');
-    if (parts.Length != 2) return null;
-
-    string filename = parts[0];
-    string classname = parts[1];
-
-    try
-    {
-        Assembly pluginAssembly = Assembly.LoadFrom(filename);
-        Type pluginType = pluginAssembly.GetType(classname);
-        IOfflineIMService connector = (IOfflineIMService)Activator.CreateInstance(pluginType, new object[] { config });
-        return connector;
-    }
-    catch (Exception e)
-    {
-        m_log.ErrorFormat("[OFFLINE MESSAGING]: Exception loading connector {0}: {1}", connectorName, e.Message);
-        return null;
-    }
-}
+[OfflineIM.V2.RemoteConnector]: Offline IM server at http://example.com:8003 with auth BasicHttpAuthentication
+[OfflineIM.V2.RemoteConnector]: GetMessages for <UUID> failed: <reason>
 ```
-
-### Supported Connector Types
-
-#### Local Database Connector
-- **Purpose**: Direct database storage for standalone deployments
-- **Class**: `OpenSim.OfflineIM.OfflineIMServiceConnector`
-- **Storage**: Uses OpenSim's data abstraction layer
-
-#### Remote Service Connector
-- **Purpose**: HTTP-based communication with external IM services
-- **Class**: `OpenSim.OfflineIM.OfflineIMServiceRemoteConnector`
-- **Protocol**: REST API with JSON serialization
-
-#### Grid Service Connector
-- **Purpose**: Integration with OpenSim's grid service architecture
-- **Class**: `OpenSim.Services.Connectors.InstantMessage.OfflineIMServiceConnector`
-- **Transport**: Internal service communication
-
-## Message Storage Operations
-
-### Message Storage Process
-
-```csharp
-public bool StoreMessage(GridInstantMessage im, out string reason)
-{
-    reason = string.Empty;
-
-    // Validate message content
-    if (string.IsNullOrEmpty(im.message))
-    {
-        reason = "Message content is empty";
-        return false;
-    }
-
-    // Check message limits per user
-    int messageCount = GetMessageCount(new UUID(im.toAgentID));
-    if (messageCount >= m_MaxRetrieval)
-    {
-        reason = "Message storage limit exceeded";
-        return false;
-    }
-
-    // Store message in configured backend
-    return m_Data.StoreIM(im);
-}
-```
-
-### Message Retrieval Process
-
-```csharp
-public List<GridInstantMessage> GetMessages(UUID principalID, out string reason)
-{
-    reason = string.Empty;
-
-    try
-    {
-        List<GridInstantMessage> messages = m_Data.Get("PrincipalID", principalID.ToString());
-
-        // Apply retrieval limits
-        if (messages.Count > m_MaxRetrieval)
-            messages = messages.Take(m_MaxRetrieval).ToList();
-
-        return messages;
-    }
-    catch (Exception e)
-    {
-        reason = e.Message;
-        return null;
-    }
-}
-```
-
-## Event Management and Lifecycle
-
-### Scene Integration
-
-```csharp
-public void AddRegion(Scene scene)
-{
-    if (!m_Enabled) return;
-
-    lock (m_SceneList)
-    {
-        m_SceneList.Add(scene);
-        scene.RegisterModuleInterface<IOfflineIMService>(this);
-        scene.EventManager.OnIncomingInstantMessage += OnIncomingInstantMessage;
-    }
-}
-
-public void RegionLoaded(Scene scene)
-{
-    if (!m_Enabled) return;
-
-    if (m_Connector == null)
-    {
-        m_log.Error("[OFFLINE MESSAGING]: No connector configured. Module disabled.");
-        m_Enabled = false;
-        return;
-    }
-
-    scene.EventManager.OnNewClient += OnNewClient;
-}
-```
-
-### Client Event Handling
-
-```csharp
-private void OnNewClient(IClientAPI client)
-{
-    client.OnRetrieveInstantMessages += RetrieveInstantMessages;
-    client.OnMuteListRequest += OnMuteListRequest;
-}
-
-private void OnClientClosed(UUID agentID, Scene scene)
-{
-    // Cleanup any pending operations for the disconnected client
-    // No specific cleanup needed for offline IM
-}
-```
-
-## Data Structures and Serialization
-
-### GridInstantMessage Structure
-
-```csharp
-public class GridInstantMessage
-{
-    public Guid fromAgentID;        // Sender's UUID
-    public string fromAgentName;    // Sender's display name
-    public Guid toAgentID;          // Recipient's UUID
-    public byte dialog;             // Message type (dialog ID)
-    public bool fromGroup;          // True if sent from a group
-    public string message;          // Message content
-    public Guid imSessionID;        // IM session identifier
-    public bool offline;            // True if recipient was offline
-    public Vector3 Position;        // Sender's position when sent
-    public byte[] binaryBucket;     // Additional binary data
-    public uint ParentEstateID;     // Estate ID where message originated
-    public Guid RegionID;           // Region UUID where message originated
-    public uint timestamp;          // Unix timestamp of message
-}
-```
-
-### Message Dialog Types
-
-```csharp
-public enum InstantMessageDialog : byte
-{
-    MessageFromAgent = 0,           // Standard IM from avatar
-    MessageFromObject = 19,         // IM from scripted object
-    InventoryOffered = 4,          // Inventory item offer
-    InventoryAccepted = 5,         // Inventory offer accepted
-    InventoryDeclined = 6,         // Inventory offer declined
-    GroupInvitation = 3,           // Group invitation
-    FriendshipOffered = 39,        // Friendship offer
-    // Additional dialog types...
-}
-```
-
-## Performance Considerations
-
-### Message Limiting and Throttling
-
-```csharp
-// Configurable message retrieval limits
-private int m_MaxRetrieval = 20;
-
-// Apply limits during retrieval
-public List<GridInstantMessage> GetMessages(UUID principalID, out string reason)
-{
-    List<GridInstantMessage> messages = m_Data.Get("PrincipalID", principalID.ToString());
-
-    if (messages.Count > m_MaxRetrieval)
-    {
-        messages = messages.Take(m_MaxRetrieval).ToList();
-        m_log.WarnFormat("[OFFLINE MESSAGING]: User {0} has more than {1} offline messages. Only retrieving first {1}.",
-                        principalID, m_MaxRetrieval);
-    }
-
-    return messages;
-}
-```
-
-### Database Optimization
-
-- **Indexed Queries**: Queries use PrincipalID index for efficient message retrieval
-- **Batch Operations**: Messages are retrieved and deleted in batches to minimize database calls
-- **Connection Pooling**: Leverages OpenSim's database connection pooling for optimal performance
-
-### Memory Management
-
-- **Message Cleanup**: Automatic deletion of retrieved messages to prevent accumulation
-- **Connector Caching**: Connector instances are cached per module instance
-- **Scene-Shared Resources**: Single module instance shared across all regions
-
-## Security Considerations
-
-### Access Control
-
-- **UUID-based Access**: Messages are stored and retrieved using agent UUIDs only
-- **No Cross-User Access**: No mechanisms allow users to access other users' messages
-- **Service Authentication**: Remote connectors support authentication for secure communication
-
-### Data Protection
-
-- **Message Validation**: Input validation prevents malformed messages from being stored
-- **SQL Injection Prevention**: Parameterized queries prevent SQL injection attacks
-- **Transport Security**: HTTPS support for remote connector communications
-
-### Privacy Considerations
-
-- **Message Encryption**: Messages stored in plaintext (encryption handled at transport layer)
-- **Automatic Cleanup**: Messages are deleted after delivery to prevent long-term storage
-- **No Message Logging**: Module does not log message content for privacy
-
-## Error Handling and Resilience
-
-### Connector Failure Handling
-
-```csharp
-private void OnIncomingInstantMessage(GridInstantMessage im)
-{
-    if (m_Connector == null)
-    {
-        m_log.Warn("[OFFLINE MESSAGING]: No connector available, message lost");
-        return;
-    }
-
-    try
-    {
-        string reason;
-        bool success = m_Connector.StoreMessage(im, out reason);
-        if (!success)
-        {
-            m_log.ErrorFormat("[OFFLINE MESSAGING]: Failed to store message: {0}", reason);
-        }
-    }
-    catch (Exception e)
-    {
-        m_log.ErrorFormat("[OFFLINE MESSAGING]: Exception storing message: {0}", e.Message);
-    }
-}
-```
-
-### Database Connection Handling
-
-- **Connection Retry**: Database connectors implement automatic retry logic
-- **Transaction Safety**: Database operations use transactions for consistency
-- **Graceful Degradation**: Module continues operating even if some messages fail to store
-
-### Service Availability
-
-- **Remote Service Failover**: Multiple remote service URLs can be configured
-- **Local Fallback**: Can fall back to local storage if remote services are unavailable
-- **Health Checking**: Periodic health checks ensure service availability
-
-## Integration Points
-
-### Grid Services Integration
-
-- **Presence Service**: Queries presence service to determine if users are online
-- **User Account Service**: Validates user accounts for message recipients
-- **Grid Service**: Integrates with grid-wide service architecture
-
-### Client Protocol Integration
-
-- **LoginService Integration**: Messages are delivered during the login process
-- **Client Event Handling**: Responds to client requests for offline messages
-- **Inventory Integration**: Handles inventory offers sent via offline messages
-
-### Database Integration
-
-- **Data Layer Abstraction**: Uses OpenSim's data abstraction layer for database independence
-- **Migration Support**: Supports database schema migrations for upgrades
-- **Multiple Database Support**: Works with MySQL, SQLite, and PostgreSQL
-
-## Use Cases and Applications
-
-### Standalone Deployments
-
-- **Local Message Storage**: Direct database storage for single-server deployments
-- **Personal Grids**: Offline messaging for small personal or family grids
-- **Development Environment**: Local testing of offline messaging functionality
-
-### Grid Deployments
-
-- **Cross-Region Messaging**: Consistent offline messaging across multiple regions
-- **Scalable Architecture**: Centralized message storage for large grid deployments
-- **Service-Based Storage**: External service integration for enterprise deployments
-
-### Commercial Applications
-
-- **Business Communications**: Offline messaging for virtual business environments
-- **Educational Platforms**: Message delivery for educational virtual worlds
-- **Social Platforms**: Enhanced communication features for social virtual environments
-
-## Dependencies
-
-### Core Framework Dependencies
-
-- `OpenSim.Framework` - Core data structures and utilities
-- `OpenSim.Region.Framework.Interfaces` - Module interface contracts
-- `OpenSim.Region.Framework.Scenes` - Scene management and events
-- `OpenSim.Services.Interfaces` - Service interface definitions
-
-### System Dependencies
-
-- `System.Reflection` - Dynamic connector loading
-- `System.Collections.Generic` - Collection management
-- `log4net` - Logging framework
-- `Nini.Config` - Configuration management
-
-### Optional Dependencies
-
-- Database providers (MySQL, SQLite, PostgreSQL)
-- External service connectors
-- Authentication frameworks for remote services
 
 ## Troubleshooting
 
-### Common Configuration Issues
+### Common Issues
 
-1. **Module Not Loading**
-   - Verify `[Messaging]` section exists with correct `OfflineMessageModule` setting
-   - Check that connector specification is valid and assembly is available
-   - Review startup logs for connector loading errors
+1. **Module not loading**
+   - Verify `OfflineMessageModule = "Offline Message Module V2"` (exact match)
+   - Check that `OpenSim.Addons.OfflineIM.dll` is in bin directory
+   - Review startup logs for ModuleFactory loading messages
 
-2. **Connector Loading Failures**
-   - Ensure specified connector assembly exists and is accessible
-   - Verify connector class name is correct and implements IOfflineIMService
-   - Check assembly dependencies are satisfied
+2. **Messages not stored**
+   - Confirm `IMessageTransferModule` is loaded
+   - Check message type is in supported list
+   - Verify database connectivity (local mode) or service URL (remote mode)
+   - Review `ForwardOfflineGroupMessages` setting for group messages
 
-3. **Database Connection Issues**
-   - Verify database connection string is correct
-   - Ensure database server is accessible and credentials are valid
-   - Check that required database tables exist
+3. **Messages not delivered**
+   - Check client triggers `OnRetrieveInstantMessages` event
+   - Verify messages exist in storage (query database directly)
+   - Review logs for retrieval errors
 
-### Common Runtime Issues
+4. **Remote service connection failures**
+   - Validate `OfflineMessageURL` is correct and reachable
+   - Check authentication configuration if using BasicHttpAuthentication
+   - Verify Robust service has OfflineIMServiceRobustConnector loaded
 
-1. **Messages Not Being Stored**
-   - Check that users are actually offline when messages are sent
-   - Verify connector is properly configured and functional
-   - Review logs for storage operation failures
+### Diagnostic Steps
 
-2. **Messages Not Being Delivered**
-   - Ensure messages are being retrieved during login process
-   - Check that client is requesting offline messages
-   - Verify message deletion is working properly
+1. **Enable Debug Logging**
+   ```ini
+   [Startup]
+   LogLevel = DEBUG
+   ```
 
-3. **Performance Issues**
-   - Monitor message retrieval limits and adjust MaxRetrieval setting
-   - Check database performance and indexing
-   - Review connector response times for remote services
+2. **Check Module Load Status**
+   ```
+   show modules
+   ```
+   Should display: `Offline Message Module V2`
 
-### Debug Configuration
+3. **Test Message Storage Directly**
+   ```csharp
+   // From script or test harness
+   IOfflineIMService offlineIM = scene.RequestModuleInterface<IOfflineIMService>();
+   bool success = offlineIM.StoreMessage(testMessage, out string reason);
+   ```
+
+4. **Verify Database Schema**
+   - Check `OfflineMessages` table exists
+   - Verify appropriate data migration has run
+
+## Database Schema
+
+### OfflineMessages Table
+The module requires an `OfflineMessages` table with the following structure:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `PrincipalID` | char(36) | Recipient UUID |
+| `Message` | text | Serialized GridInstantMessage XML |
+| `TMStamp` | timestamp | Storage timestamp |
+
+**Implementations:**
+- MySQL: `src/OpenSim.Data.MySQL/MySQLOfflineIMData.cs`
+- PostgreSQL: `src/OpenSim.Data.PGSQL/PGSQLOfflineIMData.cs`
+
+## Security Considerations
+
+### Message Privacy
+- Messages stored in database in serialized form
+- No encryption at rest (consider database-level encryption)
+- Remote service connections support authentication
+
+### Authentication
+Remote mode supports `BasicHttpAuthentication`:
 
 ```ini
+[Network]
+AuthType = BasicHttpAuthentication
+
 [Messaging]
-OfflineMessageModule = Offline Message Module V2
-OfflineMessageConnector = OpenSim.Addons.OfflineIM.dll:OpenSim.OfflineIM.OfflineIMServiceConnector
-
-# Debug logging
-[Logging]
-LogLevel = DEBUG
-
-# Reduced message limits for testing
-[OfflineIM]
-MaxRetrieval = 5
+OfflineMessageURL = "http://robust.server:8003"
 ```
 
-### Log Analysis
+### Access Control
+- Only message recipient can retrieve their messages
+- Sender identity preserved in stored messages
+- No third-party access to message storage
 
-Monitor module operation through log messages:
-```
-[OFFLINE MESSAGING]: User 12345678-1234-1234-1234-123456789012 has 3 offline messages
-[OFFLINE MESSAGING]: Successfully stored offline message from TestUser to OfflineUser
-[OFFLINE MESSAGING]: Retrieved 3 offline messages for user 12345678-1234-1234-1234-123456789012
-```
+## Performance Tuning
 
-### Database Testing
+### Optimization Tips
 
-Test database connectivity independently:
-```sql
--- Check offline message storage
-SELECT * FROM im_offline WHERE PrincipalID = '12345678-1234-1234-1234-123456789012';
+1. **Use Remote Storage for Grids**
+   - Centralizes message storage
+   - Reduces per-region database load
+   - Enables message delivery across grid
 
--- Verify table structure
-DESCRIBE im_offline;
-```
+2. **Database Indexing**
+   - Index `PrincipalID` column for fast retrieval
+   - Index `TMStamp` for message expiry features
 
-## Deployment Considerations
+3. **Message Limits**
+   - Consider implementing message count limits per user
+   - Implement automatic expiry of old messages (custom enhancement)
 
-### Grid Architecture Planning
+4. **Network Optimization** (Remote Mode)
+   - Use persistent HTTP connections
+   - Enable compression for message transfer
+   - Co-locate Robust service with database
 
-- **Centralized vs Distributed**: Choose between centralized message storage or per-region storage
-- **Service Dependencies**: Plan for presence service and user account service integration
-- **Backup and Recovery**: Implement backup strategies for offline message data
+## Version History
 
-### Performance Planning
+### V2 Improvements over Legacy Module
+- **No Mono.Addins dependency** - Factory-based loading via reflection
+- **Better error handling** - Comprehensive logging and error messages
+- **Enhanced notifications** - Sender feedback on storage success/failure
+- **Remote service support** - Flexible deployment architectures
+- **Scene event integration** - Proper message routing through scene event system
+- **Improved message filtering** - Configurable group message handling
 
-- **Message Volume**: Estimate expected offline message volume for capacity planning
-- **Database Sizing**: Size database storage based on message retention policies
-- **Network Bandwidth**: Plan for message synchronization traffic in grid deployments
+## Related Components
 
-### Security Planning
+### Service Layer
+- [OfflineIMService](../src/OpenSim.Addons.OfflineIM/Service/OfflineIMService.cs) - Local storage implementation
+- [OfflineIMServiceRemoteConnector](../src/OpenSim.Addons.OfflineIM/Remote/OfflineIMServiceRemoteConnector.cs) - Remote service client
+- [OfflineIMServiceRobustConnector](../src/OpenSim.Addons.OfflineIM/Remote/OfflineIMServiceRobustConnector.cs) - Robust service endpoint
 
-- **Service Authentication**: Implement proper authentication for remote service access
-- **Transport Encryption**: Use HTTPS for remote service communications
-- **Access Controls**: Implement proper access controls for message storage services
+### Data Layer
+- [IOfflineIMData](../src/OpenSim.Data/IOfflineIMData.cs) - Data interface
+- [MySQLOfflineIMData](../src/OpenSim.Data.MySQL/MySQLOfflineIMData.cs) - MySQL implementation
+- [PGSQLOfflineIMData](../src/OpenSim.Data.PGSQL/PGSQLOfflineIMData.cs) - PostgreSQL implementation
 
-## Future Enhancement Opportunities
+### Related Modules
+- **MessageTransferModule** - Message routing and delivery
+- **InstantMessageModule** - Real-time instant messaging
+- **GroupsMessagingModuleV2** - Group chat and notices
 
-### Advanced Features
-
-- **Message Encryption**: End-to-end encryption for sensitive communications
-- **Message Expiration**: Automatic expiration and cleanup of old messages
-- **Message Priority**: Priority-based message delivery and storage
-- **Rich Content Support**: Support for multimedia content in offline messages
-
-### Performance Improvements
-
-- **Message Caching**: Local caching of frequently accessed messages
-- **Batch Processing**: Batch message operations for improved database performance
-- **Compression**: Message compression for reduced storage requirements
-- **Asynchronous Operations**: Fully asynchronous message storage and retrieval
-
-### Integration Enhancements
-
-- **Push Notifications**: Integration with mobile push notification services
-- **Email Integration**: Email delivery for offline messages when users are away
-- **Web Interface**: Web-based interface for message management
-- **API Extensions**: REST API for external application integration
-
-## Conclusion
-
-The OfflineIMRegionModule provides essential offline instant messaging capabilities for OpenSimulator grids of all sizes. Its flexible connector architecture, comprehensive configuration options, and robust error handling make it suitable for both standalone and grid deployments. The module's integration with OpenSim's service architecture ensures seamless operation while maintaining high performance and reliability for critical communication features.
+## Source Code Reference
+- **Module**: [src/OpenSim.Addons.OfflineIM/OfflineIMRegionModule.cs](../src/OpenSim.Addons.OfflineIM/OfflineIMRegionModule.cs)
+- **Factory Loading**: [src/OpenSim.Region.CoreModules/ModuleFactory.cs:1100-1124](../src/OpenSim.Region.CoreModules/ModuleFactory.cs)
