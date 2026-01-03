@@ -176,9 +176,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         /// <param name="visualParam"></param>
         public void SetAppearance(IScenePresence sp, Primitive.TextureEntry textureEntry, byte[] visualParams, WearableCacheItem[] cacheItems)
         {
-//            m_log.DebugFormat(
-//                "[AVFACTORY]: start SetAppearance for {0}, te {1}, visualParams {2}",
-//                sp.Name, textureEntry, visualParams);
+            if(m_log.IsDebugEnabled)
+                m_log.DebugFormat("[AVFACTORY]: SetAppearance called for {0} ({1}), visualParams={2}, cacheItems={3}",
+                    sp.Name, sp.UUID, visualParams?.Length ?? 0, cacheItems?.Length ?? 0);
 
             // TODO: This is probably not necessary any longer, just assume the
             // textureEntry set implies that the appearance transaction is complete
@@ -222,21 +222,35 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 }
                 // save only if there were changes
                 if (changed)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: Appearance changed for {0}, queueing save and send", sp.Name);
                     QueueAppearanceSave(sp.ControllingClient.AgentId);
+                }
+                else
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: No appearance changes detected for {0}, only queueing send", sp.Name);
+                }
                 QueueAppearanceSend(sp.ControllingClient.AgentId);
             }
 
-            // m_log.WarnFormat("[AVFACTORY]: complete SetAppearance for {0}:\n{1}",client.AgentId,sp.Appearance.ToString());
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: SetAppearance completed for {0}", sp.Name);
         }
 
         private void SendAppearance(ScenePresence sp)
         {
+            if(m_log.IsDebugEnabled)
+                m_log.DebugFormat("[AVFACTORY]: Sending appearance update for {0} ({1}) to all other agents in scene",
+                    sp.Name, sp.UUID);
+
             // Send the appearance to everyone in the scene
             sp.SendAppearanceToAllOtherAgents();
 
             // Send animations back to the avatar as well
             if(sp.Animator != null)
                 sp.Animator.SendAnimPack();
+
+            if(m_log.IsDebugEnabled)
+                m_log.DebugFormat("[AVFACTORY]: Appearance update sent for {0}", sp.Name);
         }
 
         public bool SendAppearance(UUID agentId)
@@ -334,7 +348,12 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         /// <param name="agentId"></param>
         public void QueueAppearanceSend(UUID agentid)
         {
-//            m_log.DebugFormat("[AVFACTORY]: Queue appearance send for {0}", agentid);
+            if(m_log.IsDebugEnabled)
+            {
+                ScenePresence sp = m_scene.GetScenePresence(agentid);
+                m_log.DebugFormat("[AVFACTORY]: Queueing appearance send for {0} ({1}), will send in {2}s",
+                    sp?.Name ?? "Unknown", agentid, m_sendtime);
+            }
 
             // 10000 ticks per millisecond, 1000 milliseconds per second
             long timestamp = DateTime.Now.Ticks + Convert.ToInt64(m_sendtime * 1000 * 10000);
@@ -344,7 +363,12 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         public void QueueAppearanceSave(UUID agentid)
         {
-//            m_log.DebugFormat("[AVFACTORY]: Queueing appearance save for {0}", agentid);
+            if(m_log.IsDebugEnabled)
+            {
+                ScenePresence sp = m_scene.GetScenePresence(agentid);
+                m_log.DebugFormat("[AVFACTORY]: Queueing appearance save for {0} ({1}), will save in {2}s",
+                    sp?.Name ?? "Unknown", agentid, m_savetime);
+            }
 
             // 10000 ticks per millisecond, 1000 milliseconds per second
             long timestamp = DateTime.Now.Ticks + Convert.ToInt64(m_savetime * 1000 * 10000);
@@ -495,14 +519,22 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         // called when we get a new root avatar
         public bool ValidateBakedTextureCache(IScenePresence sp)
         {
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: Starting baked texture cache validation for {0} ({1})", sp.Name, sp.UUID);
+
             if (((ScenePresence)sp).IsNPC)
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} is NPC, skipping validation", sp.Name);
                 return true;
+            }
 
             int hits = 0;
 
             IAssetCache cache = m_scene.RequestModuleInterface<IAssetCache>();
             if (cache == null)
+            {
+                m_log.WarnFormat("[AVFACTORY]: No asset cache available for {0}, cannot validate baked textures", sp.Name);
                 return false;
+            }
 
 
 
@@ -548,10 +580,12 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 bool wearableCacheValid = false;
                 if (wearableCache == null)
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} has no wearable cache, using default cache items", sp.Name);
                     wearableCache = WearableCacheItem.GetDefaultCacheItem();
                 }
                 else
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} has existing wearable cache, validating entries", sp.Name);
                     wearableCacheValid = true;
                     Primitive.TextureEntryFace face;
                     for (int i = 0; i < AvatarAppearance.BAKE_INDICES.Length; i++)
@@ -574,6 +608,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                             // fs junk
                             if (i >= AvatarAppearance.BAKES_COUNT_PV7 && wcacheidx.CacheId.IsZero())
                             {
+                                if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} bake index {1} (slot {2}) has no cache ID, clearing", sp.Name, i, idx);
                                 spAppearanceTextureFaceTextures[idx] = null;
                                 wcacheidx.CacheId = UUID.Zero;
                                 wcacheidx.TextureID = AppearanceManager.DEFAULT_AVATAR_TEXTURE;
@@ -584,8 +619,13 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                             {
                                 if (cache.Check(wcacheidx.TextureID.ToString()))
                                 {
+                                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} bake index {1} (slot {2}) texture {3} found in cache", sp.Name, i, idx, wcacheidx.TextureID);
                                     hits++;
                                     continue;
+                                }
+                                else
+                                {
+                                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} bake index {1} (slot {2}) texture {3} NOT in cache", sp.Name, i, idx, wcacheidx.TextureID);
                                 }
                             }
                         }
@@ -601,23 +641,23 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
                 if (checkExternal)
                 {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} local wearable cache invalid, checking external baked texture module", sp.Name);
                     WearableCacheItem[] bakedModuleCache = null;
                     hits = 0;
 
-                    // m_log.Debug("[ValidateBakedCache] local cache invalid, checking bakedModule");
                     try
                     {
                         bakedModuleCache = bakedModule.Get(sp.UUID);
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat(e.ToString());
+                        m_log.ErrorFormat("[AVFACTORY]: Error retrieving baked textures from external module for {0}: {1}", sp.Name, e.ToString());
                         bakedModuleCache = null;
                     }
 
                     if (bakedModuleCache != null)
                     {
-                        m_log.Debug("[ValidateBakedCache] got bakedModule " + bakedModuleCache.Length + " cached textures");
+                        if(m_log.IsInfoEnabled) m_log.InfoFormat("[AVFACTORY]: Retrieved {0} baked textures from external module for {1}", bakedModuleCache.Length, sp.Name);
 
                         for (int i = 0; i < bakedModuleCache.Length; i++)
                         {
@@ -667,25 +707,31 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 sp.Appearance.WearableCacheItems = wearableCache;
             }
 
-            // debug
-            // m_log.DebugFormat("[ValidateBakedCache]: Completed texture check for {0} {1} with {2} hits", sp.Name, sp.UUID, hits);
-            /*
-            for (int iter = 0; iter < AvatarAppearance.BAKE_INDICES.Length; iter++)
+            bool validationResult = (hits >= AvatarAppearance.BAKE_INDICES.Length); // skirt is optional
+            if(m_log.IsInfoEnabled)
+                m_log.InfoFormat("[AVFACTORY]: Baked texture validation for {0} completed: {1}/{2} textures valid - Result: {3}",
+                    sp.Name, hits, AvatarAppearance.BAKE_INDICES.Length, validationResult ? "PASS" : "FAIL");
+
+            if (!validationResult && m_log.IsDebugEnabled)
             {
-                int j = AvatarAppearance.BAKE_INDICES[iter];
-                m_log.Debug("[ValidateBakedCache] {" + iter + "/" +
-                                    sp.Appearance.WearableCacheItems[j].TextureIndex + "}: c-" +
-                                    sp.Appearance.WearableCacheItems[j].CacheId + ", t-" +
-                                    sp.Appearance.WearableCacheItems[j].TextureID);
+                m_log.DebugFormat("[AVFACTORY]: {0} is missing {1} baked textures, rebake will be required",
+                    sp.Name, AvatarAppearance.BAKE_INDICES.Length - hits);
             }
-            */
-            return (hits >= AvatarAppearance.BAKE_INDICES.Length); // skirt is optional
+
+            return validationResult;
         }
 
         public int RequestRebake(IScenePresence sp, bool missingTexturesOnly)
         {
+            if(m_log.IsInfoEnabled)
+                m_log.InfoFormat("[AVFACTORY]: Requesting rebake for {0} ({1}), missingTexturesOnly={2}",
+                    sp.Name, sp.UUID, missingTexturesOnly);
+
             if (((ScenePresence)sp).IsNPC)
+            {
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("[AVFACTORY]: {0} is NPC, skipping rebake", sp.Name);
                 return 0;
+            }
 
             int texturesRebaked = 0;
             IAssetCache cache = m_scene.RequestModuleInterface<IAssetCache>();
@@ -723,8 +769,15 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 }
 
                 texturesRebaked++;
+                if(m_log.IsDebugEnabled)
+                    m_log.DebugFormat("[AVFACTORY]: Sending rebake request to {0} for texture {1} (index {2})",
+                        sp.Name, face.TextureID, idx);
                 sp.ControllingClient.SendRebakeAvatarTextures(face.TextureID);
             }
+
+            if(m_log.IsInfoEnabled)
+                m_log.InfoFormat("[AVFACTORY]: Rebake request completed for {0}: {1} texture(s) requested for rebake",
+                    sp.Name, texturesRebaked);
 
             return texturesRebaked;
         }
@@ -821,13 +874,22 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         private void SaveAppearance(List<UUID> ids)
         {
-//            m_log.DebugFormat("[AVFACTORY]: Saving appearance for avatar {0}", agentid);
+            if(m_log.IsDebugEnabled)
+                m_log.DebugFormat("[AVFACTORY]: Saving appearance for {0} avatar(s)", ids.Count);
 
             foreach(UUID id in ids)
             {
                 ScenePresence sp = m_scene.GetScenePresence(id);
                 if(sp == null)
+                {
+                    if(m_log.IsDebugEnabled)
+                        m_log.DebugFormat("[AVFACTORY]: Cannot save appearance for {0} - scene presence not found", id);
                     continue;
+                }
+
+                if(m_log.IsDebugEnabled)
+                    m_log.DebugFormat("[AVFACTORY]: Saving appearance to avatar service for {0} ({1})", sp.Name, id);
+
                 // This could take awhile since it needs to pull inventory
                 // We need to do it at the point of save so that there is a sufficient delay for any upload of new body part/shape
                 // assets and item asset id changes to complete.
@@ -838,6 +900,9 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
                 m_scene.AvatarService.SetAppearance(id, sp.Appearance);
                 //m_scene.EventManager.TriggerAvatarAppearanceChanged(sp);
+
+                if(m_log.IsInfoEnabled)
+                    m_log.InfoFormat("[AVFACTORY]: Appearance saved for {0}", sp.Name);
             }
         }
 
