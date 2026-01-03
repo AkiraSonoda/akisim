@@ -485,6 +485,40 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                     sp.ControllingClient.SendRebakeAvatarTextures(id);
             }
 
+            // Log which specific bakes were received/updated
+            if(m_log.IsInfoEnabled)
+            {
+                string[] bakeNames = new string[] { "Head", "UpperBody", "LowerBody", "Eyes", "Skirt", "Hair", "LeftArm", "LeftLeg", "Aux1", "Aux2", "Aux3" };
+                System.Text.StringBuilder receivedBakes = new System.Text.StringBuilder();
+                System.Text.StringBuilder missingBakes = new System.Text.StringBuilder();
+
+                for (int i = 0; i < AvatarAppearance.BAKE_INDICES.Length; i++)
+                {
+                    int idx = AvatarAppearance.BAKE_INDICES[i];
+                    string bakeName = (i < bakeNames.Length) ? bakeNames[i] : $"Unknown{i}";
+
+                    if (updatedFaces.Contains((uint)idx))
+                    {
+                        if (receivedBakes.Length > 0) receivedBakes.Append(", ");
+                        receivedBakes.Append(bakeName);
+                    }
+                    else
+                    {
+                        if (missingBakes.Length > 0) missingBakes.Append(", ");
+                        missingBakes.Append(bakeName);
+                    }
+                }
+
+                m_log.InfoFormat("UpdateBakedCache for {0}: Received {1}/{2} bakes - [{3}]",
+                    sp.Name, updatedFaces.Count, AvatarAppearance.BAKE_INDICES.Length, receivedBakes.ToString());
+
+                if (missingBakes.Length > 0)
+                {
+                    m_log.InfoFormat("UpdateBakedCache for {0}: Missing bakes - [{1}]",
+                        sp.Name, missingBakes.ToString());
+                }
+            }
+
             bool changed = false;
             if (validDirtyBakes > 0 && hits == cacheItems.Length)
             {
@@ -657,7 +691,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
                     if (bakedModuleCache != null)
                     {
-                        if(m_log.IsInfoEnabled) m_log.InfoFormat("[AVFACTORY]: Retrieved {0} baked textures from external module for {1}", bakedModuleCache.Length, sp.Name);
+                        if(m_log.IsInfoEnabled) m_log.InfoFormat("Retrieved {0} baked textures from external module for {1}", bakedModuleCache.Length, sp.Name);
 
                         for (int i = 0; i < bakedModuleCache.Length; i++)
                         {
@@ -709,7 +743,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
             bool validationResult = (hits >= AvatarAppearance.BAKE_INDICES.Length); // skirt is optional
             if(m_log.IsInfoEnabled)
-                m_log.InfoFormat("[AVFACTORY]: Baked texture validation for {0} completed: {1}/{2} textures valid - Result: {3}",
+                m_log.InfoFormat("Baked texture validation for {0} completed: {1}/{2} textures valid - Result: {3}",
                     sp.Name, hits, AvatarAppearance.BAKE_INDICES.Length, validationResult ? "PASS" : "FAIL");
 
             if (!validationResult && m_log.IsDebugEnabled)
@@ -747,7 +781,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
         public int RequestRebake(IScenePresence sp, bool missingTexturesOnly)
         {
             if(m_log.IsInfoEnabled)
-                m_log.InfoFormat("[AVFACTORY]: Requesting rebake for {0} ({1}), missingTexturesOnly={2}",
+                m_log.InfoFormat("Requesting rebake for {0} ({1}), missingTexturesOnly={2}",
                     sp.Name, sp.UUID, missingTexturesOnly);
 
             if (((ScenePresence)sp).IsNPC)
@@ -799,7 +833,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             }
 
             if(m_log.IsInfoEnabled)
-                m_log.InfoFormat("[AVFACTORY]: Rebake request completed for {0}: {1} texture(s) requested for rebake",
+                m_log.InfoFormat("Rebake request completed for {0}: {1} texture(s) requested for rebake",
                     sp.Name, texturesRebaked);
 
             return texturesRebaked;
@@ -925,7 +959,7 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
                 //m_scene.EventManager.TriggerAvatarAppearanceChanged(sp);
 
                 if(m_log.IsInfoEnabled)
-                    m_log.InfoFormat("[AVFACTORY]: Appearance saved for {0}", sp.Name);
+                    m_log.InfoFormat("Appearance saved for {0}", sp.Name);
             }
         }
 
