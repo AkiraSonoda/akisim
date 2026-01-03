@@ -617,11 +617,17 @@ namespace OpenSim.Services.GridService
 
         public List<GridRegion> GetRegionsByName(UUID scopeID, string name, int maxNumber)
         {
-            // m_log.DebugFormat("[GRID SERVICE]: GetRegionsByName {0}", name);
+            m_log.InfoFormat("[GRID SERVICE] *** GetRegionsByName called for '{0}' ***", name);
 
             var nameURI = new RegionURI(name);
             if (!nameURI.IsValid)
+            {
+                m_log.InfoFormat("[GRID SERVICE] RegionURI parsing failed - '{0}' is not valid", name);
                 return new List<GridRegion>();
+            }
+
+            m_log.InfoFormat("[GRID SERVICE] RegionURI parsed: HasHost={0}, HostUrl={1}, RegionName={2}",
+                nameURI.HasHost, nameURI.HostUrl, nameURI.RegionName);
 
             return GetRegionsByURI(scopeID, nameURI, maxNumber);
         }
@@ -653,6 +659,7 @@ namespace OpenSim.Services.GridService
 
             if(localGrid)
             {
+                m_log.InfoFormat("[GRID SERVICE] This is LOCAL grid search, not hypergrid");
                 if (!nameURI.HasRegionName)
                 {
                     List<GridRegion> dinfos = GetDefaultRegions(scopeID);
@@ -678,11 +685,17 @@ namespace OpenSim.Services.GridService
                         }
                     }
                 }
+                m_log.InfoFormat("[GRID SERVICE] Local search complete, returning {0} regions", rinfos.Count);
                 return rinfos;
             }
 
+            m_log.InfoFormat("[GRID SERVICE] *** THIS IS A HYPERGRID REQUEST *** localGrid={0}, AllowHypergridMapSearch={1}", localGrid, m_AllowHypergridMapSearch);
+
             if (!m_AllowHypergridMapSearch)
+            {
+                m_log.WarnFormat("[GRID SERVICE] Hypergrid map search is DISABLED - returning empty result");
                 return rinfos;
+            }
 
             if (rdatas != null && (rdatas.Count > 0))
             {
@@ -708,14 +721,21 @@ namespace OpenSim.Services.GridService
                     return rinfos;
             }
 
+            m_log.InfoFormat("[GRID SERVICE] Calling HypergridLinker.LinkRegion for '{0}'", nameURI.HostUrl);
             GridRegion r = m_HypergridLinker.LinkRegion(scopeID, nameURI);
             if (r != null)
             {
+                m_log.InfoFormat("[GRID SERVICE] HypergridLinker.LinkRegion SUCCESS - got region: {0}", r.RegionName);
                 if (count == maxNumber)
                     rinfos.RemoveAt(count - 1);
                 rinfos.Add(r);
             }
+            else
+            {
+                m_log.WarnFormat("[GRID SERVICE] HypergridLinker.LinkRegion FAILED - returned null");
+            }
 
+            m_log.InfoFormat("[GRID SERVICE] Returning {0} hypergrid regions", rinfos.Count);
             return rinfos;
         }
 

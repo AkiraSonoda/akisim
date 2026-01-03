@@ -3436,8 +3436,8 @@ namespace OpenSim.Framework
 
         public static void FireAndForget(System.Threading.WaitCallback callback, object obj, string context, bool dotimeout = true)
         {
-            if (m_log.IsDebugEnabled)
-                m_log.DebugFormat("FireAndForget(callback: {0}, obj: {1}, context: {2}, dotimeout: {3})", callback, obj, context, dotimeout);
+            // if (m_log.IsDebugEnabled)
+            //     m_log.DebugFormat("FireAndForget(callback: {0}, obj: {1}, context: {2}, dotimeout: {3})", callback, obj, context, dotimeout);
 
             Interlocked.Increment(ref numQueuedThreadFuncs);
             Interlocked.Increment(ref numTotalThreadFuncsCalled);
