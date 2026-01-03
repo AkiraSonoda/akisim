@@ -716,6 +716,29 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             {
                 m_log.DebugFormat("[AVFACTORY]: {0} is missing {1} baked textures, rebake will be required",
                     sp.Name, AvatarAppearance.BAKE_INDICES.Length - hits);
+
+                // Log which specific bakes are missing
+                string[] bakeNames = new string[] { "Head", "UpperBody", "LowerBody", "Eyes", "Skirt", "Hair", "LeftArm", "LeftLeg", "Aux1", "Aux2", "Aux3" };
+                for (int i = 0; i < AvatarAppearance.BAKE_INDICES.Length; i++)
+                {
+                    int idx = AvatarAppearance.BAKE_INDICES[i];
+                    Primitive.TextureEntryFace face = sp.Appearance.Texture.FaceTextures[idx];
+                    var wcache = sp.Appearance.WearableCacheItems[idx];
+
+                    if (face == null || face.TextureID.Equals(AppearanceManager.DEFAULT_AVATAR_TEXTURE) || face.TextureID.IsZero())
+                    {
+                        m_log.DebugFormat("[AVFACTORY]:   MISSING: {0} (index {1}, slot {2})",
+                            i < bakeNames.Length ? bakeNames[i] : $"Bake{i}", i, idx);
+                    }
+                    else
+                    {
+                        bool inCache = cache != null && cache.Check(face.TextureID.ToString());
+                        m_log.DebugFormat("[AVFACTORY]:   {0}: {1} (index {2}, slot {3}) TextureID={4} CacheID={5} InCache={6}",
+                            inCache ? "OK" : "NOT IN CACHE",
+                            i < bakeNames.Length ? bakeNames[i] : $"Bake{i}", i, idx,
+                            face.TextureID, wcache.CacheId, inCache);
+                    }
+                }
             }
 
             return validationResult;
