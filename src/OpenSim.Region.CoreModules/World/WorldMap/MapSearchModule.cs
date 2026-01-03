@@ -117,13 +117,17 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         private void OnMapNameRequestHandler(IClientAPI remoteClient, string mapName, uint flags)
         {
+            m_log.InfoFormat("[MAP SEARCH] *** RECEIVED MAP SEARCH REQUEST *** from {0} for '{1}' with flags {2}", remoteClient.Name, mapName, flags);
             if(m_log.IsDebugEnabled) m_log.DebugFormat("Processing map search request from {0} for '{1}' with flags {2}", remoteClient.Name, mapName, flags);
 
             if (m_gridservice == null)
             {
+                m_log.ErrorFormat("[MAP SEARCH] *** GRID SERVICE IS NULL *** - map search will fail!");
                 if(m_log.IsWarnEnabled) m_log.WarnFormat("Map search request from {0} failed - no grid service available", remoteClient.Name);
                 return;
             }
+
+            m_log.InfoFormat("[MAP SEARCH] GridService is available, calling GetRegionsByName for '{0}'", mapName);
 
             try
             {
@@ -149,7 +153,9 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
                 // try to fetch from GridServer
                 if(m_log.IsDebugEnabled) m_log.DebugFormat("Querying grid service for regions matching '{0}' with scope {1}", mapName, m_stupidScope);
+                m_log.InfoFormat("[MAP SEARCH] Calling GridService.GetRegionsByName for '{0}'", mapName);
                 List<GridRegion> regionInfos = m_gridservice.GetRegionsByName(m_stupidScope, mapName, 20);
+                m_log.InfoFormat("[MAP SEARCH] GridService.GetRegionsByName returned {0} regions for '{1}'", regionInfos?.Count ?? 0, mapName);
 
                 if (!remoteClient.IsActive)
                 {

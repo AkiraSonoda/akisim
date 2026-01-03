@@ -1318,13 +1318,22 @@ namespace OpenSim.Region.CoreModules
 
             // Load MapSearchModule - provides map search functionality for WorldMap modules
             // MapSearchModule works with any WorldMap implementation to provide region search capabilities
-            var worldMapModuleConfig = configSource?.Configs["Map"] ?? configSource?.Configs["Startup"];
+            m_log.InfoFormat("[MODULE FACTORY] Checking for MapSearchModule...");
+            var worldMapModuleConfig = configSource?.Configs["Startup"] ?? configSource?.Configs["Map"];
+            m_log.InfoFormat("[MODULE FACTORY] worldMapModuleConfig is null: {0}", worldMapModuleConfig == null);
             string worldMapModuleName = worldMapModuleConfig?.GetString("WorldMapModule", "");
+            m_log.InfoFormat("[MODULE FACTORY] WorldMapModule name: '{0}'", worldMapModuleName);
             if (!string.IsNullOrEmpty(worldMapModuleName) && (worldMapModuleName == "WorldMap" || worldMapModuleName == "HGWorldMap"))
             {
+                m_log.InfoFormat("[MODULE FACTORY] Condition matched! Loading MapSearchModule...");
                 if(m_log.IsDebugEnabled) m_log.Debug("Loading MapSearchModule for map search functionality");
                 yield return new MapSearchModule();
                 m_log.Info("MapSearchModule loaded for region search capabilities");
+            }
+            else
+            {
+                m_log.WarnFormat("[MODULE FACTORY] MapSearchModule NOT loaded. WorldMapModule='{0}', isEmpty={1}",
+                    worldMapModuleName, string.IsNullOrEmpty(worldMapModuleName));
             }
 
             // Load BasicSearchModule based on configuration
