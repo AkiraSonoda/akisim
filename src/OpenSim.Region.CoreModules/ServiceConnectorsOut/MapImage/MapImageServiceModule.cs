@@ -187,7 +187,14 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             // v2 Map generation on startup is now handled by scene to allow bmp to be shared with
             // v1 service and not generate map tiles twice as was previous behavior
             // AKIDO re-adding the old Handling because we require the static maptiles
-            scene.EventManager.OnRegionReadyStatusChange += s => { if (s.Ready) UploadMapTile(s); };
+            // Use OnRegionStarted which fires after grid registration is complete
+            scene.EventManager.OnRegionStarted += s =>
+            {
+                Util.FireAndForget(delegate(object o)
+                {
+                    UploadMapTile(s);
+                }, null, "MapImageServiceModule.UploadOnStartup");
+            };
             // AKIDO
 
             scene.RegisterModuleInterface<IMapImageUploadModule>(this);
@@ -370,15 +377,34 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} JPEG conversion successful for {1} - size: {2} bytes", LogHeader, regionName, jpgData.Length);
 
             string reason = string.Empty;
-            if (!m_MapService.AddMapTile((int)locX, (int)locY, jpgData, scene.RegionInfo.ScopeID, out reason))
+            int maxRetries = 3;
+            int retryDelay = 2000; // milliseconds
+
+            for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                m_log.WarnFormat("{0} Unable to upload tile image for {1} at {2}-{3}: {4}", LogHeader,
-                    regionName, locX, locY, reason);
-                return false;
+                if (m_MapService.AddMapTile((int)locX, (int)locY, jpgData, scene.RegionInfo.ScopeID, out reason))
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Map tile upload successful for {1} at {2},{3}{4}",
+                        LogHeader, regionName, locX, locY, attempt > 0 ? $" (retry {attempt})" : "");
+                    return true;
+                }
+
+                // Check if error is due to region not yet registered
+                if (reason == "No region at coordinates" && attempt < maxRetries - 1)
+                {
+                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Region {1} not yet registered, retrying in {2}ms (attempt {3}/{4})",
+                        LogHeader, regionName, retryDelay, attempt + 1, maxRetries);
+                    System.Threading.Thread.Sleep(retryDelay);
+                    continue;
+                }
+
+                // For other errors or final attempt, break and report failure
+                break;
             }
 
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Map tile upload successful for {1} at {2},{3}", LogHeader, regionName, locX, locY);
-            return true;
+            m_log.WarnFormat("{0} Unable to upload tile image for {1} at {2}-{3}: {4}", LogHeader,
+                regionName, locX, locY, reason);
+            return false;
         }
     }
 }

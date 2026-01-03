@@ -2281,8 +2281,10 @@ namespace OpenSim.Region.Framework.Scenes
             //// The map tile image is stored in RegionSettings, but it also needs to be
             //// stored in the GridService, because that's what the world map module uses
             //// to send the map image UUIDs (of other regions) to the viewer...
-            if (m_generateMaptiles)
-                RegenerateMaptile();
+            //// AKIDO: Disabled - map tile generation now happens via OnRegionStarted event
+            //// after grid registration is complete, preventing "No region at coordinates" errors
+            //if (m_generateMaptiles)
+            //    RegenerateMaptile();
 
             GridRegion region = new(RegionInfo);
             string error = GridService.RegisterRegion(RegionInfo.ScopeID, region);
