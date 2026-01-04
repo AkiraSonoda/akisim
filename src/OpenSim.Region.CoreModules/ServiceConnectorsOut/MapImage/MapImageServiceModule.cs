@@ -258,7 +258,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 
         public void UploadMapTile(IScene scene, Bitmap mapTile)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Starting map tile upload for region {1}", LogHeader, scene.RegionInfo.RegionName);
+            m_log.InfoFormat("{0} Starting map tile upload for region {1}", LogHeader, scene.RegionInfo.RegionName);
 
             if (mapTile == null)
             {
@@ -273,11 +273,11 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             // If the region/maptile is legacy sized, just upload the one tile like it has always been done
             if (mapTile.Width == Constants.RegionSize && mapTile.Height == Constants.RegionSize)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Uploading single legacy-sized map tile ({1}x{2}) for region {3}", LogHeader, mapTile.Width, mapTile.Height, scene.Name);
+                m_log.InfoFormat("{0} Uploading single legacy-sized map tile ({1}x{2}) for region {3}", LogHeader, mapTile.Width, mapTile.Height, scene.Name);
                 bool success = ConvertAndUploadMaptile(scene, mapTile,
                                         scene.RegionInfo.RegionLocX, scene.RegionInfo.RegionLocY,
                                         scene.RegionInfo.RegionName);
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Single map tile upload for {1}: {2}", LogHeader, scene.Name, success ? "successful" : "failed");
+                m_log.InfoFormat("{0} Single map tile upload for {1}: {2}", LogHeader, scene.Name, success ? "successful" : "failed");
             }
             else
             {
@@ -350,7 +350,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 
         private bool ConvertAndUploadMaptile(IScene scene, Image tileImage, uint locX, uint locY, string regionName)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Converting and uploading map tile for {1} at location {2},{3}", LogHeader, regionName, locX, locY);
+            m_log.InfoFormat("{0} Converting and uploading map tile for {1} at location {2},{3}", LogHeader, regionName, locX, locY);
 
             byte[] jpgData = Utils.EmptyBytes;
 
@@ -384,7 +384,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             {
                 if (m_MapService.AddMapTile((int)locX, (int)locY, jpgData, scene.RegionInfo.ScopeID, out reason))
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Map tile upload successful for {1} at {2},{3}{4}",
+                    m_log.InfoFormat("{0} Map tile upload successful for {1} at {2},{3}{4}",
                         LogHeader, regionName, locX, locY, attempt > 0 ? $" (retry {attempt})" : "");
                     return true;
                 }

@@ -1309,11 +1309,16 @@ namespace OpenSim.Region.CoreModules
 
             // Load MapImageService module based on configuration
             string mapImageServicesModule = modulesConfig?.GetString("MapImageService", "");
+            m_log.InfoFormat("[MODULE FACTORY] Checking for MapImageServiceModule - configured value: '{0}'", mapImageServicesModule);
             if (mapImageServicesModule == "MapImageServiceModule")
             {
-                if(m_log.IsDebugEnabled) m_log.Debug("Loading MapImageServiceModule for map tile upload and management");
+                m_log.Info("[MODULE FACTORY] Loading MapImageServiceModule for map tile upload and management");
                 yield return new MapImageServiceModule();
-                m_log.Info("MapImageServiceModule loaded for map tile upload and management services");
+                m_log.Info("[MODULE FACTORY] MapImageServiceModule loaded for map tile upload and management services");
+            }
+            else
+            {
+                m_log.WarnFormat("[MODULE FACTORY] MapImageServiceModule NOT loaded - configured value: '{0}'", mapImageServicesModule);
             }
 
             // Load MapSearchModule - provides map search functionality for WorldMap modules

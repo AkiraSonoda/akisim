@@ -216,6 +216,11 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
             m_mapImageGenerator = m_scene.RequestModuleInterface<IMapImageGenerator>();
             m_mapImageServiceModule = m_scene.RequestModuleInterface<IMapImageUploadModule>();
+
+            if (m_mapImageServiceModule != null)
+                m_log.InfoFormat("[WORLD MAP] MapImageServiceModule found and registered for region {0}", m_scene.Name);
+            else
+                m_log.WarnFormat("[WORLD MAP] MapImageServiceModule NOT found for region {0} - map tiles will not be uploaded!", m_scene.Name);
         }
 
         public virtual void Close()
@@ -281,9 +286,9 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         public void OnRegisterCaps(UUID agentID, Caps caps)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] OnRegisterCaps: agentID {0} caps {1}", agentID, caps);
+            m_log.InfoFormat("[WORLD MAP] OnRegisterCaps called for agent {0}", agentID);
             caps.RegisterSimpleHandler("MapLayer", new SimpleStreamHandler("/" + UUID.Random(), MapLayerRequest));
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] Registered MapLayer CAPS handler for agent {0}", agentID);
+            m_log.InfoFormat("[WORLD MAP] Registered MapLayer CAPS handler for agent {0}", agentID);
         }
 
         /// <summary>
@@ -297,8 +302,11 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         /// <returns></returns>
         public void MapLayerRequest(IOSHttpRequest request, IOSHttpResponse response)
         {
+            m_log.InfoFormat("[WORLD MAP] MapLayerRequest received from {0} - method: {1}", request.RemoteIPEndPoint, request.HttpMethod);
+
             if(request.HttpMethod != "POST")
             {
+                m_log.WarnFormat("[WORLD MAP] MapLayerRequest rejected - invalid method: {0}", request.HttpMethod);
                 response.StatusCode = (int)HttpStatusCode.NotFound;
                 return;
             }
@@ -306,6 +314,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             mapResponse.LayerData.Array.Add(GetOSDMapLayerResponse());
             response.RawBuffer = System.Text.Encoding.UTF8.GetBytes(LLSDHelpers.SerialiseLLSDReply(mapResponse));
             response.StatusCode = (int)HttpStatusCode.OK;
+            m_log.InfoFormat("[WORLD MAP] MapLayerRequest completed successfully - sent layer data");
         }
 
          /// <summary>
@@ -385,7 +394,8 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         public virtual void HandleMapItemRequest(IClientAPI remoteClient, uint flags,
             uint EstateID, bool godlike, uint itemtype, ulong regionhandle)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Handle MapItem request {0} {1}", regionhandle, itemtype);
+            m_log.InfoFormat("[WORLD MAP] HandleMapItemRequest from {0} - regionhandle: {1}, itemtype: {2}, flags: {3}",
+                remoteClient.Name, regionhandle, itemtype, flags);
 
             // AKIDO
             // if (!m_rootAgents.Contains(remoteClient.AgentId)) return;
@@ -935,6 +945,9 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         /// <param name="maxY"></param>
         public void RequestMapBlocks(IClientAPI remoteClient, int minX, int minY, int maxX, int maxY, uint flag)
         {
+            m_log.InfoFormat("[WORLD MAP] RequestMapBlocks from {0} - minX:{1}, minY:{2}, maxX:{3}, maxY:{4}, flag:{5}",
+                remoteClient.Name, minX, minY, maxX, maxY, flag);
+
             // anti spam because of FireStorm 4.7.7 absurd request repeat rates
             // possible others
 
@@ -1084,12 +1097,17 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         protected virtual List<MapBlockData> GetAndSendBlocksInternal(IClientAPI remoteClient, int minX, int minY, int maxX, int maxY, uint flag)
         {
+            m_log.InfoFormat("[WORLD MAP] GetAndSendBlocksInternal for {0} - minX:{1}, minY:{2}, maxX:{3}, maxY:{4}, flag:{5}",
+                remoteClient.Name, minX, minY, maxX, maxY, flag);
+
             List<MapBlockData> mapBlocks = new List<MapBlockData>();
             List<GridRegion> regions = m_scene.GridService.GetRegionRange(m_scene.RegionInfo.ScopeID,
                 minX * (int)Constants.RegionSize,
                 maxX * (int)Constants.RegionSize,
                 minY * (int)Constants.RegionSize,
                 maxY * (int)Constants.RegionSize);
+
+            m_log.InfoFormat("[WORLD MAP] Grid service returned {0} regions for range", regions?.Count ?? 0);
 
             // only send a negative answer for a single region request
             // corresponding to a click on the map. Current viewers
@@ -1165,6 +1183,9 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             block.Y = (ushort)(r.RegionLocY / Constants.RegionSize);
             block.SizeX = (ushort)r.RegionSizeX;
             block.SizeY = (ushort)r.RegionSizeY;
+
+            m_log.InfoFormat("[WORLD MAP] Sending map block for {0} at {1},{2} - MapImageId: {3} (flag={4}, TerrainImage={5}, ParcelImage={6})",
+                r.RegionName, block.X, block.Y, block.MapImageId, flag, r.TerrainImage, r.ParcelImage);
 
         }
 
@@ -1570,7 +1591,14 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 GenerateMaptile(mapbmp);
 
                 if (m_mapImageServiceModule != null)
+                {
+                    m_log.InfoFormat("[WORLD MAP] Uploading map tile for region {0}", m_scene.Name);
                     m_mapImageServiceModule.UploadMapTile(m_scene, mapbmp);
+                }
+                else
+                {
+                    m_log.WarnFormat("[WORLD MAP] Cannot upload map tile for region {0} - MapImageServiceModule is null!", m_scene.Name);
+                }
             }
         }
 
@@ -1683,9 +1711,28 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 m_scene.RegionInfo.RegionSettings.ParcelImageID = parcelImageID;
                 needRegionSave = true;
             }
+            else
+            {
+                // No parcels for sale, so use the terrain image as the parcel image
+                // This ensures viewers that request ParcelImage (flag=2) still get a map tile
+                m_log.InfoFormat("[WORLD MAP] No parcel overlay generated for {0}, using terrain image as parcel image", m_regionName);
+                m_scene.RegionInfo.RegionSettings.ParcelImageID = m_scene.RegionInfo.RegionSettings.TerrainImageID;
+                needRegionSave = true;
+            }
 
             if (needRegionSave)
+            {
+                m_log.InfoFormat("[WORLD MAP] Saving region settings - TerrainImageID: {0}, ParcelImageID: {1}",
+                    m_scene.RegionInfo.RegionSettings.TerrainImageID,
+                    m_scene.RegionInfo.RegionSettings.ParcelImageID);
                 m_scene.RegionInfo.RegionSettings.Save();
+            }
+            else
+            {
+                m_log.InfoFormat("[WORLD MAP] No region save needed - TerrainImageID: {0}, ParcelImageID: {1}",
+                    m_scene.RegionInfo.RegionSettings.TerrainImageID,
+                    m_scene.RegionInfo.RegionSettings.ParcelImageID);
+            }
         }
 
         private void MakeRootAgent(ScenePresence avatar)

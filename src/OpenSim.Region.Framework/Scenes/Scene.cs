@@ -5952,7 +5952,10 @@ Label_GroupsDone:
 
             // We need to propagate the new image UUID to the grid service
             // so that all simulators can retrieve it
-            string error = GridService.RegisterRegion(RegionInfo.ScopeID, new GridRegion(RegionInfo));
+            GridRegion region = new GridRegion(RegionInfo);
+            m_log.InfoFormat("[SCENE]: Re-registering region {0} with grid - TerrainImage: {1}, ParcelImage: {2}",
+                RegionInfo.RegionName, region.TerrainImage, region.ParcelImage);
+            string error = GridService.RegisterRegion(RegionInfo.ScopeID, region);
             if (error != string.Empty)
                 throw new Exception(error);
             if(m_generateMaptiles)
