@@ -76,5 +76,12 @@ package:
 	new_dir="$(PACKAGING_DIR)/akisim-$$new_version"; \
 	mkdir -p "$$new_dir"; \
 	rsync -avL --exclude='.*' "$(SOURCE_DIR)/" "$$new_dir/"; \
+	cd "$(DELTA_BIN)" && \
+	for item in *; do \
+		if [ -e "$$item" ]; then \
+			cp -rfL "$$item" "$$new_dir/bin/" && \
+			echo "Copied delta: $$item"; \
+		fi \
+	done; \
 	cd "$(PACKAGING_DIR)" && zip -r "akisim-$$new_version.zip" "akisim-$$new_version"; \
 	echo "Package created: akisim-$$new_version.zip";
