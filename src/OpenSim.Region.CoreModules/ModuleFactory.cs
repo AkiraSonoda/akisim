@@ -306,17 +306,17 @@ namespace OpenSim.Region.CoreModules
 
                 if (worldMapModule == "HGWorldMap")
                 {
-                    if(m_log.IsDebugEnabled) m_log.Debug("Loading HGWorldMapModule");
+                    m_log.Info("[MODULE FACTORY] Loading HGWorldMapModule");
                     yield return new HGWorldMapModule();
                 }
                 else if (worldMapModule == "WorldMap")
                 {
-                    if(m_log.IsDebugEnabled) m_log.Debug("Loading WorldMapModule");
+                    m_log.Info("[MODULE FACTORY] Loading WorldMapModule");
                     yield return new WorldMapModule();
                 }
                 else
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat("No WorldMapModule loaded - configured value: '{0}'", worldMapModule);
+                    m_log.WarnFormat("[MODULE FACTORY] No WorldMapModule loaded - configured value: '{0}'", worldMapModule);
                 }
 
                 // Note: MapSearchModule is now loaded in CreateSharedModules as it implements ISharedRegionModule
