@@ -394,7 +394,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         public virtual void HandleMapItemRequest(IClientAPI remoteClient, uint flags,
             uint EstateID, bool godlike, uint itemtype, ulong regionhandle)
         {
-            m_log.InfoFormat("[WORLD MAP] HandleMapItemRequest from {0} - regionhandle: {1}, itemtype: {2}, flags: {3}",
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] HandleMapItemRequest from {0} - regionhandle: {1}, itemtype: {2}, flags: {3}",
                 remoteClient.Name, regionhandle, itemtype, flags);
 
             // AKIDO
@@ -945,7 +945,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
         /// <param name="maxY"></param>
         public void RequestMapBlocks(IClientAPI remoteClient, int minX, int minY, int maxX, int maxY, uint flag)
         {
-            m_log.InfoFormat("[WORLD MAP] RequestMapBlocks from {0} - minX:{1}, minY:{2}, maxX:{3}, maxY:{4}, flag:{5}",
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] RequestMapBlocks from {0} - minX:{1}, minY:{2}, maxX:{3}, maxY:{4}, flag:{5}",
                 remoteClient.Name, minX, minY, maxX, maxY, flag);
 
             // anti spam because of FireStorm 4.7.7 absurd request repeat rates
@@ -1097,7 +1097,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
         protected virtual List<MapBlockData> GetAndSendBlocksInternal(IClientAPI remoteClient, int minX, int minY, int maxX, int maxY, uint flag)
         {
-            m_log.InfoFormat("[WORLD MAP] GetAndSendBlocksInternal for {0} - minX:{1}, minY:{2}, maxX:{3}, maxY:{4}, flag:{5}",
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] GetAndSendBlocksInternal for {0} - minX:{1}, minY:{2}, maxX:{3}, maxY:{4}, flag:{5}",
                 remoteClient.Name, minX, minY, maxX, maxY, flag);
 
             List<MapBlockData> mapBlocks = new List<MapBlockData>();
@@ -1107,7 +1107,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                 minY * (int)Constants.RegionSize,
                 maxY * (int)Constants.RegionSize);
 
-            m_log.InfoFormat("[WORLD MAP] Grid service returned {0} regions for range", regions?.Count ?? 0);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] Grid service returned {0} regions for range", regions?.Count ?? 0);
 
             // only send a negative answer for a single region request
             // corresponding to a click on the map. Current viewers
@@ -1184,7 +1184,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             block.SizeX = (ushort)r.RegionSizeX;
             block.SizeY = (ushort)r.RegionSizeY;
 
-            m_log.InfoFormat("[WORLD MAP] Sending map block for {0} at {1},{2} - MapImageId: {3} (flag={4}, TerrainImage={5}, ParcelImage={6})",
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("[WORLD MAP] Sending map block for {0} at {1},{2} - MapImageId: {3} (flag={4}, TerrainImage={5}, ParcelImage={6})",
                 r.RegionName, block.X, block.Y, block.MapImageId, flag, r.TerrainImage, r.ParcelImage);
 
         }
