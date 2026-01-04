@@ -46,14 +46,14 @@ rebuild: clean build
 
 # Deploy solution
 .PHONY: deploy
-deploy: 
+deploy:
 	@echo "Deploying $(CONFIGURATION) build..."
 	rm -rf "$(DEST_DIR)/bin"
-	cp -r "$(SRC_BIN)" "$(DEST_DIR)/"
+	cp -rL "$(SRC_BIN)" "$(DEST_DIR)/"
 	cd "$(DELTA_BIN)" && \
 	for item in *; do \
 		if [ -e "$$item" ]; then \
-			cp -rf "$$item" "$(DEST_DIR)/bin/" && \
+			cp -rfL "$$item" "$(DEST_DIR)/bin/" && \
 			echo "Copied: $$item"; \
 		fi \
 	done
@@ -75,6 +75,6 @@ package:
 	fi; \
 	new_dir="$(PACKAGING_DIR)/akisim-$$new_version"; \
 	mkdir -p "$$new_dir"; \
-	rsync -av --exclude='.*' "$(SOURCE_DIR)/" "$$new_dir/"; \
+	rsync -avL --exclude='.*' "$(SOURCE_DIR)/" "$$new_dir/"; \
 	cd "$(PACKAGING_DIR)" && zip -r "akisim-$$new_version.zip" "akisim-$$new_version"; \
 	echo "Package created: akisim-$$new_version.zip";

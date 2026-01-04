@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
 
 [ShutdownDotNetAfterServerBuild]
@@ -83,10 +84,47 @@ class Build : NukeBuild
                 Directory.Delete(BinDirectory, true);
             }
             Directory.CreateDirectory(BinDirectory);
-            
+
             // Restore all files in current directory but skip everything related to _build
             RestoreFiles(ArtifactsDirectory, BinDirectory);
-            
+
+            // Create symlink for platform-specific System.Drawing.Common.dll
+            string targetFileName;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                targetFileName = "System.Drawing.Common.dll.linux";
+                Console.WriteLine("Detected Linux platform");
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                targetFileName = "System.Drawing.Common.dll.win";
+                Console.WriteLine("Detected Windows platform");
+            }
+            else
+            {
+                Console.WriteLine("Warning: Unsupported platform for System.Drawing.Common.dll symlink");
+                return;
+            }
+
+            string symlinkPath = Path.Combine(BinDirectory, "System.Drawing.Common.dll");
+            string targetPath = Path.Combine(BinDirectory, targetFileName);
+
+            // Delete existing symlink or file if it exists
+            if (File.Exists(symlinkPath))
+            {
+                File.Delete(symlinkPath);
+            }
+
+            if (File.Exists(targetPath))
+            {
+                // Create symbolic link (relative path)
+                File.CreateSymbolicLink(symlinkPath, targetFileName);
+                Console.WriteLine($"Created symlink: {symlinkPath} -> {targetFileName}");
+            }
+            else
+            {
+                Console.WriteLine($"Warning: Platform-specific file not found: {targetPath}");
+            }
         });
 
     Target Restore => _ => _
