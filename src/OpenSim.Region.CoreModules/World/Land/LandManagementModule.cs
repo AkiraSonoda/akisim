@@ -274,11 +274,11 @@ namespace OpenSim.Region.CoreModules.World.Land
                     if (!land.LandData.FakeID.IsZero())
                     {
                         // AKIDO
-                        if (!m_landFakeIDs.TryRemove(land.LandData.GlobalID, out int dummyy)) {
+                        if (!m_landFakeIDs.TryRemove(land.LandData.FakeID, out int dummyy)) {
                             m_log.WarnFormat("UpdateLandObject - m_landFakeIDs.TryRemove unexpectedly failed" +
-                                             "when removing land.LandData.GlobalID: {0}", land.LandData.GlobalID);
+                                             "when removing land.LandData.FakeID: {0}", land.LandData.FakeID);
                         }
-                    
+
                     }
                     land.LandData = newData;
                     m_landGlobalIDs[newData.GlobalID] = local_id;

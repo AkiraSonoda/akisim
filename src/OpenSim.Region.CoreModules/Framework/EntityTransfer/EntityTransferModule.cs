@@ -513,13 +513,15 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             {
                 position.Z = posZLimit;
             }
-/*
+
+            // AKIDO: Re-enabled landing point enforcement for parcel landing points
             if(!sp.CheckLocalTPLandingPoint(ref position))
             {
                 sp.ControllingClient.SendTeleportFailed("Not allowed at destination");
                 return;
             }
-*/
+            // AKIDO
+
             if (sp.Flying)
                 teleportFlags |= (uint)TeleportFlags.IsFlying;
 
