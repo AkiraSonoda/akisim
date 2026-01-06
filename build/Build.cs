@@ -236,19 +236,19 @@ class Build : NukeBuild
             var packages = new Dictionary<string, string[]>
             {
                 { "log4net", new[] { "log4net.dll" } },
-                { "BouncyCastle.Cryptography", new[] { "BouncyCastle.Cryptography.dll" } },
-                { "Mono.Addins", new[] { "Mono.Addins.dll" } },
-                { "Mono.Addins.CecilReflector", new[] { "Mono.Addins.CecilReflector.dll" } },
-                { "Mono.Addins.Setup", new[] { "Mono.Addins.Setup.dll" } },
+                { "bouncycastle.cryptography", new[] { "BouncyCastle.Cryptography.dll" } },
+                { "mono.addins", new[] { "Mono.Addins.dll" } },
+                { "mono.addins.cecilreflector", new[] { "Mono.Addins.CecilReflector.dll" } },
+                { "mono.addins.setup", new[] { "Mono.Addins.Setup.dll" } },
                 { "mysqlconnector", new[] { "MySqlConnector.dll" } },
-                { "System.Configuration.ConfigurationManager", new[] { "System.Configuration.ConfigurationManager.dll" } },
-                { "System.Text.Json", new[] { "System.Text.Json.dll" } },
-                { "Npgsql", new[] { "Npgsql.dll" } },
-                { "System.Drawing.Common", new[] { "System.Drawing.Common.dll" } },
-                { "System.Data.SqlClient", new[] { "System.Data.SqlClient.dll" } },
-                { "System.Data.SQLite", new[] { "System.Data.SQLite.dll" } },
-                { "System.Runtime.Caching", new[] { "System.Runtime.Caching.dll" } },
-                { "Ionic.Zlib.Core", new[] { "Ionic.Zlib.Core.dll" } },
+                { "system.configuration.configurationmanager", new[] { "System.Configuration.ConfigurationManager.dll" } },
+                { "system.text.json", new[] { "System.Text.Json.dll" } },
+                { "npgsql", new[] { "Npgsql.dll" } },
+                { "system.drawing.common", new[] { "System.Drawing.Common.dll" } },
+                { "system.data.sqlclient", new[] { "System.Data.SqlClient.dll" } },
+                { "system.data.sqlite", new[] { "System.Data.SQLite.dll" } },
+                { "system.runtime.caching", new[] { "System.Runtime.Caching.dll" } },
+                { "ionic.zlib.core", new[] { "Ionic.Zlib.Core.dll" } },
                 // Add other packages you need here in the format:
                 // { "packageName", new[] { "file1.dll", "file2.dll" } }
             };

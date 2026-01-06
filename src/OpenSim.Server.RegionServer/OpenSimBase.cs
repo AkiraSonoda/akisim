@@ -177,29 +177,7 @@ namespace OpenSim
 
         protected virtual void LoadPlugins()
         {
-            IConfig startupConfig = Config.Configs["Startup"];
-            string registryLocation = (startupConfig != null) ? startupConfig.GetString("RegistryLocation", String.Empty) : String.Empty;
-
-            // The location can also be specified in the environment. If there
-            // is no location in the configuration, we must call the constructor
-            // without a location parameter to allow that to happen.
-            if (registryLocation.Length == 0)
-            {
-                using (PluginLoader<IApplicationPlugin> loader = new PluginLoader<IApplicationPlugin>(new ApplicationPluginInitialiser(this)))
-                {
-                    loader.Load("/OpenSim/Startup");
-                    m_plugins = loader.Plugins;
-                }
-            }
-            else
-            {
-                using (PluginLoader<IApplicationPlugin> loader = new PluginLoader<IApplicationPlugin>(new ApplicationPluginInitialiser(this), registryLocation))
-                {
-                    loader.Load("/OpenSim/Startup");
-                    m_plugins = loader.Plugins;
-                }
-            }
-            
+            // PluginLoader removed - using manual plugin loading only
             // Manual fallback for RegionModulesController when Mono.Addins fails
             IRegionModulesController testController;
             if (!ApplicationRegistry.TryGet<IRegionModulesController>(out testController))
