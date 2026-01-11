@@ -634,3 +634,46 @@
 
 [MuteListService]
 	LocalServiceModule = "OpenSim.Services.MuteListService.dll:MuteListService"
+
+;;
+;; OpenTelemetry instrumentation for metrics and logs export
+;;
+[OpenTelemetry]
+    ;# {Enabled} {} {Enable OpenTelemetry instrumentation?} {true false} false
+    ;; Enable or disable OpenTelemetry telemetry collection and export
+    ; Enabled = false
+
+    ;# {ServiceName} {Enabled:true} {Service name for telemetry} {} "Akisim.Robust"
+    ;; Service name to identify this instance in telemetry backend
+    ; ServiceName = "Akisim.Robust"
+
+    ;# {OtlpEndpoint} {Enabled:true} {OTLP endpoint URL} {} "http://localhost:4317"
+    ;; OpenTelemetry Protocol (OTLP) endpoint for exporting telemetry
+    ;; Default port 4317 for gRPC, 4318 for HTTP
+    ; OtlpEndpoint = "http://localhost:4317"
+
+    ;# {OtlpProtocol} {Enabled:true} {OTLP protocol} {Grpc HttpProtobuf} "Grpc"
+    ;; Protocol to use for OTLP export (Grpc or HttpProtobuf)
+    ; OtlpProtocol = "Grpc"
+
+    ;# {MetricsEnabled} {Enabled:true} {Export metrics?} {true false} true
+    ;; Enable metrics export to OTLP endpoint
+    ; MetricsEnabled = true
+
+    ;# {LogsEnabled} {Enabled:true} {Export logs?} {true false} true
+    ;; Enable logs export to OTLP endpoint
+    ; LogsEnabled = true
+
+    ;# {MetricsExportIntervalMs} {MetricsEnabled:true} {Metrics export interval in milliseconds} {} 60000
+    ;; How often to export metrics (in milliseconds)
+    ; MetricsExportIntervalMs = 60000
+
+    ;# {LogLevel} {LogsEnabled:true} {Minimum log level to export} {Trace Debug Information Warning Error Critical} "Information"
+    ;; Minimum log level to export to OpenTelemetry
+    ;; Options: Trace, Debug, Information, Warning, Error, Critical
+    ; LogLevel = "Information"
+
+    ;# {ResourceAttributes} {Enabled:true} {Additional resource attributes} {} ""
+    ;; Semicolon-separated key=value pairs for resource attributes
+    ;; Example: "environment=production;region=us-west-2"
+    ; ResourceAttributes = ""

@@ -121,6 +121,17 @@ namespace OpenSim.Server
 
             WebUtil.SetupHTTPClients(m_NoVerifyCertChain, m_NoVerifyCertHostname, null, 32);
 
+            // Initialize OpenTelemetry
+            try
+            {
+                OpenSim.Framework.Monitoring.OpenTelemetryManager.Initialize(m_Server.Config);
+                m_log.Info("[SERVER]: OpenTelemetry initialized");
+            }
+            catch (Exception e)
+            {
+                m_log.Warn($"[SERVER]: OpenTelemetry initialization failed: {e.Message}");
+            }
+
             string connList = serverConfig.GetString("ServiceConnectors", string.Empty);
 
             registryLocation = serverConfig.GetString("RegistryLocation",".");

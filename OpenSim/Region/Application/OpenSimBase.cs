@@ -276,6 +276,17 @@ namespace OpenSim
 
             base.StartupSpecific();
 
+            // Initialize OpenTelemetry
+            try
+            {
+                OpenTelemetryManager.Initialize(ConfigSource.Source);
+                m_log.Info("[STARTUP]: OpenTelemetry initialized");
+            }
+            catch (Exception e)
+            {
+                m_log.Warn($"[STARTUP]: OpenTelemetry initialization failed: {e.Message}");
+            }
+
             if (EnableInitialPluginLoad)
                 LoadPlugins();
 

@@ -153,6 +153,13 @@
       <Reference name="OpenMetaverse.StructuredData" path ="../../../bin"/>
       <Reference name="OpenSim.Framework" path ="../../../bin"/>
       <Reference name="ThreadedClasses"/>
+
+      <!-- OpenTelemetry packages for metrics and logs -->
+      <PackageReference name="OpenTelemetry" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry.Api" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry.Exporter.OpenTelemetryProtocol" version="1.10.0"/>
+      <PackageReference name="Microsoft.Extensions.Logging" version="9.0.0"/>
+      <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="9.0.0"/>
     </Project>
 
     <Project name="OpenSim.Framework.Servers.HttpServer" path="OpenSim/Framework/Servers/HttpServer" type="Library">
@@ -198,6 +205,11 @@
       <Reference name="OpenSim.Framework.Servers.HttpServer" path ="../../../bin"/>
       <Reference name="OpenMetaverseTypes" path ="../../../bin"/>
 	  <Reference name="ThreadedClasses"/>
+
+      <!-- OpenTelemetry packages for log4net appender -->
+      <PackageReference name="Microsoft.Extensions.Logging" version="9.0.0"/>
+      <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="9.0.0"/>
+      <PackageReference name="OpenTelemetry.Api" version="1.10.0"/>
 
     </Project>
 
@@ -1102,6 +1114,10 @@
       <Reference name="Mono.Addins"/>
       <Reference name="Mono.Addins.Setup"/>
 
+      <!-- OpenTelemetry packages for initialization -->
+      <PackageReference name="OpenTelemetry" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.10.0"/>
+
       <Files>
         <Match pattern="*.cs" recurse="false">
          <Exclude name="obj" pattern="obj"/>
@@ -1708,6 +1724,10 @@
       <Reference name="XMLRPC"/>
       <Reference name="Nini"/>
       <Reference name="log4net"/>
+
+      <!-- OpenTelemetry packages for initialization -->
+      <PackageReference name="OpenTelemetry" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.10.0"/>
 
     </Project>
 
