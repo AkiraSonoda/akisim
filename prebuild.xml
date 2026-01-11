@@ -1117,6 +1117,7 @@
       <!-- OpenTelemetry packages for initialization -->
       <PackageReference name="OpenTelemetry" version="1.14.0"/>
       <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.14.0"/>
+      <PackageReference name="OpenTelemetry.Instrumentation.AspNetCore" version="1.14.0"/>
 
       <Files>
         <Match pattern="*.cs" recurse="false">
@@ -1728,6 +1729,7 @@
       <!-- OpenTelemetry packages for initialization -->
       <PackageReference name="OpenTelemetry" version="1.14.0"/>
       <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.14.0"/>
+      <PackageReference name="OpenTelemetry.Instrumentation.AspNetCore" version="1.14.0"/>
 
     </Project>
 
