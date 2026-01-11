@@ -155,9 +155,9 @@
       <Reference name="ThreadedClasses"/>
 
       <!-- OpenTelemetry packages for metrics and logs -->
-      <PackageReference name="OpenTelemetry" version="1.10.0"/>
-      <PackageReference name="OpenTelemetry.Api" version="1.10.0"/>
-      <PackageReference name="OpenTelemetry.Exporter.OpenTelemetryProtocol" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry" version="1.14.0"/>
+      <PackageReference name="OpenTelemetry.Api" version="1.14.0"/>
+      <PackageReference name="OpenTelemetry.Exporter.OpenTelemetryProtocol" version="1.14.0"/>
       <PackageReference name="Microsoft.Extensions.Logging" version="9.0.0"/>
       <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="9.0.0"/>
     </Project>
@@ -209,7 +209,7 @@
       <!-- OpenTelemetry packages for log4net appender -->
       <PackageReference name="Microsoft.Extensions.Logging" version="9.0.0"/>
       <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="9.0.0"/>
-      <PackageReference name="OpenTelemetry.Api" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry.Api" version="1.14.0"/>
 
     </Project>
 
@@ -1115,8 +1115,8 @@
       <Reference name="Mono.Addins.Setup"/>
 
       <!-- OpenTelemetry packages for initialization -->
-      <PackageReference name="OpenTelemetry" version="1.10.0"/>
-      <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry" version="1.14.0"/>
+      <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.14.0"/>
 
       <Files>
         <Match pattern="*.cs" recurse="false">
@@ -1726,8 +1726,8 @@
       <Reference name="log4net"/>
 
       <!-- OpenTelemetry packages for initialization -->
-      <PackageReference name="OpenTelemetry" version="1.10.0"/>
-      <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.10.0"/>
+      <PackageReference name="OpenTelemetry" version="1.14.0"/>
+      <PackageReference name="OpenTelemetry.Extensions.Hosting" version="1.14.0"/>
 
     </Project>
 
