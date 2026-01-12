@@ -158,8 +158,8 @@
       <PackageReference name="OpenTelemetry" version="1.14.0"/>
       <PackageReference name="OpenTelemetry.Api" version="1.14.0"/>
       <PackageReference name="OpenTelemetry.Exporter.OpenTelemetryProtocol" version="1.14.0"/>
-      <PackageReference name="Microsoft.Extensions.Logging" version="9.0.0"/>
-      <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="9.0.0"/>
+      <PackageReference name="Microsoft.Extensions.Logging" version="8.0.1"/>
+      <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="8.0.2"/>
     </Project>
 
     <Project name="OpenSim.Framework.Servers.HttpServer" path="OpenSim/Framework/Servers/HttpServer" type="Library">
@@ -207,8 +207,8 @@
 	  <Reference name="ThreadedClasses"/>
 
       <!-- OpenTelemetry packages for log4net appender -->
-      <PackageReference name="Microsoft.Extensions.Logging" version="9.0.0"/>
-      <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="9.0.0"/>
+      <PackageReference name="Microsoft.Extensions.Logging" version="8.0.1"/>
+      <PackageReference name="Microsoft.Extensions.Logging.Abstractions" version="8.0.2"/>
       <PackageReference name="OpenTelemetry.Api" version="1.14.0"/>
 
     </Project>

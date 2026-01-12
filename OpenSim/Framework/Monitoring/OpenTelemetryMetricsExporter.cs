@@ -28,8 +28,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using log4net;
 
 namespace OpenSim.Framework.Monitoring
 {
@@ -38,6 +40,7 @@ namespace OpenSim.Framework.Monitoring
     /// </summary>
     public class OpenTelemetryMetricsExporter
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private Meter m_meter;
         private Dictionary<string, ObservableGauge<double>> m_gauges;
         private static readonly Regex s_invalidCharsRegex = new Regex("[^a-zA-Z0-9_.]", RegexOptions.Compiled);
@@ -53,11 +56,21 @@ namespace OpenSim.Framework.Monitoring
         public void RegisterStatsManagerMetrics()
         {
             if (!OpenTelemetryManager.IsInitialized || !OpenTelemetryManager.Instance.MetricsEnabled)
+            {
+                m_log.Info("[OpenTelemetry] Metrics registration skipped - OpenTelemetry not initialized or metrics disabled");
                 return;
+            }
 
             m_meter = OpenTelemetryManager.Instance.GetMeter();
             if (m_meter == null)
+            {
+                m_log.Warn("[OpenTelemetry] Failed to get Meter instance");
                 return;
+            }
+
+            m_log.Info("[OpenTelemetry] Starting StatsManager metrics registration...");
+            int registeredCount = 0;
+            int failedCount = 0;
 
             lock (StatsManager.RegisteredStats)
             {
@@ -75,15 +88,21 @@ namespace OpenSim.Framework.Monitoring
                             try
                             {
                                 RegisterStat(category, container, stat);
+                                registeredCount++;
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Failed to register stat {category}.{container}.{stat.ShortName}: {ex.Message}");
+                                failedCount++;
+                                m_log.WarnFormat("[OpenTelemetry] Failed to register stat {0}.{1}.{2}: {3}",
+                                    category, container, stat.ShortName, ex.Message);
                             }
                         }
                     }
                 }
             }
+
+            m_log.InfoFormat("[OpenTelemetry] Metrics registration complete: {0} registered, {1} failed",
+                registeredCount, failedCount);
         }
 
         /// <summary>

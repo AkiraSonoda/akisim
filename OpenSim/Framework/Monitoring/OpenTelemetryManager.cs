@@ -27,7 +27,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.IO;
+using System.Reflection;
+using log4net;
 using Microsoft.Extensions.Logging;
 using Nini.Config;
 using OpenTelemetry;
@@ -44,12 +48,14 @@ namespace OpenSim.Framework.Monitoring
     /// </summary>
     public class OpenTelemetryManager : IDisposable
     {
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static OpenTelemetryManager s_instance;
         private static readonly object s_lock = new object();
 
         private MeterProvider m_meterProvider;
         private ILoggerFactory m_loggerFactory;
         private Meter m_meter;
+        private long m_heartbeatValue;
 
         private bool m_enabled;
         private bool m_metricsEnabled;
@@ -59,6 +65,7 @@ namespace OpenSim.Framework.Monitoring
         private OtlpExportProtocol m_protocol;
         private int m_metricsExportIntervalMs;
         private LogLevel m_minimumLogLevel;
+        private string m_authorizationToken;
         private Dictionary<string, string> m_resourceAttributes;
         private bool m_disposed;
 
@@ -117,6 +124,7 @@ namespace OpenSim.Framework.Monitoring
 
                 if (s_instance.m_enabled)
                 {
+                    s_instance.EnableSelfDiagnostics();
                     s_instance.InitializeMeterProvider();
                     s_instance.InitializeLoggerProvider();
                 }
@@ -151,25 +159,41 @@ namespace OpenSim.Framework.Monitoring
             IConfig otelConfig = config.Configs["OpenTelemetry"];
             if (otelConfig == null)
             {
+                m_log.Info("[OpenTelemetry] No [OpenTelemetry] configuration section found. Telemetry disabled.");
                 m_enabled = false;
                 return;
             }
 
             m_enabled = otelConfig.GetBoolean("Enabled", false);
             if (!m_enabled)
+            {
+                m_log.Info("[OpenTelemetry] OpenTelemetry is disabled in configuration.");
                 return;
+            }
 
             m_serviceName = otelConfig.GetString("ServiceName", "Akisim");
             m_otlpEndpoint = otelConfig.GetString("OtlpEndpoint", "http://localhost:4317");
+            m_authorizationToken = otelConfig.GetString("AuthorizationToken", "");
             m_metricsEnabled = otelConfig.GetBoolean("MetricsEnabled", true);
             m_logsEnabled = otelConfig.GetBoolean("LogsEnabled", true);
             m_metricsExportIntervalMs = otelConfig.GetInt("MetricsExportIntervalMs", 60000);
+
+            // Debug output
+            m_log.InfoFormat("[OpenTelemetry] Configuration loaded:");
+            m_log.InfoFormat("[OpenTelemetry]   ServiceName: {0}", m_serviceName);
+            m_log.InfoFormat("[OpenTelemetry]   OtlpEndpoint: {0}", m_otlpEndpoint);
+            m_log.InfoFormat("[OpenTelemetry]   AuthorizationToken: {0}",
+                string.IsNullOrWhiteSpace(m_authorizationToken) ? "<not set>" : "<configured>");
+            m_log.InfoFormat("[OpenTelemetry]   MetricsEnabled: {0}", m_metricsEnabled);
+            m_log.InfoFormat("[OpenTelemetry]   LogsEnabled: {0}", m_logsEnabled);
+            m_log.InfoFormat("[OpenTelemetry]   MetricsExportIntervalMs: {0}", m_metricsExportIntervalMs);
 
             // Parse OTLP protocol
             string protocolStr = otelConfig.GetString("OtlpProtocol", "Grpc");
             m_protocol = protocolStr.Equals("HttpProtobuf", StringComparison.OrdinalIgnoreCase)
                 ? OtlpExportProtocol.HttpProtobuf
                 : OtlpExportProtocol.Grpc;
+            m_log.InfoFormat("[OpenTelemetry]   OtlpProtocol: {0}", m_protocol);
 
             // Parse log level
             string logLevelStr = otelConfig.GetString("LogLevel", "Information");
@@ -177,6 +201,7 @@ namespace OpenSim.Framework.Monitoring
             {
                 m_minimumLogLevel = LogLevel.Information;
             }
+            m_log.InfoFormat("[OpenTelemetry]   LogLevel: {0}", m_minimumLogLevel);
 
             // Parse resource attributes
             m_resourceAttributes = new Dictionary<string, string>();
@@ -194,36 +219,103 @@ namespace OpenSim.Framework.Monitoring
             }
         }
 
+        private void EnableSelfDiagnostics()
+        {
+            try
+            {
+                // Enable .NET event source diagnostics for OpenTelemetry
+                // This will output to the console/logs
+                System.Diagnostics.Tracing.EventSource.SetCurrentThreadActivityId(Guid.NewGuid());
+
+                m_log.Info("[OpenTelemetry] Self-diagnostics mode enabled");
+            }
+            catch (Exception ex)
+            {
+                m_log.WarnFormat("[OpenTelemetry] Failed to enable self-diagnostics: {0}", ex.Message);
+            }
+        }
+
         private void InitializeMeterProvider()
         {
             if (!m_metricsEnabled)
+            {
+                m_log.Info("[OpenTelemetry] Metrics export is disabled, skipping MeterProvider initialization.");
                 return;
+            }
 
             try
             {
+                m_log.Info("[OpenTelemetry] Initializing MeterProvider...");
                 var builder = Sdk.CreateMeterProviderBuilder()
                     .SetResourceBuilder(CreateResourceBuilder())
                     .AddMeter(m_serviceName);
 
-                builder.AddOtlpExporter(options =>
-                {
-                    options.Endpoint = new Uri(m_otlpEndpoint);
-                    options.Protocol = m_protocol;
-                });
-
                 // Set metric reader with export interval
                 builder.AddOtlpExporter((exporterOptions, readerOptions) =>
                 {
-                    exporterOptions.Endpoint = new Uri(m_otlpEndpoint);
+                    // For HttpProtobuf, need to specify the full metrics endpoint
+                    Uri metricsEndpoint;
+                    if (m_protocol == OtlpExportProtocol.HttpProtobuf)
+                    {
+                        // Ensure the endpoint ends with /v1/metrics for HTTP
+                        string baseEndpoint = m_otlpEndpoint.TrimEnd('/');
+                        if (!baseEndpoint.EndsWith("/v1/metrics"))
+                        {
+                            if (baseEndpoint.EndsWith("/otlp"))
+                            {
+                                metricsEndpoint = new Uri(baseEndpoint + "/v1/metrics");
+                            }
+                            else
+                            {
+                                metricsEndpoint = new Uri(baseEndpoint + "/v1/metrics");
+                            }
+                        }
+                        else
+                        {
+                            metricsEndpoint = new Uri(baseEndpoint);
+                        }
+                        m_log.InfoFormat("[OpenTelemetry] Metrics endpoint adjusted for HTTP: {0}", metricsEndpoint);
+                    }
+                    else
+                    {
+                        metricsEndpoint = new Uri(m_otlpEndpoint);
+                        m_log.InfoFormat("[OpenTelemetry] Using gRPC endpoint: {0}", metricsEndpoint);
+                    }
+
+                    exporterOptions.Endpoint = metricsEndpoint;
                     exporterOptions.Protocol = m_protocol;
+
+                    // Add authorization header if token is configured
+                    if (!string.IsNullOrWhiteSpace(m_authorizationToken))
+                    {
+                        exporterOptions.Headers = $"Authorization=Basic {m_authorizationToken}";
+                        m_log.Info("[OpenTelemetry] Authorization header configured for metrics export.");
+                    }
+                    else
+                    {
+                        m_log.Warn("[OpenTelemetry] No authorization token configured - exports may fail!");
+                    }
+
                     readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = m_metricsExportIntervalMs;
                 });
 
                 m_meterProvider = builder.Build();
                 m_meter = new Meter(m_serviceName, "1.0.0");
+
+                // Create a test heartbeat gauge to verify exports are working
+                m_heartbeatValue = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                m_meter.CreateObservableGauge("otel_heartbeat", () => {
+                    m_heartbeatValue++;
+                    return m_heartbeatValue;
+                }, "seconds", "OpenTelemetry heartbeat for testing exports");
+
+                m_log.InfoFormat("[OpenTelemetry] MeterProvider initialized successfully. Export interval: {0}ms", m_metricsExportIntervalMs);
+                m_log.InfoFormat("[OpenTelemetry] First metric export will occur in {0} seconds", m_metricsExportIntervalMs / 1000);
+                m_log.Info("[OpenTelemetry] Heartbeat gauge created for export testing");
             }
             catch (Exception ex)
             {
+                m_log.Error($"[OpenTelemetry] Failed to initialize MeterProvider: {ex.Message}", ex);
                 throw new Exception($"Failed to initialize OpenTelemetry MeterProvider: {ex.Message}", ex);
             }
         }
@@ -231,10 +323,14 @@ namespace OpenSim.Framework.Monitoring
         private void InitializeLoggerProvider()
         {
             if (!m_logsEnabled)
+            {
+                m_log.Info("[OpenTelemetry] Logs export is disabled, skipping LoggerProvider initialization.");
                 return;
+            }
 
             try
             {
+                m_log.Info("[OpenTelemetry] Initializing LoggerProvider...");
                 m_loggerFactory = LoggerFactory.Create(builder =>
                 {
                     builder.AddOpenTelemetry(logging =>
@@ -242,17 +338,54 @@ namespace OpenSim.Framework.Monitoring
                         logging.SetResourceBuilder(CreateResourceBuilder());
                         logging.AddOtlpExporter(options =>
                         {
-                            options.Endpoint = new Uri(m_otlpEndpoint);
+                            // For HttpProtobuf, need to specify the full logs endpoint
+                            Uri logsEndpoint;
+                            if (m_protocol == OtlpExportProtocol.HttpProtobuf)
+                            {
+                                // Ensure the endpoint ends with /v1/logs for HTTP
+                                string baseEndpoint = m_otlpEndpoint.TrimEnd('/');
+                                if (!baseEndpoint.EndsWith("/v1/logs"))
+                                {
+                                    if (baseEndpoint.EndsWith("/otlp"))
+                                    {
+                                        logsEndpoint = new Uri(baseEndpoint + "/v1/logs");
+                                    }
+                                    else
+                                    {
+                                        logsEndpoint = new Uri(baseEndpoint + "/v1/logs");
+                                    }
+                                }
+                                else
+                                {
+                                    logsEndpoint = new Uri(baseEndpoint);
+                                }
+                                m_log.InfoFormat("[OpenTelemetry] Logs endpoint adjusted for HTTP: {0}", logsEndpoint);
+                            }
+                            else
+                            {
+                                logsEndpoint = new Uri(m_otlpEndpoint);
+                            }
+
+                            options.Endpoint = logsEndpoint;
                             options.Protocol = m_protocol;
+
+                            // Add authorization header if token is configured
+                            if (!string.IsNullOrWhiteSpace(m_authorizationToken))
+                            {
+                                options.Headers = $"Authorization=Basic {m_authorizationToken}";
+                                m_log.Info("[OpenTelemetry] Authorization header configured for logs export.");
+                            }
                         });
                         logging.IncludeFormattedMessage = true;
                         logging.IncludeScopes = true;
                     });
                     builder.SetMinimumLevel(m_minimumLogLevel);
                 });
+                m_log.Info("[OpenTelemetry] LoggerProvider initialized successfully.");
             }
             catch (Exception ex)
             {
+                m_log.Error($"[OpenTelemetry] Failed to initialize LoggerProvider: {ex.Message}", ex);
                 throw new Exception($"Failed to initialize OpenTelemetry LoggerProvider: {ex.Message}", ex);
             }
         }
@@ -283,19 +416,35 @@ namespace OpenSim.Framework.Monitoring
 
             try
             {
+                m_log.Info("[OpenTelemetry] Shutting down and flushing telemetry...");
+
                 // Dispose meter provider (flushes metrics)
-                m_meterProvider?.Dispose();
+                if (m_meterProvider != null)
+                {
+                    m_meterProvider.Dispose();
+                    m_log.Debug("[OpenTelemetry] MeterProvider disposed.");
+                }
 
                 // Dispose logger factory (flushes logs)
-                m_loggerFactory?.Dispose();
+                if (m_loggerFactory != null)
+                {
+                    m_loggerFactory.Dispose();
+                    m_log.Debug("[OpenTelemetry] LoggerFactory disposed.");
+                }
 
                 // Dispose meter
-                m_meter?.Dispose();
+                if (m_meter != null)
+                {
+                    m_meter.Dispose();
+                    m_log.Debug("[OpenTelemetry] Meter disposed.");
+                }
+
+                m_log.Info("[OpenTelemetry] Shutdown complete.");
             }
             catch (Exception ex)
             {
                 // Log disposal errors but don't throw
-                Console.WriteLine($"Error disposing OpenTelemetryManager: {ex.Message}");
+                m_log.Error($"[OpenTelemetry] Error disposing OpenTelemetryManager: {ex.Message}", ex);
             }
         }
     }

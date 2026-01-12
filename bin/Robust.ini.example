@@ -656,6 +656,12 @@
     ;; Protocol to use for OTLP export (Grpc or HttpProtobuf)
     ; OtlpProtocol = "Grpc"
 
+    ;# {AuthorizationToken} {Enabled:true} {Authorization token for OTLP endpoint} {} ""
+    ;; Authorization token to send with OTLP requests (e.g., for Grafana Cloud)
+    ;; Will be sent as "Authorization: Basic <token>" header
+    ;; Leave empty if no authentication is required
+    ; AuthorizationToken = ""
+
     ;# {MetricsEnabled} {Enabled:true} {Export metrics?} {true false} true
     ;; Enable metrics export to OTLP endpoint
     ; MetricsEnabled = true

@@ -126,6 +126,22 @@ namespace OpenSim.Server
             {
                 OpenSim.Framework.Monitoring.OpenTelemetryManager.Initialize(m_Server.Config);
                 m_log.Info("[SERVER]: OpenTelemetry initialized");
+
+                // Register metrics exporter now that OpenTelemetry is initialized
+                if (OpenSim.Framework.Monitoring.OpenTelemetryManager.IsInitialized &&
+                    OpenSim.Framework.Monitoring.OpenTelemetryManager.Instance.MetricsEnabled)
+                {
+                    try
+                    {
+                        var metricsExporter = new OpenSim.Framework.Monitoring.OpenTelemetryMetricsExporter();
+                        metricsExporter.RegisterStatsManagerMetrics();
+                        m_log.Info("[SERVER]: OpenTelemetry metrics exporter registered");
+                    }
+                    catch (Exception ex)
+                    {
+                        m_log.Warn($"[SERVER]: Failed to register OpenTelemetry metrics exporter: {ex.Message}");
+                    }
+                }
             }
             catch (Exception e)
             {
