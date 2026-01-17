@@ -19,14 +19,13 @@ optionally also
   
 
 ### Building
- To create the project files, run   
-
-  `runprebuild.bat`
-
-run 
+Run:
   `compile.bat`
 
-Or load the generated OpenSim.sln into Visual Studio and build the solution.
+Or load OpenSim.sln into Visual Studio and build the solution.
+
+Or use Make:
+  `make build`
 
 Configure, see below
 
@@ -46,13 +45,17 @@ Now just run `OpenSim.exe` from the `bin` folder, and set up the region.
  `apt-get update && apt-get install -y apt-utils libgdiplus libc6-dev`
 
 ### Building
-  To create the project files, run:
-
-  `./runprebuild.sh`
-
-  then run
+Run:
 
  `dotnet build --configuration Release OpenSim.sln`
+
+Or use the compile script:
+
+ `./compile.sh`
+
+Or use Make:
+
+ `make build`
   
 
 Configure. See below

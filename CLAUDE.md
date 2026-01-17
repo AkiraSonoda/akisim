@@ -14,13 +14,12 @@ This is **Akisim**, a fork/customization of OpenSimulator - an open-source virtu
 
 ### Building from Source
 ```bash
-# Generate project files
-./runprebuild.sh
-
 # Build the solution
 ./compile.sh
 # OR
 dotnet build -c Release Akisim.sln
+# OR
+make build
 
 # Clean build artifacts
 make clean
@@ -31,15 +30,11 @@ make deploy
 
 ### Makefile Targets
 - `make build` - Build in Release configuration (default)
-- `make clean` - Remove all build artifacts and project files
+- `make clean` - Remove all build artifacts
 - `make rebuild` - Clean then build
 - `make deploy` - Build and deploy to configured destination
-- `make package` - Create versioned package
-
-### Project Generation
-The project uses Prebuild system (prebuild.xml) to generate Visual Studio/.NET project files:
-- `./runprebuild.sh` - Generate .csproj files for current platform
-- `./runprebuild.sh clean` - Remove generated project files
+- `make package` - Create versioned source package
+- `make package-binary` - Create versioned binary distribution package
 
 ## Architecture Overview
 
@@ -84,7 +79,6 @@ Located in `ThirdParty/`:
 ### Add-on Modules
 - **addon-modules/** - External/community modules
   - `akkimoney_module/` - Currency system module with transaction handling
-  - Module integration via prebuild.xml configuration
 
 ### Database Support
 Multi-database support via `OpenSim.Data.*`:
@@ -112,28 +106,29 @@ Multi-database support via `OpenSim.Data.*`:
 - Test configuration via `bin/OpenSim.ini.example` and `OpenSim/Data/Tests/Resources/TestDataConnections.ini`
 
 ### Script Execution Commands
-- `./runprebuild.sh` - Generate project files (Linux/Mac)
-- `./runprebuild.bat` - Generate project files (Windows)
 - `./compile.sh` - Build solution (Linux/Mac)
 - `./deploy.sh` - Deploy built binaries to configured location
 - `./package.sh` - Create versioned package archive
 
 ## Development Workflow
 
-1. **Project Generation**: Use `./runprebuild.sh` to generate project files after changes to prebuild.xml
-2. **Build**: Use `./compile.sh`, `make build`, or `dotnet build -c Release Akisim.sln`
-3. **Testing**: Run `dotnet test` to execute comprehensive test suite
-4. **Configuration**: Test configurations in `bin/` directory with `.ini.example` files
-5. **Deployment**: Use `make deploy` for deployment to configured environments
+1. **Build**: Use `./compile.sh`, `make build`, or `dotnet build -c Release Akisim.sln`
+2. **Testing**: Run `dotnet test` to execute comprehensive test suite
+3. **Configuration**: Test configurations in `bin/` directory with `.ini.example` files
+4. **Deployment**: Use `make deploy` for deployment to configured environments
+5. **Packaging**: Use `make package` for source distribution or `make package-binary` for binary distribution
 6. **Development Tools**:
-   - `make clean` - Remove all build artifacts and generated project files  
+   - `make clean` - Remove all build artifacts
    - `make rebuild` - Clean then build from scratch
-   - `make package` - Create versioned distribution packages
+   - `make deploy` - Deploy to configured destination
+   - `make package` - Create source distribution packages
+   - `make package-binary` - Create binary distribution packages
 
 ### Important Development Notes
-- The build system uses **Prebuild** to generate platform-specific project files
+- The project uses modern **.NET SDK-style project files** (.csproj)
 - All output goes to common `bin/` directory for easy testing
 - Configuration is highly modular via `config-include/` system
 - Physics engines are pluggable (BulletS, ubOde, BasicPhysics, POS)
 - Script engines support both LSL (Linden Scripting Language) and YEngine
 - Multi-database support requires appropriate connection string configuration
+- OpenTelemetry instrumentation is integrated for metrics and logs

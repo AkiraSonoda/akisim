@@ -36,6 +36,7 @@ using Microsoft.Extensions.Logging;
 using Nini.Config;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Instrumentation.Runtime;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -248,7 +249,8 @@ namespace OpenSim.Framework.Monitoring
                 m_log.Info("[OpenTelemetry] Initializing MeterProvider...");
                 var builder = Sdk.CreateMeterProviderBuilder()
                     .SetResourceBuilder(CreateResourceBuilder())
-                    .AddMeter(m_serviceName);
+                    .AddMeter(m_serviceName)
+                    .AddRuntimeInstrumentation();
 
                 // Set metric reader with export interval
                 builder.AddOtlpExporter((exporterOptions, readerOptions) =>
@@ -311,6 +313,7 @@ namespace OpenSim.Framework.Monitoring
 
                 m_log.InfoFormat("[OpenTelemetry] MeterProvider initialized successfully. Export interval: {0}ms", m_metricsExportIntervalMs);
                 m_log.InfoFormat("[OpenTelemetry] First metric export will occur in {0} seconds", m_metricsExportIntervalMs / 1000);
+                m_log.Info("[OpenTelemetry] Runtime instrumentation enabled for .NET metrics");
                 m_log.Info("[OpenTelemetry] Heartbeat gauge created for export testing");
             }
             catch (Exception ex)
