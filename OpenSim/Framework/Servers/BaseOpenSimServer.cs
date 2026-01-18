@@ -108,6 +108,22 @@ namespace OpenSim.Framework.Servers
         protected virtual void StartupSpecific()
         {
             StatsManager.SimExtraStats = new SimExtraStatsCollector();
+
+            // Register OpenTelemetry metrics exporter
+            if (Monitoring.OpenTelemetryManager.IsInitialized && Monitoring.OpenTelemetryManager.Instance.MetricsEnabled)
+            {
+                try
+                {
+                    var metricsExporter = new Monitoring.OpenTelemetryMetricsExporter();
+                    metricsExporter.RegisterStatsManagerMetrics();
+                    m_log.Info("[STARTUP]: OpenTelemetry metrics exporter registered");
+                }
+                catch (Exception e)
+                {
+                    m_log.Warn($"[STARTUP]: Failed to register OpenTelemetry metrics exporter: {e.Message}");
+                }
+            }
+
             RegisterCommonCommands();
             RegisterCommonComponents(Config);
 
@@ -133,7 +149,21 @@ namespace OpenSim.Framework.Servers
         {
             Watchdog.Enabled = false;
             base.ShutdownSpecific();
-            
+
+            // Flush OpenTelemetry data
+            if (Monitoring.OpenTelemetryManager.IsInitialized)
+            {
+                m_log.Info("[SHUTDOWN]: Flushing OpenTelemetry data...");
+                try
+                {
+                    Monitoring.OpenTelemetryManager.Instance.Dispose();
+                }
+                catch (Exception e)
+                {
+                    m_log.Warn($"[SHUTDOWN]: Error disposing OpenTelemetry: {e.Message}");
+                }
+            }
+
             MainServer.Stop();
 
             Thread.Sleep(500);

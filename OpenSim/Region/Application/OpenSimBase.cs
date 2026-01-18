@@ -276,6 +276,32 @@ namespace OpenSim
 
             base.StartupSpecific();
 
+            // Initialize OpenTelemetry
+            try
+            {
+                OpenTelemetryManager.Initialize(ConfigSource.Source);
+                m_log.Info("[STARTUP]: OpenTelemetry initialized");
+
+                // Register metrics exporter now that OpenTelemetry is initialized
+                if (OpenTelemetryManager.IsInitialized && OpenTelemetryManager.Instance.MetricsEnabled)
+                {
+                    try
+                    {
+                        var metricsExporter = new OpenTelemetryMetricsExporter();
+                        metricsExporter.RegisterStatsManagerMetrics();
+                        m_log.Info("[STARTUP]: OpenTelemetry metrics exporter registered");
+                    }
+                    catch (Exception ex)
+                    {
+                        m_log.Warn($"[STARTUP]: Failed to register OpenTelemetry metrics exporter: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.Warn($"[STARTUP]: OpenTelemetry initialization failed: {e.Message}");
+            }
+
             if (EnableInitialPluginLoad)
                 LoadPlugins();
 
