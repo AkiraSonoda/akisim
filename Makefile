@@ -11,7 +11,6 @@ SOURCE_DIR := $(HOME)/src/0.9.3.0_akisim/akisim
 SOURCE_BIN := $(HOME)/src/0.9.3.0_akisim/akisim/bin
 DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/akisim_phpgrid_lin
 SRC_BIN_OPENSIM := $(HOME)/src/0.9.3.0_akisim/akisim/OpenSim/Region/Application/bin/$(CONFIGURATION)/publish
-SRC_BIN_ROBUST := $(HOME)/src/0.9.3.0_akisim/akisim/OpenSim/Server/bin/$(CONFIGURATION)/publish
 DEST_DIR := $(HOME)/opensim/grid/working
 
 # Override with Windows paths if on Windows
@@ -32,9 +31,10 @@ all: build
 # Build the solution
 .PHONY: build
 build:
-	@echo "Publishing in $(CONFIGURATION) configuration..."
-	dotnet publish OpenSim/Region/Application/OpenSim.csproj -c $(CONFIGURATION) --no-self-contained
-	dotnet publish OpenSim/Server/Robust.csproj -c $(CONFIGURATION) --no-self-contained
+	@echo "Building solution in $(CONFIGURATION) configuration..."
+	dotnet build $(SOLUTION) -c $(CONFIGURATION)
+	@echo "Publishing OpenSim in $(CONFIGURATION) configuration..."
+	dotnet publish OpenSim/Region/Application/OpenSim.csproj -c $(CONFIGURATION) --no-self-contained --no-build
 
 # Clean all build artifacts (but keep project files)
 .PHONY: clean
@@ -67,8 +67,6 @@ deploy: build
 	mkdir -p "$(DEST_DIR)/bin"
 	@echo "Copying OpenSim binaries..."
 	cp -r "$(SRC_BIN_OPENSIM)"/* "$(DEST_DIR)/bin/"
-	@echo "Copying Robust binaries..."
-	cp -r "$(SRC_BIN_ROBUST)"/* "$(DEST_DIR)/bin/"
 	@echo "Copying additional files from bin directory..."
 	rsync -av --ignore-existing "$(SOURCE_BIN)/" "$(DEST_DIR)/bin/"
 	@echo "Applying delta overrides..."
@@ -123,8 +121,6 @@ package-binary: build
 	mkdir -p "$$new_dir/bin"; \
 	echo "Copying OpenSim binaries..."; \
 	cp -r "$(SRC_BIN_OPENSIM)"/* "$$new_dir/bin/"; \
-	echo "Copying Robust binaries..."; \
-	cp -r "$(SRC_BIN_ROBUST)"/* "$$new_dir/bin/"; \
 	echo "Copying additional files from bin directory..."; \
 	rsync -av --ignore-existing "$(SOURCE_BIN)/" "$$new_dir/bin/"; \
 	echo "Applying delta overrides..."; \

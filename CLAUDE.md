@@ -46,9 +46,6 @@ make deploy
 - `OpenSim.cs` - Primary application class
 - `OpenSimBase.cs` - Base application functionality
 
-**OpenSim.Server** - Robust server for grid services
-- `ServerMain.cs` - Entry point for grid services (Robust.exe)
-
 **OpenSim.Region.Framework** - Region/simulator framework and interfaces
 
 **OpenSim.Region.CoreModules** - Essential simulator modules (avatar, assets, world, scripting)
@@ -58,18 +55,15 @@ make deploy
 **OpenSim.Data** - Database abstraction layer supporting MySQL, PostgreSQL, SQLite
 
 ### Key Executables
-- **OpenSim.exe** - Region/simulator server
-- **Robust.exe** - Grid services server  
+- **OpenSim** - Region/simulator server (standalone mode)  
 
 ### Configuration System
 - **OpenSim.ini** - Main configuration (copy from OpenSim.ini.example)
 - **config-include/** - Modular configuration files
   - `StandaloneCommon.ini` - Standalone mode configuration
-  - `GridCommon.ini` - Grid mode configuration
 
-### Operating Modes
-- **Standalone** - Single server with embedded services
-- **Grid** - Distributed architecture with separate grid services
+### Operating Mode
+- **Standalone** - Single server with embedded services (all grid services run within the OpenSim process)
 
 ### Third-Party Dependencies
 Located in `ThirdParty/`:

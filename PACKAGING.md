@@ -42,7 +42,7 @@ Creates a ready-to-run binary distribution identical to `make deploy`.
 **Total files:** 913 files, 132 DLLs
 
 **Critical components included:**
-- ✓ OpenSim.dll, Robust.dll (main executables)
+- ✓ OpenSim.dll (main executable)
 - ✓ C5.dll, CSJ2K.dll, DotNetOpenId.dll, Ionic.Zip.dll
 - ✓ LukeSkywalker.IPNetwork.dll
 - ✓ System.Configuration.ConfigurationManager.dll
