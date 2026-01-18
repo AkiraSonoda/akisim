@@ -203,6 +203,8 @@
       <PluginFiles Include="$(MSBuildThisFileDirectory)../OptionalModules/bin/$(Configuration)/OpenSim.Region.OptionalModules.dll" />
       <!-- Currency module from addon-modules -->
       <PluginFiles Include="$(MSBuildThisFileDirectory)../../../addon-modules/akkimoney_module/Modules/bin/$(Configuration)/OpenSim.Modules.Currency.dll" />
+      <!-- AssetLoader -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Framework/AssetLoader/Filesystem/bin/$(Configuration)/OpenSim.Framework.AssetLoader.Filesystem.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
     <Message Text="Copied all plugin DLLs to $(PublishDir)" Importance="high" />
