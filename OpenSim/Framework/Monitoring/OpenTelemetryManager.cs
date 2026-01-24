@@ -56,7 +56,7 @@ namespace OpenSim.Framework.Monitoring
         private MeterProvider m_meterProvider;
         private ILoggerFactory m_loggerFactory;
         private Meter m_meter;
-        private long m_heartbeatValue;
+        private long m_lastExportTimestamp;
 
         private bool m_enabled;
         private bool m_metricsEnabled;
@@ -305,11 +305,14 @@ namespace OpenSim.Framework.Monitoring
                 m_meter = new Meter(m_serviceName, "1.0.0");
 
                 // Create a test heartbeat gauge to verify exports are working
-                m_heartbeatValue = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                m_meter.CreateObservableGauge("otel_heartbeat", () => {
-                    m_heartbeatValue++;
-                    return m_heartbeatValue;
-                }, "seconds", "OpenTelemetry heartbeat for testing exports");
+                // This shows the time since the last export in seconds
+                m_lastExportTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                m_meter.CreateObservableGauge("otel_heartbeat_seconds", () => {
+                    long currentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    long timeSinceLastExport = currentTimestamp - m_lastExportTimestamp;
+                    m_lastExportTimestamp = currentTimestamp; // Update for next export
+                    return timeSinceLastExport;
+                }, "seconds", "Time in seconds since the last OpenTelemetry export");
 
                 m_log.InfoFormat("[OpenTelemetry] MeterProvider initialized successfully. Export interval: {0}ms", m_metricsExportIntervalMs);
                 m_log.InfoFormat("[OpenTelemetry] First metric export will occur in {0} seconds", m_metricsExportIntervalMs / 1000);

@@ -19,9 +19,9 @@ OpenTelemetry is properly initialized and configured to send data to Grafana Clo
    - Exception counters
    - Memory usage
 
-2. **Heartbeat Gauge** (`otel_heartbeat`)
-   - Test metric that increments every export
-   - Useful for verifying exports are working
+2. **Heartbeat Gauge** (`otel_heartbeat_seconds`)
+   - Shows time in seconds since the last export
+   - Useful for monitoring export frequency and verifying exports are working
 
 3. **StatsManager Metrics** (3 registered)
    - OpenSim-specific performance metrics
@@ -34,7 +34,7 @@ OpenTelemetry is properly initialized and configured to send data to Grafana Clo
 
 ### 1. Check Grafana Cloud Dashboard
 Login to your Grafana Cloud account and check:
-- **Metrics Explorer**: Look for `otel_heartbeat` metric
+- **Metrics Explorer**: Look for `otel_heartbeat_seconds` metric
 - **Service Name**: Filter by "Akisim.KoPhp"
 - **Data should appear**: Within 60-120 seconds of OpenSim startup
 
@@ -42,7 +42,7 @@ Login to your Grafana Cloud account and check:
 ```
 Service: Akisim.KoPhp
 Metrics:
-  - otel_heartbeat (gauge, increments each export)
+  - otel_heartbeat_seconds (gauge, shows seconds since last export)
   - process.runtime.dotnet.* (various .NET runtime metrics)
   - opensim.* (StatsManager metrics)
 ```
