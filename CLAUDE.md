@@ -14,15 +14,20 @@ Akisim is a fork of OpenSimulator (OpenSim), a BSD-licensed virtual world server
 
 ### Primary Build Commands
 ```bash
-# Build the solution (uses NUKE build system)
+# Build the solution (uses classic MSBuild/dotnet build)
 make build
 # or directly:
-nuke
+dotnet build Akisim.sln --configuration Release
 
 # Clean build artifacts
 make clean
 # or:
-nuke clean
+dotnet clean Akisim.sln --configuration Release
+
+# Restore NuGet packages
+make restore
+# or:
+dotnet restore Akisim.sln
 
 # Deploy to configured location
 make deploy
@@ -35,7 +40,7 @@ make rebuild
 ```
 
 ### Build Notes
-- The project uses `<GenerateAssemblyInfo>false</GenerateAssemblyInfo>` in `Directory.Build.props` to avoid conflicts between auto-generated and manual assembly attributes
+- The project uses `<GenerateAssemblyInfo>false</GenerateAssemblyInfo>` in `Akisim.targets` to avoid conflicts between auto-generated and manual assembly attributes
 - Build system copies required dependencies from NuGet packages to the bin directory automatically
 - Parallel builds are disabled (`DisableParallel=true`) for build reliability
 - Mono.Addins configuration files use version `0.9.3.1` to match the actual assembly version in `VersionInfo.cs`

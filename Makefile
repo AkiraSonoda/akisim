@@ -29,17 +29,24 @@ all: deploy
 
 # Build the solution
 .PHONY: build
-build: clean
+build: clean restore
 	@echo "Building in $(CONFIGURATION) configuration..."
-	nuke
+	dotnet build $(SOLUTION) --configuration $(CONFIGURATION) --no-restore
 
 # Clean all build artifacts and project files
 .PHONY: clean
 clean:
 	@echo "Cleaning solution..."
-	nuke clean
+	dotnet clean $(SOLUTION) --configuration $(CONFIGURATION)
+	rm -rf bin/
 
 	
+# Restore NuGet packages
+.PHONY: restore
+restore:
+	@echo "Restoring NuGet packages..."
+	dotnet restore $(SOLUTION)
+
 # Rebuild
 .PHONY: rebuild
 rebuild: clean build

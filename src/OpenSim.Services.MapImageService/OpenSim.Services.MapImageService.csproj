@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="log4net" Version="3.0.4" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,14 +25,12 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
-    <Reference Include="System.Drawing.Common" >
-      <HintPath>../../bin/System.Drawing.Common.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.SkiaSharp/OpenSim.Framework.SkiaSharp.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
     <ProjectReference Include="../OpenSim.Services.Base/OpenSim.Services.Base.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />

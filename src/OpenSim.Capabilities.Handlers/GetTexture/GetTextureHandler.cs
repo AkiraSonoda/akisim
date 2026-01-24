@@ -28,8 +28,6 @@
 using System;
 using System.Collections;
 using System.Collections.Specialized;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Reflection;
 using System.IO;
 using System.Web;
@@ -41,8 +39,10 @@ using OpenMetaverse.Imaging;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
+using SkiaSharp;
 using Caps = OpenSim.Framework.Capabilities.Caps;
 
 namespace OpenSim.Capabilities.Handlers
@@ -302,35 +302,42 @@ namespace OpenSim.Capabilities.Handlers
             byte[] data = Array.Empty<byte>();
 
             MemoryStream imgstream = new MemoryStream();
-            Bitmap mTexture = null;
+            SKBitmap mTexture = null;
             ManagedImage managedImage = null;
-            Image image = null;
 
             try
             {
                 // Taking our jpeg2000 data, decoding it, then saving it to a byte array with regular data
 
-                // Decode image to System.Drawing.Image
-                if (OpenJPEG.DecodeToImage(texture.Data, out managedImage, out image) && image != null)
+                // Decode image - OpenJPEG.DecodeToImage populates managedImage
+                // We ignore the System.Drawing.Image parameter and work with ManagedImage directly
+                if (OpenJPEG.DecodeToImage(texture.Data, out managedImage, out var _) && managedImage != null)
                 {
-                    // Save to bitmap
-                    mTexture = new Bitmap(image);
+                    // Create SKBitmap from ManagedImage data
+                    // ManagedImage stores pixel data in RGBA format
+                    var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgba8888);
+                    mTexture = new SKBitmap(info);
 
-                    using(EncoderParameters myEncoderParameters = new EncoderParameters())
+                    // Copy pixel data from managedImage to SKBitmap
+                    IntPtr pixels = mTexture.GetPixels();
+                    if (pixels != IntPtr.Zero && managedImage.Channels != null)
                     {
-                        myEncoderParameters.Param[0] = new EncoderParameter(Encoder.Quality,95L);
-
-                        // Save bitmap to stream
-                        ImageCodecInfo codec = GetEncoderInfo("image/" + format);
-                        if (codec != null)
-                        {
-                            mTexture.Save(imgstream, codec, myEncoderParameters);
-                        // Write the stream to a byte array for output
-                            data = imgstream.ToArray();
-                        }
-                        else
-                            m_log.WarnFormat("No such codec {0}", format);
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            managedImage.Channels,
+                            0,
+                            pixels,
+                            Math.Min(managedImage.Channels.Length, mTexture.ByteCount));
                     }
+
+                    // Determine the SKEncodedImageFormat from the format string
+                    SKEncodedImageFormat encodedFormat = GetSkiaFormat(format);
+                    int quality = 95;
+
+                    // Save to stream
+                    mTexture.Save(imgstream, encodedFormat, quality);
+
+                    // Write the stream to a byte array for output
+                    data = imgstream.ToArray();
                 }
             }
             catch (Exception e)
@@ -344,9 +351,6 @@ namespace OpenSim.Capabilities.Handlers
                 if (mTexture != null)
                     mTexture.Dispose();
 
-                if (image != null)
-                    image.Dispose();
-
                 if(managedImage != null)
                     managedImage.Clear();
                 if (imgstream != null)
@@ -356,20 +360,18 @@ namespace OpenSim.Capabilities.Handlers
             return data;
         }
 
-        // From msdn
-        private static ImageCodecInfo GetEncoderInfo(String mimeType)
+        // Map format string to SKEncodedImageFormat
+        private static SKEncodedImageFormat GetSkiaFormat(string format)
         {
-            // log method and parameter into debug
-            m_log.DebugFormat("GetEncoderInfo called with {0}", mimeType);
-            
-            ImageCodecInfo[] encoders;
-            encoders = ImageCodecInfo.GetImageEncoders();
-            for (int j = 0; j < encoders.Length; ++j)
+            return format.ToLower() switch
             {
-                if (encoders[j].MimeType == mimeType)
-                    return encoders[j];
-            }
-            return null;
+                "jpeg" or "jpg" => SKEncodedImageFormat.Jpeg,
+                "png" => SKEncodedImageFormat.Png,
+                "gif" => SKEncodedImageFormat.Gif,
+                "bmp" => SKEncodedImageFormat.Bmp,
+                "webp" => SKEncodedImageFormat.Webp,
+                _ => SKEncodedImageFormat.Jpeg, // default
+            };
         }
     }
 }

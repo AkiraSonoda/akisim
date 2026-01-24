@@ -30,8 +30,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -56,6 +54,8 @@ using Amib.Threading;
 using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
+using SkiaSharp;
+using OpenSim.Framework.SkiaSharp;
 
 namespace OpenSim.Framework
 {
@@ -4695,24 +4695,9 @@ namespace OpenSim.Framework
         /// <param name="width">New width</param>
         /// <param name="height">New height</param>
         /// <returns>Resized image</returns>
-        public static Bitmap ResizeImageSolid(Image image, int width, int height)
+        public static SKBitmap ResizeImageSolid(SKBitmap image, int width, int height)
         {
-            Bitmap result = new(width, height, PixelFormat.Format24bppRgb);
-
-            using (ImageAttributes atrib = new())
-            using (Graphics graphics = Graphics.FromImage(result))
-            {
-                atrib.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
-                graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-
-                graphics.DrawImage(image, new Rectangle(0, 0, result.Width, result.Height),
-                    0, 0, image.Width, image.Height, GraphicsUnit.Pixel, atrib);
-            }
-
-            return result;
+            return image.ResizeHighQuality(width, height);
         }
 
         public static void SaveAssetToFile(string filename, byte[] data)

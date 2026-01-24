@@ -25,10 +25,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using OpenSim.Region.Framework.Interfaces;
+using SkiaSharp;
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
@@ -36,19 +35,22 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
     {
         public override void SaveFile(string filename, ITerrainChannel map)
         {
-            using(Bitmap colours = CreateGrayscaleBitmapFromMap(map))
-                colours.Save(filename,ImageFormat.Tiff);
+            using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
+            using(var fileStream = File.Create(filename))
+            using(var data = colours.Encode(SKEncodedImageFormat.Tiff, 100))
+                data.SaveTo(fileStream);
         }
 
         /// <summary>
-        /// Exports a stream using a System.Drawing exporter.
+        /// Exports a stream using SkiaSharp.
         /// </summary>
         /// <param name="stream">The target stream</param>
         /// <param name="map">The terrain channel being saved</param>
         public override void SaveStream(Stream stream, ITerrainChannel map)
         {
-            using(Bitmap colours = CreateGrayscaleBitmapFromMap(map))
-                colours.Save(stream,ImageFormat.Tiff);
+            using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
+            using(var data = colours.Encode(SKEncodedImageFormat.Tiff, 100))
+                data.SaveTo(stream);
         }
 
         public override string ToString()

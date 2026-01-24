@@ -25,9 +25,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Drawing;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
+using SkiaSharp;
 
 namespace OpenSim.Region.Framework.Interfaces
 {
@@ -60,6 +60,6 @@ namespace OpenSim.Region.Framework.Interfaces
         /// </summary>
         /// <param name="j2kData"></param>
         /// <returns>decoded image or 'null' of unsuccessful</returns>
-        Image DecodeToImage(byte[] j2kData);
+        SKBitmap DecodeToImage(byte[] j2kData);
     }
 }

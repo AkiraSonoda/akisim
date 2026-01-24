@@ -25,15 +25,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Drawing;
 using Nini.Config;
 using OpenSim.Region.Framework.Scenes;
+using SkiaSharp;
 
 namespace OpenSim.Region.CoreModules.World.LegacyMap
 {
     public interface IMapTileTerrainRenderer
     {
         void Initialise(Scene scene, IConfigSource config);
-        void TerrainToBitmap(Bitmap mapbmp);
+        void TerrainToBitmap(SKBitmap mapbmp);
     }
 }

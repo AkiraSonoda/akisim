@@ -27,16 +27,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-// AKIDO: clean
+using SkiaSharp;
 
 namespace OpenSim.Region.CoreModules.World.LegacyMap
 {
@@ -49,14 +49,14 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
     public struct face
     {
-        public Point[] pts;
+        public SKPoint[] pts;
     }
 
     public struct DrawStruct
     {
         public DrawRoutine dr;
 //        public Rectangle rect;
-        public SolidBrush brush;
+        public SKPaint paint;
         public face[] trns;
     }
 
@@ -72,12 +72,12 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
         #region IMapImageGenerator Members
 
-        public Bitmap CreateMapTile()
+        public SKBitmap CreateMapTile()
         {
             bool drawPrimVolume = true;
             bool textureTerrain = false;
             bool generateMaptiles = true;
-            Bitmap mapbmp;
+            SKBitmap mapbmp;
 
             string[] configSections = new string[] { "Map", "Startup" };
 
@@ -108,8 +108,8 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
                     terrainRenderer.Initialise(m_scene, m_config);
 
-                    mapbmp = new Bitmap((int)m_scene.Heightmap.Width, (int)m_scene.Heightmap.Height,
-                                            System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                    mapbmp = new SKBitmap((int)m_scene.Heightmap.Width, (int)m_scene.Heightmap.Height,
+                                            SKColorType.Rgb888x, SKAlphaType.Opaque);
                     //long t = System.Environment.TickCount;
                     //for (int i = 0; i < 10; ++i) {
                     terrainRenderer.TerrainToBitmap(mapbmp);
@@ -132,7 +132,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
                     try
                     {
-                        mapbmp = new Bitmap(m_scene.RegionInfo.MaptileStaticFile);
+                        mapbmp = SKBitmap.Decode(m_scene.RegionInfo.MaptileStaticFile);
                     }
                     catch (Exception)
                     {
@@ -295,13 +295,13 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 //             }
 //         }
 
-        private Bitmap FetchTexture(UUID id)
+        private SKBitmap FetchTexture(UUID id)
         {
             AssetBase asset = m_scene.AssetService.Get(id.ToString());
 
             if (asset != null)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("Static map image texture {0} found for {1}", 
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("Static map image texture {0} found for {1}",
                     id, m_scene.Name);
             }
             else
@@ -311,12 +311,22 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             }
 
             ManagedImage managedImage;
-            Image image;
 
             try
             {
-                if (OpenJPEG.DecodeToImage(asset.Data, out managedImage, out image))
-                    return new Bitmap(image);
+                if (OpenJPEG.DecodeToImage(asset.Data, out managedImage, out var _) && managedImage != null)
+                {
+                    var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgba8888);
+                    SKBitmap bitmap = new SKBitmap(info);
+                    IntPtr pixels = bitmap.GetPixels();
+                    if (pixels != IntPtr.Zero && managedImage.Channels != null)
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            managedImage.Channels, 0, pixels,
+                            Math.Min(managedImage.Channels.Length, bitmap.ByteCount));
+                    }
+                    return bitmap;
+                }
                 else
                     return null;
             }
@@ -339,7 +349,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
         }
 
-        private Bitmap DrawObjectVolume(Scene whichScene, Bitmap mapbmp)
+        private SKBitmap DrawObjectVolume(Scene whichScene, SKBitmap mapbmp)
         {
             int tc = 0;
             ITerrainChannel hm = whichScene.Heightmap;
@@ -360,7 +370,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                         if (obj is SceneObjectGroup)
                         {
                             SceneObjectGroup mapdot = (SceneObjectGroup)obj;
-                            Color mapdotspot = Color.Gray; // Default color when prim color is white
+                            SKColor mapdotspot = SKColors.Gray; // Default color when prim color is white
                             // Loop over prim in group
                             foreach (SceneObjectPart part in mapdot.Parts)
                             {
@@ -406,7 +416,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                             try
                                             {
                                                 // If the color gets goofy somehow, skip it *shakes fist at Color4
-                                                mapdotspot = Color.FromArgb(colorr, colorg, colorb);
+                                                mapdotspot = new SKColor((byte)colorr, (byte)colorg, (byte)colorb);
                                             }
                                             catch (ArgumentException)
                                             {
@@ -589,14 +599,14 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                         //bool breakYN = false; // If we run into an error drawing, break out of the
                                         // loop so we don't lag to death on error handling
                                         DrawStruct ds = new DrawStruct();
-                                        ds.brush = new SolidBrush(mapdotspot);
+                                        ds.paint = new SKPaint { Color = mapdotspot, Style = SKPaintStyle.Fill };
                                         //ds.rect = new Rectangle(mapdrawstartX, (255 - mapdrawstartY), mapdrawendX - mapdrawstartX, mapdrawendY - mapdrawstartY);
 
                                         ds.trns = new face[FaceA.Length];
 
                                         for (int i = 0; i < FaceA.Length; i++)
                                         {
-                                            Point[] working = new Point[5];
+                                            SKPoint[] working = new SKPoint[5];
                                             working[0] = project(hm, FaceA[i], axPos);
                                             working[1] = project(hm, FaceB[i], axPos);
                                             working[2] = project(hm, FaceD[i], axPos);
@@ -645,7 +655,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                     // Sort prim by Z position
                     Array.Sort(sortedZHeights, sortedlocalIds);
 
-                    using (Graphics g = Graphics.FromImage(mapbmp))
+                    using (SKCanvas canvas = new SKCanvas(mapbmp))
                     {
                         for (int s = 0; s < sortedZHeights.Length; s++)
                         {
@@ -654,9 +664,12 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                 DrawStruct rectDrawStruct = z_sort[sortedlocalIds[s]];
                                 for (int r = 0; r < rectDrawStruct.trns.Length; r++)
                                 {
-                                    g.FillPolygon(rectDrawStruct.brush,rectDrawStruct.trns[r].pts);
+                                    using (var path = new SKPath())
+                                    {
+                                        path.AddPoly(rectDrawStruct.trns[r].pts);
+                                        canvas.DrawPath(path, rectDrawStruct.paint);
+                                    }
                                 }
-                                //g.FillRectangle(rectDrawStruct.brush , rectDrawStruct.rect);
                             }
                         }
                     }
@@ -666,7 +679,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             finally
             {
                 foreach (DrawStruct ds in z_sort.Values)
-                    ds.brush.Dispose();
+                    ds.paint.Dispose();
             }
 
             m_log.Debug("Generating Maptile Step 2: Done in " + (Environment.TickCount - tc) + " ms");
@@ -674,9 +687,9 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             return mapbmp;
         }
 
-        private Point project(ITerrainChannel hm, Vector3 point3d, Vector3 originpos)
+        private SKPoint project(ITerrainChannel hm, Vector3 point3d, Vector3 originpos)
         {
-            Point returnpt = new Point();
+            SKPoint returnpt = new SKPoint();
             //originpos = point3d;
             //int d = (int)(256f / 1.5f);
 
@@ -689,7 +702,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             return returnpt;
         }
 
-        public Bitmap CreateViewImage(Vector3 camPos, Vector3 camDir, float fov, int width, int height, bool useTextures)
+        public SKBitmap CreateViewImage(Vector3 camPos, Vector3 camDir, float fov, int width, int height, bool useTextures)
         {
             return null;
         }

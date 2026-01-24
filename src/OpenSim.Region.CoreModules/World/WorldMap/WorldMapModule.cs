@@ -28,8 +28,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
 using System.Reflection;
@@ -45,9 +43,11 @@ using OpenSim.Framework.Capabilities;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.CoreModules.World.Land;
+using SkiaSharp;
 using Caps=OpenSim.Framework.Capabilities.Caps;
 using OSDArray=OpenMetaverse.StructuredData.OSDArray;
 using OSDMap=OpenMetaverse.StructuredData.OSDMap;
@@ -1213,16 +1213,11 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
             if (myMapImageJPEG.Length == 0)
             {
-                MemoryStream imgstream = null;
-                Bitmap mapTexture = new Bitmap(1, 1);
-                ManagedImage managedImage;
-                Image image = (Image)mapTexture;
+                SKBitmap mapTexture = null;
 
                 try
                 {
                     // Taking our jpeg2000 data, decoding it, then saving it to a byte array with regular jpeg data
-
-                    imgstream = new MemoryStream();
 
                     // non-async because we know we have the asset immediately.
                     AssetBase mapasset = m_scene.AssetService.Get(m_scene.RegionInfo.RegionSettings.TerrainImageID.ToString());
@@ -1232,21 +1227,27 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         return;
                     }
 
-                    // Decode image to System.Drawing.Image
-                    if (OpenJPEG.DecodeToImage(mapasset.Data, out managedImage, out image))
+                    // Decode image to SKBitmap
+                    ManagedImage managedImage;
+                    if (OpenJPEG.DecodeToImage(mapasset.Data, out managedImage, out var _) && managedImage != null)
                     {
-                        // Save to bitmap
-                        mapTexture = new Bitmap(image);
+                        var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgba8888);
+                        mapTexture = new SKBitmap(info);
+                        IntPtr pixels = mapTexture.GetPixels();
+                        if (pixels != IntPtr.Zero && managedImage.Channels != null)
+                        {
+                            System.Runtime.InteropServices.Marshal.Copy(
+                                managedImage.Channels, 0, pixels,
+                                Math.Min(managedImage.Channels.Length, mapTexture.ByteCount));
+                        }
 
-                        EncoderParameters myEncoderParameters = new EncoderParameters();
-                        myEncoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 95L);
-
-                        // Save bitmap to stream
-                        mapTexture.Save(imgstream, GetEncoderInfo("image/jpeg"), myEncoderParameters);
-
-                        // Write the stream to a byte array for output
-                        jpeg = imgstream.ToArray();
-                        myMapImageJPEG = jpeg;
+                        // Save bitmap to stream as JPEG
+                        using (MemoryStream imgstream = new MemoryStream())
+                        {
+                            mapTexture.Save(imgstream, SKEncodedImageFormat.Jpeg, 95);
+                            jpeg = imgstream.ToArray();
+                            myMapImageJPEG = jpeg;
+                        }
                     }
                 }
                 catch (Exception e)
@@ -1285,19 +1286,6 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             //response.RawBuffer = Convert.ToBase64String(jpeg);
             response.ContentType = "image/jpeg";
             response.StatusCode = (int)HttpStatusCode.OK;
-        }
-
-        // From msdn
-        private static ImageCodecInfo GetEncoderInfo(String mimeType)
-        {
-            ImageCodecInfo[] encoders;
-            encoders = ImageCodecInfo.GetImageEncoders();
-            for (int j = 0; j < encoders.Length; ++j)
-            {
-                if (encoders[j].MimeType == mimeType)
-                    return encoders[j];
-            }
-            return null;
         }
 
         /// <summary>
@@ -1346,22 +1334,22 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             int spanX = endX - startX + 2;
             int spanY = endY - startY + 2;
 
-            Bitmap mapTexture = new Bitmap(spanX, spanY);
-            ImageAttributes gatrib = new ImageAttributes();
-            gatrib.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
+            SKBitmap mapTexture = new SKBitmap(spanX, spanY, SKColorType.Rgba8888, SKAlphaType.Premul);
+            SKCanvas canvas = new SKCanvas(mapTexture);
 
-            Graphics g = Graphics.FromImage(mapTexture);           
-            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            using (SKPaint seaPaint = new SKPaint { Color = SKColors.DarkBlue, Style = SKPaintStyle.Fill })
+            {
+                canvas.DrawRect(new SKRect(0, 0, spanX, spanY), seaPaint);
+            }
 
-            SolidBrush sea = new SolidBrush(Color.DarkBlue);
-            g.FillRectangle(sea, 0, 0, spanX, spanY);
-            sea.Dispose();
-
-            Font drawFont = new Font("Arial", 32);
-            SolidBrush drawBrush = new SolidBrush(Color.White);
+            SKFont drawFont = new SKFont(SKTypeface.FromFamilyName("Arial"), 32);
+            SKPaint textPaint = new SKPaint
+            {
+                Color = SKColors.White,
+                Style = SKPaintStyle.Fill,
+                IsAntialias = true,
+                FilterQuality = SKFilterQuality.High
+            };
 
             List<GridRegion> regions = m_scene.GridService.GetRegionRange(m_scene.RegionInfo.ScopeID,
                     startX, startY, endX, endY);
@@ -1373,20 +1361,29 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             string filename = "MAP-" + m_scene.RegionInfo.RegionID.ToString() + ".png";
             try
             {
-                using(Image localMap = Bitmap.FromFile(filename))
+                using(SKBitmap localMap = SKBitmap.Decode(filename))
                 {
-                    int x = regionX - startX;
-                    int y = regionY - startY;
-                    int sx = regionSizeX;
-                    int sy = regionSizeY;
-                    // y origin is top
-                    g.DrawImage(localMap,new Rectangle(x, spanY - y - sy, sx, sy),
-                                0, 0, localMap.Width, localMap.Height, GraphicsUnit.Pixel, gatrib);
-
-                    if(m_exportPrintRegionName)
+                    if (localMap != null)
                     {
-                        SizeF stringSize = g.MeasureString(m_regionName, drawFont);
-                        g.DrawString(m_regionName, drawFont, drawBrush, x + 30, spanY - y - 30 - stringSize.Height);
+                        int x = regionX - startX;
+                        int y = regionY - startY;
+                        int sx = regionSizeX;
+                        int sy = regionSizeY;
+                        // y origin is top
+                        SKRect destRect = new SKRect(x, spanY - y - sy, x + sx, spanY - y);
+                        SKRect srcRect = new SKRect(0, 0, localMap.Width, localMap.Height);
+
+                        using (SKPaint bitmapPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+                        {
+                            canvas.DrawBitmap(localMap, srcRect, destRect, bitmapPaint);
+                        }
+
+                        if(m_exportPrintRegionName)
+                        {
+                            SKRect textBounds = new SKRect();
+                            textPaint.MeasureText(m_regionName, ref textBounds);
+                            canvas.DrawText(m_regionName, x + 30, spanY - y - 30 - textBounds.Height, drawFont, textPaint);
+                        }
                     }
                 }
                 doneLocal = true;
@@ -1396,7 +1393,6 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             if(regions.Count > 0)
             {
                 ManagedImage managedImage = null;
-                Image image = null;
 
                 foreach(GridRegion r in regions)
                 {
@@ -1410,41 +1406,59 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                     if(texAsset == null)
                         continue;
 
-                    if(OpenJPEG.DecodeToImage(texAsset.Data, out managedImage, out image))
+                    if(OpenJPEG.DecodeToImage(texAsset.Data, out managedImage, out var _) && managedImage != null)
                     {
-                        int x = r.RegionLocX - startX;
-                        int y = r.RegionLocY - startY;
-                        int sx = r.RegionSizeX;
-                        int sy = r.RegionSizeY;
-                        // y origin is top
-                        g.DrawImage(image,new Rectangle(x, spanY - y - sy, sx, sy),
-                                0, 0, image.Width, image.Height, GraphicsUnit.Pixel, gatrib);
-
-                        if(m_exportPrintRegionName && r.RegionHandle == m_regionHandle)
+                        var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgba8888);
+                        using (SKBitmap regionBitmap = new SKBitmap(info))
                         {
-                            SizeF stringSize = g.MeasureString(r.RegionName, drawFont);
-                            g.DrawString(r.RegionName, drawFont, drawBrush, x + 30, spanY - y - 30 - stringSize.Height);
+                            IntPtr pixels = regionBitmap.GetPixels();
+                            if (pixels != IntPtr.Zero && managedImage.Channels != null)
+                            {
+                                System.Runtime.InteropServices.Marshal.Copy(
+                                    managedImage.Channels, 0, pixels,
+                                    Math.Min(managedImage.Channels.Length, regionBitmap.ByteCount));
+
+                                int x = r.RegionLocX - startX;
+                                int y = r.RegionLocY - startY;
+                                int sx = r.RegionSizeX;
+                                int sy = r.RegionSizeY;
+                                // y origin is top
+                                SKRect destRect = new SKRect(x, spanY - y - sy, x + sx, spanY - y);
+                                SKRect srcRect = new SKRect(0, 0, regionBitmap.Width, regionBitmap.Height);
+
+                                using (SKPaint bitmapPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+                                {
+                                    canvas.DrawBitmap(regionBitmap, srcRect, destRect, bitmapPaint);
+                                }
+
+                                if(m_exportPrintRegionName && r.RegionHandle == m_regionHandle)
+                                {
+                                    SKRect textBounds = new SKRect();
+                                    textPaint.MeasureText(r.RegionName, ref textBounds);
+                                    canvas.DrawText(r.RegionName, x + 30, spanY - y - 30 - textBounds.Height, drawFont, textPaint);
+                                }
+                            }
                         }
                     }
                 }
-
-                if(image != null)
-                    image.Dispose();
-
             }
 
             if(m_exportPrintScale)
             {
                 String drawString = string.Format("{0}m x {1}m", spanX, spanY);
-                g.DrawString(drawString, drawFont, drawBrush, 30, 30);
+                canvas.DrawText(drawString, 30, 30 + drawFont.Size, drawFont, textPaint);
             }
 
-            drawBrush.Dispose();
+            textPaint.Dispose();
             drawFont.Dispose();
-            gatrib.Dispose();
-            g.Dispose();
+            canvas.Dispose();
 
-            mapTexture.Save(exportPath, ImageFormat.Jpeg);
+            using (var image = SKImage.FromBitmap(mapTexture))
+            using (var data = image.Encode(SKEncodedImageFormat.Jpeg, 95))
+            using (var stream = File.OpenWrite(exportPath))
+            {
+                data.SaveTo(stream);
+            }
             mapTexture.Dispose();
 
             m_log.InfoFormat(
@@ -1586,7 +1600,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             }
             if(m_log.IsDebugEnabled) m_log.DebugFormat("Generating map image for {0}", m_scene.Name);
 
-            using (Bitmap mapbmp = m_mapImageGenerator.CreateMapTile())
+            using (SKBitmap mapbmp = m_mapImageGenerator.CreateMapTile())
             {
                 GenerateMaptile(mapbmp);
 
@@ -1608,7 +1622,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             //    m_mapImageServiceModule.RemoveMapTiles(m_scene);
         }
 
-        private void GenerateMaptile(Bitmap mapbmp)
+        private void GenerateMaptile(SKBitmap mapbmp)
         {
             bool needRegionSave = false;
 
@@ -1649,14 +1663,47 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         if(mb > Constants.RegionSize && mb > 0)
                         {
                             float scale = (float)Constants.RegionSize/(float)mb;
-                            using(Bitmap scaledbmp = Util.ResizeImageSolid(mapbmp, (int)(bx * scale), (int)(by * scale)))
-                                data = OpenJPEG.EncodeFromImage(scaledbmp, true);
+                            using(SKBitmap scaledbmp = Util.ResizeImageSolid(mapbmp, (int)(bx * scale), (int)(by * scale)))
+                            {
+                                // Convert to System.Drawing.Bitmap for OpenJPEG
+                                using (var ms = new MemoryStream())
+                                {
+                                    scaledbmp.Save(ms, SKEncodedImageFormat.Png, 100);
+                                    ms.Position = 0;
+                                    using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
+                                    {
+                                        data = OpenJPEG.EncodeFromImage(sysBitmap, true);
+                                    }
+                                }
+                            }
                         }
                         else
-                            data = OpenJPEG.EncodeFromImage(mapbmp, true);
+                        {
+                            // Convert to System.Drawing.Bitmap for OpenJPEG
+                            using (var ms = new MemoryStream())
+                            {
+                                mapbmp.Save(ms, SKEncodedImageFormat.Png, 100);
+                                ms.Position = 0;
+                                using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
+                                {
+                                    data = OpenJPEG.EncodeFromImage(sysBitmap, true);
+                                }
+                            }
+                        }
                     }
                     else
-                        data = OpenJPEG.EncodeFromImage(mapbmp, true);
+                    {
+                        // Convert to System.Drawing.Bitmap for OpenJPEG
+                        using (var ms = new MemoryStream())
+                        {
+                            mapbmp.Save(ms, SKEncodedImageFormat.Png, 100);
+                            ms.Position = 0;
+                            using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
+                            {
+                                data = OpenJPEG.EncodeFromImage(sysBitmap, true);
+                            }
+                        }
+                    }
 
                     if (data != null && data.Length > 0)
                     {
@@ -1817,29 +1864,32 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             if(m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Region {0} has parcels for sale, generating overlay", m_regionName);
 
-            using (Bitmap overlay = new Bitmap(regionSizeX, regionSizeY))
+            using (SKBitmap overlay = new SKBitmap(regionSizeX, regionSizeY, SKColorType.Rgba8888, SKAlphaType.Premul))
             {
-                Color background = Color.FromArgb(0, 0, 0, 0);
+                SKColor background = new SKColor(0, 0, 0, 0);
 
-                using (Graphics g = Graphics.FromImage(overlay))
+                using (SKCanvas canvas = new SKCanvas(overlay))
                 {
-                    using (SolidBrush transparent = new SolidBrush(background))
-                        g.FillRectangle(transparent, 0, 0, regionSizeX, regionSizeY);
+                    using (SKPaint transparentPaint = new SKPaint { Color = background, Style = SKPaintStyle.Fill })
+                        canvas.DrawRect(new SKRect(0, 0, regionSizeX, regionSizeY), transparentPaint);
 
                     // make it a bit transparent
-                    using (SolidBrush yellow = new SolidBrush(Color.FromArgb(192, 249, 223, 9)))
+                    using (SKPaint yellowPaint = new SKPaint { Color = new SKColor(249, 223, 9, 192), Style = SKPaintStyle.Fill })
                     {
                         for (int x = 0; x < regionLandTilesX; x++)
                         {
                             for (int y = 0; y < regionLandTilesY; y++)
                             {
                                 if (saleBitmap[x, y])
-                                    g.FillRectangle(
-                                        yellow,
-                                        x * landTileSize,
-                                        regionSizeX - landTileSize - (y * landTileSize),
-                                        landTileSize,
-                                        landTileSize);
+                                {
+                                    canvas.DrawRect(
+                                        new SKRect(
+                                            x * landTileSize,
+                                            regionSizeX - landTileSize - (y * landTileSize),
+                                            (x + 1) * landTileSize,
+                                            regionSizeX - (y * landTileSize)),
+                                        yellowPaint);
+                                }
                             }
                         }
                     }
@@ -1847,7 +1897,16 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
                 try
                 {
-                    return OpenJPEG.EncodeFromImage(overlay, false);
+                    // Convert to System.Drawing.Bitmap for OpenJPEG
+                    using (var ms = new MemoryStream())
+                    {
+                        overlay.Save(ms, SKEncodedImageFormat.Png, 100);
+                        ms.Position = 0;
+                        using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
+                        {
+                            return OpenJPEG.EncodeFromImage(sysBitmap, false);
+                        }
+                    }
                 }
                 catch (Exception e)
                 {

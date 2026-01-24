@@ -26,13 +26,14 @@
  */
 
 using System;
-using System.Drawing;
 using System.Reflection;
 using log4net;
 using Nini.Config;
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using SkiaSharp;
 
 namespace OpenSim.Region.CoreModules.World.LegacyMap
 {
@@ -43,7 +44,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
         private Scene m_scene;
         private IConfigSource m_config;
-        private Color m_color_water;
+        private SKColor m_color_water;
 
         public void Initialise(Scene scene, IConfigSource config)
         {
@@ -51,10 +52,11 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
             m_config = config;
 
             string[] configSections = new string[] { "Map", "Startup" };
-            m_color_water = System.Drawing.ColorTranslator.FromHtml(Util.GetConfigVarFromSections<string>(m_config, "MapColorWater", configSections, "#1D475F"));
+            string colorHtml = Util.GetConfigVarFromSections<string>(m_config, "MapColorWater", configSections, "#1D475F");
+            m_color_water = SKColor.Parse(colorHtml);
         }
 
-        public void TerrainToBitmap(Bitmap mapbmp)
+        public void TerrainToBitmap(SKBitmap mapbmp)
         {
             m_log.DebugFormat("{0} Generating Maptile Step 1: Terrain", LogHeader);
             int tc = Environment.TickCount;
@@ -109,7 +111,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                         else if (heightvalue < 0f)
                             heightvalue = 0f;
 
-                        Color color = Color.FromArgb((int)heightvalue, 100, (int)heightvalue);
+                        SKColor color = new SKColor((byte)heightvalue, 100, (byte)heightvalue);
 
                         mapbmp.SetPixel(x, yr, color);
 
@@ -175,9 +177,9 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                         int r = color.R;
                                         int g = color.G;
                                         int b = color.B;
-                                        color = Color.FromArgb((r + hfdiffihighlight < 255) ? r + hfdiffihighlight : 255,
-                                                               (g + hfdiffihighlight < 255) ? g + hfdiffihighlight : 255,
-                                                               (b + hfdiffihighlight < 255) ? b + hfdiffihighlight : 255);
+                                        color = new SKColor((byte)((r + hfdiffihighlight < 255) ? r + hfdiffihighlight : 255),
+                                                            (byte)((g + hfdiffihighlight < 255) ? g + hfdiffihighlight : 255),
+                                                            (byte)((b + hfdiffihighlight < 255) ? b + hfdiffihighlight : 255));
                                     }
                                 }
                                 else if (hfdiff < -0.3f)
@@ -195,9 +197,9 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                             int r = color.R;
                                             int g = color.G;
                                             int b = color.B;
-                                            color = Color.FromArgb((r - hfdiffi > 0) ? r - hfdiffi : 0,
-                                                                   (g - hfdiffi > 0) ? g - hfdiffi : 0,
-                                                                   (b - hfdiffi > 0) ? b - hfdiffi : 0);
+                                            color = new SKColor((byte)((r - hfdiffi > 0) ? r - hfdiffi : 0),
+                                                                (byte)((g - hfdiffi > 0) ? g - hfdiffi : 0),
+                                                                (byte)((b - hfdiffi > 0) ? b - hfdiffi : 0));
 
                                             mapbmp.SetPixel(x-1, yr+1, color);
                                         }
@@ -212,7 +214,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                 m_log.WarnFormat("[SHADED MAP TILE RENDERER]: Your terrain is corrupted in region {0}, it might take a few minutes to generate the map image depending on the corruption level", m_scene.RegionInfo.RegionName);
                                 terraincorruptedwarningsaid = true;
                             }
-                            color = Color.Black;
+                            color = SKColors.Black;
                             mapbmp.SetPixel(x, yr, color);
                         }
                     }
@@ -242,7 +244,7 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                 m_log.WarnFormat("[SHADED MAP TILE RENDERER]: Your terrain is corrupted in region {0}, it might take a few minutes to generate the map image depending on the corruption level", m_scene.RegionInfo.RegionName);
                                 terraincorruptedwarningsaid = true;
                             }
-                            Color black = Color.Black;
+                            SKColor black = SKColors.Black;
                             mapbmp.SetPixel(x, (hm.Width - y) - 1, black);
                         }
                     }

@@ -26,10 +26,9 @@
  */
 
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using OpenSim.Region.Framework.Interfaces;
+using SkiaSharp;
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
@@ -59,19 +58,22 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 
         public void SaveFile(string filename, ITerrainChannel map)
         {
-            using(Bitmap colours = CreateBitmapFromMap(map))
-                colours.Save(filename,ImageFormat.Jpeg);
+            using(SKBitmap colours = CreateBitmapFromMap(map))
+            using(var fileStream = File.Create(filename))
+            using(var data = colours.Encode(SKEncodedImageFormat.Jpeg, 100))
+                data.SaveTo(fileStream);
         }
 
         /// <summary>
-        /// Exports a stream using a System.Drawing exporter.
+        /// Exports a stream using SkiaSharp.
         /// </summary>
         /// <param name="stream">The target stream</param>
         /// <param name="map">The terrain channel being saved</param>
         public void SaveStream(Stream stream, ITerrainChannel map)
         {
-            using(Bitmap colours = CreateBitmapFromMap(map))
-                colours.Save(stream,ImageFormat.Jpeg);
+            using(SKBitmap colours = CreateBitmapFromMap(map))
+            using(var data = colours.Encode(SKEncodedImageFormat.Jpeg, 100))
+                data.SaveTo(stream);
         }
 
         public virtual void SaveFile(ITerrainChannel m_channel, string filename,
@@ -95,18 +97,18 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
             return false;
         }
 
-        private static Bitmap CreateBitmapFromMap(ITerrainChannel map)
+        private static SKBitmap CreateBitmapFromMap(ITerrainChannel map)
         {
             int pallete;
-            Bitmap bmp;
-            Color[] colours;
+            SKBitmap bmp;
+            SKColor[] colours;
 
-            using (Bitmap gradientmapLd = new Bitmap("defaultstripe.png"))
+            using (SKBitmap gradientmapLd = SKBitmap.Decode("defaultstripe.png"))
             {
                 pallete = gradientmapLd.Height;
 
-                bmp = new Bitmap(map.Width, map.Height);
-                colours = new Color[pallete];
+                bmp = new SKBitmap(map.Width, map.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                colours = new SKColor[pallete];
 
                 for (int i = 0; i < pallete; i++)
                 {

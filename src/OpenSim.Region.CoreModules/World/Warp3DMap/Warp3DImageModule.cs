@@ -27,8 +27,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
 using System.Runtime;
@@ -39,6 +37,7 @@ using log4net;
 using Warp3D;
 
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
@@ -47,6 +46,7 @@ using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.Rendering;
 using OpenMetaverse.StructuredData;
+using SkiaSharp;
 
 using WarpRenderer = Warp3D.Warp3D;
 
@@ -185,7 +185,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         private float fov;
         private bool orto;
 
-        public Bitmap CreateMapTile()
+        public SKBitmap CreateMapTile()
         {
             List<string> renderers = RenderingLoader.ListRenderers(Util.ExecutingDirectory());
             if (renderers.Count > 0)
@@ -204,15 +204,15 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             cameraDir = -Vector3.UnitZ;
             orto = true;
 
-            Bitmap tile = GenImage();
+            SKBitmap tile = GenImage();
             // image may be reloaded elsewhere, so no compression format
             string filename = "MAP-" + m_scene.RegionInfo.RegionID.ToString() + ".png";
-            tile.Save(filename,ImageFormat.Png);
+            tile.SaveAsPng(filename);
             m_primMesher = null;
             return tile;
         }
 
-        public Bitmap CreateViewImage(Vector3 camPos, Vector3 camDir, float pfov, int width, int height, bool useTextures)
+        public SKBitmap CreateViewImage(Vector3 camPos, Vector3 camDir, float pfov, int width, int height, bool useTextures)
         {
             List<string> renderers = RenderingLoader.ListRenderers(Util.ExecutingDirectory());
             if (renderers.Count > 0)
@@ -227,12 +227,12 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             fov = pfov;
             orto = false;
 
-            Bitmap tile = GenImage();
+            SKBitmap tile = GenImage();
             m_primMesher = null;
             return tile;
         }
 
-        private Bitmap GenImage()
+        private SKBitmap GenImage()
         {
             m_colors= new Dictionary<UUID, int>();
             m_warpTextures= new Dictionary<UUID, warp_Texture>();
@@ -240,7 +240,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             WarpRenderer renderer = new WarpRenderer();
 
             if (!renderer.CreateScene(viewWidth, viewHeight))
-                return new Bitmap(viewWidth, viewHeight);
+                return new SKBitmap(viewWidth, viewHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 
             #region Camera
 
@@ -265,7 +265,17 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 CreateAllPrims(renderer);
 
             renderer.Render();
-            Bitmap bitmap = renderer.Scene.getImage();
+            System.Drawing.Bitmap sysBitmap = renderer.Scene.getImage();
+
+            // Convert System.Drawing.Bitmap to SKBitmap
+            SKBitmap bitmap;
+            using (var ms = new MemoryStream())
+            {
+                sysBitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                ms.Position = 0;
+                bitmap = SKBitmap.Decode(ms);
+            }
+            sysBitmap.Dispose();
 
             renderer.Scene.destroy();
             renderer.Reset();
@@ -286,8 +296,17 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         {
             try
             {
-                using (Bitmap mapbmp = CreateMapTile())
-                    return OpenJPEG.EncodeFromImage(mapbmp, false);
+                using (SKBitmap mapbmp = CreateMapTile())
+                {
+                    // Convert SKBitmap to System.Drawing.Bitmap for OpenJPEG
+                    using (var ms = new MemoryStream())
+                    {
+                        mapbmp.Save(ms, SKEncodedImageFormat.Png, 100);
+                        ms.Position = 0;
+                        using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
+                            return OpenJPEG.EncodeFromImage(sysBitmap, false);
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -510,10 +529,19 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         {
                             if (m_imgDecoder is not null)
                             {
-                                Image sculpt = m_imgDecoder.DecodeToImage(sculptAsset.Data);
+                                SKBitmap sculpt = m_imgDecoder.DecodeToImage(sculptAsset.Data);
                                 if (sculpt is not null)
                                 {
-                                    renderMesh = m_primMesher.GenerateFacetedSculptMesh(omvPrim, (Bitmap)sculpt, lod);
+                                    // Convert SKBitmap to System.Drawing.Bitmap for mesh generation
+                                    using (var ms = new MemoryStream())
+                                    {
+                                        sculpt.Save(ms, SKEncodedImageFormat.Png, 100);
+                                        ms.Position = 0;
+                                        using (System.Drawing.Bitmap sysSculpt = new System.Drawing.Bitmap(ms))
+                                        {
+                                            renderMesh = m_primMesher.GenerateFacetedSculptMesh(omvPrim, sysSculpt, lod);
+                                        }
+                                    }
                                     sculpt.Dispose();
                                 }
                             }

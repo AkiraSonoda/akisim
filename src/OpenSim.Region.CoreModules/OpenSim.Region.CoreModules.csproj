@@ -18,15 +18,13 @@
     <PackageReference Include="log4net" Version="3.0.4" />
     <PackageReference Include="MailKit" Version="4.5.0" />
     <PackageReference Include="MimeKit" Version="4.5.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
   </ItemGroup>
 
 
   <ItemGroup>
     <Reference Include="CSJ2K" >
       <HintPath>../../bin/CSJ2K.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Drawing.Common" >
-      <HintPath>../../bin/System.Drawing.Common.dll</HintPath>
     </Reference>
     <Reference Include="NDesk.Options" >
       <HintPath>../../bin/NDesk.Options.dll</HintPath>
@@ -67,6 +65,7 @@
     <ProjectReference Include="../OpenSim.Framework.Serialization/OpenSim.Framework.Serialization.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers/OpenSim.Framework.Servers.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.SkiaSharp/OpenSim.Framework.SkiaSharp.csproj" />
     <ProjectReference Include="../OpenSim.Region.ClientStack.LindenCaps/OpenSim.Region.ClientStack.LindenCaps.csproj" />
     <ProjectReference Include="../OpenSim.Region.ClientStack.LindenUDP/OpenSim.Region.ClientStack.LindenUDP.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />

@@ -137,3 +137,9 @@ build/bin/Debug/_build.dll
 .aider*
 
 bin/
+
+packages/
+
+.nuke/
+
+build/
