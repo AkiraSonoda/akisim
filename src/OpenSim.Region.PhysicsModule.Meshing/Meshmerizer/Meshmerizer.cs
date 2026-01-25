@@ -31,13 +31,13 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.IO;
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.PhysicsModules.SharedBase;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using System.Drawing;
-using System.Drawing.Imaging;
+using SkiaSharp;
 using System.IO.Compression;
 using PrimMesher;
 using log4net;
@@ -677,7 +677,7 @@ namespace OpenSim.Region.PhysicsModule.Meshing
             coords = new List<Coord>();
             faces = new List<Face>();
             PrimMesher.SculptMesh sculptMesh;
-            Image idata = null;
+            SKBitmap idata = null;
             string decodedSculptFileName = "";
 
             if (cacheSculptMaps && !primShape.SculptTexture.IsZero())
@@ -687,7 +687,7 @@ namespace OpenSim.Region.PhysicsModule.Meshing
                 {
                     if (File.Exists(decodedSculptFileName))
                     {
-                        idata = Image.FromFile(decodedSculptFileName);
+                        idata = SKBitmap.Decode(decodedSculptFileName);
                     }
                 }
                 catch (Exception e)
@@ -722,13 +722,36 @@ namespace OpenSim.Region.PhysicsModule.Meshing
                     if ((managedImage.Channels & OpenMetaverse.Imaging.ManagedImage.ImageChannels.Alpha) != 0)
                         managedImage.ConvertChannels(managedImage.Channels & ~OpenMetaverse.Imaging.ManagedImage.ImageChannels.Alpha);
 
-                    Bitmap imgData = OpenMetaverse.Imaging.LoadTGAClass.LoadTGA(new MemoryStream(managedImage.ExportTGA()));
-                    idata = (Image)imgData;
+                    // Create SKBitmap directly from ManagedImage data
+                    var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgb888x);
+                    idata = new SKBitmap(info);
+                    IntPtr pixels = idata.GetPixels();
+
+                    if (pixels != IntPtr.Zero)
+                    {
+                        // ManagedImage has separate Red, Green, Blue byte arrays
+                        // We need to interleave them into RGB format for SKBitmap
+                        int pixelCount = managedImage.Width * managedImage.Height;
+                        byte[] rgb = new byte[pixelCount * 4]; // Rgb888x is 4 bytes per pixel
+
+                        for (int i = 0; i < pixelCount; i++)
+                        {
+                            rgb[i * 4 + 0] = managedImage.Red[i];
+                            rgb[i * 4 + 1] = managedImage.Green[i];
+                            rgb[i * 4 + 2] = managedImage.Blue[i];
+                            rgb[i * 4 + 3] = 0; // X channel (unused)
+                        }
+
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            rgb, 0, pixels,
+                            Math.Min(rgb.Length, idata.ByteCount));
+                    }
+
                     managedImage = null;
 
                     if (cacheSculptMaps)
                     {
-                        try { idata.Save(decodedSculptFileName, ImageFormat.MemoryBmp); }
+                        try { idata.Save(decodedSculptFileName, SKEncodedImageFormat.Png, 100); }
                         catch (Exception e) { m_log.Error("[SCULPT]: unable to cache sculpt map " + decodedSculptFileName + " " + e.Message); }
                     }
                 }
@@ -772,7 +795,7 @@ namespace OpenSim.Region.PhysicsModule.Meshing
             bool mirror = ((primShape.SculptType & 128) != 0);
             bool invert = ((primShape.SculptType & 64) != 0);
 
-            sculptMesh = new PrimMesher.SculptMesh((Bitmap)idata, sculptType, (int)lod, false, mirror, invert);
+            sculptMesh = new PrimMesher.SculptMesh(idata, sculptType, (int)lod, false, mirror, invert);
 
             idata.Dispose();
 

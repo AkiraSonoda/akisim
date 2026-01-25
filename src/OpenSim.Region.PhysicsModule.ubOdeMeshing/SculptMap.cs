@@ -29,8 +29,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-using System.Drawing;
-using System.Drawing.Imaging;
+using SkiaSharp;
 
 namespace PrimMesher
 {
@@ -46,7 +45,7 @@ namespace PrimMesher
         {
         }
 
-        public SculptMap(Bitmap bm, int lod)
+        public SculptMap(SKBitmap bm, int lod)
         {
             int bmW = bm.Width;
             int bmH = bm.Height;
@@ -87,7 +86,7 @@ namespace PrimMesher
             blueBytes = new byte[numBytes];
 
             int byteNdx = 0;
-            Color c;
+            SKColor c;
 
             try
             {
@@ -100,9 +99,9 @@ namespace PrimMesher
                         else
                             c = bm.GetPixel(x * 2, y < height ? y * 2 : y * 2 - 1);
 
-                        redBytes[byteNdx] = c.R;
-                        greenBytes[byteNdx] = c.G;
-                        blueBytes[byteNdx] = c.B;
+                        redBytes[byteNdx] = c.Red;
+                        greenBytes[byteNdx] = c.Green;
+                        blueBytes[byteNdx] = c.Blue;
 
                         ++byteNdx;
                     }
@@ -112,9 +111,9 @@ namespace PrimMesher
                     else
                         c = bm.GetPixel(width * 2 - 1, y < height ? y * 2 : y * 2 - 1);
 
-                    redBytes[byteNdx] = c.R;
-                    greenBytes[byteNdx] = c.G;
-                    blueBytes[byteNdx] = c.B;
+                    redBytes[byteNdx] = c.Red;
+                    greenBytes[byteNdx] = c.Green;
+                    blueBytes[byteNdx] = c.Blue;
 
                     ++byteNdx;
                 }
@@ -162,11 +161,11 @@ namespace PrimMesher
             return rows;
         }
 
-        private Bitmap ScaleImage(Bitmap srcImage, int destWidth, int destHeight)
+        private SKBitmap ScaleImage(SKBitmap srcImage, int destWidth, int destHeight)
         {
-            Bitmap scaledImage = new Bitmap(destWidth, destHeight, PixelFormat.Format24bppRgb);
+            SKBitmap scaledImage = new SKBitmap(destWidth, destHeight, SKColorType.Rgb888x, SKAlphaType.Opaque);
 
-            Color c;
+            SKColor c;
 
             // will let last step to be eventually diferent, as seems to be in sl
 
@@ -189,7 +188,7 @@ namespace PrimMesher
                     try
                     {
                         c = srcImage.GetPixel((int)(sx), (int)(sy));
-                        scaledImage.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+                        scaledImage.SetPixel(x, y, new SKColor(c.Red, c.Green, c.Blue));
                     }
                     catch (IndexOutOfRangeException)
                     {
@@ -199,7 +198,7 @@ namespace PrimMesher
                 try
                 {
                     c = srcImage.GetPixel(lastsx, (int)(sy));
-                    scaledImage.SetPixel(lastdx, y, Color.FromArgb(c.R, c.G, c.B));
+                    scaledImage.SetPixel(lastdx, y, new SKColor(c.Red, c.Green, c.Blue));
                 }
                 catch (IndexOutOfRangeException)
                 {
@@ -214,7 +213,7 @@ namespace PrimMesher
                 try
                 {
                     c = srcImage.GetPixel((int)(sx), lastsy);
-                    scaledImage.SetPixel(x, lastdy, Color.FromArgb(c.R, c.G, c.B));
+                    scaledImage.SetPixel(x, lastdy, new SKColor(c.Red, c.Green, c.Blue));
                 }
                 catch (IndexOutOfRangeException)
                 {
@@ -225,7 +224,7 @@ namespace PrimMesher
             try
             {
                 c = srcImage.GetPixel(lastsx, lastsy);
-                scaledImage.SetPixel(lastdx, lastdy, Color.FromArgb(c.R, c.G, c.B));
+                scaledImage.SetPixel(lastdx, lastdy, new SKColor(c.Red, c.Green, c.Blue));
             }
             catch (IndexOutOfRangeException)
             {

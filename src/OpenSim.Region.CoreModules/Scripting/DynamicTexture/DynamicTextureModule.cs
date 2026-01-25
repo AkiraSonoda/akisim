@@ -39,6 +39,7 @@ using OpenSim.Region.Framework.Scenes;
 using log4net;
 using System.Reflection;
 using ThreadedClasses;
+using SkiaSharp;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
@@ -535,13 +536,17 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
             private byte[] BlendTextures(byte[] frontImage, byte[] backImage, byte newAlpha)
             {
                 ManagedImage managedImage;
-                Image image;
 
-                if (!OpenJPEG.DecodeToImage(frontImage, out managedImage, out image) || image == null)
+                if (!OpenJPEG.DecodeToImage(frontImage, out managedImage) || managedImage == null)
                     return null;
 
-                Bitmap image1 = new Bitmap(image);
-                image.Dispose();
+                // Convert ManagedImage to System.Drawing.Bitmap for manipulation
+                Bitmap image1;
+                using (var ms = new System.IO.MemoryStream(managedImage.ExportTGA()))
+                {
+                    image1 = (Bitmap)System.Drawing.Image.FromStream(ms);
+                }
+                managedImage = null;
 
                 if(backImage == null)
                 {
@@ -550,7 +555,16 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
                     try
                     {
-                        result = OpenJPEG.EncodeFromImage(image1, false);
+                        // Convert System.Drawing.Bitmap to SKBitmap for encoding
+                        using (var ms = new System.IO.MemoryStream())
+                        {
+                            image1.Save(ms, ImageFormat.Png);
+                            ms.Position = 0;
+                            using (SKBitmap skBitmap = SKBitmap.Decode(ms))
+                            {
+                                result = OpenJPEG.EncodeFromImage(skBitmap, false);
+                            }
+                        }
                     }
                     catch (Exception e)
                     {
@@ -560,14 +574,19 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                     return result;
                 }
 
-                if (!OpenJPEG.DecodeToImage(backImage, out managedImage, out image) || image == null)
+                if (!OpenJPEG.DecodeToImage(backImage, out managedImage) || managedImage == null)
                 {
                     image1.Dispose();
                     return null;
                 }
 
-                Bitmap image2 = new Bitmap(image);
-                image.Dispose();
+                // Convert second ManagedImage to System.Drawing.Bitmap
+                Bitmap image2;
+                using (var ms = new System.IO.MemoryStream(managedImage.ExportTGA()))
+                {
+                    image2 = (Bitmap)System.Drawing.Image.FromStream(ms);
+                }
+                managedImage = null;
 
                 using(Bitmap joint = MergeBitMaps(image1, image2, newAlpha))
                 {
@@ -578,7 +597,16 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
                     try
                     {
-                        result = OpenJPEG.EncodeFromImage(joint, false);
+                        // Convert System.Drawing.Bitmap to SKBitmap for encoding
+                        using (var ms = new System.IO.MemoryStream())
+                        {
+                            joint.Save(ms, ImageFormat.Png);
+                            ms.Position = 0;
+                            using (SKBitmap skBitmap = SKBitmap.Decode(ms))
+                            {
+                                result = OpenJPEG.EncodeFromImage(skBitmap, false);
+                            }
+                        }
                     }
                     catch (Exception e)
                     {

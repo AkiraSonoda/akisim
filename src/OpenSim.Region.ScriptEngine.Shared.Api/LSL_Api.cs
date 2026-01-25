@@ -52,6 +52,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Reflection;
+using SkiaSharp;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16537,10 +16538,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                     IJ2KDecoder imgDecoder = World.RequestModuleInterface<IJ2KDecoder>();
                                     if (imgDecoder != null)
                                     {
-                                        Image sculpt = imgDecoder.DecodeToImage(sculptAsset);
+                                        SKBitmap sculpt = imgDecoder.DecodeToImage(sculptAsset);
                                         if (sculpt != null)
                                         {
-                                            mesh = primMesher.GenerateFacetedSculptMesh(omvPrim, (Bitmap)sculpt, m_sculptLodInCastRay);
+                                            mesh = primMesher.GenerateFacetedSculptMesh(omvPrim, sculpt, m_sculptLodInCastRay);
                                             sculpt.Dispose();
                                         }
                                     }

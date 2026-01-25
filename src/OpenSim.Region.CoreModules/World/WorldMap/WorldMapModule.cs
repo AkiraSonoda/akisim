@@ -1234,11 +1234,22 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgba8888);
                         mapTexture = new SKBitmap(info);
                         IntPtr pixels = mapTexture.GetPixels();
-                        if (pixels != IntPtr.Zero && managedImage.Channels != null)
+                        if (pixels != IntPtr.Zero)
                         {
+                            int pixelCount = managedImage.Width * managedImage.Height;
+                            byte[] rgba = new byte[pixelCount * 4];
+
+                            for (int i = 0; i < pixelCount; i++)
+                            {
+                                rgba[i * 4 + 0] = managedImage.Red[i];
+                                rgba[i * 4 + 1] = managedImage.Green[i];
+                                rgba[i * 4 + 2] = managedImage.Blue[i];
+                                rgba[i * 4 + 3] = (managedImage.Alpha != null && i < managedImage.Alpha.Length) ? managedImage.Alpha[i] : (byte)255;
+                            }
+
                             System.Runtime.InteropServices.Marshal.Copy(
-                                managedImage.Channels, 0, pixels,
-                                Math.Min(managedImage.Channels.Length, mapTexture.ByteCount));
+                                rgba, 0, pixels,
+                                Math.Min(rgba.Length, mapTexture.ByteCount));
                         }
 
                         // Save bitmap to stream as JPEG
@@ -1263,12 +1274,6 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                     // If we encountered an exception, one or more of these will be null
                     if (mapTexture != null)
                         mapTexture.Dispose();
-
-                    if (image != null)
-                        image.Dispose();
-
-                    if (imgstream != null)
-                        imgstream.Dispose();
                 }
             }
             else
@@ -1412,11 +1417,22 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         using (SKBitmap regionBitmap = new SKBitmap(info))
                         {
                             IntPtr pixels = regionBitmap.GetPixels();
-                            if (pixels != IntPtr.Zero && managedImage.Channels != null)
+                            if (pixels != IntPtr.Zero)
                             {
+                                int pixelCount = managedImage.Width * managedImage.Height;
+                                byte[] rgba = new byte[pixelCount * 4];
+
+                                for (int i = 0; i < pixelCount; i++)
+                                {
+                                    rgba[i * 4 + 0] = managedImage.Red[i];
+                                    rgba[i * 4 + 1] = managedImage.Green[i];
+                                    rgba[i * 4 + 2] = managedImage.Blue[i];
+                                    rgba[i * 4 + 3] = (managedImage.Alpha != null && i < managedImage.Alpha.Length) ? managedImage.Alpha[i] : (byte)255;
+                                }
+
                                 System.Runtime.InteropServices.Marshal.Copy(
-                                    managedImage.Channels, 0, pixels,
-                                    Math.Min(managedImage.Channels.Length, regionBitmap.ByteCount));
+                                    rgba, 0, pixels,
+                                    Math.Min(rgba.Length, regionBitmap.ByteCount));
 
                                 int x = r.RegionLocX - startX;
                                 int y = r.RegionLocY - startY;
@@ -1665,44 +1681,20 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                             float scale = (float)Constants.RegionSize/(float)mb;
                             using(SKBitmap scaledbmp = Util.ResizeImageSolid(mapbmp, (int)(bx * scale), (int)(by * scale)))
                             {
-                                // Convert to System.Drawing.Bitmap for OpenJPEG
-                                using (var ms = new MemoryStream())
-                                {
-                                    scaledbmp.Save(ms, SKEncodedImageFormat.Png, 100);
-                                    ms.Position = 0;
-                                    using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
-                                    {
-                                        data = OpenJPEG.EncodeFromImage(sysBitmap, true);
-                                    }
-                                }
+                                // OpenJPEG.EncodeFromImage now accepts SKBitmap directly
+                                data = OpenJPEG.EncodeFromImage(scaledbmp, true);
                             }
                         }
                         else
                         {
-                            // Convert to System.Drawing.Bitmap for OpenJPEG
-                            using (var ms = new MemoryStream())
-                            {
-                                mapbmp.Save(ms, SKEncodedImageFormat.Png, 100);
-                                ms.Position = 0;
-                                using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
-                                {
-                                    data = OpenJPEG.EncodeFromImage(sysBitmap, true);
-                                }
-                            }
+                            // OpenJPEG.EncodeFromImage now accepts SKBitmap directly
+                            data = OpenJPEG.EncodeFromImage(mapbmp, true);
                         }
                     }
                     else
                     {
-                        // Convert to System.Drawing.Bitmap for OpenJPEG
-                        using (var ms = new MemoryStream())
-                        {
-                            mapbmp.Save(ms, SKEncodedImageFormat.Png, 100);
-                            ms.Position = 0;
-                            using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
-                            {
-                                data = OpenJPEG.EncodeFromImage(sysBitmap, true);
-                            }
-                        }
+                        // OpenJPEG.EncodeFromImage now accepts SKBitmap directly
+                        data = OpenJPEG.EncodeFromImage(mapbmp, true);
                     }
 
                     if (data != null && data.Length > 0)
@@ -1897,16 +1889,8 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
 
                 try
                 {
-                    // Convert to System.Drawing.Bitmap for OpenJPEG
-                    using (var ms = new MemoryStream())
-                    {
-                        overlay.Save(ms, SKEncodedImageFormat.Png, 100);
-                        ms.Position = 0;
-                        using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
-                        {
-                            return OpenJPEG.EncodeFromImage(sysBitmap, false);
-                        }
-                    }
+                    // OpenJPEG.EncodeFromImage now accepts SKBitmap directly
+                    return OpenJPEG.EncodeFromImage(overlay, false);
                 }
                 catch (Exception e)
                 {

@@ -174,9 +174,9 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
 
                                     if (ShadowDebugContinue)
                                     {
-                                        int r = color.R;
-                                        int g = color.G;
-                                        int b = color.B;
+                                        int r = color.Red;
+                                        int g = color.Green;
+                                        int b = color.Blue;
                                         color = new SKColor((byte)((r + hfdiffihighlight < 255) ? r + hfdiffihighlight : 255),
                                                             (byte)((g + hfdiffihighlight < 255) ? g + hfdiffihighlight : 255),
                                                             (byte)((b + hfdiffihighlight < 255) ? b + hfdiffihighlight : 255));
@@ -194,9 +194,9 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                                         if ((x - 1 > 0) && (yr + 1 < hm.Height))
                                         {
                                             color = mapbmp.GetPixel(x - 1, yr + 1);
-                                            int r = color.R;
-                                            int g = color.G;
-                                            int b = color.B;
+                                            int r = color.Red;
+                                            int g = color.Green;
+                                            int b = color.Blue;
                                             color = new SKColor((byte)((r - hfdiffi > 0) ? r - hfdiffi : 0),
                                                                 (byte)((g - hfdiffi > 0) ? g - hfdiffi : 0),
                                                                 (byte)((b - hfdiffi > 0) ? b - hfdiffi : 0));

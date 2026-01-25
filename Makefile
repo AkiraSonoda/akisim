@@ -63,7 +63,24 @@ deploy:
 			cp -rfL "$$item" "$(DEST_DIR)/bin/" && \
 			echo "Copied: $$item"; \
 		fi \
-	done
+	 done
+	@# Fix architecture mismatch for SkiaSharp on Linux x64
+	@if [ "$(OS)" != "Windows_NT" ]; then \
+		if [ -d "$(SRC_BIN)/lib64" ]; then \
+			echo "Copying 64-bit libraries..."; \
+			cp -f "$(SRC_BIN)/lib64/libSkiaSharp.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libSkiaSharp.so" && \
+			echo "Fixed: Copied 64-bit libSkiaSharp.so to runtime directory"; \
+			cp -f "$(SRC_BIN)/lib64/libSkiaSharp.so" "$(DEST_DIR)/bin/libSkiaSharp.so" && \
+			echo "Fixed: Copied 64-bit libSkiaSharp.so to bin directory"; \
+			cp -f "$(SRC_BIN)/lib64/libBulletSim.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libBulletSim.so" && \
+			cp -f "$(SRC_BIN)/lib64/libBulletSim.so" "$(DEST_DIR)/bin/libBulletSim.so" && \
+			cp -f "$(SRC_BIN)/lib64/libopenjpeg-dotnet-x86_64.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libopenjpeg-dotnet.so" && \
+			cp -f "$(SRC_BIN)/lib64/libopenjpeg-dotnet-x86_64.so" "$(DEST_DIR)/bin/libopenjpeg-dotnet.so" && \
+			cp -f "$(SRC_BIN)/lib64/libubode-x86_64.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libubode.so" && \
+			cp -f "$(SRC_BIN)/lib64/libubode-x86_64.so" "$(DEST_DIR)/bin/libubode.so" && \
+			echo "Fixed: Copied all 64-bit native libraries"; \
+		fi \
+	fi
 	@echo "Deployment completed successfully!"
 
 # Package the solution

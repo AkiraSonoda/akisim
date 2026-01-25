@@ -257,17 +257,8 @@ namespace OpenSim.Region.CoreModules.Scripting.LoadImageURL
 
                                     try
                                     {
-                                        // OpenJPEG.EncodeFromImage requires System.Drawing.Bitmap (from OpenMetaverse library)
-                                        // Convert SKBitmap to System.Drawing.Bitmap temporarily
-                                        using(var tempStream = new MemoryStream())
-                                        {
-                                            processedImage.Save(tempStream, SKEncodedImageFormat.Png, 100);
-                                            tempStream.Position = 0;
-                                            using(Bitmap systemBitmap = new Bitmap(tempStream))
-                                            {
-                                                imageJ2000 = OpenJPEG.EncodeFromImage(systemBitmap, false);
-                                            }
-                                        }
+                                        // OpenJPEG.EncodeFromImage now requires SKBitmap
+                                        imageJ2000 = OpenJPEG.EncodeFromImage(processedImage, false);
                                     }
                                     finally
                                     {

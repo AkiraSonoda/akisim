@@ -178,12 +178,14 @@ namespace OpenSim
         protected virtual void LoadPlugins()
         {
             // PluginLoader removed - using manual plugin loading only
-            // Manual fallback for RegionModulesController when Mono.Addins fails
+            // Manual loading of essential application plugins
+
+            // Load RegionModulesController
             IRegionModulesController testController;
             if (!ApplicationRegistry.TryGet<IRegionModulesController>(out testController))
             {
                 m_log.Warn("[STARTUP]: RegionModulesController not found via Mono.Addins, loading manually...");
-                
+
                 try
                 {
                     // Use reflection to avoid circular dependency
@@ -205,6 +207,29 @@ namespace OpenSim
                 {
                     m_log.Error("[STARTUP]: Failed to manually load RegionModulesController: " + e.Message);
                 }
+            }
+
+            // Load LoadRegionsPlugin
+            try
+            {
+                m_log.Info("[STARTUP]: Loading LoadRegionsPlugin manually...");
+                Assembly loadRegionsAssembly = Assembly.LoadFrom("OpenSim.ApplicationPlugins.LoadRegions.dll");
+                Type loadRegionsType = loadRegionsAssembly.GetType("OpenSim.ApplicationPlugins.LoadRegions.LoadRegionsPlugin");
+                if (loadRegionsType != null)
+                {
+                    var loadRegionsPlugin = (IApplicationPlugin)Activator.CreateInstance(loadRegionsType);
+                    loadRegionsPlugin.Initialise(this);
+                    m_plugins.Add(loadRegionsPlugin);
+                    m_log.Info("[STARTUP]: LoadRegionsPlugin loaded manually via reflection.");
+                }
+                else
+                {
+                    m_log.Error("[STARTUP]: Could not find LoadRegionsPlugin type in assembly.");
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.Error("[STARTUP]: Failed to manually load LoadRegionsPlugin: " + e.Message);
             }
         }
 
@@ -249,6 +274,17 @@ namespace OpenSim
 
                 managedStatsURI = startupConfig.GetString("ManagedStatsRemoteFetchURI", String.Empty);
                 managedStatsPassword = startupConfig.GetString("ManagedStatsRemoteFetchPassword", String.Empty);
+            }
+
+            // Initialize OpenTelemetry metrics
+            try
+            {
+                var metrics = OpenTelemetryMetrics.Instance;
+                metrics.Configure(Config, autoStart: true);
+            }
+            catch (Exception ex)
+            {
+                m_log.Warn($"[OPENTELEMETRY]: Failed to initialize metrics: {ex.Message}");
             }
 
             // Load the simulation data service
@@ -979,6 +1015,16 @@ namespace OpenSim
 
             try
             {
+                // Stop OpenTelemetry metrics
+                try
+                {
+                    OpenTelemetryMetrics.Instance.Stop();
+                }
+                catch (Exception ex)
+                {
+                    m_log.Warn($"[OPENTELEMETRY]: Error stopping metrics: {ex.Message}");
+                }
+
                 SceneManager.Close();
 
                 foreach (IApplicationPlugin plugin in m_plugins)

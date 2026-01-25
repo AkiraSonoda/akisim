@@ -28,7 +28,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
+using SkiaSharp;
 using System.IO;
 using System.Net;
 using System.Reflection;
@@ -188,7 +188,7 @@ namespace OpenSim.Services.Connectors.Hypergrid
 
                 byte[] imageData = null;
 
-                using (Bitmap bitmap = new Bitmap(filename))
+                using (SKBitmap bitmap = SKBitmap.Decode(filename))
                 {
                     //m_log.Debug("Size: " + m.PhysicalDimension.Height + "-" + m.PhysicalDimension.Width);
                     imageData = OpenJPEG.EncodeFromImage(bitmap, false);

@@ -27,6 +27,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
 using System.Runtime;
@@ -298,14 +300,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             {
                 using (SKBitmap mapbmp = CreateMapTile())
                 {
-                    // Convert SKBitmap to System.Drawing.Bitmap for OpenJPEG
-                    using (var ms = new MemoryStream())
-                    {
-                        mapbmp.Save(ms, SKEncodedImageFormat.Png, 100);
-                        ms.Position = 0;
-                        using (System.Drawing.Bitmap sysBitmap = new System.Drawing.Bitmap(ms))
-                            return OpenJPEG.EncodeFromImage(sysBitmap, false);
-                    }
+                    // OpenJPEG.EncodeFromImage now accepts SKBitmap directly
+                    return OpenJPEG.EncodeFromImage(mapbmp, false);
                 }
             }
             catch (Exception e)
@@ -429,11 +425,20 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             };
 
             warp_Texture texture;
-            using (Bitmap image = TerrainSplat.Splat(terrain, textureIDs, startHeights, heightRanges,
+            using (SKBitmap skImage = TerrainSplat.Splat(terrain, textureIDs, startHeights, heightRanges,
                         m_scene.RegionInfo.WorldLocX, m_scene.RegionInfo.WorldLocY,
                         m_scene.AssetService, m_imgDecoder, m_textureTerrain, m_textureAverageTerrain,
                         twidth, twidth))
-                    texture = new warp_Texture(image);
+            {
+                // Convert SKBitmap to System.Drawing.Bitmap for warp_Texture
+                using (var ms = new MemoryStream())
+                {
+                    skImage.Encode(ms, SKEncodedImageFormat.Png, 100);
+                    ms.Position = 0;
+                    using (Bitmap image = new Bitmap(ms))
+                        texture = new warp_Texture(image);
+                }
+            }
 
             warp_Material material = new warp_Material(texture);
             obj.setMaterial(material);
@@ -532,16 +537,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                 SKBitmap sculpt = m_imgDecoder.DecodeToImage(sculptAsset.Data);
                                 if (sculpt is not null)
                                 {
-                                    // Convert SKBitmap to System.Drawing.Bitmap for mesh generation
-                                    using (var ms = new MemoryStream())
-                                    {
-                                        sculpt.Save(ms, SKEncodedImageFormat.Png, 100);
-                                        ms.Position = 0;
-                                        using (System.Drawing.Bitmap sysSculpt = new System.Drawing.Bitmap(ms))
-                                        {
-                                            renderMesh = m_primMesher.GenerateFacetedSculptMesh(omvPrim, sysSculpt, lod);
-                                        }
-                                    }
+                                    // GenerateFacetedSculptMesh now accepts SKBitmap directly
+                                    renderMesh = m_primMesher.GenerateFacetedSculptMesh(omvPrim, sculpt, lod);
                                     sculpt.Dispose();
                                 }
                             }
@@ -776,8 +773,20 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             {
                 try
                 {
-                    using (Bitmap img = (Bitmap)m_imgDecoder.DecodeToImage(asset.Data))
-                        ret = new warp_Texture(img, 8); // reduce textures size to 256 * 256
+                    using (SKBitmap skImg = m_imgDecoder.DecodeToImage(asset.Data))
+                    {
+                        if (skImg != null)
+                        {
+                            // Convert SKBitmap to System.Drawing.Bitmap for warp_Texture
+                            using (var ms = new MemoryStream())
+                            {
+                                skImg.Encode(ms, SKEncodedImageFormat.Png, 100);
+                                ms.Position = 0;
+                                using (Bitmap img = new Bitmap(ms))
+                                    ret = new warp_Texture(img, 8); // reduce textures size to 256 * 256
+                            }
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -846,50 +855,51 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             try
             {
                 using (MemoryStream stream = new MemoryStream(j2kData))
-                using (Bitmap bitmap = (Bitmap)J2kImage.FromStream(stream))
+                using (SKBitmap bitmap = J2kImage.FromStream(stream))
                 {
                     width = bitmap.Width;
                     height = bitmap.Height;
 
-                    BitmapData bitmapData = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-                    pixelBytes = (bitmapData.PixelFormat == PixelFormat.Format24bppRgb) ? 3 : 4;
+                    // Determine bytes per pixel from color type
+                    pixelBytes = bitmap.ColorType == SKColorType.Rgb888x ? 3 : 4;
 
-                    // Sum up the individual channels
+                    // Sum up the individual channels using SKBitmap pixel access
+                    IntPtr pixels = bitmap.GetPixels();
                     unsafe
                     {
-                        byte* start = (byte*)bitmapData.Scan0;
-                        if (pixelBytes == 4)
+                        byte* start = (byte*)pixels;
+                        int stride = bitmap.RowBytes;
+
+                        if (pixelBytes == 4 || bitmap.ColorType == SKColorType.Rgba8888 || bitmap.ColorType == SKColorType.Bgra8888)
                         {
                             for (int y = 0; y < height; y++)
                             {
-                                
-                                byte* end = start + 4 * width;
-                                for(byte* row = start; row < end; row += 4)
+                                byte* row = start + (y * stride);
+                                byte* end = row + 4 * width;
+                                for(byte* p = row; p < end; p += 4)
                                 {
-                                    b += row[0];
-                                    g += row[1];
-                                    r += row[2];
-                                    a += row[3];
+                                    b += p[0];
+                                    g += p[1];
+                                    r += p[2];
+                                    a += p[3];
                                 }
-                                start += bitmapData.Stride;
                             }
                         }
                         else
                         {
                             for (int y = 0; y < height; y++)
                             {
-                                byte* end = start + 3 * width;
-                                for (byte* row = start; row < end; row += 3)
+                                byte* row = start + (y * stride);
+                                byte* end = row + 3 * width;
+                                for (byte* p = row; p < end; p += 3)
                                 {
-                                    b += row[0];
-                                    g += row[1];
-                                    r += row[2];
+                                    b += p[0];
+                                    g += p[1];
+                                    r += p[2];
                                 }
-                                start += bitmapData.Stride;
                             }
                         }
                     }
-                    bitmap.UnlockBits(bitmapData);
                 }
                 // Get the averages for each channel
                 double invtotalPixels = 1.0/(255.0 * width * height);

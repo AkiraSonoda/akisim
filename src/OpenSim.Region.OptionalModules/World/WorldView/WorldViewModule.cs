@@ -42,6 +42,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Server.Base;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Services.Interfaces;
+using SkiaSharp;
 
 namespace OpenSim.Region.OptionalModules.World.WorldView
 {
@@ -113,11 +114,11 @@ namespace OpenSim.Region.OptionalModules.World.WorldView
             if (!m_Enabled)
                 return Array.Empty<byte>();
 
-            using (Bitmap bmp = m_Generator.CreateViewImage(pos, rot, fov, width, height, usetex))
+            using (SKBitmap bmp = m_Generator.CreateViewImage(pos, rot, fov, width, height, usetex))
             {
                 using (MemoryStream str = new MemoryStream())
                 {
-                    bmp.Save(str, ImageFormat.Jpeg);
+                    bmp.Encode(str, SKEncodedImageFormat.Jpeg, 95);
 
                     return str.ToArray();
                 }

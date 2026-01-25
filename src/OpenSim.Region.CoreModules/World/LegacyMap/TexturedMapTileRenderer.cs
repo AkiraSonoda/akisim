@@ -195,11 +195,22 @@ namespace OpenSim.Region.CoreModules.World.LegacyMap
                     var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgba8888);
                     SKBitmap bitmap = new SKBitmap(info);
                     IntPtr pixels = bitmap.GetPixels();
-                    if (pixels != IntPtr.Zero && managedImage.Channels != null)
+                    if (pixels != IntPtr.Zero)
                     {
+                        int pixelCount = managedImage.Width * managedImage.Height;
+                        byte[] rgba = new byte[pixelCount * 4];
+
+                        for (int i = 0; i < pixelCount; i++)
+                        {
+                            rgba[i * 4 + 0] = managedImage.Red[i];
+                            rgba[i * 4 + 1] = managedImage.Green[i];
+                            rgba[i * 4 + 2] = managedImage.Blue[i];
+                            rgba[i * 4 + 3] = (managedImage.Alpha != null && i < managedImage.Alpha.Length) ? managedImage.Alpha[i] : (byte)255;
+                        }
+
                         System.Runtime.InteropServices.Marshal.Copy(
-                            managedImage.Channels, 0, pixels,
-                            Math.Min(managedImage.Channels.Length, bitmap.ByteCount));
+                            rgba, 0, pixels,
+                            Math.Min(rgba.Length, bitmap.ByteCount));
                     }
                     return bitmap;
                 }

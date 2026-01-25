@@ -40,6 +40,7 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using log4net;
 using System.Reflection;
+using SkiaSharp;
 //using Cairo;
 
 namespace OpenSim.Region.CoreModules.Scripting.VectorRender
@@ -391,7 +392,16 @@ namespace OpenSim.Region.CoreModules.Scripting.VectorRender
 
                 try
                 {
-                    imageJ2000 = OpenJPEG.EncodeFromImage(bitmap, lossless);
+                    // Convert System.Drawing.Bitmap to SKBitmap for OpenJPEG encoding
+                    using (var ms = new MemoryStream())
+                    {
+                        bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                        ms.Position = 0;
+                        using (SKBitmap skBitmap = SKBitmap.Decode(ms))
+                        {
+                            imageJ2000 = OpenJPEG.EncodeFromImage(skBitmap, lossless);
+                        }
+                    }
                 }
                 catch (Exception e)
                 {

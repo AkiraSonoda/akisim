@@ -1,0 +1,45 @@
+;;
+;; OpenTelemetry Configuration for OpenSimulator
+;;
+;; This file configures OpenTelemetry metrics and tracing export to Grafana Cloud
+;; Copy this file to OpenTelemetry.ini and configure with your Grafana Cloud credentials
+;;
+
+[OpenTelemetry]
+    ;; Enable OpenTelemetry metrics collection
+    Enabled = true
+
+    ;; Grafana Cloud OTLP endpoint (adjust region as needed)
+    ;; US: https://otlp-gateway-prod-us-central-0.grafana.net/otlp
+    ;; EU: https://otlp-gateway-prod-eu-west-0.grafana.net/otlp
+    Endpoint = "https://otlp-gateway-prod-us-central-0.grafana.net/otlp"
+
+    ;; Service identification
+    ServiceName = "OpenSimulator"
+    ServiceVersion = "1.0.0"
+
+    ;; Grafana Cloud credentials
+    ;; Get these from: Grafana Cloud -> Connections -> Add new connection -> OpenTelemetry
+    ;; Format: Instance ID from Grafana Cloud
+    GrafanaInstanceId = "your-instance-id"
+
+    ;; Format: API Token from Grafana Cloud (create under "Generate now" in OTLP configuration)
+    GrafanaApiKey = "your-api-key"
+
+    ;; Export interval in milliseconds (default: 60000 = 60 seconds)
+    ExportIntervalMilliseconds = 60000
+
+    ;; Additional attributes to add to all metrics
+    Environment = "production"
+
+[OpenTelemetryLogging]
+    ;; Enable OpenTelemetry logging (via log4net appender)
+    ;; This is configured in OpenSim.exe.config
+    Enabled = true
+
+[OpenTelemetryMetrics]
+    ;; Enable runtime (CLR) metrics collection
+    EnableRuntimeMetrics = true
+
+    ;; Enable custom OpenSimulator metrics
+    EnableCustomMetrics = true

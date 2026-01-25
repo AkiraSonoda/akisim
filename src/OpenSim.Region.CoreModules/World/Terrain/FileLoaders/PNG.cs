@@ -36,7 +36,8 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         public override void SaveFile(string filename, ITerrainChannel map)
         {
             using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
-                colours.SaveAsPng(filename);
+            using(FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
+                colours.Encode(fs, SKEncodedImageFormat.Png, 100);
         }
 
         /// <summary>
@@ -47,7 +48,7 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         public override void SaveStream(Stream stream, ITerrainChannel map)
         {
             using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
-                colours.Save(stream, SKEncodedImageFormat.Png, 100);
+                colours.Encode(stream, SKEncodedImageFormat.Png, 100);
         }
 
         public override string ToString()

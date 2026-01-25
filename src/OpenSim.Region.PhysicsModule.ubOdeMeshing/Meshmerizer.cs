@@ -35,7 +35,7 @@ using OpenSim.Region.PhysicsModules.SharedBase;
 using OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using System.Drawing;
+using SkiaSharp;
 using System.Threading;
 using System.IO.Compression;
 using PrimMesher;
@@ -760,24 +760,54 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             coords = new List<Coord>();
             faces = new List<Face>();
             PrimMesher.SculptMesh sculptMesh;
-            Image idata;
+            SKBitmap idata;
 
             if (primShape.SculptData == null || primShape.SculptData.Length == 0)
                 return false;
 
             try
             {
-                OpenMetaverse.Imaging.OpenJPEG.DecodeToImage(primShape.SculptData, out OpenMetaverse.Imaging.ManagedImage unusedData, out idata);
+                OpenMetaverse.Imaging.ManagedImage managedImage;
+                OpenMetaverse.Imaging.OpenJPEG.DecodeToImage(primShape.SculptData, out managedImage);
 
-                unusedData = null;
-
-                if (idata == null)
+                if (managedImage == null)
                 {
                     // In some cases it seems that the decode can return a null bitmap without throwing
                     // an exception
                     m_log.WarnFormat("[PHYSICS]: OpenJPEG decoded sculpt data for {0} to a null bitmap.  Ignoring.", primName);
                     return false;
                 }
+
+                // Convert alpha channel if needed
+                if ((managedImage.Channels & OpenMetaverse.Imaging.ManagedImage.ImageChannels.Alpha) != 0)
+                    managedImage.ConvertChannels(managedImage.Channels & ~OpenMetaverse.Imaging.ManagedImage.ImageChannels.Alpha);
+
+                // Create SKBitmap directly from ManagedImage data
+                var info = new SKImageInfo(managedImage.Width, managedImage.Height, SKColorType.Rgb888x);
+                idata = new SKBitmap(info);
+                IntPtr pixels = idata.GetPixels();
+
+                if (pixels != IntPtr.Zero)
+                {
+                    // ManagedImage has separate Red, Green, Blue byte arrays
+                    // We need to interleave them into RGB format for SKBitmap
+                    int pixelCount = managedImage.Width * managedImage.Height;
+                    byte[] rgb = new byte[pixelCount * 4]; // Rgb888x is 4 bytes per pixel
+
+                    for (int i = 0; i < pixelCount; i++)
+                    {
+                        rgb[i * 4 + 0] = managedImage.Red[i];
+                        rgb[i * 4 + 1] = managedImage.Green[i];
+                        rgb[i * 4 + 2] = managedImage.Blue[i];
+                        rgb[i * 4 + 3] = 0; // X channel (unused)
+                    }
+
+                    System.Runtime.InteropServices.Marshal.Copy(
+                        rgb, 0, pixels,
+                        Math.Min(rgb.Length, idata.ByteCount));
+                }
+
+                managedImage = null;
             }
             catch (DllNotFoundException e)
             {
@@ -807,7 +837,7 @@ namespace OpenSim.Region.PhysicsModule.ubODEMeshing
             bool mirror = ((primShape.SculptType & 128) != 0);
             bool invert = ((primShape.SculptType & 64) != 0);
 
-            sculptMesh = new PrimMesher.SculptMesh((Bitmap)idata, sculptType, (int)lod, mirror, invert);
+            sculptMesh = new PrimMesher.SculptMesh(idata, sculptType, (int)lod, mirror, invert);
 
             idata.Dispose();
 

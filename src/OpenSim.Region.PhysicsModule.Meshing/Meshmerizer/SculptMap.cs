@@ -33,8 +33,7 @@ using System.Collections.Generic;
 using System.Text;
 
 #if SYSTEM_DRAWING
-using System.Drawing;
-using System.Drawing.Imaging;
+using SkiaSharp;
 
 namespace PrimMesher
 {
@@ -50,7 +49,7 @@ namespace PrimMesher
         {
         }
 
-        public SculptMap(Bitmap bm, int lod)
+        public SculptMap(SKBitmap bm, int lod)
         {
             int bmW = bm.Width;
             int bmH = bm.Height;
@@ -102,7 +101,7 @@ namespace PrimMesher
                 {
                     for (int x = 0; x <= width; x++)
                     {
-                        Color c;
+                        SKColor c;
 
                         if (smallMap)
                             c = bm.GetPixel(x < width ? x : x - 1,
@@ -111,9 +110,9 @@ namespace PrimMesher
                             c = bm.GetPixel(x < width ? x * 2 : x * 2 - 1,
                                             y < height ? y * 2 : y * 2 - 1);
 
-                        redBytes[byteNdx] = c.R;
-                        greenBytes[byteNdx] = c.G;
-                        blueBytes[byteNdx] = c.B;
+                        redBytes[byteNdx] = c.Red;
+                        greenBytes[byteNdx] = c.Green;
+                        blueBytes[byteNdx] = c.Blue;
 
                         ++byteNdx;
                     }
@@ -159,12 +158,12 @@ namespace PrimMesher
             return rows;
         }
 
-        private Bitmap ScaleImage(Bitmap srcImage, int destWidth, int destHeight)
+        private SKBitmap ScaleImage(SKBitmap srcImage, int destWidth, int destHeight)
         {
 
-            Bitmap scaledImage = new Bitmap(destWidth, destHeight, PixelFormat.Format24bppRgb);
+            SKBitmap scaledImage = new SKBitmap(destWidth, destHeight, SKColorType.Rgb888x, SKAlphaType.Opaque);
 
-            Color c;
+            SKColor c;
             float xscale = srcImage.Width / destWidth;
             float yscale = srcImage.Height / destHeight;
 
@@ -177,7 +176,7 @@ namespace PrimMesher
                     try
                     {
                         c = srcImage.GetPixel((int)(sx), (int)(sy));
-                        scaledImage.SetPixel(x, y, Color.FromArgb(c.R, c.G, c.B));
+                        scaledImage.SetPixel(x, y, new SKColor(c.Red, c.Green, c.Blue));
                     }
                     catch (IndexOutOfRangeException)
                     {

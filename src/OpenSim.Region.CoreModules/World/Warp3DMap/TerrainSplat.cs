@@ -199,9 +199,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         usecolors = true;
                         if(detailTexture[t] == null)
                         {
-                            mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].R;
-                            mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].G;
-                            mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].B;
+                            mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].Red;
+                            mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].Green;
+                            mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].Blue;
                             continue;
                         }
 
@@ -271,9 +271,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 usecolors = true;
                 for(int t = 0; t < 4; t++)
                 {
-                    mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].R;
-                    mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].G;
-                    mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].B;
+                    mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].Red;
+                    mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].Green;
+                    mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].Blue;
                 }
             }
 

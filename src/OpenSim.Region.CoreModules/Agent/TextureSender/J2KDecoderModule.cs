@@ -39,6 +39,7 @@ using CSJ2K;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using SkiaSharp;
 // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Agent.TextureSender
@@ -182,18 +183,44 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
             return DoJ2KDecode(assetID, j2kData, out layers, out components);
         }
 
-        public Image DecodeToImage(byte[] j2kData)
+        public SKBitmap DecodeToImage(byte[] j2kData)
         {
             if (m_useCSJ2K)
-                return J2kImage.FromBytes(j2kData);
+            {
+                // CSJ2K now returns SKBitmap directly
+                SKBitmap skBitmap = J2kImage.FromBytes(j2kData);
+                return skBitmap;
+            }
             else
             {
                 ManagedImage mimage;
-                Image image;
-                if (OpenJPEG.DecodeToImage(j2kData, out mimage, out image))
+                if (OpenJPEG.DecodeToImage(j2kData, out mimage) && mimage != null)
                 {
+                    // Convert ManagedImage to SKBitmap
+                    var info = new SKImageInfo(mimage.Width, mimage.Height, SKColorType.Rgba8888);
+                    SKBitmap skBitmap = new SKBitmap(info);
+                    IntPtr pixels = skBitmap.GetPixels();
+
+                    if (pixels != IntPtr.Zero)
+                    {
+                        int pixelCount = mimage.Width * mimage.Height;
+                        byte[] rgba = new byte[pixelCount * 4];
+
+                        for (int i = 0; i < pixelCount; i++)
+                        {
+                            rgba[i * 4 + 0] = mimage.Red[i];
+                            rgba[i * 4 + 1] = mimage.Green[i];
+                            rgba[i * 4 + 2] = mimage.Blue[i];
+                            rgba[i * 4 + 3] = (mimage.Alpha != null && i < mimage.Alpha.Length) ? mimage.Alpha[i] : (byte)255;
+                        }
+
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            rgba, 0, pixels,
+                            Math.Min(rgba.Length, skBitmap.ByteCount));
+                    }
+
                     mimage = null;
-                    return image;
+                    return skBitmap;
                 }
                 else
                     return null;

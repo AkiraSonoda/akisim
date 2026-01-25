@@ -7,7 +7,7 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.4" />
+    <PackageReference Include="log4net" Version="3.2.0" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Mono.Security.dll">

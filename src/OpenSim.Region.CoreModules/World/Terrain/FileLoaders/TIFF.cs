@@ -35,9 +35,10 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
     {
         public override void SaveFile(string filename, ITerrainChannel map)
         {
+            // SkiaSharp doesn't support TIFF encoding, using PNG instead
             using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
             using(var fileStream = File.Create(filename))
-            using(var data = colours.Encode(SKEncodedImageFormat.Tiff, 100))
+            using(var data = colours.Encode(SKEncodedImageFormat.Png, 100))
                 data.SaveTo(fileStream);
         }
 
@@ -48,8 +49,9 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         /// <param name="map">The terrain channel being saved</param>
         public override void SaveStream(Stream stream, ITerrainChannel map)
         {
+            // SkiaSharp doesn't support TIFF encoding, using PNG instead
             using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
-            using(var data = colours.Encode(SKEncodedImageFormat.Tiff, 100))
+            using(var data = colours.Encode(SKEncodedImageFormat.Png, 100))
                 data.SaveTo(stream);
         }
 
