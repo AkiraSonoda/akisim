@@ -135,11 +135,36 @@ namespace OpenSim.Framework
                 return;
             }
 
-            Endpoint = config.GetString("Endpoint", Endpoint);
+            // Read configuration - support both old and new key names for backward compatibility
+            Endpoint = config.GetString("OtlpEndpoint", config.GetString("Endpoint", Endpoint));
             ServiceName = config.GetString("ServiceName", ServiceName);
             ServiceVersion = config.GetString("ServiceVersion", ServiceVersion);
-            GrafanaInstanceId = config.GetString("GrafanaInstanceId", GrafanaInstanceId);
-            GrafanaApiKey = config.GetString("GrafanaApiKey", GrafanaApiKey);
+            
+            // Handle authorization token - can be in Grafana Cloud format (instanceId:apiKey) or just token
+            string authToken = config.GetString("AuthorizationToken", "");
+            if (!string.IsNullOrEmpty(authToken))
+            {
+                // Try to parse Grafana Cloud format: instanceId:apiKey
+                string[] parts = authToken.Split(':');
+                if (parts.Length == 2)
+                {
+                    GrafanaInstanceId = parts[0];
+                    GrafanaApiKey = parts[1];
+                }
+                else
+                {
+                    // Single token format - use as GrafanaInstanceId with empty apiKey
+                    GrafanaInstanceId = authToken;
+                    GrafanaApiKey = "";
+                }
+            }
+            else
+            {
+                // Fallback to old format if AuthorizationToken not present
+                GrafanaInstanceId = config.GetString("GrafanaInstanceId", GrafanaInstanceId);
+                GrafanaApiKey = config.GetString("GrafanaApiKey", GrafanaApiKey);
+            }
+            
             ExportIntervalMilliseconds = config.GetInt("ExportIntervalMilliseconds", ExportIntervalMilliseconds);
 
             if (autoStart)

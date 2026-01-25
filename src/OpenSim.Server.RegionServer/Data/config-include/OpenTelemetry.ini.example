@@ -9,22 +9,22 @@
     ;; Enable OpenTelemetry metrics collection
     Enabled = true
 
-    ;; Grafana Cloud OTLP endpoint (adjust region as needed)
-    ;; US: https://otlp-gateway-prod-us-central-0.grafana.net/otlp
-    ;; EU: https://otlp-gateway-prod-eu-west-0.grafana.net/otlp
-    Endpoint = "https://otlp-gateway-prod-us-central-0.grafana.net/otlp"
+    ;; OpenTelemetry Protocol (OTLP) endpoint for exporting telemetry
+    ;; Default port 4317 for gRPC, 4318 for HTTP
+    OtlpEndpoint = "https://otlp-gateway-prod-us-central-0.grafana.net/otlp"
 
-    ;; Service identification
+    ;; Protocol to use for OTLP export (Grpc or HttpProtobuf)
+    OtlpProtocol = "Grpc"
+
+    ;; Service name to identify this instance in telemetry backend
     ServiceName = "OpenSimulator"
     ServiceVersion = "1.0.0"
 
-    ;; Grafana Cloud credentials
-    ;; Get these from: Grafana Cloud -> Connections -> Add new connection -> OpenTelemetry
-    ;; Format: Instance ID from Grafana Cloud
-    GrafanaInstanceId = "your-instance-id"
-
-    ;; Format: API Token from Grafana Cloud (create under "Generate now" in OTLP configuration)
-    GrafanaApiKey = "your-api-key"
+    ;; Authorization token to send with OTLP requests (e.g., for Grafana Cloud)
+    ;; Will be sent as "Authorization: Basic <token>" header
+    ;; Format: instanceId:apiKey (from Grafana Cloud OTLP configuration)
+    ;; Leave empty if no authentication is required
+    AuthorizationToken = "your-instance-id:your-api-key"
 
     ;; Export interval in milliseconds (default: 60000 = 60 seconds)
     ExportIntervalMilliseconds = 60000
