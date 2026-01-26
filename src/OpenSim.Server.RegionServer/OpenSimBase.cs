@@ -281,6 +281,34 @@ namespace OpenSim
             {
                 var metrics = OpenTelemetryMetrics.Instance;
                 metrics.Configure(Config, autoStart: true);
+
+                // Add console commands for telemetry testing
+                if (MainConsole.Instance != null)
+                {
+                    MainConsole.Instance.Commands.AddCommand(
+                        "Monitoring", false, "telemetry export",
+                        "telemetry export",
+                        "Manually trigger OpenTelemetry metrics export",
+                        (module, args) =>
+                        {
+                            m_log.Info("[OPENTELEMETRY]: Manual export requested via console");
+                            OpenTelemetryMetrics.Instance.TestExport();
+                        });
+
+                    MainConsole.Instance.Commands.AddCommand(
+                        "Monitoring", false, "telemetry test",
+                        "telemetry test",
+                        "Record test metrics and trigger export",
+                        (module, args) =>
+                        {
+                            m_log.Info("[OPENTELEMETRY]: Recording test metrics...");
+                            OpenTelemetryMetrics.Instance.RecordAvatarConnection();
+                            OpenTelemetryMetrics.Instance.RecordScriptExecution();
+                            OpenTelemetryMetrics.Instance.RecordFrameTime(16.7);
+                            m_log.Info("[OPENTELEMETRY]: Test metrics recorded, triggering export...");
+                            OpenTelemetryMetrics.Instance.TestExport();
+                        });
+                }
             }
             catch (Exception ex)
             {

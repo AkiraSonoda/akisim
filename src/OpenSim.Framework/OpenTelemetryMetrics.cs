@@ -27,11 +27,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Linq;
 using Nini.Config;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Exporter;
 
 namespace OpenSim.Framework
 {
@@ -53,7 +56,10 @@ namespace OpenSim.Framework
         public string ServiceVersion { get; set; } = "1.0.0";
         public string GrafanaInstanceId { get; set; } = "";
         public string GrafanaApiKey { get; set; } = "";
+        public string OriginalAuthToken { get; set; } = ""; // Store original base64 token
         public int ExportIntervalMilliseconds { get; set; } = 60000; // 60 seconds default
+        public string Protocol { get; set; } = "Grpc"; // Grpc or HttpProtobuf
+        public bool EnableConsoleExporter { get; set; } = false; // For debugging
 
         // Custom metrics
         private Counter<long> m_avatarCount;
@@ -118,44 +124,105 @@ namespace OpenSim.Framework
         /// </summary>
         public void Configure(IConfigSource configSource, bool autoStart = false)
         {
+            var logger = log4net.LogManager.GetLogger(GetType());
+            
             if (configSource == null)
+            {
+                logger.Info("[OPENTELEMETRY]: No configuration source provided. Metrics disabled.");
                 return;
+            }
 
             var config = configSource.Configs["OpenTelemetry"];
             if (config == null)
             {
-                log4net.LogManager.GetLogger(GetType()).Info("OpenTelemetry section not found in configuration. Metrics disabled.");
+                logger.Info("[OPENTELEMETRY]: OpenTelemetry section not found in configuration. Metrics disabled.");
                 return;
             }
 
             bool enabled = config.GetBoolean("Enabled", false);
             if (!enabled)
             {
-                log4net.LogManager.GetLogger(GetType()).Info("OpenTelemetry is disabled in configuration.");
+                logger.Info("[OPENTELEMETRY]: OpenTelemetry is disabled in configuration.");
                 return;
             }
 
+            logger.Info("[OPENTELEMETRY]: Loading OpenTelemetry configuration...");
+
             // Read configuration - support both old and new key names for backward compatibility
-            Endpoint = config.GetString("OtlpEndpoint", config.GetString("Endpoint", Endpoint));
-            ServiceName = config.GetString("ServiceName", ServiceName);
-            ServiceVersion = config.GetString("ServiceVersion", ServiceVersion);
+            string oldEndpoint = config.GetString("Endpoint", null);
+            string newEndpoint = config.GetString("OtlpEndpoint", null);
+            Endpoint = newEndpoint ?? oldEndpoint ?? Endpoint;
             
-            // Handle authorization token - can be in Grafana Cloud format (instanceId:apiKey) or just token
+            logger.InfoFormat("[OPENTELEMETRY]: Service Name: {0}, Version: {1}", 
+                ServiceName = config.GetString("ServiceName", ServiceName),
+                ServiceVersion = config.GetString("ServiceVersion", ServiceVersion));
+            
+            logger.InfoFormat("[OPENTELEMETRY]: OTLP Endpoint: {0}", Endpoint);
+            
+            // Read protocol configuration (Grpc or HttpProtobuf)
+            string protocolStr = config.GetString("OtlpProtocol", "Grpc");
+            logger.InfoFormat("[OPENTELEMETRY]: OTLP Protocol: {0}", protocolStr);
+            
+            // Handle authorization token - can be base64-encoded or plain text
             string authToken = config.GetString("AuthorizationToken", "");
             if (!string.IsNullOrEmpty(authToken))
             {
-                // Try to parse Grafana Cloud format: instanceId:apiKey
-                string[] parts = authToken.Split(':');
-                if (parts.Length == 2)
+                logger.Info("[OPENTELEMETRY]: Using AuthorizationToken for authentication");
+
+                // Check if it's base64 encoded (for Grafana Cloud Basic auth)
+                // Base64 strings typically contain only A-Z, a-z, 0-9, +, /, and = for padding
+                bool looksLikeBase64 = authToken.Length > 20 &&
+                                       authToken.All(c => char.IsLetterOrDigit(c) || c == '+' || c == '/' || c == '=');
+
+                if (looksLikeBase64 && !authToken.Contains(':'))
                 {
+                    // Likely base64-encoded, store original and decode for logging
+                    try
+                    {
+                        byte[] data = Convert.FromBase64String(authToken);
+                        string decoded = System.Text.Encoding.UTF8.GetString(data);
+                        string[] parts = decoded.Split(new[] {':'}, 2);
+                        if (parts.Length == 2)
+                        {
+                            // Store the original base64 token to use directly in Authorization header
+                            OriginalAuthToken = authToken;
+                            GrafanaInstanceId = parts[0];
+                            GrafanaApiKey = parts[1];
+                            logger.InfoFormat("[OPENTELEMETRY]: Decoded base64 token - Instance ID: {0}", GrafanaInstanceId);
+                            logger.Info("[OPENTELEMETRY]: Will use original base64 token for authentication (no double-encoding)");
+                        }
+                        else
+                        {
+                            // Base64 but not in instanceId:apiKey format, use as-is
+                            OriginalAuthToken = authToken;
+                            GrafanaInstanceId = authToken;
+                            GrafanaApiKey = "";
+                            logger.Info("[OPENTELEMETRY]: Using base64-encoded token directly");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Not valid base64, treat as plain token
+                        GrafanaInstanceId = authToken;
+                        GrafanaApiKey = "";
+                        logger.WarnFormat("[OPENTELEMETRY]: Failed to decode token as base64: {0}", ex.Message);
+                    }
+                }
+                else if (authToken.Contains(':'))
+                {
+                    // Plain text instanceId:apiKey format - need to encode it
+                    string[] parts = authToken.Split(new[] {':'}, 2);
                     GrafanaInstanceId = parts[0];
-                    GrafanaApiKey = parts[1];
+                    GrafanaApiKey = parts.Length > 1 ? parts[1] : "";
+                    // Don't store OriginalAuthToken - we'll encode it later
+                    logger.InfoFormat("[OPENTELEMETRY]: Plain text authentication - Instance ID: {0}", GrafanaInstanceId);
                 }
                 else
                 {
-                    // Single token format - use as GrafanaInstanceId with empty apiKey
+                    // Single token format
                     GrafanaInstanceId = authToken;
                     GrafanaApiKey = "";
+                    logger.Info("[OPENTELEMETRY]: Using single token authentication");
                 }
             }
             else
@@ -163,12 +230,38 @@ namespace OpenSim.Framework
                 // Fallback to old format if AuthorizationToken not present
                 GrafanaInstanceId = config.GetString("GrafanaInstanceId", GrafanaInstanceId);
                 GrafanaApiKey = config.GetString("GrafanaApiKey", GrafanaApiKey);
+                if (!string.IsNullOrEmpty(GrafanaInstanceId))
+                {
+                    logger.Info("[OPENTELEMETRY]: Using legacy Grafana Cloud authentication");
+                }
+                else
+                {
+                    logger.Warn("[OPENTELEMETRY]: No authentication configured. Export may fail if endpoint requires authentication.");
+                }
             }
             
             ExportIntervalMilliseconds = config.GetInt("ExportIntervalMilliseconds", ExportIntervalMilliseconds);
+            logger.InfoFormat("[OPENTELEMETRY]: Metrics export interval: {0} ms", ExportIntervalMilliseconds);
+
+            // Check if console exporter should be enabled (for debugging)
+            EnableConsoleExporter = config.GetBoolean("EnableConsoleExporter", EnableConsoleExporter);
+            if (EnableConsoleExporter)
+            {
+                logger.Warn("[OPENTELEMETRY]: Console exporter is ENABLED - metrics will be printed to console (for debugging only)");
+            }
+
+            // Store protocol for use in Start() method
+            Protocol = protocolStr;
 
             if (autoStart)
+            {
+                logger.Info("[OPENTELEMETRY]: Starting OpenTelemetry metrics pipeline...");
                 Start();
+            }
+            else
+            {
+                logger.Info("[OPENTELEMETRY]: Configuration loaded. Call Start() to begin metrics collection.");
+            }
         }
 
         /// <summary>
@@ -176,11 +269,29 @@ namespace OpenSim.Framework
         /// </summary>
         public void Start()
         {
+            var logger = log4net.LogManager.GetLogger(GetType());
+            
             if (m_meterProvider != null)
+            {
+                logger.Info("[OPENTELEMETRY]: Metrics pipeline already started.");
                 return;
+            }
 
             try
             {
+                // Enable OpenTelemetry internal diagnostics
+                logger.Info("[OPENTELEMETRY]: Enabling internal diagnostics...");
+                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2Support", true);
+
+                // Set up diagnostic listener for OpenTelemetry internal events
+                var listener = new ActivityListener
+                {
+                    ShouldListenTo = _ => true,
+                    Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
+                };
+                ActivitySource.AddActivityListener(listener);
+
+                logger.Info("[OPENTELEMETRY]: Building resource builder...");
                 var resourceBuilder = ResourceBuilder.CreateDefault()
                     .AddService(
                         serviceName: ServiceName,
@@ -191,36 +302,144 @@ namespace OpenSim.Framework
                         new KeyValuePair<string, object>("host.name", Environment.MachineName)
                     });
 
+                logger.Info("[OPENTELEMETRY]: Configuring meter provider...");
                 var builder = Sdk.CreateMeterProviderBuilder()
                     .SetResourceBuilder(resourceBuilder)
-                    // Add CLR Runtime instrumentation for .NET metrics
                     .AddRuntimeInstrumentation()
-                    // Add our custom meter
-                    .AddMeter(m_meter.Name)
-                    // Configure periodic export
-                    .AddOtlpExporter((exporterOptions, metricReaderOptions) =>
+                    .AddMeter(m_meter.Name);
+
+                // Add console exporter if enabled (for debugging)
+                if (EnableConsoleExporter)
+                {
+                    logger.Info("[OPENTELEMETRY]: Configuring console exporter for debugging...");
+                    builder = builder.AddConsoleExporter((exporterOptions, metricReaderOptions) =>
                     {
-                        exporterOptions.Endpoint = new Uri(Endpoint);
-
-                        // Add Grafana Cloud authentication headers if configured
-                        if (!string.IsNullOrEmpty(GrafanaInstanceId) && !string.IsNullOrEmpty(GrafanaApiKey))
-                        {
-                            exporterOptions.Headers = $"Authorization=Bearer {GrafanaInstanceId}:{GrafanaApiKey}";
-                        }
-
-                        exporterOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-
-                        // Configure export interval
-                        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = ExportIntervalMilliseconds;
+                        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10000; // 10 seconds for console
+                        logger.Info("[OPENTELEMETRY]: Console exporter configured (10 second intervals)");
                     });
+                }
 
+                logger.Info("[OPENTELEMETRY]: Configuring OTLP exporter...");
+                builder = builder.AddOtlpExporter((exporterOptions, metricReaderOptions) =>
+                {
+                    // Adjust endpoint based on protocol
+                    string endpoint = Endpoint;
+                    if (Protocol.Equals("HttpProtobuf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // HttpProtobuf needs /v1/metrics path for Grafana Cloud
+                        if (!endpoint.EndsWith("/v1/metrics"))
+                        {
+                            endpoint = endpoint.TrimEnd('/') + "/v1/metrics";
+                            logger.InfoFormat("[OPENTELEMETRY]: Adjusted endpoint for HttpProtobuf: {0}", endpoint);
+                        }
+                    }
+
+                    exporterOptions.Endpoint = new Uri(endpoint);
+                    logger.InfoFormat("[OPENTELEMETRY]: OTLP Endpoint configured: {0}", endpoint);
+
+                    // Add Grafana Cloud authentication headers if configured
+                    if (!string.IsNullOrEmpty(OriginalAuthToken))
+                    {
+                        // Use the original base64 token directly (no double-encoding!)
+                        exporterOptions.Headers = "Authorization=Basic " + OriginalAuthToken;
+                        logger.InfoFormat("[OPENTELEMETRY]: Basic authentication configured for instance {0} (using original token)", GrafanaInstanceId);
+                    }
+                    else if (!string.IsNullOrEmpty(GrafanaInstanceId) && !string.IsNullOrEmpty(GrafanaApiKey))
+                    {
+                        // Plain text credentials - encode them
+                        string credentials = GrafanaInstanceId + ":" + GrafanaApiKey;
+                        string base64Credentials = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(credentials));
+                        exporterOptions.Headers = "Authorization=Basic " + base64Credentials;
+                        logger.InfoFormat("[OPENTELEMETRY]: Basic authentication configured for instance {0} (encoded)", GrafanaInstanceId);
+                    }
+                    else if (!string.IsNullOrEmpty(GrafanaInstanceId))
+                    {
+                        // Single token - use as-is
+                        exporterOptions.Headers = "Authorization=Basic " + GrafanaInstanceId;
+                        logger.Info("[OPENTELEMETRY]: Single token authentication configured");
+                    }
+
+                    // Set protocol based on configuration
+                    if (Protocol.Equals("HttpProtobuf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        exporterOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                    }
+                    else
+                    {
+                        exporterOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    }
+                    logger.InfoFormat("[OPENTELEMETRY]: Using protocol: {0}", exporterOptions.Protocol);
+
+                    // Configure export interval
+                    metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = ExportIntervalMilliseconds;
+                    logger.InfoFormat("[OPENTELEMETRY]: Export interval: {0} ms", ExportIntervalMilliseconds);
+                });
+
+                logger.Info("[OPENTELEMETRY]: Building and starting meter provider...");
                 m_meterProvider = builder.Build();
 
-                log4net.LogManager.GetLogger(GetType()).Info($"OpenTelemetry metrics initialized. Exporting to: {Endpoint}");
+                logger.InfoFormat("[OPENTELEMETRY]: ✓ OpenTelemetry metrics initialized successfully!");
+                logger.InfoFormat("[OPENTELEMETRY]: ✓ Service: {0} v{1}", ServiceName, ServiceVersion);
+                logger.InfoFormat("[OPENTELEMETRY]: ✓ Exporting to: {0}", Endpoint);
+                logger.InfoFormat("[OPENTELEMETRY]: ✓ Metrics will be exported every {0} ms", ExportIntervalMilliseconds);
+                logger.Info("[OPENTELEMETRY]: ✓ Runtime metrics collection enabled");
+                logger.Info("[OPENTELEMETRY]: ✓ Custom OpenSimulator metrics collection enabled");
+
+                // Record a test metric immediately to verify pipeline is working
+                logger.Info("[OPENTELEMETRY]: Recording test metric to verify pipeline...");
+                m_avatarCount?.Add(1, new KeyValuePair<string, object>("test", "startup"));
+
+                // Trigger immediate export for testing
+                logger.Info("[OPENTELEMETRY]: Triggering immediate test export...");
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    await System.Threading.Tasks.Task.Delay(2000); // Wait 2 seconds
+                    logger.Info("[OPENTELEMETRY]: Executing test export...");
+                    try
+                    {
+                        m_meterProvider?.ForceFlush();
+                        logger.Info("[OPENTELEMETRY]: ✓ Test export completed");
+                    }
+                    catch (Exception testEx)
+                    {
+                        logger.Error("[OPENTELEMETRY]: ✗ Test export failed", testEx);
+                    }
+                });
             }
             catch (Exception ex)
             {
-                log4net.LogManager.GetLogger(GetType()).Error($"Failed to initialize OpenTelemetry metrics: {ex.Message}", ex);
+                logger.Error("[OPENTELEMETRY]: ✗ Failed to initialize OpenTelemetry metrics", ex);
+                logger.ErrorFormat("[OPENTELEMETRY]: ✗ Error: {0}", ex.Message);
+                if (ex.InnerException != null)
+                {
+                    logger.ErrorFormat("[OPENTELEMETRY]: ✗ Inner exception: {0}", ex.InnerException.Message);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Manually trigger a metrics export (for testing/diagnostics)
+        /// </summary>
+        public void TestExport()
+        {
+            var logger = log4net.LogManager.GetLogger(GetType());
+            
+            if (m_meterProvider == null)
+            {
+                logger.Warn("[OPENTELEMETRY]: Cannot test export - meter provider not initialized");
+                return;
+            }
+            
+            try
+            {
+                logger.Info("[OPENTELEMETRY]: Manually triggering metrics export...");
+                m_meterProvider.ForceFlush();
+                logger.Info("[OPENTELEMETRY]: Export triggered successfully");
+            }
+            catch (Exception ex)
+            {
+                logger.Error("[OPENTELEMETRY]: Failed to export metrics", ex);
+                logger.ErrorFormat("[OPENTELEMETRY]: Error details: {0}", ex.Message);
             }
         }
 
@@ -229,28 +448,59 @@ namespace OpenSim.Framework
         /// </summary>
         public void Stop()
         {
+            var logger = log4net.LogManager.GetLogger(GetType());
+            
             if (m_meterProvider != null)
             {
+                logger.Info("[OPENTELEMETRY]: Flushing pending metrics before shutdown...");
                 m_meterProvider.ForceFlush();
                 m_meterProvider.Dispose();
                 m_meterProvider = null;
+                logger.Info("[OPENTELEMETRY]: Metrics pipeline stopped");
             }
         }
 
         // Public methods to record custom metrics
         public void RecordAvatarConnection()
         {
-            m_avatarCount?.Add(1);
+            var logger = log4net.LogManager.GetLogger(GetType());
+            try
+            {
+                m_avatarCount?.Add(1);
+                logger.Debug("[OPENTELEMETRY]: Recorded avatar connection metric");
+            }
+            catch (Exception ex)
+            {
+                logger.Error("[OPENTELEMETRY]: Failed to record avatar connection metric", ex);
+            }
         }
 
         public void RecordScriptExecution()
         {
-            m_scriptExecutions?.Add(1);
+            var logger = log4net.LogManager.GetLogger(GetType());
+            try
+            {
+                m_scriptExecutions?.Add(1);
+                logger.Debug("[OPENTELEMETRY]: Recorded script execution metric");
+            }
+            catch (Exception ex)
+            {
+                logger.Error("[OPENTELEMETRY]: Failed to record script execution metric", ex);
+            }
         }
 
         public void RecordFrameTime(double durationMs)
         {
-            m_frameTime?.Record(durationMs);
+            var logger = log4net.LogManager.GetLogger(GetType());
+            try
+            {
+                m_frameTime?.Record(durationMs);
+                logger.DebugFormat("[OPENTELEMETRY]: Recorded frame time metric: {0}ms", durationMs);
+            }
+            catch (Exception ex)
+            {
+                logger.Error("[OPENTELEMETRY]: Failed to record frame time metric", ex);
+            }
         }
 
         private long GetActiveSessionCount()

@@ -1,3 +1,15 @@
+# Akisim Makefile - Thin wrapper around MSBuild/dotnet commands
+#
+# This Makefile provides convenient shortcuts for common build tasks.
+# The actual build logic is in Akisim.targets, which is imported by all projects.
+#
+# Usage:
+#   make build   - Build the solution
+#   make clean   - Clean build artifacts
+#   make deploy  - Deploy to configured location
+#   make package - Create versioned package
+#   make rebuild - Clean and rebuild
+
 # Check for configuration parameter
 ifeq ($(config),)
     CONFIGURATION := Release
@@ -33,12 +45,11 @@ build: clean restore
 	@echo "Building in $(CONFIGURATION) configuration..."
 	dotnet build $(SOLUTION) --configuration $(CONFIGURATION) --no-restore
 
-# Clean all build artifacts and project files
+# Clean all build artifacts - MSBuild handles bin/ removal via CleanBinDirectory target
 .PHONY: clean
 clean:
 	@echo "Cleaning solution..."
 	dotnet clean $(SOLUTION) --configuration $(CONFIGURATION)
-	rm -rf bin/
 
 	
 # Restore NuGet packages
@@ -51,61 +62,14 @@ restore:
 .PHONY: rebuild
 rebuild: clean build
 
-# Deploy solution
+# Deploy solution - calls MSBuild Deploy target
 .PHONY: deploy
-deploy:
-	@echo "Deploying $(CONFIGURATION) build..."
-	rm -rf "$(DEST_DIR)/bin"
-	cp -rL "$(SRC_BIN)" "$(DEST_DIR)/"
-	cd "$(DELTA_BIN)" && \
-	for item in *; do \
-		if [ -e "$$item" ]; then \
-			cp -rfL "$$item" "$(DEST_DIR)/bin/" && \
-			echo "Copied: $$item"; \
-		fi \
-	 done
-	@# Fix architecture mismatch for SkiaSharp on Linux x64
-	@if [ "$(OS)" != "Windows_NT" ]; then \
-		if [ -d "$(SRC_BIN)/lib64" ]; then \
-			echo "Copying 64-bit libraries..."; \
-			cp -f "$(SRC_BIN)/lib64/libSkiaSharp.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libSkiaSharp.so" && \
-			echo "Fixed: Copied 64-bit libSkiaSharp.so to runtime directory"; \
-			cp -f "$(SRC_BIN)/lib64/libSkiaSharp.so" "$(DEST_DIR)/bin/libSkiaSharp.so" && \
-			echo "Fixed: Copied 64-bit libSkiaSharp.so to bin directory"; \
-			cp -f "$(SRC_BIN)/lib64/libBulletSim.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libBulletSim.so" && \
-			cp -f "$(SRC_BIN)/lib64/libBulletSim.so" "$(DEST_DIR)/bin/libBulletSim.so" && \
-			cp -f "$(SRC_BIN)/lib64/libopenjpeg-dotnet-x86_64.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libopenjpeg-dotnet.so" && \
-			cp -f "$(SRC_BIN)/lib64/libopenjpeg-dotnet-x86_64.so" "$(DEST_DIR)/bin/libopenjpeg-dotnet.so" && \
-			cp -f "$(SRC_BIN)/lib64/libubode-x86_64.so" "$(DEST_DIR)/bin/runtimes/linux-x64/native/libubode.so" && \
-			cp -f "$(SRC_BIN)/lib64/libubode-x86_64.so" "$(DEST_DIR)/bin/libubode.so" && \
-			echo "Fixed: Copied all 64-bit native libraries"; \
-		fi \
-	fi
-	@echo "Deployment completed successfully!"
+deploy: build
+	@echo "Deploying via MSBuild target..."
+	dotnet msbuild $(SOLUTION) -t:Deploy -p:Configuration=$(CONFIGURATION) -nologo -v:minimal
 
-# Package the solution
+# Package the solution - calls MSBuild Package target
 .PHONY: package
-package: 
-	@latest_dir=$$(ls -d $(PACKAGING_DIR)/akisim-* 2>/dev/null | sort -V | tail -n 1); \
-	if [ -z "$$latest_dir" ]; then \
-		new_version="0.1.0"; \
-	else \
-		current_version=$$(basename "$$latest_dir" | sed 's/akisim-//'); \
-		major=$$(echo $$current_version | cut -d. -f1); \
-		minor=$$(echo $$current_version | cut -d. -f2); \
-		patch=$$(echo $$current_version | cut -d. -f3); \
-		new_patch=$$((patch + 1)); \
-		new_version="$$major.$$minor.$$new_patch"; \
-	fi; \
-	new_dir="$(PACKAGING_DIR)/akisim-$$new_version"; \
-	mkdir -p "$$new_dir"; \
-	rsync -avL --exclude='.*' "$(SOURCE_DIR)/" "$$new_dir/"; \
-	cd "$(DELTA_BIN)" && \
-	for item in *; do \
-		if [ -e "$$item" ]; then \
-			cp -rfL "$$item" "$$new_dir/bin/" && \
-			echo "Copied delta: $$item"; \
-		fi \
-	done; \
-	cd "$(PACKAGING_DIR)" && zip -r "akisim-$$new_version.zip" "akisim-$$new_version"; \
-	echo "Package created: akisim-$$new_version.zip";
+package: build
+	@echo "Creating package via MSBuild target..."
+	dotnet msbuild $(SOLUTION) -t:Package -p:Configuration=$(CONFIGURATION) -nologo -v:minimal

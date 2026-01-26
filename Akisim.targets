@@ -37,13 +37,18 @@
     </Reference>
   </ItemDefinitionGroup>
 
-  <!-- Custom targets for build automation -->
-  <Target Name="CleanBinDirectory" BeforeTargets="Clean">
-    <ItemGroup>
-      <BinFiles Include="$(BaseOutputPath)**$([System.IO.Path]::DirectorySeparatorChar)*" />
-    </ItemGroup>
-    <Delete Files="@(BinFiles)" ContinueOnError="true" />
-    <RemoveDir Directories="$(BaseOutputPath)" ContinueOnError="true" />
+  <!-- Custom clean target - removes bin directory before clean -->
+  <Target Name="CleanBinDirectory" BeforeTargets="Clean" Condition="Exists('$(BaseOutputPath)')">
+    <Message Text="Cleaning bin directory: $(BaseOutputPath)" Importance="high" />
+    <!-- Use platform-appropriate command to remove directory tree robustly -->
+    <Exec Command="rm -rf &quot;$(BaseOutputPath)&quot;"
+          Condition="'$(OS)' == 'Unix'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+    <Exec Command="rmdir /s /q &quot;$(BaseOutputPath)&quot;"
+          Condition="'$(OS)' != 'Unix'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
   </Target>
 
   <Target Name="CreateBinDirectory" BeforeTargets="Build">
@@ -131,16 +136,6 @@
           SkipUnchangedFiles="true" />
   </Target>
 
-  <!-- Enhanced Clean target - replaces Makefile clean -->
-  <Target Name="CleanAll" BeforeTargets="Clean">
-    <Message Text="Cleaning all build artifacts and bin directory..." Importance="high" />
-    <ItemGroup>
-      <BinFiles Include="$(BaseOutputPath)**$([System.IO.Path]::DirectorySeparatorChar)*" />
-    </ItemGroup>
-    <Delete Files="@(BinFiles)" ContinueOnError="true" />
-    <RemoveDir Directories="$(BaseOutputPath)" ContinueOnError="true" />
-  </Target>
-
   <!-- Deploy target - replaces Makefile deploy -->
   <Target Name="Deploy" DependsOnTargets="Build">
     <PropertyGroup>
@@ -157,12 +152,23 @@
     <Message Text="Deploying $(Configuration) build to $(DestDir)..." Importance="high" />
     
     <!-- Deploy target validation -->
-    <Error Text="Source bin directory not found: $(AkisimSrcBin)" 
+    <Error Text="Source bin directory not found: $(AkisimSrcBin)"
            Condition="!Exists('$(AkisimSrcBin)')" />
-    <Error Text="Destination directory not accessible: $(AkisimDestDir)" 
+    <Error Text="Destination directory not accessible: $(AkisimDestDir)"
            Condition="!Exists('$(AkisimDestDir)')" />
-    
-    <RemoveDir Directories="$(DestDir)/bin" ContinueOnError="true" />
+
+    <!-- Remove destination bin directory if it exists -->
+    <Message Text="Removing existing deployment at $(DestDir)/bin" Importance="normal"
+             Condition="Exists('$(DestDir)/bin')" />
+    <Exec Command="rm -rf &quot;$(DestDir)/bin&quot;"
+          Condition="'$(OS)' == 'Unix' and Exists('$(DestDir)/bin')"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+    <Exec Command="rmdir /s /q &quot;$(DestDir)/bin&quot;"
+          Condition="'$(OS)' != 'Unix' and Exists('$(DestDir)/bin')"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+
     <MakeDir Directories="$(DestDir)/bin" />
     
     <ItemGroup>
@@ -175,11 +181,68 @@
     <ItemGroup Condition="Exists('$(DeltaBin)')">
       <DeltaFiles Include="$(DeltaBin)$([System.IO.Path]::DirectorySeparatorChar)**$([System.IO.Path]::DirectorySeparatorChar)*" />
     </ItemGroup>
-    <Copy SourceFiles="@(DeltaFiles)" 
-          DestinationFolder="$(DestDir)/bin/%(RecursiveDir)" 
+    <Copy SourceFiles="@(DeltaFiles)"
+          DestinationFolder="$(DestDir)/bin/%(RecursiveDir)"
           SkipUnchangedFiles="true"
           Condition="Exists('$(DeltaBin)')" />
-    
+
+    <!-- Fix architecture mismatch for 64-bit native libraries on Linux -->
+    <PropertyGroup>
+      <Lib64Dir>$(SrcBin)$([System.IO.Path]::DirectorySeparatorChar)lib64</Lib64Dir>
+    </PropertyGroup>
+
+    <Message Text="Copying 64-bit native libraries..." Importance="high"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)')" />
+
+    <!-- Create runtime directories for native libraries -->
+    <MakeDir Directories="$(DestDir)/bin/runtimes/linux-x64/native"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)')" />
+
+    <!-- Copy SkiaSharp 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libSkiaSharp.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libSkiaSharp.so"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libSkiaSharp.so"
+          DestinationFiles="$(DestDir)/bin/libSkiaSharp.so"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+    <Message Text="Fixed: Copied 64-bit libSkiaSharp.so to runtime directory" Importance="normal"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+    <Message Text="Fixed: Copied 64-bit libSkiaSharp.so to bin directory" Importance="normal"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+
+    <!-- Copy BulletSim 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libBulletSim.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libBulletSim.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libBulletSim.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libBulletSim.so"
+          DestinationFiles="$(DestDir)/bin/libBulletSim.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libBulletSim.so')" />
+
+    <!-- Copy OpenJPEG 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libopenjpeg-dotnet.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/libopenjpeg-dotnet.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so')" />
+
+    <!-- Copy ubODE 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libubode-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libubode.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libubode-x86_64.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libubode-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/libubode.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libubode-x86_64.so')" />
+
+    <Message Text="Fixed: Copied all 64-bit native libraries" Importance="normal"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)')" />
+
     <Message Text="Deployment completed successfully!" Importance="high" />
   </Target>
 
