@@ -860,8 +860,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                     width = bitmap.Width;
                     height = bitmap.Height;
 
-                    // Determine bytes per pixel from color type
-                    pixelBytes = bitmap.ColorType == SKColorType.Rgb888x ? 3 : 4;
+                    // Get actual bytes per pixel from SkiaSharp
+                    // Note: Rgb888x is 4 bytes (RGBX with padding), not 3
+                    pixelBytes = bitmap.BytesPerPixel;
 
                     // Sum up the individual channels using SKBitmap pixel access
                     IntPtr pixels = bitmap.GetPixels();
