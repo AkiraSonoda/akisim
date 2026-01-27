@@ -123,7 +123,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                 using(MemoryStream stream = new MemoryStream(asset.Data))
                                     detailTexture[i] = SKBitmap.Decode(stream);
 
-                                if(detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
+                                if(detailTexture[i].Width != 16 || detailTexture[i].Height != 16 ||
+                                   detailTexture[i].ColorType == SKColorType.Bgra8888)
                                 {
                                     detailTexture[i].Dispose();
                                     detailTexture[i] = null;
@@ -158,6 +159,20 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                 if (detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
                                     using(SKBitmap origBitmap = detailTexture[i])
                                         detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
+
+                                // Ensure consistent color format - convert BGRA to RGBA if needed
+                                if (detailTexture[i].ColorType == SKColorType.Bgra8888)
+                                {
+                                    m_log.InfoFormat("{0} Converting texture {1} from Bgra8888 to Rgba8888", LogHeader, i);
+                                    using(SKBitmap bgraBitmap = detailTexture[i])
+                                    {
+                                        detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
+                                        using(SKCanvas canvas = new SKCanvas(detailTexture[i]))
+                                        {
+                                            canvas.DrawBitmap(bgraBitmap, 0, 0);
+                                        }
+                                    }
+                                }
 
                                 //detailTexture[i].Save("terr" + i.ToString() + ".png");
 
@@ -382,6 +397,14 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         detailTexture[3].RowBytes
                     };
                     int texBytesPerPixel = detailTexture[0].BytesPerPixel;
+
+                    // Log texture properties for debugging
+                    for(int i = 0; i < 4; i++)
+                    {
+                        m_log.InfoFormat("{0} Texture[{1}]: {2}x{3}, ColorType={4}, BytesPerPixel={5}, RowBytes={6}",
+                            LogHeader, i, detailTexture[i].Width, detailTexture[i].Height,
+                            detailTexture[i].ColorType, detailTexture[i].BytesPerPixel, detailTexture[i].RowBytes);
+                    }
 
                     byte* ptr;
                     byte* ptrO;
