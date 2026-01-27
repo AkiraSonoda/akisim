@@ -39,6 +39,7 @@ namespace OpenSim.Framework.Console
 {
     /// <summary>
     /// Writes log information to OpenTelemetry
+    /// This appender gets its configuration from OpenTelemetryMetrics singleton
     /// </summary>
     public class OpenTelemetryAppender : AppenderSkeleton
     {
@@ -47,6 +48,7 @@ namespace OpenSim.Framework.Console
         private static bool s_initialized = false;
         private static readonly object s_lock = new object();
 
+        // These are placeholders - actual values come from OpenTelemetryMetrics
         public string Endpoint { get; set; } = "http://localhost:4317";
         public string ServiceName { get; set; } = "OpenSimulator";
         public string ServiceVersion { get; set; } = "1.0.0";
@@ -54,46 +56,33 @@ namespace OpenSim.Framework.Console
         public override void ActivateOptions()
         {
             base.ActivateOptions();
-            InitializeOpenTelemetry();
+            // Initialization happens later via SetLoggerFactory
         }
 
-        private void InitializeOpenTelemetry()
+        /// <summary>
+        /// Set the logger factory from OpenTelemetryMetrics
+        /// This avoids duplicate OTLP exporters and shares configuration
+        /// </summary>
+        public static void SetLoggerFactory(ILoggerFactory loggerFactory)
         {
             lock (s_lock)
             {
-                if (s_initialized)
-                    return;
-
-                try
+                if (s_loggerFactory != null)
                 {
-                    var serviceCollection = new ServiceCollection();
-
-                    serviceCollection.AddLogging(builder =>
-                    {
-                        builder.AddOpenTelemetry(options =>
-                        {
-                            options.SetResourceBuilder(
-                                ResourceBuilder.CreateDefault()
-                                    .AddService(serviceName: ServiceName, serviceVersion: ServiceVersion));
-
-                            options.AddOtlpExporter(exporterOptions =>
-                            {
-                                exporterOptions.Endpoint = new Uri(Endpoint);
-                            });
-                        });
-                    });
-
-                    var serviceProvider = serviceCollection.BuildServiceProvider();
-                    s_loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-                    s_logger = s_loggerFactory.CreateLogger("OpenSimulator");
-
-                    s_initialized = true;
+                    s_loggerFactory.Dispose();
                 }
-                catch (Exception ex)
-                {
-                    ErrorHandler.Error($"Failed to initialize OpenTelemetry: {ex.Message}", ex);
-                }
+
+                s_loggerFactory = loggerFactory;
+                s_logger = loggerFactory?.CreateLogger("OpenSimulator");
+                s_initialized = (loggerFactory != null);
             }
+        }
+
+        [Obsolete("Use SetLoggerFactory instead - configuration now comes from OpenTelemetryMetrics")]
+        private void InitializeOpenTelemetry()
+        {
+            // This method is obsolete - log export is now configured by OpenTelemetryMetrics
+            // The log4net appender just forwards logs to the shared ILoggerFactory
         }
 
         protected override void Append(LoggingEvent loggingEvent)
