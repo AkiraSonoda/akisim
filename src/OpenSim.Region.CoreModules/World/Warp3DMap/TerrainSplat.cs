@@ -123,8 +123,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                 using(MemoryStream stream = new MemoryStream(asset.Data))
                                     detailTexture[i] = SKBitmap.Decode(stream);
 
-                                if(detailTexture[i].ColorType != SKColorType.Rgb888x ||
-                                     detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
+                                if(detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
                                 {
                                     detailTexture[i].Dispose();
                                     detailTexture[i] = null;
@@ -156,8 +155,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             {
                                 //detailTexture[i].Save("terrOri" + i.ToString() + ".png");
 
-                                if (detailTexture[i].ColorType != SKColorType.Rgb888x ||
-                                   detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
+                                if (detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
                                     using(SKBitmap origBitmap = detailTexture[i])
                                         detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
 
@@ -247,7 +245,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             m_log.DebugFormat("{0} Missing terrain texture for layer {1}. Filling with solid default color", LogHeader, i);
 
                             // Create a solid color texture for this layer
-                            detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgb888x, SKAlphaType.Opaque);
+                            detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
                             using(SKCanvas canvas = new SKCanvas(detailTexture[i]))
                             using(SKPaint paint = new SKPaint { Color = DEFAULT_TERRAIN_COLOR[i], Style = SKPaintStyle.Fill })
                             {
@@ -286,10 +284,13 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
             #region Texture Compositing
 
-            SKBitmap output = new SKBitmap(twidth, theight, SKColorType.Rgb888x, SKAlphaType.Opaque);
+            SKBitmap output = new SKBitmap(twidth, theight, SKColorType.Rgba8888, SKAlphaType.Opaque);
             IntPtr outputPixels = output.GetPixels();
             int outputStride = output.RowBytes;
             int outputBytesPerPixel = output.BytesPerPixel;
+
+            m_log.DebugFormat("{0} Output bitmap: {1}x{2}, ColorType={3}, BytesPerPixel={4}, RowBytes={5}, Expected={6}",
+                LogHeader, twidth, theight, output.ColorType, outputBytesPerPixel, outputStride, twidth * outputBytesPerPixel);
 
             // Unsafe work as we lock down the source textures for quicker access and access the
             //    pixel data directly
