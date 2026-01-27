@@ -337,7 +337,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             else
                                 l1 = l0 + 1;
 
-                            a = mapColorsRed[l0];                         
+                            a = mapColorsRed[l0];
                             b = mapColorsRed[l1];
                             ptrO[0] = (byte)(a + layerDiff * (b - a));
 
@@ -348,6 +348,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             a = mapColorsBlue[l0];
                             b = mapColorsBlue[l1];
                             ptrO[2] = (byte)(a + layerDiff * (b - a));
+
+                            ptrO[3] = 255;  // Alpha/padding byte for Rgb888x format
                         }
                     }
                 }
@@ -406,9 +408,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             int patchOffset = (tx & 0x0f) * texBytesPerPixel + ypatch;
 
                             ptr = (byte*)pixelPtrs[l0] + patchOffset;
-                            aB = ptr[0];
-                            aG = ptr[1];
-                            aR = ptr[2];
+                            aR = ptr[0];  // Red
+                            aG = ptr[1];  // Green
+                            aB = ptr[2];  // Blue
 
                             if(l0 >= 2 )
                                 l0 = 3;
@@ -416,14 +418,15 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                 l0++;
 
                             ptr = (byte*)pixelPtrs[l0] + patchOffset;
-                            bB = ptr[0];
-                            bG = ptr[1];
-                            bR = ptr[2];
+                            bR = ptr[0];  // Red
+                            bG = ptr[1];  // Green
+                            bB = ptr[2];  // Blue
 
                             // Interpolate between the two selected textures
-                            ptrO[0] = (byte)(aB + layerDiff * (bB - aB));
-                            ptrO[1] = (byte)(aG + layerDiff * (bG - aG));
-                            ptrO[2] = (byte)(aR + layerDiff * (bR - aR));
+                            ptrO[0] = (byte)(aR + layerDiff * (bR - aR));  // Red
+                            ptrO[1] = (byte)(aG + layerDiff * (bG - aG));  // Green
+                            ptrO[2] = (byte)(aB + layerDiff * (bB - aB));  // Blue
+                            ptrO[3] = 255;  // Alpha/padding byte for Rgb888x format
                         }
                     }
                 }
