@@ -289,7 +289,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             int outputStride = output.RowBytes;
             int outputBytesPerPixel = output.BytesPerPixel;
 
-            m_log.DebugFormat("{0} Output bitmap: {1}x{2}, ColorType={3}, BytesPerPixel={4}, RowBytes={5}, Expected={6}",
+            m_log.InfoFormat("{0} Output bitmap: {1}x{2}, ColorType={3}, BytesPerPixel={4}, RowBytes={5}, Expected={6}",
                 LogHeader, twidth, theight, output.ColorType, outputBytesPerPixel, outputStride, twidth * outputBytesPerPixel);
 
             // Unsafe work as we lock down the source textures for quicker access and access the
@@ -389,7 +389,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                     {
                         pcty = y * invtheightMinus1;
                         ty = (int)(y * yFactor);
-                        int ypatch = (ty & 0x0f) * strides[0];
+                        int ypatchIndex = (ty & 0x0f);
                         yglobalpos = (uint)ty + regionPositionY;
                         ptrO = (byte*)outputPixels + y * outputStride;
 
@@ -406,7 +406,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             l0 = (int)layer;
                             layerDiff = layer - l0;
 
-                            int patchOffset = (tx & 0x0f) * texBytesPerPixel + ypatch;
+                            int xpatch = (tx & 0x0f) * texBytesPerPixel;
+                            int patchOffset = xpatch + ypatchIndex * strides[l0];
 
                             ptr = (byte*)pixelPtrs[l0] + patchOffset;
                             aR = ptr[0];  // Red
@@ -418,6 +419,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             else
                                 l0++;
 
+                            patchOffset = xpatch + ypatchIndex * strides[l0];
                             ptr = (byte*)pixelPtrs[l0] + patchOffset;
                             bR = ptr[0];  // Red
                             bG = ptr[1];  // Green
