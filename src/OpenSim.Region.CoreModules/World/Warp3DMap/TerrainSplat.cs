@@ -441,9 +441,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             l0 = (int)layer;
                             layerDiff = layer - l0;
 
-                            // Use GetPixel to avoid byte-order issues
-                            int patchX = tx & 0x0f;
-                            int patchY = ty & 0x0f;
+                            // Calculate texture coordinates from OUTPUT coordinates for proper tiling
+                            int patchX = x & 0x0f;
+                            int patchY = y & 0x0f;
 
                             SKColor colorA = detailTexture[l0].GetPixel(patchX, patchY);
                             aR = colorA.Red;

@@ -430,6 +430,14 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         m_scene.AssetService, m_imgDecoder, m_textureTerrain, m_textureAverageTerrain,
                         twidth, twidth))
             {
+                // DIAGNOSTIC: Save the terrain texture to a file for inspection
+                string debugPath = System.IO.Path.Combine("/tmp", $"terrain_debug_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+                using (var debugStream = System.IO.File.OpenWrite(debugPath))
+                {
+                    skImage.Encode(debugStream, SKEncodedImageFormat.Png, 100);
+                }
+                m_log.InfoFormat("[Warp3DImageModule] Saved terrain texture to {0} for inspection", debugPath);
+
                 // Convert SKBitmap to System.Drawing.Bitmap for warp_Texture
                 using (var ms = new MemoryStream())
                 {
