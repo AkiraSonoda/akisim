@@ -114,10 +114,10 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         // asset cache indexes are strings
                         string cacheName = "MAP" + textureIDs[i].ToString();
 
-                        m_log.InfoFormat("{0} Bypassing cache for {1}, will re-decode from original JPEG2000", LogHeader, cacheName);
+                        m_log.DebugFormat("{0} Bypassing cache for {1}, will re-decode from original JPEG2000", LogHeader, cacheName);
 
                         // Try to fetch a cached copy of the decoded/resized version of this texture
-                        // TEMPORARY: Skip cache to force re-decode with OpenJPEG instead of corrupted CSJ2K versions
+                        // Skip cache to force re-decode (in case CSJ2K corrupted versions were cached)
                         AssetBase asset = null; // assetService.GetCached(cacheName);
                         if(asset != null)
                         {
@@ -157,32 +157,16 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
                             if(detailTexture[i] != null)
                             {
-                                // DIAGNOSTIC: Save original decoded texture
-                                string origPath = System.IO.Path.Combine("/tmp", $"terrOri_{i}.png");
-                                using (var stream = System.IO.File.OpenWrite(origPath))
-                                    detailTexture[i].Encode(stream, SKEncodedImageFormat.Png, 100);
-                                m_log.InfoFormat("{0} Saved original texture {1} to {2}", LogHeader, i, origPath);
-
                                 // Resize if needed
                                 if (detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
                                 {
-                                    m_log.InfoFormat("{0} Resizing texture {1} from {2}x{3} to 16x16",
+                                    m_log.DebugFormat("{0} Resizing texture {1} from {2}x{3} to 16x16",
                                         LogHeader, i, detailTexture[i].Width, detailTexture[i].Height);
                                     using(SKBitmap origBitmap = detailTexture[i])
                                         detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
                                 }
 
-                                // DIAGNOSTIC: Log first row BEFORE rebuild
-                                System.Text.StringBuilder beforeRebuild = new System.Text.StringBuilder();
-                                beforeRebuild.Append($"Texture[{i}] row 0 BEFORE rebuild: ");
-                                for (int px = 0; px < 16; px++)
-                                {
-                                    SKColor c = detailTexture[i].GetPixel(px, 0);
-                                    beforeRebuild.Append($"[{px}:R={c.Red},G={c.Green},B={c.Blue},A={c.Alpha}] ");
-                                }
-                                m_log.InfoFormat("{0} {1}", LogHeader, beforeRebuild.ToString());
-
-                                // ALWAYS convert to fresh Rgba8888 and fix alpha channel
+                                // Convert to fresh Rgba8888 and fix alpha channel
                                 using(SKBitmap sourceBitmap = detailTexture[i])
                                 {
                                     detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
@@ -198,14 +182,8 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                         }
                                     }
 
-                                    m_log.InfoFormat("{0} Rebuilt texture {1} with forced opaque alpha", LogHeader, i);
+                                    m_log.DebugFormat("{0} Rebuilt texture {1} with forced opaque alpha", LogHeader, i);
                                 }
-
-                                // DIAGNOSTIC: Save rebuilt texture
-                                string rebuiltPath = System.IO.Path.Combine("/tmp", $"terr_{i}.png");
-                                using (var stream = System.IO.File.OpenWrite(rebuiltPath))
-                                    detailTexture[i].Encode(stream, SKEncodedImageFormat.Png, 100);
-                                m_log.InfoFormat("{0} Saved rebuilt texture {1} to {2}", LogHeader, i, rebuiltPath);
 
                                 // Save the decoded and resized texture to the cache
                                 byte[] data;
@@ -334,14 +312,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             var info = new SKImageInfo(twidth, theight, SKColorType.Rgba8888, SKAlphaType.Premul);
             SKBitmap output = new SKBitmap(info);
 
-            m_log.InfoFormat("{0} Created output with Info.ColorType={1}, actual ColorType={2}",
-                LogHeader, info.ColorType, output.ColorType);
+            m_log.DebugFormat("{0} Output bitmap: {1}x{2}, ColorType={3}",
+                LogHeader, twidth, theight, output.ColorType);
             IntPtr outputPixels = output.GetPixels();
             int outputStride = output.RowBytes;
             int outputBytesPerPixel = output.BytesPerPixel;
-
-            m_log.InfoFormat("{0} Output bitmap: {1}x{2}, ColorType={3}, BytesPerPixel={4}, RowBytes={5}, Expected={6}",
-                LogHeader, twidth, theight, output.ColorType, outputBytesPerPixel, outputStride, twidth * outputBytesPerPixel);
 
             // Unsafe work as we lock down the source textures for quicker access and access the
             //    pixel data directly
@@ -433,27 +408,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                     // Log texture properties for debugging
                     for(int i = 0; i < 4; i++)
                     {
-                        m_log.InfoFormat("{0} Texture[{1}]: {2}x{3}, ColorType={4}, BytesPerPixel={5}, RowBytes={6}",
+                        m_log.DebugFormat("{0} Texture[{1}]: {2}x{3}, ColorType={4}",
                             LogHeader, i, detailTexture[i].Width, detailTexture[i].Height,
-                            detailTexture[i].ColorType, detailTexture[i].BytesPerPixel, detailTexture[i].RowBytes);
-
-                        // Log first pixel using GetPixel API (handles format automatically)
-                        SKColor pixelColor = detailTexture[i].GetPixel(0, 0);
-                        m_log.InfoFormat("{0} Texture[{1}] first pixel (via GetPixel): R={2}, G={3}, B={4}, A={5}",
-                            LogHeader, i, pixelColor.Red, pixelColor.Green, pixelColor.Blue, pixelColor.Alpha);
-
-                        // DIAGNOSTIC: Dump entire first row of texture[0] to understand the black stripe pattern
-                        if (i == 0)
-                        {
-                            System.Text.StringBuilder rowDump = new System.Text.StringBuilder();
-                            rowDump.Append($"Texture[0] row 0 full dump: ");
-                            for (int px = 0; px < 16; px++)
-                            {
-                                SKColor c = detailTexture[0].GetPixel(px, 0);
-                                rowDump.Append($"[{px}:R={c.Red},G={c.Green},B={c.Blue}] ");
-                            }
-                            m_log.InfoFormat("{0} {1}", LogHeader, rowDump.ToString());
-                        }
+                            detailTexture[i].ColorType);
                     }
 
                     byte* ptr;
@@ -483,19 +440,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             int patchX = x & 0x0f;
                             int patchY = y & 0x0f;
 
-                            // DIAGNOSTIC: Log first few pixels to understand the pattern
-                            if (y == 0 && x < 32)
-                            {
-                                m_log.InfoFormat("{0} Pixel({1},{2}): tx={3}, ty={4}, height={5:F1}, layer={6:F2}, l0={7}, patchX={8}, patchY={9}",
-                                    LogHeader, x, y, tx, ty, height, layer, l0, patchX, patchY);
-                            }
-
                             SKColor colorA = detailTexture[l0].GetPixel(patchX, patchY);
                             aR = colorA.Red;
                             aG = colorA.Green;
                             aB = colorA.Blue;
 
-                            int l0_original = l0;  // Save original for logging
                             if(l0 >= 2 )
                                 l0 = 3;
                             else
@@ -510,13 +459,6 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             byte finalR = (byte)(aR + layerDiff * (bR - aR));
                             byte finalG = (byte)(aG + layerDiff * (bG - aG));
                             byte finalB = (byte)(aB + layerDiff * (bB - aB));
-
-                            // DIAGNOSTIC: Log color values for first few pixels
-                            if (y == 0 && x < 32)
-                            {
-                                m_log.InfoFormat("{0} Pixel({1},{2}): l0_orig={3}, l0_next={4}, colorA=({5},{6},{7}), colorB=({8},{9},{10}), final=({11},{12},{13})",
-                                    LogHeader, x, y, l0_original, l0, aR, aG, aB, bR, bG, bB, finalR, finalG, finalB);
-                            }
 
                             // Use SetPixel to avoid byte-order issues
                             output.SetPixel(x, y, new SKColor(finalR, finalG, finalB, 255));
