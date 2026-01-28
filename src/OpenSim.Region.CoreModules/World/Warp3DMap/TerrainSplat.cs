@@ -161,21 +161,23 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                     using(SKBitmap origBitmap = detailTexture[i])
                                         detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
 
-                                // ALWAYS convert to fresh Rgba8888 to ensure consistent memory layout
-                                // even if it claims to already be Rgba8888
+                                // ALWAYS convert to fresh Rgba8888 and fix alpha channel
                                 using(SKBitmap sourceBitmap = detailTexture[i])
                                 {
                                     detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
-                                    using(SKCanvas canvas = new SKCanvas(detailTexture[i]))
+
+                                    // Copy pixels manually to force alpha to 255
+                                    for(int py = 0; py < 16; py++)
                                     {
-                                        canvas.Clear(SKColors.Transparent);
-                                        canvas.DrawBitmap(sourceBitmap, 0, 0);
+                                        for(int px = 0; px < 16; px++)
+                                        {
+                                            SKColor sourceColor = sourceBitmap.GetPixel(px, py);
+                                            // Force alpha to 255, keep RGB from source
+                                            detailTexture[i].SetPixel(px, py, new SKColor(sourceColor.Red, sourceColor.Green, sourceColor.Blue, 255));
+                                        }
                                     }
-                                    if (sourceBitmap.ColorType != SKColorType.Rgba8888)
-                                    {
-                                        m_log.InfoFormat("{0} Converted texture {1} from {2} to Rgba8888",
-                                            LogHeader, i, sourceBitmap.ColorType);
-                                    }
+
+                                    m_log.InfoFormat("{0} Rebuilt texture {1} with forced opaque alpha", LogHeader, i);
                                 }
 
                                 //detailTexture[i].Save("terr" + i.ToString() + ".png");
