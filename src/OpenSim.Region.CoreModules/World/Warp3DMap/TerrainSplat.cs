@@ -156,21 +156,25 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             {
                                 //detailTexture[i].Save("terrOri" + i.ToString() + ".png");
 
+                                // Resize if needed
                                 if (detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
                                     using(SKBitmap origBitmap = detailTexture[i])
                                         detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
 
-                                // Ensure consistent color format - convert BGRA to RGBA if needed
-                                if (detailTexture[i].ColorType == SKColorType.Bgra8888)
+                                // ALWAYS convert to fresh Rgba8888 to ensure consistent memory layout
+                                // even if it claims to already be Rgba8888
+                                using(SKBitmap sourceBitmap = detailTexture[i])
                                 {
-                                    m_log.InfoFormat("{0} Converting texture {1} from Bgra8888 to Rgba8888", LogHeader, i);
-                                    using(SKBitmap bgraBitmap = detailTexture[i])
+                                    detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
+                                    using(SKCanvas canvas = new SKCanvas(detailTexture[i]))
                                     {
-                                        detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
-                                        using(SKCanvas canvas = new SKCanvas(detailTexture[i]))
-                                        {
-                                            canvas.DrawBitmap(bgraBitmap, 0, 0);
-                                        }
+                                        canvas.Clear(SKColors.Transparent);
+                                        canvas.DrawBitmap(sourceBitmap, 0, 0);
+                                    }
+                                    if (sourceBitmap.ColorType != SKColorType.Rgba8888)
+                                    {
+                                        m_log.InfoFormat("{0} Converted texture {1} from {2} to Rgba8888",
+                                            LogHeader, i, sourceBitmap.ColorType);
                                     }
                                 }
 
@@ -404,6 +408,14 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         m_log.InfoFormat("{0} Texture[{1}]: {2}x{3}, ColorType={4}, BytesPerPixel={5}, RowBytes={6}",
                             LogHeader, i, detailTexture[i].Width, detailTexture[i].Height,
                             detailTexture[i].ColorType, detailTexture[i].BytesPerPixel, detailTexture[i].RowBytes);
+
+                        // Log first pixel for debugging
+                        unsafe
+                        {
+                            byte* ptrDebug = (byte*)pixelPtrs[i];
+                            m_log.InfoFormat("{0} Texture[{1}] first pixel: R={2}, G={3}, B={4}, A={5}",
+                                LogHeader, i, ptrDebug[0], ptrDebug[1], ptrDebug[2], ptrDebug[3]);
+                        }
                     }
 
                     byte* ptr;
