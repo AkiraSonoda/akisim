@@ -49,7 +49,9 @@ namespace OpenSim.Framework.SkiaSharp
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            // Use Unpremul to avoid black pixels when alpha=0
+            // (premultiplied alpha makes RGB=0 when alpha=0, causing black stripes in textures)
+            var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
             var result = new SKBitmap(info);
 
             using (var canvas = new SKCanvas(result))
@@ -58,7 +60,7 @@ namespace OpenSim.Framework.SkiaSharp
                 paint.IsAntialias = true;
                 paint.FilterQuality = SKFilterQuality.High;
 
-                canvas.Clear();
+                canvas.Clear(SKColors.White); // Clear to white instead of transparent
                 canvas.DrawBitmap(source, new SKRect(0, 0, width, height), paint);
             }
 
