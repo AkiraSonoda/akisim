@@ -303,7 +303,12 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
             #region Texture Compositing
 
-            SKBitmap output = new SKBitmap(twidth, theight, SKColorType.Rgba8888, SKAlphaType.Opaque);
+            // Try platform's native format instead of forcing RGBA
+            var info = new SKImageInfo(twidth, theight, SKColorType.Rgba8888, SKAlphaType.Premul);
+            SKBitmap output = new SKBitmap(info);
+
+            m_log.InfoFormat("{0} Created output with Info.ColorType={1}, actual ColorType={2}",
+                LogHeader, info.ColorType, output.ColorType);
             IntPtr outputPixels = output.GetPixels();
             int outputStride = output.RowBytes;
             int outputBytesPerPixel = output.BytesPerPixel;
@@ -330,47 +335,43 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 float a;
                 float b;
                 int l1;
-                unsafe
+                for(int y = 0; y < theight; ++y)
                 {
-                    byte* ptrO;
-                    for(int y = 0; y < theight; ++y)
+                    pcty = y * invtheightMinus1;
+                    ty = (int)(y * yFactor);
+                    yglobalpos = (uint)ty + regionPositionY;
+
+                    for(int x = 0; x < twidth; ++x)
                     {
-                        pcty = y * invtheightMinus1;
-                        ptrO = (byte*)outputPixels + y * outputStride;
-                        ty = (int)(y * yFactor);
-                        yglobalpos = (uint)ty + regionPositionY;
+                        tx = (int)(x * xFactor);
+                        pctx = x  * invtwitdthMinus1;
+                        height = (float)terrain[tx, ty];
+                        layer = getLayerTex(height, pctx, pcty,
+                            (uint)tx + regionPositionX, yglobalpos,
+                            startHeights, heightRanges);
 
-                        for(int x = 0; x < twidth; ++x, ptrO += outputBytesPerPixel)
-                        {
-                            tx = (int)(x * xFactor);
-                            pctx = x  * invtwitdthMinus1;
-                            height = (float)terrain[tx, ty];
-                            layer = getLayerTex(height, pctx, pcty,
-                                (uint)tx + regionPositionX, yglobalpos,
-                                startHeights, heightRanges);
+                        // Select two textures
+                        l0 = (int)layer;
+                        layerDiff = layer - l0;
+                        if (l0 >= 2)
+                            l1 = 3;
+                        else
+                            l1 = l0 + 1;
 
-                            // Select two textures
-                            l0 = (int)layer;
-                            layerDiff = layer - l0;
-                            if (l0 >= 2)
-                                l1 = 3;
-                            else
-                                l1 = l0 + 1;
+                        a = mapColorsRed[l0];
+                        b = mapColorsRed[l1];
+                        byte finalR = (byte)(a + layerDiff * (b - a));
 
-                            a = mapColorsRed[l0];
-                            b = mapColorsRed[l1];
-                            ptrO[0] = (byte)(a + layerDiff * (b - a));
+                        a = mapColorsGreen[l0];
+                        b = mapColorsGreen[l1];
+                        byte finalG = (byte)(a + layerDiff * (b - a));
 
-                            a = mapColorsGreen[l0];
-                            b = mapColorsGreen[l1];
-                            ptrO[1] = (byte)(a + layerDiff * (b - a));
+                        a = mapColorsBlue[l0];
+                        b = mapColorsBlue[l1];
+                        byte finalB = (byte)(a + layerDiff * (b - a));
 
-                            a = mapColorsBlue[l0];
-                            b = mapColorsBlue[l1];
-                            ptrO[2] = (byte)(a + layerDiff * (b - a));
-
-                            ptrO[3] = 255;  // Alpha/padding byte for Rgb888x format
-                        }
+                        // Use SetPixel to avoid byte-order issues
+                        output.SetPixel(x, y, new SKColor(finalR, finalG, finalB, 255));
                     }
                 }
             }
@@ -409,13 +410,10 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             LogHeader, i, detailTexture[i].Width, detailTexture[i].Height,
                             detailTexture[i].ColorType, detailTexture[i].BytesPerPixel, detailTexture[i].RowBytes);
 
-                        // Log first pixel for debugging
-                        unsafe
-                        {
-                            byte* ptrDebug = (byte*)pixelPtrs[i];
-                            m_log.InfoFormat("{0} Texture[{1}] first pixel: R={2}, G={3}, B={4}, A={5}",
-                                LogHeader, i, ptrDebug[0], ptrDebug[1], ptrDebug[2], ptrDebug[3]);
-                        }
+                        // Log first pixel using GetPixel API (handles format automatically)
+                        SKColor pixelColor = detailTexture[i].GetPixel(0, 0);
+                        m_log.InfoFormat("{0} Texture[{1}] first pixel (via GetPixel): R={2}, G={3}, B={4}, A={5}",
+                            LogHeader, i, pixelColor.Red, pixelColor.Green, pixelColor.Blue, pixelColor.Alpha);
                     }
 
                     byte* ptr;
@@ -441,30 +439,32 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             l0 = (int)layer;
                             layerDiff = layer - l0;
 
-                            int xpatch = (tx & 0x0f) * texBytesPerPixel;
-                            int patchOffset = xpatch + ypatchIndex * strides[l0];
+                            // Use GetPixel to avoid byte-order issues
+                            int patchX = tx & 0x0f;
+                            int patchY = ty & 0x0f;
 
-                            ptr = (byte*)pixelPtrs[l0] + patchOffset;
-                            aR = ptr[0];  // Red
-                            aG = ptr[1];  // Green
-                            aB = ptr[2];  // Blue
+                            SKColor colorA = detailTexture[l0].GetPixel(patchX, patchY);
+                            aR = colorA.Red;
+                            aG = colorA.Green;
+                            aB = colorA.Blue;
 
                             if(l0 >= 2 )
                                 l0 = 3;
                             else
                                 l0++;
 
-                            patchOffset = xpatch + ypatchIndex * strides[l0];
-                            ptr = (byte*)pixelPtrs[l0] + patchOffset;
-                            bR = ptr[0];  // Red
-                            bG = ptr[1];  // Green
-                            bB = ptr[2];  // Blue
+                            SKColor colorB = detailTexture[l0].GetPixel(patchX, patchY);
+                            bR = colorB.Red;
+                            bG = colorB.Green;
+                            bB = colorB.Blue;
 
                             // Interpolate between the two selected textures
-                            ptrO[0] = (byte)(aR + layerDiff * (bR - aR));  // Red
-                            ptrO[1] = (byte)(aG + layerDiff * (bG - aG));  // Green
-                            ptrO[2] = (byte)(aB + layerDiff * (bB - aB));  // Blue
-                            ptrO[3] = 255;  // Alpha/padding byte for Rgb888x format
+                            byte finalR = (byte)(aR + layerDiff * (bR - aR));
+                            byte finalG = (byte)(aG + layerDiff * (bG - aG));
+                            byte finalB = (byte)(aB + layerDiff * (bB - aB));
+
+                            // Use SetPixel to avoid byte-order issues
+                            output.SetPixel(x, y, new SKColor(finalR, finalG, finalB, 255));
                         }
                     }
                 }
