@@ -74,7 +74,7 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
         #region ISharedRegionModule
 
-        private bool m_useCSJ2K = true;
+        private bool m_useCSJ2K = false; // Temporarily disabled due to vertical stripe artifacts in decoded textures
 
         public string Name { get { return "J2KDecoderModule"; } }
 
@@ -187,17 +187,19 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
         {
             if (m_useCSJ2K)
             {
+                m_log.Info("[J2KDecoderModule] Using CSJ2K decoder");
                 // CSJ2K now returns SKBitmap directly
                 SKBitmap skBitmap = J2kImage.FromBytes(j2kData);
                 return skBitmap;
             }
             else
             {
+                m_log.Info("[J2KDecoderModule] Using OpenJPEG decoder");
                 ManagedImage mimage;
                 if (OpenJPEG.DecodeToImage(j2kData, out mimage) && mimage != null)
                 {
-                    // Convert ManagedImage to SKBitmap
-                    var info = new SKImageInfo(mimage.Width, mimage.Height, SKColorType.Rgba8888);
+                    // Convert ManagedImage to SKBitmap with Opaque alpha type to avoid premultiplication issues
+                    var info = new SKImageInfo(mimage.Width, mimage.Height, SKColorType.Rgba8888, SKAlphaType.Opaque);
                     SKBitmap skBitmap = new SKBitmap(info);
                     IntPtr pixels = skBitmap.GetPixels();
 

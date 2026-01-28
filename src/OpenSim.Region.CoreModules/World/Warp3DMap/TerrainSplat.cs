@@ -114,8 +114,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         // asset cache indexes are strings
                         string cacheName = "MAP" + textureIDs[i].ToString();
 
+                        m_log.InfoFormat("{0} Bypassing cache for {1}, will re-decode from original JPEG2000", LogHeader, cacheName);
+
                         // Try to fetch a cached copy of the decoded/resized version of this texture
-                        AssetBase asset = assetService.GetCached(cacheName);
+                        // TEMPORARY: Skip cache to force re-decode with OpenJPEG instead of corrupted CSJ2K versions
+                        AssetBase asset = null; // assetService.GetCached(cacheName);
                         if(asset != null)
                         {
                             try

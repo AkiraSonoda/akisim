@@ -49,19 +49,47 @@ namespace OpenSim.Framework.SkiaSharp
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            // Use Unpremul to avoid black pixels when alpha=0
-            // (premultiplied alpha makes RGB=0 when alpha=0, causing black stripes in textures)
-            var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-            var result = new SKBitmap(info);
+            // Manual box filter averaging to avoid aliasing artifacts that cause stripes
+            // This is especially important when downscaling terrain textures from 256x256 to 16x16
+            var result = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Opaque);
 
-            using (var canvas = new SKCanvas(result))
-            using (var paint = new SKPaint())
+            float xRatio = (float)source.Width / width;
+            float yRatio = (float)source.Height / height;
+
+            for (int y = 0; y < height; y++)
             {
-                paint.IsAntialias = true;
-                paint.FilterQuality = SKFilterQuality.High;
+                for (int x = 0; x < width; x++)
+                {
+                    // Calculate source rectangle for this output pixel
+                    int srcX1 = (int)(x * xRatio);
+                    int srcY1 = (int)(y * yRatio);
+                    int srcX2 = (int)((x + 1) * xRatio);
+                    int srcY2 = (int)((y + 1) * yRatio);
 
-                canvas.Clear(SKColors.White); // Clear to white instead of transparent
-                canvas.DrawBitmap(source, new SKRect(0, 0, width, height), paint);
+                    // Average all pixels in the source rectangle
+                    int sumR = 0, sumG = 0, sumB = 0;
+                    int count = 0;
+
+                    for (int sy = srcY1; sy < srcY2 && sy < source.Height; sy++)
+                    {
+                        for (int sx = srcX1; sx < srcX2 && sx < source.Width; sx++)
+                        {
+                            SKColor pixel = source.GetPixel(sx, sy);
+                            sumR += pixel.Red;
+                            sumG += pixel.Green;
+                            sumB += pixel.Blue;
+                            count++;
+                        }
+                    }
+
+                    if (count > 0)
+                    {
+                        byte avgR = (byte)(sumR / count);
+                        byte avgG = (byte)(sumG / count);
+                        byte avgB = (byte)(sumB / count);
+                        result.SetPixel(x, y, new SKColor(avgR, avgG, avgB, 255));
+                    }
+                }
             }
 
             return result;
