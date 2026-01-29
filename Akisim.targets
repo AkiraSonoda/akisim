@@ -6,7 +6,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <NoWarn>$(NoWarn);CS8981</NoWarn>
+    <NoWarn>$(NoWarn);CS8981;CS9192;CS9193;SYSLIB0039;SYSLIB0011;SYSLIB0014;CA1416;MSB3026</NoWarn>
     <DisableParallel>true</DisableParallel>
   </PropertyGroup>
   
@@ -37,6 +37,11 @@
     </Reference>
   </ItemDefinitionGroup>
 
+  <!-- Global package version overrides to resolve NU1603 warnings -->
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector" Version="2.5.0" />
+  </ItemGroup>
+
   <!-- Custom clean target - removes bin directory before clean -->
   <Target Name="CleanBinDirectory" BeforeTargets="Clean" Condition="Exists('$(BaseOutputPath)')">
     <Message Text="Cleaning bin directory: $(BaseOutputPath)" Importance="high" />
@@ -66,7 +71,11 @@
 
     <Copy SourceFiles="@(ReferenceCopyLocalPaths)"
           DestinationFolder="$(BaseOutputPath)"
-          SkipUnchangedFiles="true" />
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Retries="5"
+          RetryDelayMilliseconds="1000"
+          ContinueOnError="true" />
   </Target>
 
   <!-- Copy native runtime assets (like SkiaSharp native libraries) to correct locations -->
@@ -174,16 +183,24 @@
     <ItemGroup>
       <BinFiles Include="$(SrcBin)\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(BinFiles)" 
-          DestinationFolder="$(DestDir)/bin/%(RecursiveDir)" 
-          SkipUnchangedFiles="true" />
-    
+    <Copy SourceFiles="@(BinFiles)"
+          DestinationFolder="$(DestDir)/bin/%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Retries="5"
+          RetryDelayMilliseconds="1000"
+          ContinueOnError="true" />
+
     <ItemGroup Condition="Exists('$(DeltaBin)')">
       <DeltaFiles Include="$(DeltaBin)$([System.IO.Path]::DirectorySeparatorChar)**$([System.IO.Path]::DirectorySeparatorChar)*" />
     </ItemGroup>
     <Copy SourceFiles="@(DeltaFiles)"
           DestinationFolder="$(DestDir)/bin/%(RecursiveDir)"
           SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Retries="5"
+          RetryDelayMilliseconds="1000"
+          ContinueOnError="true"
           Condition="Exists('$(DeltaBin)')" />
 
     <!-- Fix architecture mismatch for 64-bit native libraries on Linux -->

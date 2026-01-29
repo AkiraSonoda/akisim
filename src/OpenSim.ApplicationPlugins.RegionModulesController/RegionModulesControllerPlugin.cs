@@ -54,9 +54,6 @@ namespace OpenSim.ApplicationPlugins.RegionModulesController
         // Config access
         private OpenSimBase m_openSim;
 
-        // Our name
-        private string m_name;
-
         // Internal lists to collect information about modules present
         // Note: Mono.Addins support removed - these lists are no longer used
         // private List<TypeExtensionNode> m_nonSharedModules = new List<TypeExtensionNode>();

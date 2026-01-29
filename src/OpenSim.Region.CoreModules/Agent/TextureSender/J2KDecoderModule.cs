@@ -74,7 +74,9 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
         #region ISharedRegionModule
 
-        private bool m_useCSJ2K = false; // Temporarily disabled due to vertical stripe artifacts in decoded textures
+        // CSJ2K disabled for image decoding due to vertical stripe artifacts, but always used for layer boundaries
+        // to avoid OpenMetaverse.Logger initialization errors with log4net 3.x
+        private bool m_useCSJ2K = false;
 
         public string Name { get { return "J2KDecoderModule"; } }
 
@@ -255,51 +257,42 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
             if (!TryLoadCacheForAsset(assetID, out layers))
             {
-                if (m_useCSJ2K)
+                // Always use CSJ2K for layer boundary decoding to avoid OpenMetaverse.Logger
+                // initialization errors with log4net 3.x (OpenJPEG.DecodeLayerBoundaries calls Logger.DebugLog)
+                try
                 {
-                    try
+                    List<int> layerStarts;
+                    using (MemoryStream ms = new MemoryStream(j2kData))
                     {
-                        List<int> layerStarts;
-                        using (MemoryStream ms = new MemoryStream(j2kData))
-                        {
-                            layerStarts = CSJ2K.J2kImage.GetLayerBoundaries(ms);
-                        }
-
-                        if (layerStarts != null && layerStarts.Count > 0)
-                        {
-                            layers = new OpenJPEG.J2KLayerInfo[layerStarts.Count];
-
-                            for (int i = 0; i < layerStarts.Count; i++)
-                            {
-                                OpenJPEG.J2KLayerInfo layer = new OpenJPEG.J2KLayerInfo();
-
-                                if (i == 0)
-                                    layer.Start = 0;
-                                else
-                                    layer.Start = layerStarts[i];
-
-                                if (i == layerStarts.Count - 1)
-                                    layer.End = j2kData.Length;
-                                else
-                                    layer.End = layerStarts[i + 1] - 1;
-
-                                layers[i] = layer;
-                            }
-                        }
+                        layerStarts = CSJ2K.J2kImage.GetLayerBoundaries(ms);
                     }
-                    catch (Exception ex)
+
+                    if (layerStarts != null && layerStarts.Count > 0)
                     {
-                        m_log.Warn("CSJ2K threw an exception decoding texture " + assetID + ": " + ex.Message);
-                        decodedSuccessfully = false;
+                        layers = new OpenJPEG.J2KLayerInfo[layerStarts.Count];
+
+                        for (int i = 0; i < layerStarts.Count; i++)
+                        {
+                            OpenJPEG.J2KLayerInfo layer = new OpenJPEG.J2KLayerInfo();
+
+                            if (i == 0)
+                                layer.Start = 0;
+                            else
+                                layer.Start = layerStarts[i];
+
+                            if (i == layerStarts.Count - 1)
+                                layer.End = j2kData.Length;
+                            else
+                                layer.End = layerStarts[i + 1] - 1;
+
+                            layers[i] = layer;
+                        }
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    if (!OpenJPEG.DecodeLayerBoundaries(j2kData, out layers, out components))
-                    {
-                        m_log.Warn("OpenJPEG failed to decode texture " + assetID);
-                        decodedSuccessfully = false;
-                    }
+                    m_log.Warn("CSJ2K threw an exception decoding layer boundaries for texture " + assetID + ": " + ex.Message);
+                    decodedSuccessfully = false;
                 }
 
                 if (layers == null || layers.Length == 0)

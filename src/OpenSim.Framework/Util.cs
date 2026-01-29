@@ -3483,7 +3483,7 @@ namespace OpenSim.Framework
                     }
                     catch (Exception e)
                     {
-                        m_log.Error($"[UTIL]: Util STP threadfunc {threadFuncNum} terminated with error {e.Message}");
+                        m_log.Error($"[UTIL]: Util STP threadfunc {threadFuncNum} terminated with error {e.Message}", e);
                     }
                     finally
                     {

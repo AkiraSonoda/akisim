@@ -1352,8 +1352,7 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
             {
                 Color = SKColors.White,
                 Style = SKPaintStyle.Fill,
-                IsAntialias = true,
-                FilterQuality = SKFilterQuality.High
+                IsAntialias = true
             };
 
             List<GridRegion> regions = m_scene.GridService.GetRegionRange(m_scene.RegionInfo.ScopeID,
@@ -1378,16 +1377,17 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                         SKRect destRect = new SKRect(x, spanY - y - sy, x + sx, spanY - y);
                         SKRect srcRect = new SKRect(0, 0, localMap.Width, localMap.Height);
 
-                        using (SKPaint bitmapPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+                        using (SKPaint bitmapPaint = new SKPaint { IsAntialias = true })
                         {
                             canvas.DrawBitmap(localMap, srcRect, destRect, bitmapPaint);
                         }
 
                         if(m_exportPrintRegionName)
                         {
-                            SKRect textBounds = new SKRect();
-                            textPaint.MeasureText(m_regionName, ref textBounds);
-                            canvas.DrawText(m_regionName, x + 30, spanY - y - 30 - textBounds.Height, drawFont, textPaint);
+                            float textWidth = drawFont.MeasureText(m_regionName);
+                            var metrics = drawFont.Metrics;
+                            float textHeight = metrics.Descent - metrics.Ascent;
+                            canvas.DrawText(m_regionName, x + 30, spanY - y - 30 - textHeight, drawFont, textPaint);
                         }
                     }
                 }
@@ -1442,16 +1442,17 @@ namespace OpenSim.Region.CoreModules.World.WorldMap
                                 SKRect destRect = new SKRect(x, spanY - y - sy, x + sx, spanY - y);
                                 SKRect srcRect = new SKRect(0, 0, regionBitmap.Width, regionBitmap.Height);
 
-                                using (SKPaint bitmapPaint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+                                using (SKPaint bitmapPaint = new SKPaint { IsAntialias = true })
                                 {
                                     canvas.DrawBitmap(regionBitmap, srcRect, destRect, bitmapPaint);
                                 }
 
                                 if(m_exportPrintRegionName && r.RegionHandle == m_regionHandle)
                                 {
-                                    SKRect textBounds = new SKRect();
-                                    textPaint.MeasureText(r.RegionName, ref textBounds);
-                                    canvas.DrawText(r.RegionName, x + 30, spanY - y - 30 - textBounds.Height, drawFont, textPaint);
+                                    float textWidth = drawFont.MeasureText(r.RegionName);
+                                    var metrics = drawFont.Metrics;
+                                    float textHeight = metrics.Descent - metrics.Ascent;
+                                    canvas.DrawText(r.RegionName, x + 30, spanY - y - 30 - textHeight, drawFont, textPaint);
                                 }
                             }
                         }

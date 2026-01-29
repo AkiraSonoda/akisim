@@ -70,13 +70,10 @@ namespace OpenSim.Framework.SkiaSharp
             if (font == null)
                 throw new ArgumentNullException(nameof(font));
 
-            using (var paint = new SKPaint(font))
-            {
-                var width = paint.MeasureText(text ?? string.Empty);
-                var metrics = paint.FontMetrics;
-                var height = metrics.Descent - metrics.Ascent;
-                return new SKSize(width, height);
-            }
+            var width = font.MeasureText(text ?? string.Empty);
+            var metrics = font.Metrics;
+            var height = metrics.Descent - metrics.Ascent;
+            return new SKSize(width, height);
         }
 
         /// <summary>
@@ -91,13 +88,10 @@ namespace OpenSim.Framework.SkiaSharp
             if (font == null)
                 throw new ArgumentNullException(nameof(font));
 
-            using (var paint = new SKPaint(font))
-            {
-                var width = paint.MeasureText(text ?? string.Empty);
-                var metrics = paint.FontMetrics;
-                var height = metrics.Descent - metrics.Ascent;
-                return new SKSize(width, height);
-            }
+            var width = font.MeasureText(text ?? string.Empty);
+            var metrics = font.Metrics;
+            var height = metrics.Descent - metrics.Ascent;
+            return new SKSize(width, height);
         }
     }
 }

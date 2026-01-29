@@ -413,7 +413,6 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             detailTexture[i].ColorType);
                     }
 
-                    byte* ptr;
                     byte* ptrO;
                     for (int y = 0; y < theight; y++)
                     {
