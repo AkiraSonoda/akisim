@@ -188,14 +188,14 @@ namespace OpenSim.Framework.Monitoring
                     s.Value = iocpThreads;
                 });
 
-            if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool && Util.GetSmartThreadPoolInfo() != null)
+            if (Util.FireAndForgetMethod == FireAndForgetMethod.QueueUserWorkItem && Util.GetThreadPoolInfo() != null)
             {
-                MakeStat("STPMaxThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetSmartThreadPoolInfo().MaxThreads);
-                MakeStat("STPMinThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetSmartThreadPoolInfo().MinThreads);
-                MakeStat("STPConcurrency", null, "threads", ContainerThreadpool, s => s.Value = Util.GetSmartThreadPoolInfo().MaxConcurrentWorkItems);
-                MakeStat("STPActiveThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetSmartThreadPoolInfo().ActiveThreads);
-                MakeStat("STPInUseThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetSmartThreadPoolInfo().InUseThreads);
-                MakeStat("STPWorkItemsWaiting", null, "threads", ContainerThreadpool, s => s.Value = Util.GetSmartThreadPoolInfo().WaitingCallbacks);
+                MakeStat("TPMaxThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetThreadPoolInfo().MaxThreads);
+                MakeStat("TPMinThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetThreadPoolInfo().MinThreads);
+                MakeStat("TPActiveThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetThreadPoolInfo().ActiveThreads);
+                MakeStat("TPInUseThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetThreadPoolInfo().InUseThreads);
+                MakeStat("TPAvailableThreads", null, "threads", ContainerThreadpool, s => s.Value = Util.GetThreadPoolInfo().AvailableThreads);
+                MakeStat("TPWorkItemsWaiting", null, "threads", ContainerThreadpool, s => s.Value = Util.GetThreadPoolInfo().WaitingCallbacks);
             }
 
             MakeStat(

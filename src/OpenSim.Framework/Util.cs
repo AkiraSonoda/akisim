@@ -50,7 +50,6 @@ using Nini.Config;
 using Nwc.XmlRpc;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using Amib.Threading;
 using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
@@ -112,27 +111,21 @@ namespace OpenSim.Framework
         None,
         RegressionTest,
         QueueUserWorkItem,
-        SmartThreadPool,
         Thread
     }
 
     /// <summary>
-    /// Class for delivering SmartThreadPool statistical information
+    /// Class for delivering ThreadPool statistical information
     /// </summary>
-    /// <remarks>
-    /// We do it this way so that we do not directly expose STP.
-    /// </remarks>
-    public class STPInfo
+    public class ThreadPoolInfo
     {
         public string Name;
-        public bool IsIdle;
-        public bool IsShuttingDown;
         public int MaxThreads;
         public int MinThreads;
         public int InUseThreads;
         public int ActiveThreads;
         public int WaitingCallbacks;
-        public int MaxConcurrentWorkItems;
+        public int AvailableThreads;
     }
 
     /// <summary>
@@ -191,10 +184,10 @@ namespace OpenSim.Framework
             MaxCharactersInDocument = 10_000_000
         };
 
-        /// <summary>
-        /// Thread pool used for Util.FireAndForget if FireAndForgetMethod.SmartThreadPool is used
-        /// </summary>
-        private static SmartThreadPool m_ThreadPool;
+        // Thread pool configuration and monitoring
+        private static int s_minWorkerThreads = 2;
+        private static int s_maxWorkerThreads = -1; // -1 means use default
+        private static bool s_threadPoolInitialized = false;
 
         // Watchdog timer that aborts threads that have timed-out
         private static Timer m_threadPoolWatchdog;
@@ -208,7 +201,7 @@ namespace OpenSim.Framework
         public static readonly Regex PermissiveUUIDPattern = new(rawUUIDPattern);
         public static readonly Regex UUIDPattern = new(string.Format("^{0}$", rawUUIDPattern));
 
-        public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.SmartThreadPool;
+        public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.QueueUserWorkItem;
         public static FireAndForgetMethod FireAndForgetMethod = DefaultFireAndForgetMethod;
 
         public static readonly string UUIDZeroString = UUID.Zero.ToString();
@@ -3248,31 +3241,29 @@ namespace OpenSim.Framework
         {
             if (m_log.IsDebugEnabled)
             {
-                m_log.Debug($"InitThreadPool(minThreads: {maxThreads}, maxThreads: {maxThreads})");
+                m_log.Debug($"InitThreadPool(minThreads: {minThreads}, maxThreads: {maxThreads})");
             }
-            
+
             if (maxThreads < 2)
                 throw new ArgumentOutOfRangeException(nameof(maxThreads), "maxThreads must be greater than 2");
 
             if (minThreads > maxThreads || minThreads < 2)
                 throw new ArgumentOutOfRangeException(nameof(minThreads), "minThreads must be greater than 2 and less than or equal to maxThreads");
 
-            if (m_ThreadPool != null)
+            if (s_threadPoolInitialized)
             {
-                m_log.Warn("SmartThreadPool is already initialized.  Ignoring request.");
+                m_log.Warn("ThreadPool is already initialized. Ignoring request.");
                 return;
             }
 
-            STPStartInfo startInfo = new()
-            {
-                ThreadPoolName = "Util",
-                IdleTimeout = 20000,
-                MaxWorkerThreads = maxThreads,
-                MinWorkerThreads = minThreads,
-                SuppressFlow = true
-            };
+            s_minWorkerThreads = minThreads;
+            s_maxWorkerThreads = maxThreads;
 
-            m_ThreadPool = new SmartThreadPool(startInfo);
+            // Configure .NET ThreadPool
+            ThreadPool.SetMinThreads(minThreads, minThreads);
+            ThreadPool.SetMaxThreads(maxThreads, maxThreads);
+
+            s_threadPoolInitialized = true;
             m_threadPoolWatchdog = new Timer(ThreadPoolWatchdog, null, 0, 1000);
         }
 
@@ -3285,15 +3276,13 @@ namespace OpenSim.Framework
                 case FireAndForgetMethod.QueueUserWorkItem:
                     ThreadPool.GetAvailableThreads(out int workerThreads, out _);
                     return workerThreads;
-                case FireAndForgetMethod.SmartThreadPool:
-                    return m_ThreadPool.MaxThreads - m_ThreadPool.InUseThreads;
                 case FireAndForgetMethod.Thread:
                     {
                         using Process p = System.Diagnostics.Process.GetCurrentProcess();
                         return MAX_SYSTEM_THREADS - p.Threads.Count;
                     }
                 default:
-                    throw new NotImplementedException();
+                    return int.MaxValue; // None and RegressionTest
             }
         }
 
@@ -3308,7 +3297,7 @@ namespace OpenSim.Framework
             private readonly string context;
             public bool LogThread { get; set; }
 
-            public IWorkItemResult WorkItem { get; set; }
+            public CancellationTokenSource CancellationSource { get; set; }
             public Thread Thread { get; set; }
             public bool Running { get; set; }
             public bool Aborted { get; set; }
@@ -3346,7 +3335,7 @@ namespace OpenSim.Framework
             public void Abort()
             {
                 Aborted = true;
-                WorkItem.Cancel(true);
+                CancellationSource?.Cancel();
             }
 
             /// <summary>
@@ -3510,12 +3499,10 @@ namespace OpenSim.Framework
                         realCallback.Invoke(obj);
                         break;
                     case FireAndForgetMethod.QueueUserWorkItem:
-                        ThreadPool.UnsafeQueueUserWorkItem(realCallback, obj);
-                        break;
-                    case FireAndForgetMethod.SmartThreadPool:
-                        if (m_ThreadPool == null)
+                        if (!s_threadPoolInitialized)
                             InitThreadPool(2, 15);
-                        threadInfo.WorkItem = m_ThreadPool.QueueWorkItem(realCallback, obj);
+                        threadInfo.CancellationSource = new CancellationTokenSource();
+                        ThreadPool.UnsafeQueueUserWorkItem(realCallback, obj);
                         break;
                     case FireAndForgetMethod.Thread:
                         Thread thread = new(delegate (object o) { realCallback(o); realCallback = null; });
@@ -3688,33 +3675,35 @@ namespace OpenSim.Framework
         /// <returns>
         /// null if this isn't the pool being used for non-scriptengine threads.
         /// </returns>
-        public static STPInfo GetSmartThreadPoolInfo()
+        public static ThreadPoolInfo GetThreadPoolInfo()
         {
-            if (m_ThreadPool == null)
+            if (!s_threadPoolInitialized)
                 return null;
 
-            return new STPInfo()
+            ThreadPool.GetMinThreads(out int minWorker, out int minIOC);
+            ThreadPool.GetMaxThreads(out int maxWorker, out int maxIOC);
+            ThreadPool.GetAvailableThreads(out int availWorker, out int availIOC);
+
+            return new ThreadPoolInfo()
             {
-                Name = m_ThreadPool.Name,
-                IsIdle = m_ThreadPool.IsIdle,
-                IsShuttingDown = m_ThreadPool.IsShuttingdown,
-                MaxThreads = m_ThreadPool.MaxThreads,
-                MinThreads = m_ThreadPool.MinThreads,
-                InUseThreads = m_ThreadPool.InUseThreads,
-                ActiveThreads = m_ThreadPool.ActiveThreads,
-                WaitingCallbacks = m_ThreadPool.WaitingCallbacks,
-                MaxConcurrentWorkItems = m_ThreadPool.Concurrency
+                Name = "System ThreadPool",
+                MaxThreads = maxWorker,
+                MinThreads = minWorker,
+                InUseThreads = (int)numRunningThreadFuncs,
+                ActiveThreads = maxWorker - availWorker,
+                WaitingCallbacks = (int)numQueuedThreadFuncs,
+                AvailableThreads = availWorker
             };
         }
 
         public static void StopThreadPool()
         {
-            if (m_ThreadPool == null)
-                return;
-            SmartThreadPool pool = m_ThreadPool;
-            m_ThreadPool = null;
-
-            try { pool.Shutdown(); } catch { }
+            if (m_threadPoolWatchdog != null)
+            {
+                m_threadPoolWatchdog.Dispose();
+                m_threadPoolWatchdog = null;
+            }
+            s_threadPoolInitialized = false;
         }
 
         #endregion FireAndForget Threading Pattern

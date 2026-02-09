@@ -39,7 +39,6 @@
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
     </Reference>
-    <ProjectReference Include="../SmartThreadPool/SmartThreadPool.csproj" />
     <ProjectReference Include="../ThreadedClasses/ThreadedClasses.csproj" />
     <Reference Include="XMLRPC" >
       <HintPath>../../bin/XMLRPC.dll</HintPath>

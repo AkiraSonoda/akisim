@@ -124,8 +124,8 @@ namespace OpenSim
             }
 
             m_log.Info("Initialize ThreadPool");
-            
-            if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
+
+            if (Util.FireAndForgetMethod == FireAndForgetMethod.QueueUserWorkItem)
                 Util.InitThreadPool(stpMinThreads, stpMaxThreads);
 
             m_log.Info("Using async_call_method " + Util.FireAndForgetMethod);
