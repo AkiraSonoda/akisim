@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>OpenSim.Framework</AssemblyTitle>
+    <Company>http://opensimulator.org</Company>
+    <Product>OpenSim.Framework</Product>
+    <Copyright>Copyright (c) OpenSimulator.org Developers 2007-2009</Copyright>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="log4net" Version="3.2.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+    <PackageReference Include="System.Runtime.Caching" Version="10.0.2" />
+    <PackageReference Include="OpenTelemetry" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="LukeSkywalker.IPNetwork" >
+      <HintPath>../../bin/LukeSkywalker.IPNetwork.dll</HintPath>
+    </Reference>
+    <Reference Include="Nini" >
+      <HintPath>../../bin/Nini.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <HintPath>../../bin/OpenMetaverse.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <HintPath>../../bin/OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+    <ProjectReference Include="../ThreadedClasses/ThreadedClasses.csproj" />
+    <Reference Include="XMLRPC" >
+      <HintPath>../../bin/XMLRPC.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OpenSim.Framework.SkiaSharp/OpenSim.Framework.SkiaSharp.csproj" />
+  </ItemGroup>
+
+
+</Project>

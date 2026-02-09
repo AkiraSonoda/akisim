@@ -1,8 +1,6 @@
 .project
 .settings
 .gitignore
-*.csproj
-*.csproj.user
 *.build
 *.mdb
 *.mdp
@@ -10,11 +8,12 @@
 *.pdb
 *.pidb
 *.dll.build
-# *.dll
+*.dll
 *.log
 .idea
 *.bak
 *.lnk
+*.deps.json
 
 # Ignore .user and .suo files as these are user preference specific
 # http://stackoverflow.com/questions/72298/should-i-add-the-visual-studio-suo-and-user-files-to-source-control
@@ -22,6 +21,7 @@
 *.user
 
 *.VisualState.xml
+*/obj
 */*/obj
 */*/*/obj
 */*/*/*/obj
@@ -133,8 +133,13 @@ bin/pCampBot.runtimeconfig.json
 bin/Robust
 bin/Robust.runtimeconfig.json
 
-.aider.tags.cache.v4/
+build/bin/Debug/_build.dll
+.aider*
+
+bin/
 
 packages/
 
-artifacts/lib64/
+.nuke/
+
+build/

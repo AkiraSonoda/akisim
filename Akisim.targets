@@ -1,0 +1,345 @@
+<Project>
+  <PropertyGroup>
+    <BaseOutputPath>$(SolutionDir)bin$([System.IO.Path]::DirectorySeparatorChar)</BaseOutputPath>
+    <OutputPath>$(SolutionDir)bin$([System.IO.Path]::DirectorySeparatorChar)</OutputPath>
+    <UseCommonOutputDirectory>true</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);CS8981;CS9192;CS9193;SYSLIB0039;SYSLIB0011;SYSLIB0014;CA1416;MSB3026</NoWarn>
+    <DisableParallel>true</DisableParallel>
+  </PropertyGroup>
+  
+  <!-- Configurable Path Properties with Defaults -->
+  <PropertyGroup>
+    <AkisimPackagingDir Condition="'$(AkisimPackagingDir)' == ''">$([System.IO.Path]::Combine('$(HOME)', 'opensim/packaging'))</AkisimPackagingDir>
+    <AkisimSourceDir Condition="'$(AkisimSourceDir)' == ''">$(SolutionDir)</AkisimSourceDir>
+    <AkisimDestDir Condition="'$(AkisimDestDir)' == ''">$([System.IO.Path]::Combine('$(HOME)', 'opensim/grid/akisim'))</AkisimDestDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Unix'">
+    <AkisimDeltaBin Condition="'$(AkisimDeltaBin)' == ''">$([System.IO.Path]::Combine('$(AkisimSourceDir)', 'doc/bin_delta/akisim_phpgrid_lin'))</AkisimDeltaBin>
+    <AkisimSrcBin Condition="'$(AkisimSrcBin)' == ''">$([System.IO.Path]::Combine('$(AkisimSourceDir)', 'bin'))</AkisimSrcBin>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' != 'Unix'">
+    <AkisimDeltaBin Condition="'$(AkisimDeltaBin)' == ''">C:\opensim\grid\akisim_akiwin\delta</AkisimDeltaBin>
+    <AkisimSrcBin Condition="'$(AkisimSrcBin)' == ''">C:\develop\akisim\bin</AkisimSrcBin>
+    <AkisimDestDir Condition="'$(AkisimDestDir)' == ''">C:\opensim\grid\akisim_dereos\KoSuai</AkisimDestDir>
+  </PropertyGroup>
+  
+  <ItemDefinitionGroup>
+    <PackageReference>
+      <Private>true</Private>
+    </PackageReference>
+    <Reference>
+      <Private>true</Private>
+    </Reference>
+  </ItemDefinitionGroup>
+
+  <!-- Global package version overrides to resolve NU1603 warnings -->
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector" Version="2.5.0" />
+  </ItemGroup>
+
+  <!-- Custom clean target - removes bin directory before clean -->
+  <Target Name="CleanBinDirectory" BeforeTargets="Clean" Condition="Exists('$(BaseOutputPath)')">
+    <Message Text="Cleaning bin directory: $(BaseOutputPath)" Importance="high" />
+    <!-- Use platform-appropriate command to remove directory tree robustly -->
+    <Exec Command="rm -rf &quot;$(BaseOutputPath)&quot;"
+          Condition="'$(OS)' == 'Unix'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+    <Exec Command="rmdir /s /q &quot;$(BaseOutputPath)&quot;"
+          Condition="'$(OS)' != 'Unix'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+  </Target>
+
+  <Target Name="CreateBinDirectory" BeforeTargets="Build">
+    <MakeDir Directories="$(BaseOutputPath)" />
+  </Target>
+
+  <!-- Copy NuGet dependencies to bin directory after build -->
+  <Target Name="CopyNuGetDependencies" AfterTargets="Build">
+    <Message Text="Copying NuGet dependencies to bin directory..." Importance="high" />
+
+    <!-- Get reference assemblies and copy them to bin -->
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths)" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(ReferenceCopyLocalPaths)"
+          DestinationFolder="$(BaseOutputPath)"
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Retries="5"
+          RetryDelayMilliseconds="1000"
+          ContinueOnError="true" />
+  </Target>
+
+  <!-- Copy native runtime assets (like SkiaSharp native libraries) to correct locations -->
+  <Target Name="CopyNativeAssets" AfterTargets="Build" Condition="'$(MSBuildProjectName)' == 'OpenSim.Server.RegionServer'">
+    <Message Text="Copying native runtime assets to runtimes directory..." Importance="high" />
+
+    <!-- Create runtimes directory structure for .NET runtime library resolution -->
+    <MakeDir Directories="$(BaseOutputPath)runtimes/linux-x64/native" />
+    <MakeDir Directories="$(BaseOutputPath)runtimes/win-x64/native" />
+    <MakeDir Directories="$(BaseOutputPath)runtimes/osx-x64/native" />
+
+    <!-- Copy SkiaSharp native library to the correct platform-specific runtime directory -->
+    <Copy SourceFiles="$(BaseOutputPath)libSkiaSharp.so"
+          DestinationFiles="$(BaseOutputPath)runtimes/linux-x64/native/libSkiaSharp.so"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(BaseOutputPath)libSkiaSharp.so')" />
+
+    <Copy SourceFiles="$(BaseOutputPath)libSkiaSharp.dll"
+          DestinationFiles="$(BaseOutputPath)runtimes/win-x64/native/libSkiaSharp.dll"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(BaseOutputPath)libSkiaSharp.dll')" />
+
+    <Copy SourceFiles="$(BaseOutputPath)libSkiaSharp.dylib"
+          DestinationFiles="$(BaseOutputPath)runtimes/osx-x64/native/libSkiaSharp.dylib"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(BaseOutputPath)libSkiaSharp.dylib')" />
+
+    <Message Text="SkiaSharp native libraries copied to runtimes directory" Importance="normal"
+             Condition="Exists('$(BaseOutputPath)libSkiaSharp.so') or Exists('$(BaseOutputPath)libSkiaSharp.dll') or Exists('$(BaseOutputPath)libSkiaSharp.dylib')" />
+  </Target>
+
+  <!-- Create platform-specific symlink for System.Drawing.Common.dll -->
+  <Target Name="CreatePlatformSymlink" AfterTargets="CopyNuGetDependencies">
+    <PropertyGroup Condition="'$(OS)' == 'Unix'">
+      <PlatformFile>System.Drawing.Common.dll.linux</PlatformFile>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(OS)' != 'Unix'">
+      <PlatformFile>System.Drawing.Common.dll.win</PlatformFile>
+    </PropertyGroup>
+    
+    <Delete Files="$(BaseOutputPath)System.Drawing.Common.dll" ContinueOnError="true">
+      <Output TaskParameter="DeletedFiles" PropertyName="DeletedDll" />
+    </Delete>
+
+    <Copy SourceFiles="$(BaseOutputPath)$(PlatformFile)" 
+          DestinationFiles="$(BaseOutputPath)System.Drawing.Common.dll"
+          UseSymbolicLinksIfPossible="true"
+          ContinueOnError="true"
+          Condition="Exists('$(BaseOutputPath)$(PlatformFile)')">
+      <Output TaskParameter="DestinationFiles" PropertyName="SymlinkPath" />
+    </Copy>
+
+    <Message Text="Platform link created: $(SymlinkPath)" Importance="low" 
+             Condition="'$(SymlinkPath)' != ''" />
+    <Warning Text="Failed to create platform symbolic link" 
+              Condition="'$(SymlinkPath)' == '' and Exists('$(BaseOutputPath)$(PlatformFile)')" />
+  </Target>
+
+  <!-- Restore files from artifacts directory -->
+  <Target Name="RestoreFromArtifacts" BeforeTargets="Build" Condition="Exists('$(SolutionDir)artifacts')">
+    <Message Text="Restoring files from artifacts directory..." Importance="high" />
+    <ItemGroup>
+      <ArtifactFiles Include="$(SolutionDir)artifacts$([System.IO.Path]::DirectorySeparatorChar)**$([System.IO.Path]::DirectorySeparatorChar)*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ArtifactFiles)" 
+          DestinationFiles="@(ArtifactFiles->'$(BaseOutputPath)%(RecursiveDir)%(Filename)%(Extension)')" 
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Deploy target - replaces Makefile deploy -->
+  <Target Name="Deploy" DependsOnTargets="Build">
+    <PropertyGroup>
+      <PackagingDir>$(AkisimPackagingDir)</PackagingDir>
+      <SourceDir>$(AkisimSourceDir)</SourceDir>
+      <DeltaBin>$(AkisimDeltaBin)</DeltaBin>
+      <SrcBin>$(AkisimSrcBin)</SrcBin>
+      <DestDir>$(AkisimDestDir)</DestDir>
+    </PropertyGroup>
+
+    <Message Text="=== Starting Akisim Build Operations ===" Importance="high" />
+    <Message Text="Configuration: $(Configuration) | Platform: $(OS)" Importance="normal" />
+    <Message Text="Source: $(AkisimSourceDir) | Dest: $(AkisimDestDir)" Importance="normal" />
+    <Message Text="Deploying $(Configuration) build to $(DestDir)..." Importance="high" />
+    
+    <!-- Deploy target validation -->
+    <Error Text="Source bin directory not found: $(AkisimSrcBin)"
+           Condition="!Exists('$(AkisimSrcBin)')" />
+    <Error Text="Destination directory not accessible: $(AkisimDestDir)"
+           Condition="!Exists('$(AkisimDestDir)')" />
+
+    <!-- Remove destination bin directory if it exists -->
+    <Message Text="Removing existing deployment at $(DestDir)/bin" Importance="normal"
+             Condition="Exists('$(DestDir)/bin')" />
+    <Exec Command="rm -rf &quot;$(DestDir)/bin&quot;"
+          Condition="'$(OS)' == 'Unix' and Exists('$(DestDir)/bin')"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+    <Exec Command="rmdir /s /q &quot;$(DestDir)/bin&quot;"
+          Condition="'$(OS)' != 'Unix' and Exists('$(DestDir)/bin')"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+
+    <MakeDir Directories="$(DestDir)/bin" />
+    
+    <ItemGroup>
+      <BinFiles Include="$(SrcBin)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BinFiles)"
+          DestinationFolder="$(DestDir)/bin/%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Retries="5"
+          RetryDelayMilliseconds="1000"
+          ContinueOnError="true" />
+
+    <ItemGroup Condition="Exists('$(DeltaBin)')">
+      <DeltaFiles Include="$(DeltaBin)$([System.IO.Path]::DirectorySeparatorChar)**$([System.IO.Path]::DirectorySeparatorChar)*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeltaFiles)"
+          DestinationFolder="$(DestDir)/bin/%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Retries="5"
+          RetryDelayMilliseconds="1000"
+          ContinueOnError="true"
+          Condition="Exists('$(DeltaBin)')" />
+
+    <!-- Fix architecture mismatch for 64-bit native libraries on Linux -->
+    <PropertyGroup>
+      <Lib64Dir>$(SrcBin)$([System.IO.Path]::DirectorySeparatorChar)lib64</Lib64Dir>
+    </PropertyGroup>
+
+    <Message Text="Copying 64-bit native libraries..." Importance="high"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)')" />
+
+    <!-- Create runtime directories for native libraries -->
+    <MakeDir Directories="$(DestDir)/bin/runtimes/linux-x64/native"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)')" />
+
+    <!-- Copy SkiaSharp 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libSkiaSharp.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libSkiaSharp.so"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libSkiaSharp.so"
+          DestinationFiles="$(DestDir)/bin/libSkiaSharp.so"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+    <Message Text="Fixed: Copied 64-bit libSkiaSharp.so to runtime directory" Importance="normal"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+    <Message Text="Fixed: Copied 64-bit libSkiaSharp.so to bin directory" Importance="normal"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libSkiaSharp.so')" />
+
+    <!-- Copy BulletSim 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libBulletSim.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libBulletSim.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libBulletSim.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libBulletSim.so"
+          DestinationFiles="$(DestDir)/bin/libBulletSim.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libBulletSim.so')" />
+
+    <!-- Copy OpenJPEG 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libopenjpeg-dotnet.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/libopenjpeg-dotnet.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libopenjpeg-dotnet-x86_64.so')" />
+
+    <!-- Copy ubODE 64-bit library -->
+    <Copy SourceFiles="$(Lib64Dir)/libubode-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/runtimes/linux-x64/native/libubode.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libubode-x86_64.so')" />
+    <Copy SourceFiles="$(Lib64Dir)/libubode-x86_64.so"
+          DestinationFiles="$(DestDir)/bin/libubode.so"
+          ContinueOnError="true"
+          Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)/libubode-x86_64.so')" />
+
+    <Message Text="Fixed: Copied all 64-bit native libraries" Importance="normal"
+             Condition="'$(OS)' == 'Unix' and Exists('$(Lib64Dir)')" />
+
+    <Message Text="Deployment completed successfully!" Importance="high" />
+  </Target>
+
+  <!-- Package target with versioning - replaces Makefile package -->
+  <Target Name="Package" DependsOnTargets="Build">
+    <PropertyGroup>
+      <PackagingDir>$(AkisimPackagingDir)</PackagingDir>
+      <SourceDir>$(AkisimSourceDir)</SourceDir>
+      <DeltaBin>$(AkisimDeltaBin)</DeltaBin>
+    </PropertyGroup>
+
+    <Message Text="Creating package..." Importance="high" />
+    
+    <!-- Package target validation -->
+    <Error Text="Packaging directory not found: $(AkisimPackagingDir)" 
+           Condition="!Exists('$(AkisimPackagingDir)')" />
+    <Error Text="Source directory not found: $(AkisimSourceDir)" 
+           Condition="!Exists('$(AkisimSourceDir)')" />
+    
+    <!-- Find existing packages using MSBuild native approach -->
+    <ItemGroup>
+      <ExistingPackages Include="$(PackagingDir)/akisim-*" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <PackageList>@(ExistingPackages->'%(FullPath)', '|')</PackageList>
+      <LatestDir Condition="'$(PackageList)' != ''">$([System.String]::new('$(PackageList)').Split('|')[0])</LatestDir>
+    </PropertyGroup>
+
+    <Message Text="Found existing packages: @(ExistingPackages)" Importance="low" 
+             Condition="'@(ExistingPackages)' != ''" />
+    <Message Text="No existing packages found, starting with version 0.1.0" Importance="low" 
+             Condition="'@(ExistingPackages)' == ''" />
+    
+    <PropertyGroup Condition="'$(LatestDir)' == ''">
+      <NewVersion>0.1.0</NewVersion>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(LatestDir)' != ''">
+      <BaseName>$([System.IO.Path]::GetFileName('$(LatestDir)'))</BaseName>
+      <CurrentVersion>$(BaseName.Replace('akisim-', ''))</CurrentVersion>
+      <Major>$([System.Text.RegularExpressions.Regex]::Split('$(CurrentVersion)', '\.')[0])</Major>
+      <Minor>$([System.Text.RegularExpressions.Regex]::Split('$(CurrentVersion)', '\.')[1])</Minor>
+      <Patch>$([System.Text.RegularExpressions.Regex]::Split('$(CurrentVersion)', '\.')[2])</Patch>
+      <NewPatch>$([MSBuild]::Add('$(Patch)', '1'))</NewPatch>
+      <NewVersion>$(Major).$(Minor).$(NewPatch)</NewVersion>
+    </PropertyGroup>
+    
+    <PropertyGroup>
+      <NewDir>$(PackagingDir)/akisim-$(NewVersion)</NewDir>
+    </PropertyGroup>
+    
+    <MakeDir Directories="$(NewDir)" />
+    
+    <ItemGroup>
+      <SourceFiles Include="$(SourceDir)$([System.IO.Path]::DirectorySeparatorChar)**$([System.IO.Path]::DirectorySeparatorChar)*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SourceFiles)" 
+          DestinationFolder="$(NewDir)/%(RecursiveDir)" 
+          SkipUnchangedFiles="true" />
+    
+    <ItemGroup Condition="Exists('$(DeltaBin)')">
+      <DeltaFiles Include="$(DeltaBin)$([System.IO.Path]::DirectorySeparatorChar)**$([System.IO.Path]::DirectorySeparatorChar)*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeltaFiles)" 
+          DestinationFolder="$(NewDir)/bin/%(RecursiveDir)" 
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(DeltaBin)')" />
+    
+    <PropertyGroup>
+      <ZipFile>$(PackagingDir)$([System.IO.Path]::DirectorySeparatorChar)akisim-$(NewVersion).zip</ZipFile>
+    </PropertyGroup>
+    
+    <ZipDirectory SourceDirectory="$(NewDir)" 
+                  DestinationFile="$(ZipFile)" 
+                  Overwrite="true" />
+    
+    <Message Text="Creating zip archive: $(ZipFile)" Importance="high" />
+    <Error Text="Failed to create package: $(ZipFile)" 
+           Condition="!Exists('$(ZipFile)')" />
+    
+    <Message Text="Package created: akisim-$(NewVersion).zip" Importance="high" />
+  </Target>
+</Project>

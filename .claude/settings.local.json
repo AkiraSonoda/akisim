@@ -1,8 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git restore:*)",
-      "Bash(ls:*)"
-    ]
+      "Bash(timeout:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(dotnet build:*)",
+      "Bash(git checkout:*)"
+    ],
+    "deny": []
   }
 }

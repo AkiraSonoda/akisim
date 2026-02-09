@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+ <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/OpenSim.Capabilities/OpenSim.Capabilities.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Capabilities.Handlers/OpenSim.Capabilities.Handlers.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Server.Handlers/OpenSim.Server.Handlers.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Services/OpenSim.Services.csproj" />
+    <ProjectReference Include="../../src/OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="../../test/Tests.OpenSim.Common/Tests.OpenSim.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="log4net" Version="1.2.16" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.2" />    
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageReference Include="NUnit" Version="4.3.2" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.3.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="DotNetOpenId" >
+      <HintPath>../../../../bin/DotNetOpenId.dll</HintPath>
+    </Reference>
+    <Reference Include="Nini" >
+      <HintPath>../../../../bin/Nini.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <HintPath>../../../../bin/OpenMetaverse.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <HintPath>../../../../bin/OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+</Project>

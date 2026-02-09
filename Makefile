@@ -1,3 +1,15 @@
+# Akisim Makefile - Thin wrapper around MSBuild/dotnet commands
+#
+# This Makefile provides convenient shortcuts for common build tasks.
+# The actual build logic is in Akisim.targets, which is imported by all projects.
+#
+# Usage:
+#   make build   - Build the solution
+#   make clean   - Clean build artifacts
+#   make deploy  - Deploy to configured location
+#   make package - Create versioned package
+#   make rebuild - Clean and rebuild
+
 # Check for configuration parameter
 ifeq ($(config),)
     CONFIGURATION := Release
@@ -7,11 +19,10 @@ endif
 
 # Default to Linux paths
 PACKAGING_DIR := $(HOME)/opensim/packaging
-SOURCE_DIR := $(HOME)/src/0.9.3.0_akisim/akisim
-SOURCE_BIN := $(HOME)/src/0.9.3.0_akisim/akisim/bin
+SOURCE_DIR := $(HOME)/src/akisim
 DELTA_BIN := $(HOME)/src/akisim/doc/bin_delta/akisim_phpgrid_lin
-SRC_BIN_OPENSIM := $(HOME)/src/0.9.3.0_akisim/akisim/OpenSim/Region/Application/bin/$(CONFIGURATION)/publish
-DEST_DIR := $(HOME)/opensim/grid/working
+SRC_BIN := $(HOME)/src/akisim/bin
+DEST_DIR := $(HOME)/opensim/grid/akisim
 
 # Override with Windows paths if on Windows
 ifeq ($(OS),Windows_NT)
@@ -26,80 +37,42 @@ SOLUTION := Akisim.sln
 
 # Default target
 .PHONY: all
-all: build
+all: deploy
 
 # Build the solution
 .PHONY: build
-build:
-	@echo "Building solution in $(CONFIGURATION) configuration..."
-	dotnet build $(SOLUTION) -c $(CONFIGURATION)
-	@echo "Publishing OpenSim in $(CONFIGURATION) configuration..."
-	dotnet publish OpenSim/Region/Application/OpenSim.csproj -c $(CONFIGURATION) --no-self-contained --no-build
+build: clean restore
+	@echo "Building in $(CONFIGURATION) configuration..."
+	dotnet build $(SOLUTION) --configuration $(CONFIGURATION) --no-restore
 
-# Clean all build artifacts (but keep project files)
+# Clean all build artifacts - MSBuild handles bin/ removal via CleanBinDirectory target
 .PHONY: clean
 clean:
-	@echo "Cleaning dotnet..."
-	@dotnet clean -c $(CONFIGURATION) $(SOLUTION)
-	@echo "Cleaning obj directories..."
-	@find . -type d -name "obj" -exec sh -c '\
-		for dir in "$$@"; do \
-			echo "Cleaning directory: $$dir"; \
-			rm -rf "$$dir"/*; \
-		done' sh {} +
-	@echo "Removing .csproj.user files..."
-	@find . -type f -name "*.csproj.user" -exec sh -c '\
-		for file in "$$@"; do \
-			echo "Removing file: $$file"; \
-			rm -f "$$file"; \
-		done' sh {} +
-	@echo "Clean completed."
+	@echo "Cleaning solution..."
+	dotnet clean $(SOLUTION) --configuration $(CONFIGURATION)
+
 	
+# Restore NuGet packages
+.PHONY: restore
+restore:
+	@echo "Restoring NuGet packages..."
+	dotnet restore $(SOLUTION)
+
 # Rebuild
 .PHONY: rebuild
 rebuild: clean build
 
-# Deploy solution
+# Deploy solution - calls MSBuild Deploy target
 .PHONY: deploy
 deploy: build
-	@echo "Deploying $(CONFIGURATION) build..."
-	rm -rf "$(DEST_DIR)/bin"
-	mkdir -p "$(DEST_DIR)/bin"
-	@echo "Copying OpenSim binaries..."
-	cp -r "$(SRC_BIN_OPENSIM)"/* "$(DEST_DIR)/bin/"
-	@echo "Copying additional files from bin directory..."
-	rsync -av --ignore-existing "$(SOURCE_BIN)/" "$(DEST_DIR)/bin/"
-	@echo "Applying delta overrides..."
-	cd "$(DELTA_BIN)" && \
-	for item in *; do \
-		if [ -e "$$item" ]; then \
-			cp -rf "$$item" "$(DEST_DIR)/bin/" && \
-			echo "Copied: $$item"; \
-		fi \
-	done
-	@echo "Deployment completed successfully!"
+	@echo "Deploying via MSBuild target..."
+	dotnet msbuild $(SOLUTION) -t:Deploy -p:Configuration=$(CONFIGURATION) -nologo -v:minimal
 
-# Package the solution (source distribution)
+# Package the solution - calls MSBuild Package target
 .PHONY: package
 package: build
-	@latest_dir=$$(ls -d $(PACKAGING_DIR)/akisim-* 2>/dev/null | sort -V | tail -n 1); \
-	if [ -z "$$latest_dir" ]; then \
-		new_version="0.1.0"; \
-	else \
-		current_version=$$(basename "$$latest_dir" | sed 's/akisim-//'); \
-		major=$$(echo $$current_version | cut -d. -f1); \
-		minor=$$(echo $$current_version | cut -d. -f2); \
-		patch=$$(echo $$current_version | cut -d. -f3); \
-		new_patch=$$((patch + 1)); \
-		new_version="$$major.$$minor.$$new_patch"; \
-	fi; \
-	new_dir="$(PACKAGING_DIR)/akisim-$$new_version"; \
-	mkdir -p "$$new_dir"; \
-	rsync -av --exclude='.*' --exclude='obj/' --exclude='bin/Release/' --exclude='bin/Debug/' \
-		--exclude='*.user' --exclude='*.suo' --exclude='publish/' \
-		"$(SOURCE_DIR)/" "$$new_dir/"; \
-	cd "$(PACKAGING_DIR)" && zip -r "akisim-$$new_version.zip" "akisim-$$new_version"; \
-	echo "Package created: akisim-$$new_version.zip";
+	@echo "Creating package via MSBuild target..."
+	dotnet msbuild $(SOLUTION) -t:Package -p:Configuration=$(CONFIGURATION) -nologo -v:minimal
 
 # Package binary distribution (built artifacts only)
 .PHONY: package-binary

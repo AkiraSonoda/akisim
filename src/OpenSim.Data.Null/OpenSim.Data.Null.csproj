@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>OpenSim.Data.Null</AssemblyTitle>
+    <Company>http://opensimulator.org</Company>
+    <Product>OpenSim.Data.Null</Product>
+    <Copyright>Copyright (c) OpenSimulator.org Developers 2007-2009</Copyright>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="log4net" Version="3.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+    <Reference Include="ThreadedClasses" >
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OpenSim.Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+</Project>

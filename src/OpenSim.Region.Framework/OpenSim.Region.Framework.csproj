@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>OpenSim.Region.Framework</AssemblyTitle>
+    <Company>http://opensimulator.org</Company>
+    <Product>OpenSim</Product>
+    <Copyright>OpenSimulator developers</Copyright>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="log4net" Version="3.2.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Nini" >
+      <HintPath>../../bin/Nini.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <HintPath>../../bin/OpenMetaverse.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <HintPath>../../bin/OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+    <Reference Include="ThreadedClasses">
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>    
+    </Reference>
+    <Reference Include="XMLRPC" >
+      <HintPath>../../bin/XMLRPC.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OpenSim.Capabilities/OpenSim.Capabilities.csproj" />
+    <ProjectReference Include="../OpenSim.Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.SkiaSharp/OpenSim.Framework.SkiaSharp.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Monitoring/OpenSim.Framework.Monitoring.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Serialization/OpenSim.Framework.Serialization.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Servers/OpenSim.Framework.Servers.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
+    <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+</Project>

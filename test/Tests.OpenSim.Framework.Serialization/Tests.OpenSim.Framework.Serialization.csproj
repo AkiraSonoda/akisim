@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="log4net" >
+      <HintPath>../../../../bin/log4net.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <HintPath>../../../../bin/OpenMetaverse.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <HintPath>../../../../bin/OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../../../src/OpenSim/Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../../../../src/OpemSim/Framework/Serialization/OpenSim.Framework.Serialization.csproj" />
+    <ProjectReference Include="../../../Services/Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="..\..\..\Tests\Common\Tests.OpenSim.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="4.3.2" />
+  </ItemGroup>
+</Project>

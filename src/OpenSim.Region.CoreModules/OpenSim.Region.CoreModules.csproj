@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyTitle>OpenSim.Region.CoreModules</AssemblyTitle>
+    <Product>OpenSim.Region.CoreModules.Properties</Product>
+    <Description>Core modules for OpenSim</Description>
+    <Copyright>Copyright ©  2012</Copyright>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <!-- Suppress vulnerability warning for MimeKit 4.5.0 - constrained by system dependencies -->
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ionic.Zlib.Core" Version="1.0.0" />
+    <PackageReference Include="log4net" Version="3.2.0" />
+    <PackageReference Include="MailKit" Version="4.14.1" />
+    <PackageReference Include="MimeKit" Version="4.14.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Reference Include="CSJ2K" >
+      <HintPath>../../bin/CSJ2K.dll</HintPath>
+    </Reference>
+    <Reference Include="NDesk.Options" >
+      <HintPath>../../bin/NDesk.Options.dll</HintPath>
+    </Reference>
+    <Reference Include="Nini" >
+      <HintPath>../../bin/Nini.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <HintPath>../../bin/OpenMetaverse.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <HintPath>../../bin/OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
+    </Reference>
+    <Reference Include="SmartThreadPool">
+      <HintPath>../../bin/SmartThreadPool.dll</HintPath>
+    </Reference>
+    <Reference Include="ThreadedClasses">
+      <HintPath>../../bin/ThreadedClasses.dll</HintPath>
+    </Reference>
+    <Reference Include="Warp3D" >
+      <HintPath>../../bin/Warp3D.dll</HintPath>
+    </Reference>
+    <Reference Include="XMLRPC" >
+      <HintPath>../../bin/XMLRPC.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OpenSim.Capabilities/OpenSim.Capabilities.csproj" />
+    <ProjectReference Include="../OpenSim.Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../OpenSim.Data.MySQL/OpenSim.Data.MySQL.csproj" />
+    <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Monitoring/OpenSim.Framework.Monitoring.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Serialization/OpenSim.Framework.Serialization.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Servers/OpenSim.Framework.Servers.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.Servers.HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.SkiaSharp/OpenSim.Framework.SkiaSharp.csproj" />
+    <ProjectReference Include="../OpenSim.Region.ClientStack.LindenCaps/OpenSim.Region.ClientStack.LindenCaps.csproj" />
+    <ProjectReference Include="../OpenSim.Region.ClientStack.LindenUDP/OpenSim.Region.ClientStack.LindenUDP.csproj" />
+    <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModules.SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.BulletS/OpenSim.Region.PhysicsModule.BulletS.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.ubOde/OpenSim.Region.PhysicsModule.ubOde.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.Meshing/OpenSim.Region.PhysicsModule.Meshing.csproj" />
+    <ProjectReference Include="../OpenSim.Region.PhysicsModule.ubOdeMeshing/OpenSim.Region.PhysicsModule.ubOdeMeshing.csproj" />
+    <ProjectReference Include="../OpenSim.Server.Base/OpenSim.Server.Base.csproj" />
+    <ProjectReference Include="../OpenSim.Server.Handlers/OpenSim.Server.Handlers.csproj" />
+    <ProjectReference Include="../OpenSim.Services.Base/OpenSim.Services.Base.csproj" />
+    <ProjectReference Include="../OpenSim.Services.Connectors/OpenSim.Services.Connectors.csproj" />
+    <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
+  </ItemGroup>
+
+
+</Project>

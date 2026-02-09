@@ -4,125 +4,193 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Akisim**, a fork/customization of OpenSimulator - an open-source virtual world server platform written in C# targeting .NET 8.0. The project enables creation of 3D virtual worlds compatible with Second Life viewers.
+Akisim is a fork of OpenSimulator (OpenSim), a BSD-licensed virtual world server platform that implements the Second Life protocol. It's a .NET-based application written in C# that supports multiple clients and servers in a heterogeneous grid structure.
 
-## Build System & Common Commands
+## Build Commands
 
 ### Prerequisites
 - .NET 8.0 SDK
-- libgdiplus (Linux/Mac)
+- On Linux/Mac: libgdiplus (`apt-get install libgdiplus` on Debian/Ubuntu)
 
-### Building from Source
+### Primary Build Commands
 ```bash
-# Build the solution
-./compile.sh
-# OR
-dotnet build -c Release Akisim.sln
-# OR
+# Build the solution (uses classic MSBuild/dotnet build)
 make build
+# or directly:
+dotnet build Akisim.sln --configuration Release
 
 # Clean build artifacts
 make clean
+# or:
+dotnet clean Akisim.sln --configuration Release
 
-# Build and deploy to configured location
+# Restore NuGet packages
+make restore
+# or:
+dotnet restore Akisim.sln
+
+# Deploy to configured location
 make deploy
+
+# Package for distribution
+make package
+
+# Rebuild (clean + build)
+make rebuild
 ```
 
-### Makefile Targets
-- `make build` - Build in Release configuration (default)
-- `make clean` - Remove all build artifacts
-- `make rebuild` - Clean then build
-- `make deploy` - Build and deploy to configured destination
-- `make package` - Create versioned source package
-- `make package-binary` - Create versioned binary distribution package
+### Build Notes
+- The project uses `<GenerateAssemblyInfo>false</GenerateAssemblyInfo>` in `Akisim.targets` to avoid conflicts between auto-generated and manual assembly attributes
+- Build system copies required dependencies from NuGet packages to the bin directory automatically
+- Parallel builds are disabled (`DisableParallel=true`) for build reliability
+- Mono.Addins configuration files use version `0.9.3.1` to match the actual assembly version in `VersionInfo.cs`
+- MySQL support requires `MySqlConnector.dll` (from NuGet package `mysqlconnector`) in the bin directory
+
+### Alternative Build Methods
+```bash
+# Using dotnet CLI directly
+dotnet build --configuration Release Akisim.sln
+
+# Build specific project
+dotnet build src/OpenSim.Framework/OpenSim.Framework.csproj
+```
+
+### Running the Application
+```bash
+# From the bin directory
+cd bin
+./opensim.sh        # Linux/Mac
+# or
+OpenSim.exe         # Windows
+```
 
 ## Architecture Overview
 
-### Core Components Structure
+### Core Components
 
-**OpenSim.Framework** - Core framework providing fundamental types, interfaces, and utilities
+**Main Executables:**
+- `OpenSim.exe` - Primary region simulator server
+- `Robust.exe` - Services backend server (distributed architecture)
+- `OpenSim.ConsoleClient.exe` - Remote administration console
 
-**OpenSim.Region.Application** - Main simulator application entry point (OpenSim.exe)
-- `OpenSim.cs` - Primary application class
-- `OpenSimBase.cs` - Base application functionality
+**Key Architectural Layers:**
+1. **Foundation Layer** - Core utilities and data structures (`OpenSim.Framework`)
+2. **Data Layer** - Database abstraction (`OpenSim.Data.*`) with MySQL/SQLite/PostgreSQL support
+3. **Services Layer** - Backend services for assets, inventory, users (`OpenSim.Services.*`)
+4. **Region Layer** - World simulation and scene management (`OpenSim.Region.*`)
+5. **Client Stack** - Protocol implementation (`OpenSim.Region.ClientStack.*`)
 
-**OpenSim.Region.Framework** - Region/simulator framework and interfaces
+### Scene Management
+- **Scene** class - Central world state manager in `OpenSim.Region.Framework.Scenes`
+- **SceneObjectGroup/SceneObjectPart** - Represents 3D objects (prims) in the world
+- **ScenePresence** - Represents avatars/users in the scene
+- Uses event-driven architecture with extensive C# events
 
-**OpenSim.Region.CoreModules** - Essential simulator modules (avatar, assets, world, scripting)
+### Module System
+- Plugin-based architecture using Mono.Addins
+- **IRegionModuleBase** - Base interface for region functionality
+- **ISharedRegionModule** - Modules shared across regions
+- Modules are discovered and loaded dynamically from assemblies
 
-**OpenSim.Services** - Grid service implementations (authentication, assets, inventory, etc.)
+### Physics Engines (Pluggable)
+- **BulletS** - Advanced Bullet physics engine
+- **ubOde** - ODE physics engine integration
+- **POS** - Position-based physics
 
-**OpenSim.Data** - Database abstraction layer supporting MySQL, PostgreSQL, SQLite
+### Scripting Engine
+- **YEngine** - Primary LSL (Linden Scripting Language) implementation
+- **LSL_Api** - Core scripting API in `OpenSim.Region.ScriptEngine.Shared.Api`
+- **OSSL_Api** - OpenSim-specific scripting extensions
+- Scripts compiled to .NET bytecode for performance
 
-### Key Executables
-- **OpenSim** - Region/simulator server (standalone mode)  
+## Development Patterns
 
-### Configuration System
-- **OpenSim.ini** - Main configuration (copy from OpenSim.ini.example)
-- **config-include/** - Modular configuration files
-  - `StandaloneCommon.ini` - Standalone mode configuration
+### Adding New Region Modules
+1. Implement `IRegionModuleBase` or `ISharedRegionModule`
+2. Use `[Extension(Path = "/OpenSim/RegionModules")]` attribute
+3. Handle `Initialize()`, `AddRegion()`, `RegionLoaded()` lifecycle events
+4. Place in appropriate project under `OpenSim.Region.*`
 
-### Operating Mode
-- **Standalone** - Single server with embedded services (all grid services run within the OpenSim process)
+### Database Integration
+1. Define interfaces in `OpenSim.Data` (e.g., `IAssetData`)
+2. Implement for specific databases in `OpenSim.Data.MySQL`, etc.
+3. Use Migration classes for schema versioning
+4. Follow existing patterns for connection management
 
-### Third-Party Dependencies
-Located in `ThirdParty/`:
-- **SmartThreadPool** - Thread pool implementation
-- **ThreadedClasses** - Thread-safe collection classes
+### Service Development
+1. Define service contracts in `OpenSim.Services.Interfaces`
+2. Implement services in `OpenSim.Services.*`
+3. Create connectors in `OpenSim.Services.Connectors` for distributed access
+4. Register in dependency injection container
 
-### Add-on Modules
-- **addon-modules/** - External/community modules
-  - `akkimoney_module/` - Currency system module with transaction handling
+### Client Protocol Extensions
+1. Extend `IClientAPI` interface for new functionality
+2. Implement in `LLClientView` for UDP protocol support
+3. Add capabilities in `OpenSim.Region.ClientStack.LindenCaps` for HTTP-based features
+4. Handle both inbound and outbound protocol messages
 
-### Database Support
-Multi-database support via `OpenSim.Data.*`:
-- MySQL (production recommended)
-- PostgreSQL  
-- SQLite (development/testing)
+## Configuration Structure
 
-### Testing Framework
-- Comprehensive test suite using **NUnit** framework
-- Test structure:
-  - `OpenSim/Tests/Common/` - Base test classes and utilities (`OpenSimTestCase`, `TestHelpers`)
-  - Component-specific test directories throughout modules
-  - `OpenSim/Tests/Performance/` - NPCPerformanceTests, ObjectPerformanceTests, ScriptPerformanceTests
-  - `OpenSim/Tests/Stress/` - VectorRenderModuleStressTests
-  - `OpenSim/Tests/Permissions/` - DirectTransferTests, IndirectTransferTests
-- Key test areas:
-  - **Scene Framework**: SceneObjectTests, ScenePresenceTests, EntityManagerTests
-  - **Physics**: BulletS physics engine tests, basic physics tests
-  - **Scripting**: LSL API tests (LSL_ApiTest, LSL_TypesTest series)
-  - **Networking**: UDP client stack tests, packet handling tests
-  - **Data Layer**: Database-agnostic tests for MySQL, PostgreSQL, SQLite
-  - **Services**: Asset, inventory, authentication service tests
-  - **World Features**: Terrain, archiver, land management tests
-- Test execution: `dotnet test` (requires built solution)
-- Test configuration via `bin/OpenSim.ini.example` and `OpenSim/Data/Tests/Resources/TestDataConnections.ini`
+### Main Configuration Files (in `bin/`)
+- `OpenSim.ini` - Primary simulator configuration
+- `Regions/Regions.ini` - Region definitions
+- `config-include/` - Modular configuration includes
+  - `Standalone.ini` vs `Grid.ini` - Deployment mode selection
+  - `StandaloneCommon.ini` / `GridCommon.ini` - Common settings
 
-### Script Execution Commands
-- `./compile.sh` - Build solution (Linux/Mac)
-- `./deploy.sh` - Deploy built binaries to configured location
-- `./package.sh` - Create versioned package archive
+### Development vs Production
+- **Standalone Mode** - Single-server development setup
+- **Grid Mode** - Distributed production architecture with separate Robust services
+- Database selection via configuration (SQLite for dev, MySQL for production)
 
-## Development Workflow
+## Testing
 
-1. **Build**: Use `./compile.sh`, `make build`, or `dotnet build -c Release Akisim.sln`
-2. **Testing**: Run `dotnet test` to execute comprehensive test suite
-3. **Configuration**: Test configurations in `bin/` directory with `.ini.example` files
-4. **Deployment**: Use `make deploy` for deployment to configured environments
-5. **Packaging**: Use `make package` for source distribution or `make package-binary` for binary distribution
-6. **Development Tools**:
-   - `make clean` - Remove all build artifacts
-   - `make rebuild` - Clean then build from scratch
-   - `make deploy` - Deploy to configured destination
-   - `make package` - Create source distribution packages
-   - `make package-binary` - Create binary distribution packages
+### Available Test Projects
+```bash
+# Run all tests
+dotnet test
 
-### Important Development Notes
-- The project uses modern **.NET SDK-style project files** (.csproj)
-- All output goes to common `bin/` directory for easy testing
-- Configuration is highly modular via `config-include/` system
-- Physics engines are pluggable (BulletS, ubOde, BasicPhysics, POS)
-- Script engines support both LSL (Linden Scripting Language) and YEngine
-- Multi-database support requires appropriate connection string configuration
-- OpenTelemetry instrumentation is integrated for metrics and logs
+# Run specific test project
+dotnet test src/OpenSim.Tests/OpenSim.Tests.csproj
+```
+
+### Test Categories
+- Unit tests for core framework components
+- Integration tests for service interactions
+- Performance tests for critical paths
+- Bot framework (`pCampBot`) for load testing
+
+## Key Files for Common Tasks
+
+**Region/World Development:**
+- `src/OpenSim.Region.Framework/Scenes/Scene.cs` - Core world logic
+- `src/OpenSim.Region.CoreModules/` - Standard region modules
+
+**Database Schema:**
+- `OpenSim/Data/*/Resources/` - SQL migration scripts
+- Follow naming pattern: `XXX_StoreName.sql` where XXX is version number
+
+**Protocol Implementation:**
+- `src/OpenSim.Region.ClientStack.LindenUDP/LLClientView.cs` - Main client handler
+- `src/OpenSim.Region.ClientStack.LindenCaps/` - HTTP capabilities
+
+**Scripting Extensions:**
+- `src/OpenSim.Region.ScriptEngine.Shared.Api/LSL_Api.cs` - Core LSL functions
+- `src/OpenSim.Region.ScriptEngine.Shared.Api/OSSL_Api.cs` - OpenSim extensions
+
+## Currency Module Integration
+
+The project includes currency module extensions in `src/OpenSim.Region.OptionalModules.Currency/`:
+- **DTLNSLMoneyModule** - Distributed Transaction Layer money module
+- **NSLXmlRpc** - XML-RPC communication for currency operations  
+- **MySQL.MoneyData** - Database layer for currency transactions
+- PHP helper scripts in `helper/` directory for web integration
+
+## Performance Considerations
+
+- Uses **SmartThreadPool** for efficient thread management
+- Implements object pooling for frequently allocated objects (packets, etc.)
+- Event-driven architecture minimizes blocking operations
+- Database connection pooling and prepared statements
+- Asset caching with configurable cache sizes
+- Physics and scripting run on separate threads from main simulation loop
