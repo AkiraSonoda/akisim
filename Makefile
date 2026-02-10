@@ -43,7 +43,7 @@ all: deploy
 .PHONY: build
 build: clean restore
 	@echo "Building in $(CONFIGURATION) configuration..."
-	dotnet build $(SOLUTION) --configuration $(CONFIGURATION) --no-restore
+	dotnet build $(SOLUTION) --configuration $(CONFIGURATION) --no-restore -maxcpucount:1
 
 # Clean all build artifacts - MSBuild handles bin/ removal via CleanBinDirectory target
 .PHONY: clean
