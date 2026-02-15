@@ -143,3 +143,5 @@ packages/
 .nuke/
 
 build/
+
+OpenSim/
