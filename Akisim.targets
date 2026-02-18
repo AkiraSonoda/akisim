@@ -42,7 +42,7 @@
     <PackageReference Include="MySqlConnector" Version="2.5.0" />
   </ItemGroup>
 
-  <!-- Custom clean target - removes bin directory before clean -->
+  <!-- Custom clean target - removes bin directory and stale per-project bin directories before clean -->
   <Target Name="CleanBinDirectory" BeforeTargets="Clean" Condition="Exists('$(BaseOutputPath)')">
     <Message Text="Cleaning bin directory: $(BaseOutputPath)" Importance="high" />
     <!-- Use platform-appropriate command to remove directory tree robustly -->
@@ -51,6 +51,16 @@
           ContinueOnError="true"
           IgnoreExitCode="true" />
     <Exec Command="rmdir /s /q &quot;$(BaseOutputPath)&quot;"
+          Condition="'$(OS)' != 'Unix'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+    <!-- Also remove stale per-project bin directories under src/ -->
+    <Message Text="Cleaning stale per-project bin directories under src/..." Importance="high" />
+    <Exec Command="find &quot;$(SolutionDir)src&quot; -mindepth 2 -maxdepth 2 -type d -name bin -exec rm -rf {} +"
+          Condition="'$(OS)' == 'Unix'"
+          ContinueOnError="true"
+          IgnoreExitCode="true" />
+    <Exec Command="for /d /r &quot;$(SolutionDir)src&quot; %d in (bin) do if exist &quot;%d&quot; rmdir /s /q &quot;%d&quot;"
           Condition="'$(OS)' != 'Unix'"
           ContinueOnError="true"
           IgnoreExitCode="true" />
@@ -76,6 +86,23 @@
           Retries="5"
           RetryDelayMilliseconds="1000"
           ContinueOnError="true" />
+  </Target>
+
+  <!-- Explicitly ensure AkiSim.Nini Nini.dll is present in output directory -->
+  <Target Name="CopyNiniToOutput" AfterTargets="CopyNuGetDependencies"
+          Condition="'$(MSBuildProjectName)' == 'OpenSim.Server.RegionServer'">
+    <ItemGroup>
+      <NiniDll Include="@(ReferenceCopyLocalPaths)" Condition="'%(Filename)' == 'Nini'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NiniDll)"
+          DestinationFolder="$(BaseOutputPath)"
+          SkipUnchangedFiles="true"
+          OverwriteReadOnlyFiles="true"
+          Condition="'@(NiniDll)' != ''" />
+    <Message Text="AkiSim.Nini: Nini.dll deployed to output directory" Importance="normal"
+             Condition="'@(NiniDll)' != ''" />
+    <Warning Text="AkiSim.Nini package: Nini.dll not found in ReferenceCopyLocalPaths - deployment may be incomplete"
+             Condition="'@(NiniDll)' == ''" />
   </Target>
 
   <!-- Copy native runtime assets (like SkiaSharp native libraries) to correct locations -->

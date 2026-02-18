@@ -72,11 +72,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Nini" >
-      <Name>Nini</Name>
-      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/Nini.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
+
     <Reference Include="Mono.Addins" >
       <Name>Mono.Addins</Name>
       <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/Mono.Addins.dll</HintPath>

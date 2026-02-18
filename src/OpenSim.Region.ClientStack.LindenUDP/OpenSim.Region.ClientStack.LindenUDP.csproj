@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
   </ItemGroup>
@@ -21,9 +22,6 @@
     </Reference>
     <Reference Include="NDesk.Options" >
       <HintPath>../../bin/NDesk.Options.dll</HintPath>
-    </Reference>
-    <Reference Include="Nini" >
-      <HintPath>../../bin/Nini.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverse" >
       <HintPath>../../bin/OpenMetaverse.dll</HintPath>

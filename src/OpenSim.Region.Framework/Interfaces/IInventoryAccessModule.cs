@@ -126,7 +126,9 @@ namespace OpenSim.Region.Framework.Interfaces
             UUID assetID, Vector3 RayEnd, Vector3 RayStart,
             UUID RayTargetID, byte BypassRayCast, bool RayEndIsIntersection,
             bool RezSelected, bool RemoveItem, UUID fromTaskID, bool attachment);
-
+        
+        void FetchRemoteHGItemAssets(UUID OwnerID, InventoryItemBase item);
+        
         void TransferInventoryAssets(InventoryItemBase item, UUID sender, UUID receiver);
 
         /// <summary>

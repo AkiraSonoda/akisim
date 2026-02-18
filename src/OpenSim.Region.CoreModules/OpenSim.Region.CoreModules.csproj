@@ -14,6 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
     <PackageReference Include="Ionic.Zlib.Core" Version="1.0.0" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="MailKit" Version="4.14.1" />
@@ -28,9 +29,6 @@
     </Reference>
     <Reference Include="NDesk.Options" >
       <HintPath>../../bin/NDesk.Options.dll</HintPath>
-    </Reference>
-    <Reference Include="Nini" >
-      <HintPath>../../bin/Nini.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverse" >
       <HintPath>../../bin/OpenMetaverse.dll</HintPath>

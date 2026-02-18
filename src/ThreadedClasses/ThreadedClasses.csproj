@@ -9,4 +9,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
+  </ItemGroup>
+
 </Project>

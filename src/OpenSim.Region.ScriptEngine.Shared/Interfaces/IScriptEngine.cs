@@ -32,7 +32,6 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.ScriptEngine.Interfaces;
 using OpenSim.Region.ScriptEngine.Shared;
-using Amib.Threading;
 using log4net;
 using Nini.Config;
 using OpenMetaverse;

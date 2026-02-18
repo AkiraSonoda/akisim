@@ -10,16 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Nini" >
-      <HintPath>../../bin/Nini.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Server.RegionServer/OpenSim.Server.RegionServer.csproj" />
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />

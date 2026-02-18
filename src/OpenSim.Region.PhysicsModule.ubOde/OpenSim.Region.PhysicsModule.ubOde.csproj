@@ -12,13 +12,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
     <PackageReference Include="log4net" Version="3.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Nini" >
-      <HintPath>../../bin/Nini.dll</HintPath>
-    </Reference>
     <Reference Include="OpenMetaverse" >
       <HintPath>../../bin/OpenMetaverse.dll</HintPath>
     </Reference>
