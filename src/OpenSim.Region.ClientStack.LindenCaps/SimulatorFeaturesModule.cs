@@ -134,7 +134,7 @@ namespace OpenSim.Region.ClientStack.Linden
                 m_features["AnimatedObjects"] = new OSDMap()
                 {
                     ["AnimatedObjectMaxTris"] = OSD.FromInteger(150000),
-                    ["MaxAgentAnimatedObjectAttachments"] = OSD.FromInteger(2)
+                    ["MaxAgentAnimatedObjectAttachments"] = OSD.FromInteger(Constants.MaxAgentAnimatedObjectAttachments)
                 };
 
                 m_features["BakesOnMeshEnabled"] = true;
@@ -151,6 +151,8 @@ namespace OpenSim.Region.ClientStack.Linden
                 m_features["MaxEstateManagers"] = OSD.FromInteger(Constants.MaxEstateManagers);
 
                 m_features["MaxTextureResolution"] = OSD.FromInteger(Constants.MaxTextureResolution);
+
+                m_features["MaxProfilePicks"] = OSD.FromInteger(Constants.MaxProfilePicks);
 
                 m_features["MeshRezEnabled"] = true;
                 m_features["MeshUploadEnabled"] = true;
@@ -180,6 +182,7 @@ namespace OpenSim.Region.ClientStack.Linden
 
                 if (m_ExportSupported)
                     extrasMap["ExportSupported"] = true;
+
                 m_features["OpenSimExtras"] = extrasMap;
             }
         }
@@ -430,7 +433,7 @@ namespace OpenSim.Region.ClientStack.Linden
                         while ((s = sr.ReadLine()) is not null)
                         {
                             s = s.Trim(trimc);
-                            if (String.IsNullOrEmpty(s) || s.StartsWith("<!--"))
+                            if (string.IsNullOrEmpty(s) || s.StartsWith("<!--"))
                                 continue;
                             sb.Append(s);
                         }
