@@ -402,6 +402,15 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             AddBytes(str.GetArray(), len);
             AddZeros(1);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void AddColorArgb(uint v)
+        {
+            AddByte((byte)(v >> 24));
+            AddByte((byte)(v >> 16));
+            AddByte((byte)(v >> 8));
+            AddByte((byte)v);
+        }
     }
     public unsafe class LLUDPUnsafeZeroEncoder
     {

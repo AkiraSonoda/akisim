@@ -1062,7 +1062,7 @@ namespace OpenSim.Region.CoreModules.World.Archiver
             // AKIDO end remove lock
         }
 
-        private bool TryUploadAsset(UUID assetID, sbyte assetType, byte[] data)
+        private bool TryUploadAsset(UUID assetID, sbyte assetType, byte[] data, IAssetCache forceCache = null)
         {
             if (assetType == (sbyte)AssetType.Unknown)
             {

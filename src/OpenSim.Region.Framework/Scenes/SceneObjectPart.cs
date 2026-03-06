@@ -5280,6 +5280,19 @@ namespace OpenSim.Region.Framework.Scenes
             return new Color4(color.R, color.G, color.B, (byte)(0xFF - color.A));
         }
 
+        // AKIDO
+        public uint TextColorArgb()
+        {
+            Color color = Color;
+            return ((uint)color.R << 24) | ((uint)color.G << 16) | ((uint)color.B << 8) | (uint)(0xFF - color.A);
+        }
+
+        // AKIDO
+        public float GetTextAlpha()
+        {
+            return m_color.A * 0.0039215686f;
+        }
+
         public void ResetOwnerChangeFlag()
         {
             List<UUID> inv = Inventory.GetInventoryList();

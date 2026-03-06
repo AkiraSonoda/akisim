@@ -679,6 +679,22 @@ namespace OpenSim.Framework
             return false;
         }
 
+        public bool RemoveAttachment(int attachPoint, UUID itemID)
+        {
+            if(m_attachments.TryGetValue(attachPoint, out List<AvatarAttachment> lst) && lst is not null)
+            {
+                int index = lst.FindIndex(delegate(AvatarAttachment a) { return a.ItemID.Equals(itemID); });
+                if (index >= 0)
+                {
+                    lst.RemoveAt(index);
+                    if (lst.Count == 0)
+                        m_attachments.Remove(attachPoint);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void ClearAttachments()
         {
             // AKIDO remove lock
