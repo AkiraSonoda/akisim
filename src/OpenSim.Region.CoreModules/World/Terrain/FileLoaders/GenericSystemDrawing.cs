@@ -27,10 +27,10 @@
 
 using System;
 using System.IO;
-using OpenSim.Framework.SkiaSharp;
+using OpenSim.Framework.SkiaSharp; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using SkiaSharp;
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
@@ -47,6 +47,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         public string FileExtension
         {
             get { return ".gsd"; }
+        }
+
+        public virtual int SupportedHeight
+        {
+            get { return 256; }
         }
 
         /// <summary>
@@ -203,6 +208,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
             return false;
         }
 
+        public virtual bool SupportsExtendedTileSave()
+        {
+            return false;
+        }
+
         /// <summary>
         /// Protected method, generates a grayscale bitmap
         /// image from a specified terrain channel.
@@ -241,6 +251,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
                 }
             }
             return bmp;
+        }
+
+        public virtual void SaveFile(ITerrainChannel map, string filename, int fileWidth, int fileHeight, int startX, int startY, int stopX, int stopY, int offsetX, int offsetY)
+        {
+            throw new NotImplementedException();
         }
     }
 }

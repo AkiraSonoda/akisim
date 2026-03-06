@@ -28,7 +28,7 @@
 using System;
 using System.IO;
 using OpenSim.Region.Framework.Interfaces;
-using SkiaSharp;
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
@@ -39,6 +39,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         public string FileExtension
         {
             get { return ".jpg"; }
+        }
+
+        public int SupportedHeight
+        {
+            get { return 256; }
         }
 
         public ITerrainChannel LoadFile(string filename)
@@ -96,6 +101,10 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         {
             return false;
         }
+        public bool SupportsExtendedTileSave()
+        {
+            return false;
+        }
 
         private static SKBitmap CreateBitmapFromMap(ITerrainChannel map)
         {
@@ -126,6 +135,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
                 }
             }
             return bmp;
+        }
+
+        public void SaveFile(ITerrainChannel map, string filename, int fileWidth, int fileHeight, int startX, int startY, int stopX, int stopY, int offsetX, int offsetY)
+        {
+            throw new NotImplementedException();
         }
     }
 }
