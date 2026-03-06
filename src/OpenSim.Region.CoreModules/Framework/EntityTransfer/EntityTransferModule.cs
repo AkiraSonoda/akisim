@@ -31,11 +31,16 @@ using System.Net;
 using System.Reflection;
 using System.Threading;
 using OpenSim.Framework;
+using OpenSim.Framework.Capabilities;
+using OpenSim.Framework.Client;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using OpenSim.Region.PhysicsModules.SharedBase;
 using OpenSim.Services.Interfaces;
+
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
@@ -46,6 +51,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
     public class EntityTransferModule : INonSharedRegionModule, IEntityTransferModule, IDisposable
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly string LogHeader = "[ENTITY TRANSFER MODULE]";
         private static readonly string OutfitTPError = "destination region does not support the Outfit you are wearing. Please retry with a simpler one";
 
         public EntityTransferModule()
@@ -490,7 +496,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 sp.Name, position, m_sceneName);
 
             // Teleport within the same region
-            if (!m_scene.PositionIsInCurrentRegion(position) || position.Z < 0)
+            if (!m_scene.PositionIsInCurrentRegion(position))
             {
                 Vector3 emergencyPos = new(128, 128, 128);
 
@@ -514,14 +520,18 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 position.Z = posZLimit;
             }
 
-            // AKIDO: Re-enabled landing point enforcement for parcel landing points
+            if(position.Z < Constants.MinSimulationHeight)
+                position.Z = Constants.MinSimulationHeight;
+            else if(position.Z > Constants.MaxSimulationHeight)
+                position.Z = Constants.MaxSimulationHeight;
+
+/*
             if(!sp.CheckLocalTPLandingPoint(ref position))
             {
                 sp.ControllingClient.SendTeleportFailed("Not allowed at destination");
                 return;
             }
-            // AKIDO
-
+*/
             if (sp.Flying)
                 teleportFlags |= (uint)TeleportFlags.IsFlying;
 
