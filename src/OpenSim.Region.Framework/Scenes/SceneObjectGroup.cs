@@ -38,9 +38,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Xml;
-using ThreadedClasses;
+using ThreadedClasses; // Akido
 using PermissionMask = OpenSim.Framework.PermissionMask;
-// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -284,8 +283,6 @@ namespace OpenSim.Region.Framework.Scenes
 
             get { return m_groupContainsForeignPrims; }
         }
-
-        public bool HasGroupChangedDueToDelink { get; set; }
 
         private bool isTimeToPersist()
         {
@@ -1091,7 +1088,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             Quaternion currentRot = RootPart.RotationOffset;
             if(setrot)
-                rotation = Quaternion.Conjugate(currentRot) * rotation;
+                rotation = Quaternion.Conjugate(in currentRot) * rotation;
 
             bool dorot = setrot || (Math.Abs(rotation.W) < 0.99999);
 
@@ -1407,7 +1404,7 @@ namespace OpenSim.Region.Framework.Scenes
         protected internal RwLockedList<ScenePresence> m_sittingAvatars = new RwLockedList<ScenePresence>();
 
         #endregion
-        
+
         #region Constructors
 
         /// <summary>
@@ -2296,14 +2293,17 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void SetText(string text, Vector3 color, double alpha)
         {
-            Color = Color.FromArgb(0xff - (int) (alpha * 0xff),
+            Color newcolor = Color.FromArgb(0xff - (int) (alpha * 0xff),
                                    (int) (color.X * 0xff),
                                    (int) (color.Y * 0xff),
                                    (int) (color.Z * 0xff));
-            Text = text;
-
-            HasGroupChanged = true;
-            m_rootPart.ScheduleFullUpdate();
+            if(Text != text || newcolor!= Color)
+            {
+                Text = text;
+                Color = newcolor;
+                HasGroupChanged = true;
+                m_rootPart.ScheduleFullUpdate();
+            }
         }
 
         /// <summary>
@@ -3270,11 +3270,11 @@ namespace OpenSim.Region.Framework.Scenes
 
             // Make the linking root SOP's rotation relative to the new root prim
             Quaternion oldRot = linkPart.RotationOffset;
-            Quaternion newRot = Quaternion.Conjugate(parentRot) * oldRot;
+            Quaternion newRot = Quaternion.Conjugate(in parentRot) * oldRot;
             linkPart.setRotationOffset(newRot);
 
             Vector3 axPos = linkPart.OffsetPosition;
-            axPos *= Quaternion.Conjugate(parentRot);
+            axPos *= Quaternion.Conjugate(in parentRot);
             linkPart.OffsetPosition = axPos;
 
             // If there is only one SOP in a SOG, the LinkNum is zero. I.e., not a linkset.
@@ -3319,6 +3319,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 linkPart.LinkNum = linkNum++;
                 linkPart.UpdatePrimFlags(UsesPhysics, IsTemporary, IsPhantom, IsVolumeDetect, false);
+                linkPart.Inventory.ForceInventoryPersistence();
 
                 // Get a list of the SOP's in the source group in order of their linknum's.
                 SceneObjectPart[] ogParts = objectGroup.Parts;
@@ -3345,6 +3346,7 @@ namespace OpenSim.Region.Framework.Scenes
                             part.PhysActor.link(m_rootPart.PhysActor);
                         }
                     }
+                    part.Inventory.ForceInventoryPersistence();
                     part.ClearUndoState();
                 }
             }
@@ -3461,6 +3463,7 @@ namespace OpenSim.Region.Framework.Scenes
                 {
                     // Single prim left
                     RootPart.LinkNum = 0;
+                    RootPart.Inventory?.ForceInventoryPersistence(); // TODO remove need for this
                 }
                 else
                 {
@@ -3469,6 +3472,7 @@ namespace OpenSim.Region.Framework.Scenes
                         SceneObjectPart part = parts[i];
                         if (part.LinkNum > linkPart.LinkNum)
                             part.LinkNum--;
+                        part.Inventory?.ForceInventoryPersistence(); // TODO remove need for this
                     }
                 }
             }
@@ -3518,7 +3522,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (m_rootPart.PhysActor is not null)
                 m_rootPart.PhysActor.Building = false;
 
-            objectGroup.HasGroupChangedDueToDelink = true;
+            linkPart.Inventory.ForceInventoryPersistence(); // TODO remove need for this
             
             if (sendEvents)
                 linkPart.TriggerScriptChangedEvent(Changed.LINK);
@@ -3684,11 +3688,11 @@ namespace OpenSim.Region.Framework.Scenes
             // Compute the SOP's rotation relative to the rotation of the group.
             parentRot = m_rootPart.RotationOffset;
  
-            Quaternion newRot = Quaternion.Conjugate(parentRot) * worldRot;
+            Quaternion newRot = Quaternion.Conjugate(in parentRot) * worldRot;
             part.setRotationOffset(newRot);
 
             Vector3 pos = part.OffsetPosition;
-            pos *= Quaternion.Conjugate(parentRot);
+            pos *= Quaternion.Conjugate(in parentRot);
 
             part.OffsetPosition = pos; // update position and orientation on physics also
 
@@ -3934,8 +3938,6 @@ namespace OpenSim.Region.Framework.Scenes
             if (m_scene is null || IsDeleted)
                 return;
 
-            HasGroupChanged = true;
-
             if (SetTemporary)
             {
                 DetachFromBackup();
@@ -4000,6 +4002,7 @@ namespace OpenSim.Region.Framework.Scenes
                 m_rootPart.UpdatePrimFlags(UsePhysics, SetTemporary, SetPhantom, SetVolumeDetect, false);
 
             m_scene.EventManager.TriggerParcelPrimCountTainted();
+            HasGroupChanged = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -4042,6 +4045,13 @@ namespace OpenSim.Region.Framework.Scenes
             //    (OpenMetaverse.PermissionMask)RootPart.OwnerMask, Name, Scene.Name);
             InvalidateEffectivePerms();
             RootPart.ScheduleFullUpdate();
+        }
+
+        public void SetPartsInventoryChanged(bool force = true)
+        {
+            SceneObjectPart[] parts = m_parts.GetArray();
+            for (int i = 0; i < parts.Length; i++)
+                parts[i].Inventory?.ForceInventoryPersistence(force);
         }
 
         public void UpdatePermissions(UUID AgentID, byte field, uint localID,
@@ -4510,17 +4520,6 @@ namespace OpenSim.Region.Framework.Scenes
         public void UpdateGroupRotationR(Quaternion rot)
         {
             m_rootPart.UpdateRotation(rot);
-
-            /* this is done by rootpart RotationOffset set called by UpdateRotation
-            PhysicsActor actor = m_rootPart.PhysActor;
-            if (actor is not null)
-            {
-                actor.Orientation = m_rootPart.RotationOffset;
-                m_scene.PhysicsScene.AddPhysicsActorTaint(actor);
-            }
-            */
-            HasGroupChanged = true;
-            ScheduleGroupForTerseUpdate();
         }
 
         /// <summary>
@@ -4531,13 +4530,6 @@ namespace OpenSim.Region.Framework.Scenes
         public void UpdateGroupRotationPR(Vector3 pos, Quaternion rot)
         {
             m_rootPart.UpdateRotation(rot);
-
-            //already done above
-            //PhysicsActor actor = m_rootPart.PhysActor;
-            //if (actor is not null)
-            //{
-            //    actor.Orientation = m_rootPart.RotationOffset;
-            //}
 
             if (IsAttachment)
             {

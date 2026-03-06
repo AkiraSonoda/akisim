@@ -57,7 +57,6 @@ using LSL_String = OpenSim.Region.ScriptEngine.Shared.LSL_Types.LSLString;
 using LSL_Vector = OpenSim.Region.ScriptEngine.Shared.LSL_Types.Vector3;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 using TPFlags = OpenSim.Framework.Constants.TeleportFlags;
-// AKIDO: clean
 
 #pragma warning disable IDE1006
 
@@ -193,7 +192,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                 if (m_osslconfig.GetBoolean("AllowOSFunctions", true))
                 {
                     m_OSFunctionsEnabled = true;
-                    m_log.Info("OSSL FUNCTIONS ENABLED");
+                    // m_log.Warn("[OSSL] OSSL FUNCTIONS ENABLED");
                 }
 
                 m_PermissionErrortoOwner = m_osslconfig.GetBoolean("PermissionErrorToOwner", m_PermissionErrortoOwner);
@@ -412,7 +411,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 }
                             }
                             if (error)
-                                m_log.WarnFormat("error parsing line Allow_{0} = {1}", function, ownerPerm);
+                                m_log.WarnFormat("[OSSLENABLE]: error parsing line Allow_{0} = {1}", function, ownerPerm);
                         }
                         error = false;
                         if (!string.IsNullOrWhiteSpace(creatorPerm))
@@ -436,7 +435,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
                                 }
                             }
                             if (error)
-                                m_log.WarnFormat("error parsing line Creators_{0} = {1}", function, creatorPerm);
+                                m_log.WarnFormat("[OSSLENABLE]: error parsing line Creators_{0} = {1}", function, creatorPerm);
                         }
                         // both empty fallback as disabled
                     }
@@ -4274,7 +4273,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
             if (newItem is null)
             {
                 m_log.ErrorFormat(
-                    "Could not create user inventory item {0} for {1}, attach point {2} in {3}: {4}",
+                    "[OSSL API]: Could not create user inventory item {0} for {1}, attach point {2} in {3}: {4}",
                     itemName, m_host.Name, attachmentPoint, World.Name, message);
                 m_LSL_Api.llSay(0, message);
                 return;

@@ -2109,7 +2109,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         public void EnableChildAgents(ScenePresence sp)
         {
             if (m_log.IsDebugEnabled) m_log.DebugFormat("[ENTITY TRANSFER MODULE]: Enabling child agents for {0}", sp.Name);
-
             
             // assumes that out of view range regions are disconnected by the previous region
             ICapabilitiesModule capsModule = m_scene.CapsModule;
@@ -2765,7 +2764,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                     }
                     else
                         m_log.ErrorFormat(
-                            "InTransitScriptStates.Count={0} smaller than Attachments.Count={1}",
+                            "[ENTITY TRANSFER MODULE]: InTransitScriptStates.Count={0} smaller than Attachments.Count={1}",
                             sp.InTransitScriptStates.Count, attachments.Count);
                 }
 
@@ -2778,19 +2777,18 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         {
             if (so.OwnerID.IsZero())
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Denied object {0}({1}) entry into {2} because ownerID is zero",
-                    so.Name, so.UUID, m_sceneName);
+                m_log.DebugFormat(
+                    "[ENTITY TRANSFER MODULE]: Denied object {0}({1}) entry into {2} because ownerID is zero",
+                        so.Name, so.UUID, m_sceneName);
                 return false;
             }
 
             // If the user is banned, we won't let any of their objects
             // enter. Period.
-            if (m_sceneRegionInfo.EstateSettings.IsBanned(so.OwnerID))
+            if (!m_scene.Permissions.IsAdministrator(so.OwnerID) && m_sceneRegionInfo.EstateSettings.IsBanned(so.OwnerID))
             {
-                if (m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Denied {0} {1} into {2} of banned owner {3}",
-                    so.Name, so.UUID, m_sceneName, so.OwnerID);
+                m_log.Debug(
+                    $"[ENTITY TRANSFER MODULE]: Denied {so.Name} {so.UUID} into { m_sceneName} of banned owner {so.OwnerID}");
                 return false;
             }
 
@@ -2798,9 +2796,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             {
                 if(m_scene.GetScenePresence(so.OwnerID) == null)
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Denied attachment {0}({1}) owner {2} not in region {3}",
-                        so.Name, so.UUID, so.OwnerID, m_sceneName);
+                    m_log.Debug(
+                        $"[ENTITY TRANSFER MODULE]: Denied attachment {so.Name}({so.UUID}) owner {so.OwnerID} not in region {m_sceneName}");
                     return false;
                 }
             }
@@ -2810,8 +2807,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
             if (!m_scene.AddSceneObject(so))
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Problem adding scene object {0} {1} into {2} ",
+                m_log.DebugFormat(
+                    "[ENTITY TRANSFER MODULE]: Problem adding scene object {0} {1} into {2} ",
                     so.Name, so.UUID, m_sceneName);
 
                 return false;
