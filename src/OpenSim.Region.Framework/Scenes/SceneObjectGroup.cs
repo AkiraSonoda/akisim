@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO: clean
 using OpenMetaverse;
 using OpenMetaverse.Packets;
 using OpenSim.Framework;
@@ -1401,6 +1401,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// No avatar should appear more than once in this list.
         /// Do not manipulate this list directly - use the Add/Remove sitting avatar methods on SceneObjectPart.
         /// </remarks>
+
+	// AKIDO
         protected internal RwLockedList<ScenePresence> m_sittingAvatars = new RwLockedList<ScenePresence>();
 
         #endregion
@@ -2558,6 +2560,8 @@ namespace OpenSim.Region.Framework.Scenes
             dupe.inTransit = false;
 
             // new group as no sitting avatars
+
+	    // AKIDO
             dupe.m_sittingAvatars = new RwLockedList<ScenePresence>();
 
             if(LinksetData is not null)

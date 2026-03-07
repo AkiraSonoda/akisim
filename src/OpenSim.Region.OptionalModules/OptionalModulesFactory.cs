@@ -33,7 +33,7 @@ using Nini.Config;
 using log4net;
 
 using OpenSim.Region.OptionalModules.Avatar.Friends;
-using OpenSim.Region.OptionalModules.Avatar.Commands;
+using OpenSim.Region.CoreModules.Avatars.Commands;
 using OpenSim.Region.OptionalModules.Avatar.Appearance;
 using OpenSim.Region.OptionalModules.Avatar.Animations;
 using OpenSim.Region.CoreModules.ServiceConnectorsOut.Land;

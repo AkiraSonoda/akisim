@@ -31,7 +31,6 @@ using System.Threading;
 using log4net;
 using OpenSim.Framework;
 using OpenMetaverse;
-// AKIDO: clean
 
 using TokenBucket = OpenSim.Region.ClientStack.LindenUDP.TokenBucket;
 
@@ -420,14 +419,14 @@ namespace OpenSim.Region.ClientStack.LindenUDP
                 texture *= scale;
                 asset *= scale;
                 float ntotal = total * scale;
-                m_log.DebugFormat("limiting {0} bandwith from {1} to {2}",AgentID, ntotal, total);
+                m_log.Debug($"[LLUDPCLIENT]: limiting {AgentID} bandwith from {total} to {ntotal}");
                 total = ntotal;
             }
             
             if (ThrottleDebugLevel > 0)
             {
                 m_log.DebugFormat(
-                    "{0} is setting throttles in {1} to Resend={2}, Land={3}, Wind={4}, Cloud={5}, Task={6}, Texture={7}, Asset={8}, TOTAL = {9}",
+                    "[LLUDPCLIENT]: {0} is setting throttles in {1} to Resend={2}, Land={3}, Wind={4}, Cloud={5}, Task={6}, Texture={7}, Asset={8}, TOTAL = {9}",
                     AgentID, m_udpServer.Scene.Name, resend, land, wind, cloud, task, texture, asset, total);
             }
 
@@ -760,7 +759,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
             {
                 ThrottleOutPacketTypeFlags categories = (ThrottleOutPacketTypeFlags)o;
                 try { callback(categories); }
-                catch (Exception e) { m_log.Error("OnQueueEmpty(" + categories + ") threw an exception: " + e.Message, e); }
+                catch (Exception e) { m_log.Error("[LLUDPCLIENT]: OnQueueEmpty(" + categories + ") threw an exception: " + e.Message, e); }
             }
 
             QueueEmptyRunning = false;

@@ -25,9 +25,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// AKIDO remove using System.Drawing;
+// AKIDO remove using System.Drawing.Imaging;
 using System.IO;
 using OpenSim.Region.Framework.Interfaces;
-using SkiaSharp;
+using SkiaSharp; // AKIDO 
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
@@ -39,6 +41,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
     /// </summary>
     internal class BMP : GenericSystemDrawing
     {
+        public override int SupportedHeight
+        {
+            get { return 256; }
+        }
+
         /// <summary>
         /// Exports a file to a image on the disk using SkiaSharp.
         /// </summary>
@@ -75,6 +82,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 
         //Returns true if this extension is supported for terrain save-tile
         public override bool SupportsTileSave()
+        {
+            return false;
+        }
+
+        public override bool SupportsExtendedTileSave()
         {
             return false;
         }

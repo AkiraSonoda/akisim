@@ -25,14 +25,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// AKIDO remove using System.Drawing;
+// AKIDO remove using System.Drawing.Imaging;
 using System.IO;
 using OpenSim.Region.Framework.Interfaces;
-using SkiaSharp;
+using SkiaSharp; // AKIDO 
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
     internal class PNG : GenericSystemDrawing
     {
+        public override int SupportedHeight
+        {
+            get { return 256; }
+        }
+
         public override void SaveFile(string filename, ITerrainChannel map)
         {
             using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
@@ -60,6 +67,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
         public override bool SupportsTileSave()
         {
             return true;
+        }
+
+        public override bool SupportsExtendedTileSave()
+        {
+            return false;
         }
     }
 }

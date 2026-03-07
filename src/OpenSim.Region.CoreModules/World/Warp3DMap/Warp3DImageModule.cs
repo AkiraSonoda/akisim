@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO clean 
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -37,9 +37,10 @@ using CSJ2K;
 using Nini.Config;
 using log4net;
 using Warp3D;
+// AKIDO remove using Mono.Addins;
 
 using OpenSim.Framework;
-using OpenSim.Framework.SkiaSharp;
+using OpenSim.Framework.SkiaSharp; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
@@ -48,12 +49,13 @@ using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.Rendering;
 using OpenMetaverse.StructuredData;
-using SkiaSharp;
+using SkiaSharp; // AKIDO 
 
 using WarpRenderer = Warp3D.Warp3D;
 
 namespace OpenSim.Region.CoreModules.World.Warp3DMap
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "Warp3DImageModule")]
     public class Warp3DImageModule : IMapImageGenerator, INonSharedRegionModule
     {
         private static readonly Color4 WATER_COLOR = new Color4(29, 72, 96, 216);

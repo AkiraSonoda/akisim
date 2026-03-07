@@ -29,7 +29,6 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Reflection;
-using System.Threading;
 using OpenMetaverse;
 using log4net;
 using OpenSim.Framework;
@@ -80,7 +79,7 @@ namespace OpenSim.Region.Framework.Scenes
                             }
                             catch (Exception e)
                             {
-                                m_log.ErrorFormat("Delegate for OnRegionsReadyStatusChange failed - continuing {0} - {1}",
+                                m_log.ErrorFormat("[SCENE MANAGER]: Delegate for OnRegionsReadyStatusChange failed - continuing {0} - {1}",
                                     e.Message, e.StackTrace);
                             }
                         }
@@ -93,30 +92,23 @@ namespace OpenSim.Region.Framework.Scenes
         private static SceneManager m_instance = null;
         public static SceneManager Instance
         {
-            get {
-                if (m_instance == null)
-                    m_instance = new SceneManager();
+            get
+            {
+                m_instance ??= new SceneManager();
                 return m_instance;
             }
         }
 
-        private readonly DoubleDictionary<UUID, string, Scene> m_localScenes = new DoubleDictionary<UUID, string, Scene>();
-        private ReaderWriterLock m_localScenesRwLock = new ReaderWriterLock();
-        
+        private readonly DoubleDictionaryThreadAbortSafe<UUID, string, Scene> m_localScenes = new();
+
         public List<Scene> Scenes
         {
-            get
-            {
-                m_localScenesRwLock.AcquireReaderLock(-1);
-                try
-                {
-                    return new List<Scene>(m_localScenes.FindAll(delegate(Scene s) { return true; }));
-                }
-                finally
-                {
-                    m_localScenesRwLock.ReleaseReaderLock();
-                }
-            }
+            get { return [.. m_localScenes.GetArray()]; }
+        }
+
+        public Scene[] GetScenes()
+        {
+            return m_localScenes.GetArray();
         }
 
         /// <summary>
@@ -133,10 +125,8 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 if (CurrentScene == null)
                 {
-                    List<Scene> sceneList = Scenes;
-                    if (sceneList.Count == 0)
-                        return null;
-                    return sceneList[0];
+                    ReadOnlySpan<Scene> sceneList = GetScenes();
+                    return sceneList.Length > 0 ? sceneList[0] : null;
                 }
                 else
                 {
@@ -148,21 +138,13 @@ namespace OpenSim.Region.Framework.Scenes
         public SceneManager()
         {
             m_instance = this;
-            m_localScenes = new DoubleDictionary<UUID, string, Scene>();
+            m_localScenes = new DoubleDictionaryThreadAbortSafe<UUID, string, Scene>();
         }
 
         public void Close()
         {
-            List<Scene> localScenes = null;
-
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                localScenes = Scenes;
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
-            }
-
-            for (int i = 0; i < localScenes.Count; i++)
+            Scene[] localScenes = GetScenes();
+            for(int i = 0; i < localScenes.Length; i++)
             {
                 localScenes[i].Close();
             }
@@ -170,23 +152,15 @@ namespace OpenSim.Region.Framework.Scenes
 
         public void Close(Scene cscene)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); //AKIDO
-            try { 
-                if (!m_localScenes.ContainsKey(cscene.RegionInfo.RegionID))
-                    return;
-                cscene.Close();
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
-            }        }
+            if (!m_localScenes.ContainsKey(cscene.RegionInfo.RegionID))
+                return;
+            cscene.Close();
+        }
 
         public void Add(Scene scene)
         {
-            m_localScenesRwLock.AcquireWriterLock(-1); // AKIDO
-            try {
+            lock (m_localScenes)
                 m_localScenes.Add(scene.RegionInfo.RegionID, scene.RegionInfo.RegionName, scene);
-            } finally {
-                m_localScenesRwLock.ReleaseWriterLock();
-            }
 
             scene.OnRestart += HandleRestart;
             scene.EventManager.OnRegionReadyStatusChange += HandleRegionReadyStatusChange;
@@ -196,14 +170,11 @@ namespace OpenSim.Region.Framework.Scenes
         {
             Scene restartedScene = null;
 
-            m_localScenesRwLock.AcquireWriterLock(-1); // AKIDO
-            try {
-                m_localScenes.TryGetValue(rdata.RegionID, out restartedScene);
-                m_localScenes.Remove(rdata.RegionID);
-            } finally {
-                m_localScenesRwLock.ReleaseWriterLock();
+            lock (m_localScenes)
+            {
+                m_localScenes.Remove(rdata.RegionID, out restartedScene);
             }
-            
+
             // If the currently selected scene has been restarted, then we can't reselect here since we the scene
             // hasn't yet been recreated.  We will have to leave this to the caller.
             if (CurrentScene == restartedScene)
@@ -215,28 +186,24 @@ namespace OpenSim.Region.Framework.Scenes
 
         private void HandleRegionReadyStatusChange(IScene scene)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
+            lock (m_localScenes)
                 AllRegionsReady = m_localScenes.FindAll(s => !s.Ready).Count == 0;
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
-            }
         }
 
         public void SendSimOnlineNotification(ulong regionHandle)
         {
             Scene s = m_localScenes.FindValue(delegate(Scene x)
-            {
-                if (x.RegionInfo.RegionHandle == regionHandle)
-                    return true;
-                return false;
-            });
+                    {
+                        if (x.RegionInfo.RegionHandle == regionHandle)
+                            return true;
+                        return false;
+                    });
 
             if (s != null)
             {
-                List<Scene> sceneList = Scenes;
+                Scene[] sceneList = GetScenes();
 
-                for (int i = 0; i < sceneList.Count; i++)
+                for (int i = 0; i < sceneList.Length; i++)
                 {
                     if (sceneList[i]!= s)
                     {
@@ -247,7 +214,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             else
             {
-                m_log.Error("Unable to notify Other regions of this Region coming up");
+                m_log.Error("[REGION]: Unable to notify Other regions of this Region coming up");
             }
         }
 
@@ -258,8 +225,7 @@ namespace OpenSim.Region.Framework.Scenes
         public void SaveCurrentSceneToXml(string filename)
         {
             IRegionSerialiserModule serialiser = CurrentOrFirstScene.RequestModuleInterface<IRegionSerialiserModule>();
-            if (serialiser != null)
-                serialiser.SavePrimsToXml(CurrentOrFirstScene, filename);
+            serialiser?.SavePrimsToXml(CurrentOrFirstScene, filename);
         }
 
         /// <summary>
@@ -271,8 +237,7 @@ namespace OpenSim.Region.Framework.Scenes
         public void LoadCurrentSceneFromXml(string filename, bool generateNewIDs, Vector3 loadOffset)
         {
             IRegionSerialiserModule serialiser = CurrentOrFirstScene.RequestModuleInterface<IRegionSerialiserModule>();
-            if (serialiser != null)
-                serialiser.LoadPrimsFromXml(CurrentOrFirstScene, filename, generateNewIDs, loadOffset);
+            serialiser?.LoadPrimsFromXml(CurrentOrFirstScene, filename, generateNewIDs, loadOffset);
         }
 
         /// <summary>
@@ -282,15 +247,13 @@ namespace OpenSim.Region.Framework.Scenes
         public void SaveCurrentSceneToXml2(string filename)
         {
             IRegionSerialiserModule serialiser = CurrentOrFirstScene.RequestModuleInterface<IRegionSerialiserModule>();
-            if (serialiser != null)
-                serialiser.SavePrimsToXml2(CurrentOrFirstScene, filename);
+            serialiser?.SavePrimsToXml2(CurrentOrFirstScene, filename);
         }
 
         public void SaveNamedPrimsToXml2(string primName, string filename)
         {
             IRegionSerialiserModule serialiser = CurrentOrFirstScene.RequestModuleInterface<IRegionSerialiserModule>();
-            if (serialiser != null)
-                serialiser.SaveNamedPrimsToXml2(CurrentOrFirstScene, primName, filename);
+            serialiser?.SaveNamedPrimsToXml2(CurrentOrFirstScene, primName, filename);
         }
 
         /// <summary>
@@ -299,8 +262,7 @@ namespace OpenSim.Region.Framework.Scenes
         public void LoadCurrentSceneFromXml2(string filename)
         {
             IRegionSerialiserModule serialiser = CurrentOrFirstScene.RequestModuleInterface<IRegionSerialiserModule>();
-            if (serialiser != null)
-                serialiser.LoadPrimsFromXml2(CurrentOrFirstScene, filename);
+            serialiser?.LoadPrimsFromXml2(CurrentOrFirstScene, filename);
         }
 
         /// <summary>
@@ -311,8 +273,7 @@ namespace OpenSim.Region.Framework.Scenes
         public void SaveCurrentSceneToArchive(string[] cmdparams)
         {
             IRegionArchiverModule archiver = CurrentOrFirstScene.RequestModuleInterface<IRegionArchiverModule>();
-            if (archiver != null)
-                archiver.HandleSaveOarConsoleCommand(string.Empty, cmdparams);
+            archiver?.HandleSaveOarConsoleCommand(string.Empty, cmdparams);
         }
 
         /// <summary>
@@ -323,8 +284,7 @@ namespace OpenSim.Region.Framework.Scenes
         public void LoadArchiveToCurrentScene(string[] cmdparams)
         {
             IRegionArchiverModule archiver = CurrentOrFirstScene.RequestModuleInterface<IRegionArchiverModule>();
-            if (archiver != null)
-                archiver.HandleLoadOarConsoleCommand(string.Empty, cmdparams);
+            archiver?.HandleLoadOarConsoleCommand(string.Empty, cmdparams);
         }
 
         public string SaveCurrentSceneMapToXmlString()
@@ -367,18 +327,16 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TrySetCurrentScene(string regionName)
         {
-            if ((String.Compare(regionName, "root") == 0)
-                || (String.Compare(regionName, "..") == 0)
-                || (String.Compare(regionName, "/") == 0))
+            if ((string.Compare(regionName, "root") == 0)
+                || (string.Compare(regionName, "..") == 0)
+                || (string.Compare(regionName, "/") == 0))
             {
                 CurrentScene = null;
                 return true;
             }
             else
             {
-                Scene s;
-
-                if (m_localScenes.TryGetValue(regionName, out s))
+                if (m_localScenes.TryGetValue(regionName, out Scene s))
                 {
                     CurrentScene = s;
                     return true;
@@ -405,71 +363,51 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TryGetScene(string regionName, out Scene scene)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {  
-                return m_localScenes.TryGetValue(regionName, out scene);
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
-            }
+            return m_localScenes.TryGetValue(regionName, out scene);
         }
 
         public bool TryGetScene(UUID regionID, out Scene scene)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {   
-                return m_localScenes.TryGetValue(regionID, out scene);
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
-            }
+            return m_localScenes.TryGetValue(regionID, out scene);
         }
 
         public bool TryGetScene(uint locX, uint locY, out Scene scene)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                List<Scene> sceneList = Scenes;
-                foreach (Scene mscene in sceneList)
+            Scene[] sceneList = GetScenes();
+            foreach (Scene mscene in sceneList)
+            {
+                if (mscene.RegionInfo.RegionLocX == locX &&
+                    mscene.RegionInfo.RegionLocY == locY)
                 {
-                    if (mscene.RegionInfo.RegionLocX == locX &&
-                        mscene.RegionInfo.RegionLocY == locY)
-                    {
-                        scene = mscene;
-                        return true;
-                    }
+                    scene = mscene;
+                    return true;
                 }
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
             }
-            
+
             scene = null;
             return false;
         }
 
         public bool TryGetScene(IPEndPoint ipEndPoint, out Scene scene)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                List<Scene> sceneList = Scenes;
-                foreach (Scene mscene in sceneList)
+            Scene[] sceneList = GetScenes();
+            foreach (Scene mscene in sceneList)
+            {
+                if ((mscene.RegionInfo.InternalEndPoint.Equals(ipEndPoint.Address)) &&
+                    (mscene.RegionInfo.InternalEndPoint.Port == ipEndPoint.Port))
                 {
-                    if ((mscene.RegionInfo.InternalEndPoint.Equals(ipEndPoint.Address)) &&
-                        (mscene.RegionInfo.InternalEndPoint.Port == ipEndPoint.Port))
-                    {
-                        scene = mscene;
-                        return true;
-                    }
+                    scene = mscene;
+                    return true;
                 }
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
             }
-            
+
             scene = null;
             return false;
         }
 
         public List<ScenePresence> GetCurrentSceneAvatars()
         {
-            List<ScenePresence> avatars = new List<ScenePresence>();
+            List<ScenePresence> avatars = [];
 
             ForEachSelectedScene(
                 delegate(Scene scene)
@@ -486,33 +424,22 @@ namespace OpenSim.Region.Framework.Scenes
 
         public List<ScenePresence> GetCurrentScenePresences()
         {
-            List<ScenePresence> presences;
-            
-            m_localScenesRwLock.AcquireWriterLock(-1);
-            try {
-                presences = new List<ScenePresence>();
+            List<ScenePresence> presences = [];
 
-                ForEachSelectedScene(delegate(Scene scene)
-                {
-                    scene.ForEachScenePresence(delegate(ScenePresence sp) { presences.Add(sp); });
-                });
-            } finally
+            ForEachSelectedScene(delegate(Scene scene)
             {
-                m_localScenesRwLock.ReleaseWriterLock();
-            }
-            
+                scene.ForEachScenePresence(delegate(ScenePresence sp)
+                {
+                    presences.Add(sp);
+                });
+            });
+
             return presences;
         }
 
         public RegionInfo GetRegionInfo(UUID regionID)
         {
-            Scene s;
-            if (m_localScenes.TryGetValue(regionID, out s))
-            {
-                return s.RegionInfo;
-            }
-
-            return null;
+            return m_localScenes.TryGetValue(regionID, out Scene s) ? s.RegionInfo : null;
         }
 
         public void ForceCurrentSceneClientUpdate()
@@ -527,108 +454,74 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool TryGetScenePresence(UUID avatarId, out ScenePresence avatar)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                List<Scene> sceneList = Scenes;
-                foreach (Scene scene in sceneList)
+            Scene[] sceneList = GetScenes();
+            foreach (Scene scene in sceneList)
+            {
+                if (scene.TryGetScenePresence(avatarId, out avatar))
                 {
-                    if (scene.TryGetScenePresence(avatarId, out avatar))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
             }
-            
+
             avatar = null;
             return false;
         }
 
         public bool TryGetRootScenePresence(UUID avatarId, out ScenePresence avatar)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                
-                List<Scene> sceneList = Scenes;
-                foreach (Scene scene in sceneList)
-                {
-                    avatar = scene.GetScenePresence(avatarId);
-
-                    if (avatar != null && !avatar.IsChildAgent)
-                        return true;
-                }
-                
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
+            Scene[] sceneList = GetScenes();
+            foreach (Scene scene in sceneList)
+            {
+                if (scene.TryGetSceneRootPresence(avatarId, out avatar))
+                    return true;
             }
 
             avatar = null;
             return false;
-            
         }
 
         public void CloseScene(Scene scene)
         {
-            m_localScenesRwLock.AcquireWriterLock(-1); // AKIDO
-            try {
+            lock (m_localScenes)
                 m_localScenes.Remove(scene.RegionInfo.RegionID);
-            } finally {
-                m_localScenesRwLock.ReleaseWriterLock();
-            }
 
             scene.Close();
         }
 
         public bool TryGetAvatarByName(string avatarName, out ScenePresence avatar)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                
-                List<Scene> sceneList = Scenes;
-                foreach (Scene scene in sceneList)
+            Scene[] sceneList = GetScenes();
+            foreach (Scene scene in sceneList)
+            {
+                if (scene.TryGetAvatarByName(avatarName, out avatar))
                 {
-                    if (scene.TryGetAvatarByName(avatarName, out avatar))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
             }
-            
+
             avatar = null;
             return false;
         }
 
         public bool TryGetRootScenePresenceByName(string firstName, string lastName, out ScenePresence sp)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                List<Scene> sceneList = Scenes;
-                foreach (Scene scene in sceneList)
-                {
-                    sp = scene.GetScenePresence(firstName, lastName);
-                    if (sp != null && !sp.IsChildAgent)
-                        return true;
-                }
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
+            Scene[] sceneList = GetScenes();
+            foreach (Scene scene in sceneList)
+            {
+                sp = scene.GetScenePresence(firstName, lastName);
+                if (sp != null && !sp.IsChildAgent)
+                    return true;
             }
-            
+
             sp = null;
             return false;
         }
 
         public void ForEachScene(Action<Scene> action)
         {
-            m_localScenesRwLock.AcquireReaderLock(-1); // AKIDO
-            try {
-                List<Scene> sceneList = Scenes;
-                sceneList.ForEach(action);
-            } finally {
-                m_localScenesRwLock.ReleaseReaderLock();
-            }
+            Scene[] sceneList = GetScenes();
+            foreach(Scene s in sceneList)
+                action(s);
         }
     }
 }

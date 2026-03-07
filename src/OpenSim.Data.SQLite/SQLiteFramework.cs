@@ -26,10 +26,12 @@
  */
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using OpenMetaverse;
-using System.Data.SQLite; // AKIDO refactured everything to SQLite.
-// // AKIDO Added support for SQLite removing Mono.Data.Sqlite
+using OpenSim.Framework;
+using System.Data.SQLite;
 
 namespace OpenSim.Data.SQLite
 {
@@ -38,7 +40,7 @@ namespace OpenSim.Data.SQLite
     /// </summary>
     public class SQLiteFramework
     {
-        protected Object m_lockObject = new Object();
+        protected object m_lockObject = new Object();
 
         protected SQLiteFramework(string connectionString)
         {
@@ -54,13 +56,6 @@ namespace OpenSim.Data.SQLite
         {
             lock (connection)
             {
-/*
-                SQLiteConnection newConnection =
-                        (SQLiteConnection)((ICloneable)connection).Clone();
-                newConnection.Open();
-
-                cmd.Connection = newConnection;
-*/
                 cmd.Connection = connection;
                 //Console.WriteLine("XXX " + cmd.CommandText);
 

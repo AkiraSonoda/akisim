@@ -26,9 +26,14 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Reflection;
+using System.Threading;
+using log4net;
 using OpenMetaverse;
-using System.Data.SQLite; // AKIDO refactured everything to SQLite.
-// AKIDO Added support for SQLite removing Mono.Data.Sqlite
+using OpenSim.Framework;
+using System.Data.SQLite;
 
 namespace OpenSim.Data.SQLite
 {

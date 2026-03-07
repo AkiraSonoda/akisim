@@ -36,6 +36,7 @@ using log4net;
 using Nini.Config;
 
 using OpenMetaverse;
+// AKIDO remove using Mono.Addins;
 
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
@@ -49,6 +50,7 @@ using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.CoreModules.World.Terrain
 {
+    // AKIDO remove Mono Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "TerrainModule")]
     public class TerrainModule : INonSharedRegionModule, ICommandableModule, ITerrainModule
     {
         #region StandardTerrainEffects enum

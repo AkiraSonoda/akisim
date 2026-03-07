@@ -29,7 +29,7 @@ using System;
 using System.Data;
 using System.Reflection;
 using OpenSim.Framework;
-using MySqlConnector;
+using MySqlConnector; // AKIDO
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using log4net;
@@ -295,7 +295,6 @@ namespace OpenSim.Data.MySQL
                                 ad.SimName = reader.GetString("simname");
                                 ad.GlobalPos = reader.GetString("posglobal");
                                 ad.ParcelName = reader.GetString("parcelname");
-
                             }
                         }
                     }

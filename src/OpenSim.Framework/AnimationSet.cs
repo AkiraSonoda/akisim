@@ -27,6 +27,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using OpenMetaverse;
 
 namespace OpenSim.Framework
@@ -141,6 +142,7 @@ namespace OpenSim.Framework
                 sb.AppendASCII($"{kvp.Key} {kvp.Value.Value} {kvp.Value.Key}\n");
             return OSUTF8Cached.GetArrayAndRelease(sb);
         }
+
 /*
         public bool Validate(AnimationSetValidator val)
         {

@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO: clean
 using System;
 using System.Collections.Generic;
 using System.Collections.Frozen;
@@ -53,7 +53,6 @@ using Caps = OpenSim.Framework.Capabilities.Caps;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 using RegionFlags = OpenMetaverse.RegionFlags;
 using System.Linq;
-// AKIDO: clean
 
 namespace OpenSim.Region.ClientStack.LindenUDP
 {

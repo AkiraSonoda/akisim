@@ -26,25 +26,30 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 using log4net;
+// AKIDO remove Mono.Addins;
+using NDesk.Options;
 using Nini.Config;
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Framework.Console;
+using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using ThreadedClasses;
-// AKIDO: clean
 
-namespace OpenSim.Region.OptionalModules.Avatar.Commands
+namespace OpenSim.Region.CoreModules.Avatars.Commands
 {
     /// <summary>
-    /// A module that holds commands for manipulating users in the scene.
+    /// A module that holds commands for manipulating objects in the scene.
     /// </summary>
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UserCommandsModule")]
     public class UserCommandsModule : ISharedRegionModule
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+//        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public const string TeleportUserCommandSyntax = "teleport user <first-name> <last-name> <destination>";
 
@@ -54,7 +59,7 @@ namespace OpenSim.Region.OptionalModules.Avatar.Commands
         public static Regex WithinRegionDestinationRegex
             = new Regex(@"^(?<x>\d+)/(?<y>\d+)/(?<z>\d+)$", RegexOptions.Compiled);
 
-        private RwLockedDictionary<UUID, Scene> m_scenes = new RwLockedDictionary<UUID, Scene>(); // AKIDO
+        private Dictionary<UUID, Scene> m_scenes = new Dictionary<UUID, Scene>();
 
         public string Name { get { return "User Commands Module"; } }
 
@@ -62,25 +67,25 @@ namespace OpenSim.Region.OptionalModules.Avatar.Commands
 
         public void Initialise(IConfigSource source)
         {
-            if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule initializing");
+//            m_log.DebugFormat("[USER COMMANDS MODULE]: INITIALIZED MODULE");
         }
 
         public void PostInitialise()
         {
-            if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule post-initialized");
+//            m_log.DebugFormat("[USER COMMANDS MODULE]: POST INITIALIZED MODULE");
         }
 
         public void Close()
         {
-            if (m_log.IsDebugEnabled) m_log.Debug("UserCommandsModule closing");
+//            m_log.DebugFormat("[USER COMMANDS MODULE]: CLOSED MODULE");
         }
 
         public void AddRegion(Scene scene)
         {
-            if (m_log.IsDebugEnabled) m_log.DebugFormat("UserCommandsModule adding region {0}", scene.RegionInfo.RegionName);
+//            m_log.DebugFormat("[USER COMMANDS MODULE]: REGION {0} ADDED", scene.RegionInfo.RegionName);
 
-            // AKIDO 
-            m_scenes[scene.RegionInfo.RegionID] = scene;
+            lock (m_scenes)
+                m_scenes[scene.RegionInfo.RegionID] = scene;
 
             scene.AddCommand(
                 "Users",
@@ -95,32 +100,33 @@ namespace OpenSim.Region.OptionalModules.Avatar.Commands
 
         public void RemoveRegion(Scene scene)
         {
-            if (m_log.IsDebugEnabled) m_log.DebugFormat("UserCommandsModule removing region {0}", scene.RegionInfo.RegionName);
+//            m_log.DebugFormat("[USER COMMANDS MODULE]: REGION {0} REMOVED", scene.RegionInfo.RegionName);
 
-            // AKIDO
-            m_scenes.Remove(scene.RegionInfo.RegionID);
+            lock (m_scenes)
+                m_scenes.Remove(scene.RegionInfo.RegionID);
         }
 
         public void RegionLoaded(Scene scene)
         {
-            if (m_log.IsDebugEnabled) m_log.DebugFormat("UserCommandsModule region loaded {0}", scene.RegionInfo.RegionName);
+//            m_log.DebugFormat("[USER COMMANDS MODULE]: REGION {0} LOADED", scene.RegionInfo.RegionName);
         }
 
         private ScenePresence GetUser(string firstName, string lastName)
         {
             ScenePresence userFound = null;
 
-            // AKIDO
-            foreach (Scene scene in m_scenes.Values)
+            lock (m_scenes)
             {
-                ScenePresence user = scene.GetScenePresence(firstName, lastName);
-                if (user != null && !user.IsChildAgent)
+                foreach (Scene scene in m_scenes.Values)
                 {
-                    userFound = user;
-                    break;
+                    ScenePresence user = scene.GetScenePresence(firstName, lastName);
+                    if (user != null && !user.IsChildAgent)
+                    {
+                        userFound = user;
+                        break;
+                    }
                 }
             }
-            // AKIDO
 
             return userFound;
         }
@@ -163,10 +169,6 @@ namespace OpenSim.Region.OptionalModules.Avatar.Commands
             string regionName
                 = m.Groups["regionName"].Success ? m.Groups["regionName"].Value : user.Scene.RegionInfo.RegionName;
 
-            if (m_log.IsInfoEnabled) 
-                m_log.InfoFormat("UserCommandsModule teleporting {0} to {1},{2},{3} in {4}", 
-                    user.Name, m.Groups["x"], m.Groups["y"], m.Groups["z"], regionName);
-                    
             MainConsole.Instance.Output(
                 "Teleporting {0} to {1},{2},{3} in {4}",
                 user.Name,

@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO clean
 
 using System;
 using System.Text;
@@ -455,6 +456,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <returns>true if the script instance was created, false otherwise</returns>
         public bool CreateScriptInstance(TaskInventoryItem item, int startParam, bool postOnRez, string engine, int stateSource)
         {
+	    // AKIDO
             m_log.InfoFormat("Starting script {0} {1} in prim {2} {3} in {4}",
                 item.Name, item.ItemID, m_part.Name, m_part.UUID, m_part.ParentGroup.Scene.RegionInfo.RegionName);
 

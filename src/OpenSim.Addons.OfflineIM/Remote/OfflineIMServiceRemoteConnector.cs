@@ -27,7 +27,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 
 using OpenSim.Framework;
 using OpenSim.Framework.ServiceAuth;
@@ -46,6 +48,7 @@ namespace OpenSim.OfflineIM
 
         private string m_ServerURI = string.Empty;
         private IServiceAuth m_Auth;
+        private object m_Lock = new object();
 
         public OfflineIMServiceRemoteConnector(string url)
         {
@@ -85,8 +88,8 @@ namespace OpenSim.OfflineIM
 
             Dictionary<string, object> sendData = new Dictionary<string, object>();
             sendData["PrincipalID"] = principalID;
-            Dictionary<string, object> ret = MakeRequest("GET", sendData);
 
+            Dictionary<string, object> ret = MakeRequest("GET", sendData);
             if (ret == null)
                 return ims;
 
@@ -115,14 +118,12 @@ namespace OpenSim.OfflineIM
                     }
                 }
             }
-
             return ims;
         }
 
         public bool StoreMessage(GridInstantMessage im, out string reason)
         {
             Dictionary<string, object> sendData = OfflineIMDataUtils.GridInstantMessage(im);
-
             Dictionary<string, object> ret = MakeRequest("STORE", sendData);
 
             if (ret == null)
@@ -166,7 +167,7 @@ namespace OpenSim.OfflineIM
             sendData["METHOD"] = method;
 
             string reply = string.Empty;
-            // AKIDO remove lock
+            lock (m_Lock)
                 reply = SynchronousRestFormsRequester.MakeRequest("POST",
                          m_ServerURI + "/offlineim",
                          ServerUtils.BuildQueryString(sendData),

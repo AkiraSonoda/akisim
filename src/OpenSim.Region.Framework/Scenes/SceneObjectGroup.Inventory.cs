@@ -44,11 +44,11 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Force all task inventories of prims in the scene object to persist
         /// </summary>
-        public void ForceInventoryPersistence()
+        public void ForceInventoryPersistence(bool force = true)
         {
             SceneObjectPart[] parts = m_parts.GetArray();
             for (int i = 0; i < parts.Length; i++)
-                parts[i].Inventory.ForceInventoryPersistence();
+                parts[i].Inventory.ForceInventoryPersistence(force);
         }
 
         /// <summary>
@@ -183,7 +183,6 @@ namespace OpenSim.Region.Framework.Scenes
                 taskItem.NextPermissions = item.NextPermissions;
             }
 
-
             // m_log.DebugFormat(
             //      "[PRIM INVENTORY]: Flags are 0x{0:X} for item {1} added to part {2} by {3}",
             //       taskItem.Flags, taskItem.Name, localID, remoteClient.Name);
@@ -201,7 +200,6 @@ namespace OpenSim.Region.Framework.Scenes
             part.Inventory.AddInventoryItem(taskItem, addFromAllowedDrop);
             part.ParentGroup.InvalidateDeepEffectivePerms();
             return true;
-
         }
 
         /// <summary>

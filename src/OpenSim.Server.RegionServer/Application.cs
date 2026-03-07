@@ -126,7 +126,7 @@ namespace OpenSim
 
             // Configure Log4Net
             configSource.AddSwitch("Startup", "logconfig");
-            string logConfigFile = configSource.Configs["Startup"].GetString("logconfig", String.Empty);
+            string logConfigFile = configSource.Configs["Startup"].GetString("logconfig", string.Empty);
             if (!string.IsNullOrEmpty(logConfigFile))
             {
                 XmlConfigurator.Configure(new System.IO.FileInfo(logConfigFile));
@@ -146,22 +146,21 @@ namespace OpenSim
             int iocpThreadsMax = 2000;
 
             System.Threading.ThreadPool.GetMinThreads(out int currentMinWorkerThreads, out int currentMinIocpThreads);
-            m_log.InfoFormat(
-                "Runtime gave us {0} min worker threads and {1} min IOCP threads",
-                currentMinWorkerThreads, currentMinIocpThreads);
+            m_log.Info(
+                $"[OPENSIM MAIN]: Runtime gave us {currentMinWorkerThreads} min worker threads and {currentMinIocpThreads} min IOCP threads");
 
             System.Threading.ThreadPool.GetMaxThreads(out int workerThreads, out int iocpThreads);
-            m_log.InfoFormat("Runtime gave us {0} max worker threads and {1} max IOCP threads", workerThreads, iocpThreads);
+            m_log.Info($"[OPENSIM MAIN]: Runtime gave us {workerThreads} max worker threads and {iocpThreads} max IOCP threads");
 
             if (workerThreads < workerThreadsMin)
             {
                 workerThreads = workerThreadsMin;
-                m_log.InfoFormat("Bumping up max worker threads to {0}",workerThreads);
+                m_log.Info($"[OPENSIM MAIN]: Bumping up max worker threads to {workerThreads}");
             }
             if (workerThreads > workerThreadsMax)
             {
                 workerThreads = workerThreadsMax;
-                m_log.InfoFormat("Limiting max worker threads to {0}",workerThreads);
+                m_log.Info($"[OPENSIM MAIN]: Limiting max worker threads to {workerThreads}");
             }
 
             // Increase the number of IOCP threads available.
@@ -169,24 +168,23 @@ namespace OpenSim
             if (iocpThreads < iocpThreadsMin)
             {
                 iocpThreads = iocpThreadsMin;
-                m_log.InfoFormat("Bumping up max IOCP threads to {0}",iocpThreads);
+                m_log.Info($"[OPENSIM MAIN]: Bumping up max IOCP threads to {iocpThreads}");
             }
             // Make sure we don't overallocate IOCP threads and thrash system resources
             if ( iocpThreads > iocpThreadsMax )
             {
                 iocpThreads = iocpThreadsMax;
-                m_log.InfoFormat("Limiting max IOCP completion threads to {0}",iocpThreads);
+                m_log.Info($"[OPENSIM MAIN]: Limiting max IOCP completion threads to {iocpThreads}");
             }
             // set the resulting worker and IO completion thread counts back to ThreadPool
             if ( System.Threading.ThreadPool.SetMaxThreads(workerThreads, iocpThreads) )
             {
-                m_log.InfoFormat(
-                    "Threadpool set to {0} max worker threads and {1} max IOCP threads",
-                    workerThreads, iocpThreads);
+                m_log.Info(
+                    $"[OPENSIM MAIN]: Threadpool set to {workerThreads} max worker threads and {iocpThreads} max IOCP threads");
             }
             else
             {
-                m_log.Warn("Threadpool reconfiguration failed, runtime defaults still in effect.");
+                m_log.Warn("[OPENSIM MAIN]: Threadpool reconfiguration failed, runtime defaults still in effect.");
             }
 
             // Check if the system is compatible with OpenSimulator.
@@ -194,11 +192,11 @@ namespace OpenSim
             string error = string.Empty;
             if (Util.IsEnvironmentSupported(ref error))
             {
-                m_log.Info("Environment is supported by OpenSimulator.");
+                m_log.Info("[OPENSIM MAIN]: Environment is supported by OpenSimulator.");
             }
             else
             {
-                m_log.Warn($"Environment is not supported by OpenSimulator: {error}\n");
+                m_log.Warn($"[OPENSIM MAIN]: Environment is not supported by OpenSimulator: {error}\n");
             }
 
             m_log.Info($"Default culture changed to {Culture.GetDefaultCurrentCulture().DisplayName}");

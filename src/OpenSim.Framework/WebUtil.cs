@@ -26,6 +26,7 @@
  */
 
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Globalization;
@@ -36,6 +37,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Web;
 using System.Xml;
 using System.Xml.Serialization;
@@ -47,7 +49,6 @@ using OpenSim.Framework.ServiceAuth;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace OpenSim.Framework
 {
@@ -365,12 +366,14 @@ namespace OpenSim.Framework
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void LogOutgoingDetail(string context, string output)
         {
+	    // AKIDO
             if (m_log.IsDebugEnabled)
             {
                 if (output.Length > MaxRequestDiagLength)
                     output = output[..MaxRequestDiagLength] + "...";
             }
 
+	    // AKIDO
             m_log.DebugFormat($"[LOGHTTP]: {context}{Util.BinaryToASCII(output)}");
         }
 
@@ -456,7 +459,8 @@ namespace OpenSim.Framework
                 responseMessage = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
                 responseMessage.EnsureSuccessStatusCode();
 
-                Stream resStream = responseMessage.Content.ReadAsStream();
+                using CancellationTokenSource cts = new(30000);
+                Stream resStream = responseMessage.Content.ReadAsStream(cts.Token);
                 if (resStream is not null)
                 {
                     using StreamReader reader = new(resStream);
@@ -564,7 +568,6 @@ namespace OpenSim.Framework
         {
             int reqnum = RequestNumber++;
             string method = (data is not null && data["RequestMethod"] is not null) ? data["RequestMethod"] : "unknown";
-
             if (DebugLevel >= 3)
                 m_log.Debug($"[LOGHTTP]: HTTP OUT {reqnum} ServiceForm '{method}' to {url}");
 
@@ -622,7 +625,8 @@ namespace OpenSim.Framework
                 responseMessage = client.Send(request, HttpCompletionOption.ResponseHeadersRead);
                 responseMessage.EnsureSuccessStatusCode();
 
-                using StreamReader reader = new(responseMessage.Content.ReadAsStream());
+                using CancellationTokenSource cts = new(30000);
+                using StreamReader reader = new(responseMessage.Content.ReadAsStream(cts.Token));
                 string responseStr = reader.ReadToEnd();
                 rcvlen = responseStr.Length;
                 if (DebugLevel >= 5)

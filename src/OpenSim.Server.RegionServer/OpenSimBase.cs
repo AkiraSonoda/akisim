@@ -49,7 +49,6 @@ using OpenSim.Server.Base;
 using OpenSim.Services.Base;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.UserAccountService;
-// Removed circular dependency - will use reflection to load RegionModulesController
 
 namespace OpenSim
 {
@@ -175,7 +174,7 @@ namespace OpenSim
             }
         }
 
-        protected virtual void LoadPlugins()
+        protected virtual void LoadPlugins() // AKIDO
         {
             // PluginLoader removed - using manual plugin loading only
             // Manual loading of essential application plugins
@@ -276,7 +275,7 @@ namespace OpenSim
                 managedStatsPassword = startupConfig.GetString("ManagedStatsRemoteFetchPassword", String.Empty);
             }
 
-            // Initialize OpenTelemetry metrics
+            // AKIDO Initialize OpenTelemetry metrics
             try
             {
                 var metrics = OpenTelemetryMetrics.Instance;
@@ -348,7 +347,7 @@ namespace OpenSim
 
             base.StartupSpecific();
 
-            // Initialize OpenTelemetry
+            // AKIDO Initialize OpenTelemetry
             try
             {
                 OpenTelemetryManager.Initialize(ConfigSource.Source);
@@ -602,6 +601,9 @@ namespace OpenSim
                 scene.SnmpService.BootInfo("Loading prims", scene);
             }
 
+            // AKIDO
+	    // while (regionInfo.EstateSettings.EstateOwner.IsZero() && MainConsole.Instance != null)
+            //     SetUpEstateOwner(scene);
 
             scene.loadAllLandObjectsFromStorage(regionInfo.originRegionID);
 
@@ -649,7 +651,7 @@ namespace OpenSim
             }
 
             SceneManager.Add(scene);
-
+            // AKIDO
             // Set up estate owner after all modules are loaded and interfaces are available
             while (regionInfo.EstateSettings.EstateOwner.IsZero() && MainConsole.Instance != null)
                 SetUpEstateOwner(scene);
@@ -726,6 +728,7 @@ namespace OpenSim
                 estateOwnerLastName = MainConsole.Instance.Prompt("Estate owner last name", "User", excluded);
             }
 
+            // AKIDO
             if (scene.UserAccountService == null)
             {
                 m_log.Error("[OPENSIM BASE]: UserAccountService is not available yet. Cannot set up estate owner at this time.");
@@ -1069,7 +1072,7 @@ namespace OpenSim
 
             try
             {
-                // Stop OpenTelemetry metrics
+                // AKIDO Stop OpenTelemetry metrics
                 try
                 {
                     OpenTelemetryMetrics.Instance.Stop();

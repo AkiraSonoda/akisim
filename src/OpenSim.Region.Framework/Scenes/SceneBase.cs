@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
 using System.Collections.Generic;
@@ -33,10 +34,10 @@ using OpenMetaverse;
 using log4net;
 using Nini.Config;
 using OpenSim.Framework;
-using ThreadedClasses;
+using OpenSim.Framework.Console;
+using ThreadedClasses; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
-// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -94,6 +95,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <value>
         /// The module commanders available from this scene
         /// </value>
+	// AKIDO 
         protected RwLockedDictionary<string, ICommander> m_moduleCommanders = new RwLockedDictionary<string, ICommander>();
 
         /// <value>
@@ -281,7 +283,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             catch (Exception e)
             {
-                m_log.Error(string.Format("Close() - Failed with exception {0}", e));
+                m_log.Error(string.Format("[SCENE]: SceneBase.cs: Close() - Failed with exception {0}", e));
             }
         }
 
@@ -401,7 +403,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="mod"></param>
         public void RegisterModuleInterface<M>(M mod)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Registering interface {0}", typeof(M));
+//            m_log.DebugFormat("[SCENE BASE]: Registering interface {0}", typeof(M));
 
             List<Object> l = null;
             if (!ModuleInterfaces.TryGetValue(typeof(M), out l))

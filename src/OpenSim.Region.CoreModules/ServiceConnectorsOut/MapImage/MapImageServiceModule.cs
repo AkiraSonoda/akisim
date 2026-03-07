@@ -24,14 +24,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Net;
 using System.IO;
 using System.Timers;
 using System.Drawing;
 using System.Drawing.Imaging;
+
 using log4net;
+// AKIDO remove Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -39,9 +44,10 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Server.Base;
 using OpenMetaverse;
-using ThreadedClasses;
-using SkiaSharp;
-// AKIDO: clean
+using OpenMetaverse.StructuredData;
+using ThreadedClasses; // AKIDO
+using SkiaSharp; // AKIDO
+
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 {
@@ -50,6 +56,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
     /// <remarks>
     /// </remarks>
 
+    // AKIDO remove Mono.Addin [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MapImageServiceModule")]
 
     public class MapImageServiceModule : IMapImageUploadModule, ISharedRegionModule
     {

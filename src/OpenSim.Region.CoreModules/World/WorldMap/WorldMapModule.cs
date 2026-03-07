@@ -24,38 +24,44 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+// AKIDO remove using System.Drawing;
+// AKIDO remove using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
 using System.Reflection;
+
 using System.Threading;
 using log4net;
-using ThreadedClasses;
+using ThreadedClasses; // AKIDO
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
+// AKIDO remove using Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Framework.Capabilities;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Framework.Servers;
 using OpenSim.Framework.Servers.HttpServer;
-using OpenSim.Framework.SkiaSharp;
+using OpenSim.Framework.SkiaSharp; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.CoreModules.World.Land;
-using SkiaSharp;
+using SkiaSharp; // AKIDO
 using Caps=OpenSim.Framework.Capabilities.Caps;
 using OSDArray=OpenMetaverse.StructuredData.OSDArray;
 using OSDMap=OpenMetaverse.StructuredData.OSDMap;
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
-// AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.World.WorldMap
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WorldMapModule")]
     public class WorldMapModule : INonSharedRegionModule, IWorldMapModule, IDisposable
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);

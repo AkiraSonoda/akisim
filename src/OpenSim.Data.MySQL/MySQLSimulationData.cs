@@ -32,7 +32,7 @@ using System.Drawing;
 using System.Reflection;
 using System.Text;
 using log4net;
-using MySqlConnector;
+using MySqlConnector; // AKIDO
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -341,6 +341,7 @@ namespace OpenSim.Data.MySQL
                             while (reader.Read())
                             {
                                 SceneObjectPart prim = BuildPrim(reader);
+
                                 if (reader["Shape"] is DBNull)
                                     prim.Shape = PrimitiveBaseShape.Default;
                                 else

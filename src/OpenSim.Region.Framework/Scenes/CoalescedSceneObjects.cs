@@ -24,11 +24,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-using System.Collections.Generic;
-using OpenMetaverse;
-using ThreadedClasses;
 // AKIDO: clean
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using OpenMetaverse;
+using ThreadedClasses; // AKIDO
 
 namespace OpenSim.Region.Framework.Scenes
 {

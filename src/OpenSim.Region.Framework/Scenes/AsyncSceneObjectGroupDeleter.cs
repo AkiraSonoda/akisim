@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO: clean
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -34,7 +34,6 @@ using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
-// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -53,8 +52,7 @@ namespace OpenSim.Region.Framework.Scenes
     /// </summary>
     public class AsyncSceneObjectGroupDeleter
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType); // AKIDO
         /// <value>
         /// Is the deleter currently enabled?
         /// </value>
@@ -145,12 +143,13 @@ namespace OpenSim.Region.Framework.Scenes
                             count = 0;
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception e) // AKIDO
                     {
-                        m_log.ErrorFormat(
+                        m_log.ErrorFormat( // AKIDO
                             "Exception background sending object: {0}{1}", e.Message, e.StackTrace);
                     }
                 }
+                // m_log.Debug("[ASYNC DELETER]: No objects left in inventory send queue.");
                 m_running = false;
             }
         }

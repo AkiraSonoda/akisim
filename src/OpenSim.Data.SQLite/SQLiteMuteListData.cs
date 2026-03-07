@@ -25,10 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
 using OpenMetaverse;
 using OpenSim.Framework;
-using System.Data.SQLite; // AKIDO refactured everything to SQLite.
-// AKIDO Added support for SQLite removing Mono.Data.Sqlite
+using System.Data.SQLite;
 
 namespace OpenSim.Data.SQLite
 {

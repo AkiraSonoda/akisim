@@ -33,8 +33,7 @@ using OpenSim.Framework;
 //using log4net;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using ThreadedClasses;
-// AKIDO: clean
+using ThreadedClasses; // AKIDO: clean
 
 namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 {
@@ -177,7 +176,6 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                         newSenseRepeaters.Add(ts);
                     }
                 }
-
                 SenseRepeaters = newSenseRepeaters;
             // AKIDO end remove lock
         }

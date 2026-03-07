@@ -26,11 +26,13 @@
  */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Data;
 using OpenMetaverse;
-using MySqlConnector;
+using OpenSim.Framework;
+using MySqlConnector; // AKIDO
 
 namespace OpenSim.Data.MySQL
 {

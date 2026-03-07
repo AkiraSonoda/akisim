@@ -24,12 +24,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO clean
 using System;
-using System.Reflection;
+using System.Reflection; // AKIDO
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using log4net;
+using log4net; // AKIDO
 using Nini.Config;
 using OpenSim.Framework;
 

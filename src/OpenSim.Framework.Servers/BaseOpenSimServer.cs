@@ -108,7 +108,7 @@ namespace OpenSim.Framework.Servers
         protected virtual void StartupSpecific()
         {
             StatsManager.SimExtraStats = new SimExtraStatsCollector();
-
+            // AKIDO
             // Register OpenTelemetry metrics exporter
             if (Monitoring.OpenTelemetryManager.IsInitialized && Monitoring.OpenTelemetryManager.Instance.MetricsEnabled)
             {
@@ -149,7 +149,7 @@ namespace OpenSim.Framework.Servers
         {
             Watchdog.Enabled = false;
             base.ShutdownSpecific();
-
+            // AKIDO
             // Flush OpenTelemetry data
             if (Monitoring.OpenTelemetryManager.IsInitialized)
             {
@@ -209,7 +209,7 @@ namespace OpenSim.Framework.Servers
         {
             m_log.Info("[STARTUP]: Beginning startup processing");
 
-            m_log.Info("[STARTUP]: version: " + m_version);
+            m_log.Info("[STARTUP]: Version: " + m_version);
             m_log.Info($"[STARTUP]: Operating system version: {Environment.OSVersion}, .NET platform {Util.RuntimePlatformStr}, Runtime {Environment.Version}");
             m_log.Info($"[STARTUP]: Processor Architecture: {RuntimeInformation.ProcessArchitecture}({(BitConverter.IsLittleEndian ? "le" : "be")} {(Environment.Is64BitProcess ? "64" : "32")}bit)");
             try

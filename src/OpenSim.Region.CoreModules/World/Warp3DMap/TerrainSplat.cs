@@ -27,14 +27,16 @@
 
 using System;
 using System.Diagnostics;
+// AKIDO remove using System.Drawing;
+// AKIDO remove using System.Drawing.Imaging;
 using System.IO;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
-using OpenSim.Framework.SkiaSharp;
+using OpenSim.Framework.SkiaSharp; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
-using SkiaSharp;
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.World.Warp3DMap
 {
@@ -298,7 +300,6 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                     mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].Blue;
                 }
             }
-
             #region Layer Map
 
             float xFactor = terrain.Width / twidth;
