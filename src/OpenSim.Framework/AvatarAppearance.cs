@@ -30,10 +30,10 @@ using System.Reflection;
 using System.Collections.Generic;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using ThreadedClasses;
+using ThreadedClasses; // AKIDO
 using log4net;
 using System.Text;
-
+using System.Runtime.InteropServices;
 
 namespace OpenSim.Framework
 {
@@ -68,7 +68,7 @@ namespace OpenSim.Framework
         protected byte[] m_visualparams;
         protected Primitive.TextureEntry m_texture;
         protected AvatarWearable[] m_wearables;
-        protected RwLockedDictionary<int, List<AvatarAttachment>> m_attachments;
+        protected RwLockedDictionary<int, List<AvatarAttachment>> m_attachments; // AKIDO
         protected WearableCacheItem[] m_cacheitems;
         protected Vector3 m_avatarSize = new Vector3(0.45f, 0.6f, 1.9f); // sl Z cloud value
         protected Vector3 m_avatarBoxSize = new Vector3(0.45f, 0.6f, 1.9f);
@@ -143,7 +143,7 @@ namespace OpenSim.Framework
             SetDefaultParams();
 //            SetHeight();
             SetSize(new Vector3(0.45f,0.6f,1.9f));
-            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>(); // AKIDO
         }
 
         public AvatarAppearance(OSDMap map)
@@ -179,7 +179,7 @@ namespace OpenSim.Framework
             if(m_avatarHeight == 0)
                 SetSize(new Vector3(0.45f,0.6f,1.9f));
 
-            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>(); // AKIDO
         }
 
         public AvatarAppearance(AvatarAppearance appearance): this(appearance, true,true)
@@ -204,7 +204,7 @@ namespace OpenSim.Framework
 //                SetHeight();
                 SetSize(new Vector3(0.45f, 0.6f, 1.9f));
                 AvatarPreferencesHoverZ = 0;
-                m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
+                m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>(); // AKIDO
 
                 return;
             }
@@ -245,7 +245,7 @@ namespace OpenSim.Framework
             SetSize(appearance.AvatarSize);
 
             // Copy the attachment, force append mode since that ensures consistency
-            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>();
+            m_attachments = new RwLockedDictionary<int, List<AvatarAttachment>>(); // AKIDO
             foreach (AvatarAttachment attachment in appearance.GetAttachments())
                 AppendAttachment(new AvatarAttachment(attachment));
         }
@@ -451,6 +451,9 @@ namespace OpenSim.Framework
 
         public void SetWearable(int wearableId, AvatarWearable wearable)
         {
+// DEBUG ON
+//          m_log.WarnFormat("[AVATARAPPEARANCE] set wearable {0} --> {1}:{2}",wearableId,wearable.ItemID,wearable.AssetID);
+// DEBUG OFF
             if (wearableId >= m_wearables.Length)
             {
                 int currentLength = m_wearables.Length;
