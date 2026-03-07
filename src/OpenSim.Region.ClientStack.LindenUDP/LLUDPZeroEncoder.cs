@@ -404,7 +404,7 @@ namespace OpenSim.Region.ClientStack.LindenUDP
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddColorArgb(uint v)
+        public void AddColorArgb(int v) // AKIDO: changed uint to int to match TextColorArgb() return type
         {
             AddByte((byte)(v >> 24));
             AddByte((byte)(v >> 16));

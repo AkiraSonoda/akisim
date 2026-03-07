@@ -27,8 +27,9 @@
 
 // based on XMREngine from Mike Rieker (DreamNation), Melanie Thielker and meta7
 // but with several changes to be more cross platform.
-
+// AKIDO clean
 using log4net;
+// AKIDO removed Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Framework.Monitoring;
@@ -60,8 +61,12 @@ using LSL_Vector = OpenSim.Region.ScriptEngine.Shared.LSL_Types.Vector3;
 
 using SceneScriptEvents = OpenSim.Region.Framework.Scenes.scriptEvents;
 
+// AKIDO removed Mono.Addins [assembly: Addin("YEngine", OpenSim.VersionInfo.VersionNumber)]
+// AKIDO removed Mono.Addins [assembly: AddinDependency("OpenSim.Region.Framework", OpenSim.VersionInfo.VersionNumber)]
+
 namespace OpenSim.Region.ScriptEngine.Yengine
 {
+    // AKIDO removed Mono.Addins [Mono.Addins.Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "YEngine")]
     public partial class Yengine: INonSharedRegionModule, IScriptEngine, IScriptModule
     {
         public static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -1117,12 +1122,12 @@ namespace OpenSim.Region.ScriptEngine.Yengine
         {
             XMRInstance instance = GetInstance(itemID);
             if(instance == null)
-                return String.Empty;
+                return string.Empty;
 
             TraceCalls("[YEngine]: YEngine.GetXMLState({0})", itemID.ToString());
 
             if(!instance.m_HasRun)
-                return String.Empty;
+                return string.Empty;
 
             XmlDocument doc = new();
 
@@ -1216,7 +1221,7 @@ namespace OpenSim.Region.ScriptEngine.Yengine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool PostScriptEvent(UUID itemID, string name, Object[] p)
+        public bool PostScriptEvent(UUID itemID, string name, object[] p)
         {
             if(!m_Enabled)
                 return false;
@@ -1227,7 +1232,7 @@ namespace OpenSim.Region.ScriptEngine.Yengine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool PostObjectEvent(UUID itemID, string name, Object[] p)
+        public bool PostObjectEvent(UUID itemID, string name, object[] p)
         {
             if(!m_Enabled)
                 return false;
@@ -1578,10 +1583,10 @@ namespace OpenSim.Region.ScriptEngine.Yengine
         {
             if (TryGetInstance(itemID, out XMRInstance instance))
             {
-                running = true;
-                return false;
+                running = instance.Running;
+                return true;
             }
-            running = true;
+            running = false;
             return false;
         }
 
