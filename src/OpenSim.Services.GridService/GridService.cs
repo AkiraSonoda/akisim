@@ -617,14 +617,14 @@ namespace OpenSim.Services.GridService
 
         public List<GridRegion> GetRegionsByName(UUID scopeID, string name, int maxNumber)
         {
-            m_log.InfoFormat("[GRID SERVICE] *** GetRegionsByName called for '{0}' ***", name);
+            m_log.InfoFormat("[GRID SERVICE] *** GetRegionsByName called for '{0}' ***", name); // AKIDO
 
             var nameURI = new RegionURI(name);
             if (!nameURI.IsValid)
-            {
+            {   // AKIDO
                 m_log.InfoFormat("[GRID SERVICE] RegionURI parsing failed - '{0}' is not valid", name);
                 return new List<GridRegion>();
-            }
+            }   // AKIDO
 
             m_log.InfoFormat("[GRID SERVICE] RegionURI parsed: HasHost={0}, HostUrl={1}, RegionName={2}",
                 nameURI.HasHost, nameURI.HostUrl, nameURI.RegionName);
@@ -659,7 +659,8 @@ namespace OpenSim.Services.GridService
 
             if(localGrid)
             {
-                m_log.InfoFormat("[GRID SERVICE] This is LOCAL grid search, not hypergrid");
+                // AKIDO
+		m_log.InfoFormat("[GRID SERVICE] This is LOCAL grid search, not hypergrid");
                 if (!nameURI.HasRegionName)
                 {
                     List<GridRegion> dinfos = GetDefaultRegions(scopeID);
@@ -685,14 +686,15 @@ namespace OpenSim.Services.GridService
                         }
                     }
                 }
+		// AkIDO
                 m_log.InfoFormat("[GRID SERVICE] Local search complete, returning {0} regions", rinfos.Count);
                 return rinfos;
             }
-
+	    // AKIDO
             m_log.InfoFormat("[GRID SERVICE] *** THIS IS A HYPERGRID REQUEST *** localGrid={0}, AllowHypergridMapSearch={1}", localGrid, m_AllowHypergridMapSearch);
 
             if (!m_AllowHypergridMapSearch)
-            {
+            {   // AKIDO
                 m_log.WarnFormat("[GRID SERVICE] Hypergrid map search is DISABLED - returning empty result");
                 return rinfos;
             }
@@ -721,21 +723,24 @@ namespace OpenSim.Services.GridService
                     return rinfos;
             }
 
+	    // AKIDO
             m_log.InfoFormat("[GRID SERVICE] Calling HypergridLinker.LinkRegion for '{0}'", nameURI.HostUrl);
             GridRegion r = m_HypergridLinker.LinkRegion(scopeID, nameURI);
             if (r != null)
             {
-                m_log.InfoFormat("[GRID SERVICE] HypergridLinker.LinkRegion SUCCESS - got region: {0}", r.RegionName);
+		// AKIDO                
+		m_log.InfoFormat("[GRID SERVICE] HypergridLinker.LinkRegion SUCCESS - got region: {0}", r.RegionName);
                 if (count == maxNumber)
                     rinfos.RemoveAt(count - 1);
                 rinfos.Add(r);
             }
-            else
+            else // AKIDO
             {
                 m_log.WarnFormat("[GRID SERVICE] HypergridLinker.LinkRegion FAILED - returned null");
             }
 
-            m_log.InfoFormat("[GRID SERVICE] Returning {0} hypergrid regions", rinfos.Count);
+            // AKIDO
+	    m_log.InfoFormat("[GRID SERVICE] Returning {0} hypergrid regions", rinfos.Count);
             return rinfos;
         }
 
@@ -1089,29 +1094,32 @@ namespace OpenSim.Services.GridService
 
         private int ParseFlags(int prev, string flags)
         {
+            if(string.IsNullOrEmpty(flags))
+                return prev;
+
             OpenSim.Framework.RegionFlags f = (OpenSim.Framework.RegionFlags)prev;
 
-            string[] parts = flags.Split(new char[] {',', ' '}, StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = flags.Split(new char[]{',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (string p in parts)
             {
-                int val;
-
                 try
                 {
-                    if (p.StartsWith("+"))
+                    int val;
+
+                    if (p.StartsWith('+'))
                     {
-                        val = (int)Enum.Parse(typeof(OpenSim.Framework.RegionFlags), p.Substring(1));
+                        val = (int)Enum.Parse(typeof(OpenSim.Framework.RegionFlags), p.AsSpan(1), true);
                         f |= (OpenSim.Framework.RegionFlags)val;
                     }
-                    else if (p.StartsWith("-"))
+                    else if (p.StartsWith('-'))
                     {
-                        val = (int)Enum.Parse(typeof(OpenSim.Framework.RegionFlags), p.Substring(1));
+                        val = (int)Enum.Parse(typeof(OpenSim.Framework.RegionFlags), p.AsSpan(1), true);
                         f &= ~(OpenSim.Framework.RegionFlags)val;
                     }
                     else
                     {
-                        val = (int)Enum.Parse(typeof(OpenSim.Framework.RegionFlags), p);
+                        val = (int)Enum.Parse(typeof(OpenSim.Framework.RegionFlags), p.AsSpan());
                         f |= (OpenSim.Framework.RegionFlags)val;
                     }
                 }

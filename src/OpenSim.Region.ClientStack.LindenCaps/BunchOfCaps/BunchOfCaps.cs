@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO clean
 using System;
 using System.Timers;
 using System.Collections;
@@ -39,7 +39,6 @@ using System.Text;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using Nini.Config;
 using log4net;
 
 using OpenSim.Framework;

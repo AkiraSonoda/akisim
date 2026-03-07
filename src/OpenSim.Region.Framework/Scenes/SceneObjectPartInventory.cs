@@ -36,7 +36,6 @@ using log4net;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using PermissionMask = OpenSim.Framework.PermissionMask;
-// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -479,7 +478,7 @@ namespace OpenSim.Region.Framework.Scenes
 
                 StoreScriptError(itemID, String.Format("TaskItem ID {0} could not be found", item.ItemID));
                 m_log.ErrorFormat(
-                    "Couldn't start script {0}, {1} at {2} in {3} since taskitem ID {4} could not be found",
+                    "[PRIM INVENTORY]: Couldn't start script {0}, {1} at {2} in {3} since taskitem ID {4} could not be found",
                     item.Name, item.ItemID, m_part.AbsolutePosition,
                     m_part.ParentGroup.Scene.RegionInfo.RegionName, item.ItemID);
                 return false;
@@ -507,7 +506,7 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 StoreScriptError(itemID, String.Format("asset ID {0} could not be found", item.AssetID));
                 m_log.ErrorFormat(
-                    "Couldn't start script {0}, {1} at {2} in {3} since asset ID {4} could not be found",
+                    "[PRIM INVENTORY]: Couldn't start script {0}, {1} at {2} in {3} since asset ID {4} could not be found",
                     item.Name, item.ItemID, m_part.AbsolutePosition,
                     m_part.ParentGroup.Scene.RegionInfo.RegionName, item.AssetID);
 
@@ -536,7 +535,7 @@ namespace OpenSim.Region.Framework.Scenes
         private UUID RestoreSavedScriptState(UUID loadedID, UUID oldID, UUID newID)
         {
             //m_log.DebugFormat(
-            //    "Restoring scripted state for item {0}, oldID {1}, loadedID {2}",
+            //    "[PRIM INVENTORY]: Restoring scripted state for item {0}, oldID {1}, loadedID {2}",
             //     newID, oldID, loadedID);
             IScriptModule[] scriptEngines = m_part.ParentGroup.Scene.RequestModuleInterfaces<IScriptModule>();
             if (scriptEngines.Length == 0) // No engine at all
@@ -579,7 +578,7 @@ namespace OpenSim.Region.Framework.Scenes
                     // This created document has only the minimun data
                     // necessary for XEngine to parse it successfully
 
-                    //m_log.DebugFormat(Adding legacy state {0} in {1}", stateID, newID);
+                    //m_log.DebugFormat("[PRIM INVENTORY]: Adding legacy state {0} in {1}", stateID, newID);
 
                     m_part.ParentGroup.m_savedScriptState[stateID] = newDoc.OuterXml;
                 }
@@ -632,7 +631,9 @@ namespace OpenSim.Region.Framework.Scenes
                 string msg = String.Format("couldn't be found for prim {0}, {1} at {2} in {3}", m_part.Name, m_part.UUID,
                     m_part.AbsolutePosition, m_part.ParentGroup.Scene.RegionInfo.RegionName);
                 StoreScriptError(itemId, msg);
-                m_log.ErrorFormat("Couldn't start script with ID {0} since it {1}", itemId, msg);
+                m_log.ErrorFormat(
+                    "[PRIM INVENTORY]: " +
+                    "Couldn't start script with ID {0} since it {1}", itemId, msg);
             }
         }
 
@@ -663,7 +664,9 @@ namespace OpenSim.Region.Framework.Scenes
                 {
                     if (!System.Threading.Monitor.Wait(m_scriptErrors, 15000))
                     {
-                        m_log.ErrorFormat("timedout waiting for script {0} errors", itemId);
+                        m_log.ErrorFormat(
+                            "[PRIM INVENTORY]: " +
+                            "timedout waiting for script {0} errors", itemId);
                         errors = m_scriptErrors[itemId];
                         if (errors == null)
                         {
@@ -748,6 +751,7 @@ namespace OpenSim.Region.Framework.Scenes
             else
             {
                 m_log.WarnFormat(
+                    "[PRIM INVENTORY]: " +
                     "Couldn't stop script with ID {0} since it couldn't be found for prim {1}, {2} at {3} in {4}",
                     itemId, m_part.Name, m_part.UUID,
                     m_part.AbsolutePosition, m_part.ParentGroup.Scene.RegionInfo.RegionName);
@@ -775,6 +779,7 @@ namespace OpenSim.Region.Framework.Scenes
             else
             {
                 m_log.WarnFormat(
+                    "[PRIM INVENTORY]: " +
                     "Couldn't stop script with ID {0} since it couldn't be found for prim {1}, {2} at {3} in {4}",
                     itemId, m_part.Name, m_part.UUID,
                     m_part.AbsolutePosition, m_part.ParentGroup.Scene.RegionInfo.RegionName);
@@ -1169,7 +1174,8 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (null == rezAsset)
             {
-                m_log.WarnFormat("Could not find asset {0} for inventory item {1} in {2}",
+                m_log.WarnFormat(
+                    "[PRIM INVENTORY]: Could not find asset {0} for inventory item {1} in {2}",
                     item.AssetID, item.Name, m_part.Name);
                 objlist = null;
                 veclist = null;
@@ -1339,7 +1345,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (m_items.TryGetValue(item.ItemID, out TaskInventoryItem olditem))
             {
-                //m_log.DebugFormat("Updating item {0} in {1}", item.Name, m_part.Name);
+                //m_log.DebugFormat("[PRIM INVENTORY]: Updating item {0} in {1}", item.Name, m_part.Name);
 
                 item.ParentID = m_part.UUID;
                 item.ParentPartID = m_part.UUID;
@@ -1379,6 +1385,7 @@ namespace OpenSim.Region.Framework.Scenes
             else
             {
                 m_log.ErrorFormat(
+                    "[PRIM INVENTORY]: " +
                     "Tried to retrieve item ID {0} from prim {1}, {2} at {3} in {4} but the item does not exist in this inventory",
                     item.ItemID, m_part.Name, m_part.UUID,
                     m_part.AbsolutePosition, m_part.ParentGroup.Scene.RegionInfo.RegionName);
@@ -1891,7 +1898,7 @@ namespace OpenSim.Region.Framework.Scenes
                     if (e != null)
                     {
                         //m_log.DebugFormat(
-                        //    "Getting script state from engine {0} for {1} in part {2} in group {3} in {4}",
+                        //    "[PRIM INVENTORY]: Getting script state from engine {0} for {1} in part {2} in group {3} in {4}",
                         //    e.Name, item.Name, m_part.Name, m_part.ParentGroup.Name, m_part.ParentGroup.Scene.Name);
 
                         string n = e.GetXMLState(item.ItemID);
@@ -1937,7 +1944,7 @@ namespace OpenSim.Region.Framework.Scenes
                     if (engine != null)
                     {
                         //m_log.DebugFormat(
-                        //    "Resuming script {0} {1} for {2}, OwnerChanged {3}",
+                        //    "[PRIM INVENTORY]: Resuming script {0} {1} for {2}, OwnerChanged {3}",
                         //     item.Name, item.ItemID, item.OwnerID, item.OwnerChanged);
 
                         if(!engine.ResumeScript(item.ItemID))

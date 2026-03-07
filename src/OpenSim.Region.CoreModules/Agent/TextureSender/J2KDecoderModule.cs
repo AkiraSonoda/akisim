@@ -31,7 +31,9 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Text;
+
 using log4net;
+// removed Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
@@ -39,20 +41,20 @@ using CSJ2K;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-using SkiaSharp;
-// AKIDO: clean
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.Agent.TextureSender
 {
     public delegate void J2KDecodeDelegate(UUID assetID);
 
+    // AKIDO removed Mono.Addins[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "J2KDecoderModule")]
     public class J2KDecoderModule : ISharedRegionModule, IJ2KDecoder
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>Temporarily holds deserialized layer data information in memory</summary>
         private readonly ThreadedClasses.ExpiringCache<UUID, OpenJPEG.J2KLayerInfo[]> m_decodedCache = 
-            new ThreadedClasses.ExpiringCache<UUID,OpenJPEG.J2KLayerInfo[]>(30);
+            new ThreadedClasses.ExpiringCache<UUID,OpenJPEG.J2KLayerInfo[]>(30); // AKIDO
         
         /// <summary>List of client methods to notify of results of decode</summary>
         private readonly Dictionary<UUID, List<DecodedCallback>> m_notifyList = new Dictionary<UUID, List<DecodedCallback>>();
@@ -74,6 +76,7 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
         #region ISharedRegionModule
 
+	// AKIDO
         // CSJ2K disabled for image decoding due to vertical stripe artifacts, but always used for layer boundaries
         // to avoid OpenMetaverse.Logger initialization errors with log4net 3.x
         private bool m_useCSJ2K = false;

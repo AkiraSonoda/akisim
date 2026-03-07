@@ -30,19 +30,24 @@ using System.Collections.Generic;
 using System.Reflection;
 using log4net;
 using Nini.Config;
+using Nwc.XmlRpc;
+// AKIDO Removed Mono.Addins;
 using OpenMetaverse;
 using OpenSim.Framework;
 using OpenSim.Framework.Servers;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+using PresenceInfo = OpenSim.Services.Interfaces.PresenceInfo;
 using OpenSim.Services.Interfaces;
+using OpenSim.Services.Connectors.InstantMessage;
 using OpenSim.Services.Connectors.Hypergrid;
 using OpenSim.Server.Handlers.Hypergrid;
-using ThreadedClasses;
-// AKIDO: clean
+using ThreadedClasses; // AKIDO: clean
 
 namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
 {
+    // AKIDO remove MONO.ADDINS [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "HGMessageTransferModule")]
     public class HGMessageTransferModule : ISharedRegionModule, IMessageTransferModule, IInstantMessageSimConnector
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -51,7 +56,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         protected RwLockedList<Scene> m_Scenes = new RwLockedList<Scene>(); // AKIDO
 
         protected IInstantMessage m_IMService;
-        protected Dictionary<UUID, object> m_UserLocationMap = new Dictionary<UUID, object>();
+        protected Dictionary<UUID, object> m_UserLocationMap = new();
 
         public event UndeliveredMessage OnUndeliveredMessage;
 
@@ -60,8 +65,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         {
             get
             {
-                if (m_uMan == null)
-                    m_uMan = m_Scenes[0].RequestModuleInterface<IUserManagement>();
+                m_uMan ??= m_Scenes[0].RequestModuleInterface<IUserManagement>();
                 return m_uMan;
             }
         }
@@ -71,11 +75,11 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             IConfig cnf = config.Configs["Messaging"];
             if (cnf != null && cnf.GetString("MessageTransferModule", "MessageTransferModule") != Name)
             {
-                m_log.Debug("Disabled by configuration");
+                m_log.Debug("[HG MESSAGE TRANSFER]: Disabled by configuration");
                 return;
             }
 
-            InstantMessageServerConnector imServer = new InstantMessageServerConnector(config, MainServer.Instance, this);
+            InstantMessageServerConnector imServer = new(config, MainServer.Instance, this);
             m_IMService = imServer.GetService();
             m_Enabled = true;
         }
@@ -124,9 +128,9 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             get { return null; }
         }
 
-        public void SendInstantMessage(GridInstantMessage im, MessageResultNotification result)
+        public void SendInstantMessage(GridInstantMessage im, MessageResultNotification result, bool ToRootOnly = false)
         {
-            UUID toAgentID = new UUID(im.toAgentID);
+            UUID toAgentID = new(im.toAgentID);
             if (toAgentID.IsZero())
                 return;
 
@@ -134,9 +138,9 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
             // Try root avatar first
             foreach (Scene scene in m_Scenes)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Looking for root agent {0} in {1}",
-                     toAgentID.ToString(), scene.RegionInfo.RegionName);
+                //m_log.DebugFormat(
+                //    "[HG INSTANT MESSAGE]: Looking for root agent {0} in {1}",
+                //     toAgentID.ToString(), scene.RegionInfo.RegionName);
                 ScenePresence sp = scene.GetScenePresence(toAgentID);
                 if (sp != null && !sp.IsDeleted)
                 {
@@ -144,28 +148,22 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                         achildsp = sp;
                     else
                     {
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                            "Delivering IM to root agent {0} {1}", sp.Name, toAgentID);
-                        
+                        // m_log.DebugFormat("[HG INSTANT MESSAGE]: Delivering IM to root agent {0} {1}", user.Name, toAgentID);
                         sp.ControllingClient.SendInstantMessage(im);
                         result(true);
                         return;
                     }
                 }
             }
-            if(achildsp != null)
+            if (!ToRootOnly && achildsp != null)
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Delivering IM to child agent {0} {1}", achildsp.Name, toAgentID);
-                
+                // m_log.DebugFormat("[HG INSTANT MESSAGE]: Delivering IM to child agent {0} {1}", user.Name, toAgentID);
                 achildsp.ControllingClient.SendInstantMessage(im);
                 result(true);
                 return;
             }
 
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                "Delivering IM to {0} via XMLRPC", im.toAgentID);
-            
+            // m_log.DebugFormat("[HG INSTANT MESSAGE]: Delivering IM to {0} via XMLRPC", im.toAgentID);
             // Is the user a local user?
             string url = string.Empty;
             bool foreigner = false;
@@ -182,6 +180,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     if (foreigner && url.Length == 0) // we don't know about this user
                     {
                         string recipientUUI = TryGetRecipientUUI(new UUID(im.fromAgentID), toDelAgentID);
+                        //m_log.DebugFormat("[HG MESSAGE TRANSFER]: Got UUI {0}", recipientUUI);
                         if (recipientUUI.Length > 0)
                         {
                             if (Util.ParseFullUniversalUserIdentifier(recipientUUI, out UUID id, out string tourl,
@@ -254,8 +253,8 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                     result(false);
                 return;
             }
-            
-            m_log.Debug("[INSTANT MESSAGE]: Undeliverable");
+
+            //m_log.DebugFormat("[INSTANT MESSAGE]: Undeliverable");
             result(false);
         }
 
@@ -270,7 +269,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                 if (circuit.ServiceURLs.ContainsKey("HomeURI"))
                 {
                     string uasURL = circuit.ServiceURLs["HomeURI"].ToString();
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat("getting UUI of user {0} from {1}", toAgent, uasURL);
+                    m_log.DebugFormat("[HG MESSAGE TRANSFER]: getting UUI of user {0} from {1}", toAgent, uasURL);
                     UserAgentServiceConnector uasConn = new UserAgentServiceConnector(uasURL);
 
                     string agentUUI = string.Empty;
@@ -279,7 +278,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                         agentUUI = uasConn.GetUUI(fromAgent, toAgent);
                     }
                     catch (Exception e) {
-                        m_log.Debug("GetUUI call failed ", e);
+                        m_log.Debug("[HG MESSAGE TRANSFER]: GetUUI call failed ", e);
                     }
 
                     return agentUUI;
@@ -301,7 +300,6 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
                 if (presence != null && !presence.IsChildAgent && !presence.IsDeleted)
                     return presence.ControllingClient;
             }
-            // AKIDO
 
             return null;
         }
@@ -309,7 +307,7 @@ namespace OpenSim.Region.CoreModules.Avatar.InstantMessage
         #region IInstantMessageSimConnector
         public bool SendInstantMessage(GridInstantMessage im)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("Hook SendInstantMessage {0}", im.message);
+            //m_log.DebugFormat("[XXX] Hook SendInstantMessage {0}", im.message);
             UUID agentID = new UUID(im.toAgentID);
             return SendIMToScene(im, agentID);
         }

@@ -34,6 +34,7 @@ using System.Reflection;
 using System.Security;
 using System.Timers;
 using log4net;
+// AKIDO remove Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -47,6 +48,7 @@ using Timer = System.Timers.Timer;
 
 namespace OpenSim.Region.CoreModules.World.Estate
 {
+    // AKIDO remove [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EstateManagementModule")]
     public class EstateManagementModule : IEstateModule, INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
