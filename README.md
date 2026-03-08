@@ -1,117 +1,148 @@
-Welcome to OpenSimulator (OpenSim for short)!
+# Akisim
 
-# Overview
+Akisim is a fork of [OpenSimulator](http://opensimulator.org/) — a BSD-licensed open source virtual world server platform implementing the Second Life protocol. It is written in C# targeting **.NET 8** and supports multiple clients and servers in a heterogeneous grid structure.
 
-OpenSim is a BSD Licensed Open Source project to develop a functioning
-virtual worlds server platform capable of supporting multiple clients
-and servers in a heterogeneous grid structure. OpenSim is written in
-C#, and can run under Mono or the Microsoft .NET runtimes.
+## Key Differences from Upstream OpenSim
 
-This is considered an alpha release.  Some stuff works, a lot doesn't.
-If it breaks, you get to keep *both* pieces.
+| Area | Upstream OpenSim | Akisim |
+|---|---|---|
+| Module loading | Mono.Addins | Factory pattern (`OptionalModulesFactory`) |
+| Image processing | System.Drawing (GDI+) | SkiaSharp |
+| Voice | Vivox / FreeSwitch | WebRTC via Janus Gateway |
+| Target framework | .NET 8 | .NET 8 |
+| Grid services (Robust) | Included | Separate project in future ([goAki](https://bitbucket.org/AkiraSonoda/goaki/src/main/)) |
 
-# Compiling OpenSim
+### Mono.Addins Removed
 
-Please see BUILDING.md
+Akisim removes Mono.Addins entirely. Region modules are loaded via `OptionalModulesFactory.CreateOptionalSharedModules()` and Robust service modules via `ServerUtils.LoadPlugin<T>()`. No `[Extension]`, `[assembly: Addin]`, or `[assembly: AddinDependency]` attributes are used.
 
-# Running OpenSim on Windows
+### WebRTC Voice (os-webrtc-janus)
 
-You will need dotnet 8.0 runtime (https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+Akisim includes the `os-webrtc-janus` addon as a built-in source module under `src/Opensim.Addons.os-webrtc-janus/`. It provides WebRTC-based spatial and non-spatial voice using [Janus WebRTC Gateway](https://janus.conf.meetecho.com/). See [`doc/WebRtcJanus.md`](doc/WebRtcJanus.md) for architecture and configuration details.
 
+---
 
-To run OpenSim from a command prompt
+## Requirements
 
- * cd to the bin/ directory where you unpacked OpenSim
- * review and change configuration files (.ini) for your needs. see the "Configuring OpenSim" section
- * run OpenSim.exe
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+- On Linux/macOS: `libgdiplus`
+  ```bash
+  # Debian/Ubuntu
+  apt-get install libgdiplus libc6-dev
 
+  # Arch/CachyOS
+  pacman -S libgdiplus
+  ```
 
-# Running OpenSim on Linux/Mac
+---
 
-You will need
+## Building
 
- * [dotnet 8.0 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
- * libgdiplus 
- 
- if you have mono 6.x complete, you already have libgdiplus, otherwise you need to install it
- using a package manager for your operating system, like apt, brew, macports, etc
- for example on debian:
- 
- `apt-get update && apt-get install -y apt-utils libgdiplus libc6-dev`
- 
-To run OpenSim, from the unpacked distribution type:
+```bash
+# Restore NuGet packages
+make restore
 
- * cd bin
- * review and change configuration files (.ini) for your needs. see the "Configuring OpenSim" section
- * run ./opensim.sh
+# Build (Release)
+make build
 
+# or directly
+dotnet build Akisim.sln --configuration Release
 
-# Configuring OpenSim
+# Clean
+make clean
 
-When OpenSim starts for the first time, you will be prompted with a
-series of questions that look something like:
+# Rebuild (clean + build)
+make rebuild
+```
 
-	[09-17 03:54:40] DEFAULT REGION CONFIG: Simulator Name [OpenSim Test]:
+Build output goes to `bin/`.
 
-For all the options except simulator name, you can safely hit enter to accept
-the default if you want to connect using a client on the same machine or over
-your local network.
+---
 
-You will then be asked "Do you wish to join an existing estate?".  If you're
-starting OpenSim for the first time then answer no (which is the default) and
-provide an estate name.
+## Running
 
-Shortly afterwards, you will then be asked to enter an estate owner first name,
-last name, password and e-mail (which can be left blank).  Do not forget these
-details, since initially only this account will be able to manage your region
-in-world.  You can also use these details to perform your first login.
+TODO Create a better implementation 
 
-Once you are presented with a prompt that looks like:
+On first start you will be prompted for region name, estate name, and owner credentials.
 
-	Region (My region name) #
+---
 
-You have successfully started OpenSim.
+## Configuration
 
-If you want to create another user account to login rather than the estate
-account, then type "create user" on the OpenSim console and follow the prompts.
+Main configuration files are in `bin/`:
 
-Helpful resources:
- * http://opensimulator.org/wiki/Configuration
- * http://opensimulator.org/wiki/Configuring_Regions
+| File | Purpose |
+|---|---|
+| `OpenSim.ini` | Primary region simulator configuration |
+| `Regions/Regions.ini` | Region definitions |
+| `config-include/` | Modular configuration includes |
 
-# Connecting to your OpenSim
+### WebRTC Voice
 
-By default your sim will be available for login on port 9000.  You can login by
-adding -loginuri http://127.0.0.1:9000 to the command that starts Second Life
-(e.g. in the Target: box of the client icon properties on Windows).  You can
-also login using the network IP address of the machine running OpenSim (e.g.
-http://192.168.1.2:9000)
+Add to `OpenSim.ini`:
 
-To login, use the avatar details that you gave for your estate ownership or the
-one you set up using the "create user" command.
+```ini
+[Opensim.Addons.os-webrtc-janus.WebRtcVoice]
+Enabled = true
+WebRtcVoiceServerURI = http://grid-voice-service.example.com:8004
+```
 
-# Bug reports
+See [`doc/WebRtcJanus.md`](doc/WebRtcJanus.md) for the full setup including Docker-based Janus configuration.
 
-In the very likely event of bugs biting you (err, your OpenSim) we
-encourage you to see whether the problem has already been reported on
-the [OpenSim mantis system](http://opensimulator.org/mantis/main_page.php).
+---
 
-If your bug has already been reported, you might want to add to the
-bug description and supply additional information.
+## Project Structure
 
-If your bug has not been reported yet, file a bug report ("opening a
-mantis"). Useful information to include:
- * description of what went wrong
- * stack trace
- * OpenSim.log (attach as file)
- * OpenSim.ini (attach as file)
+```
+Akisim.sln
+├── src/
+│   ├── OpenSim.Framework/              # Core types, utilities
+│   ├── OpenSim.Region.Framework/       # Scene management, module interfaces
+│   ├── OpenSim.Region.CoreModules/     # Standard region modules
+│   ├── OpenSim.Region.OptionalModules/ # Optional modules + factory
+│   ├── OpenSim.Region.ClientStack.*/   # UDP and HTTP client protocol
+│   ├── OpenSim.Region.ScriptEngine.*/  # LSL / YEngine scripting
+│   ├── OpenSim.Region.PhysicsModules.*/# BulletS, ubODE physics
+│   ├── OpenSim.Data.*/                 # Database layer (MySQL, SQLite, PostgreSQL)
+│   ├── OpenSim.Services.*/             # Service connectors (client-side only)
+│   └── Opensim.Addons.os-webrtc-janus/ # WebRTC voice addon
+│       ├── WebRtcVoice/                # Shared interfaces & session management
+│       ├── WebRtcVoiceRegionModule/    # Region-side caps module
+│       ├── WebRtcVoiceServiceModule/   # Voice service dispatcher
+│       └── WebRtcJanusService/         # Janus Gateway implementation
+├── artifacts/                          # Libraries (not nuget), Configurations
+├── bin/                                # Build output
+├── doc/                                # Documentation
+│   └── WebRtcJanus.md                  # WebRTC voice architecture & config
+└── docker/                             # Docker support files
+```
 
+---
 
-# More Information on OpenSim
+## Database Support
 
-More extensive information on building, running, and configuring
-OpenSim, as well as how to report bugs, and participate in the OpenSim
-project can always be found at http://opensimulator.org.
+| Database | Usage |
+|---|---|
+| SQLite | Development / local (default) will be removed |
+| MySQL | Production |
+| PostgreSQL | Alternative production option |
 
-Thanks for trying OpenSim, we hope it is a pleasant experience.
+Configure in `config-include/`.
 
+---
+
+## Connecting a Viewer
+
+By default the region listens on port `9000`. Add the login URI to your viewer:
+
+```
+http://<host>:9000
+```
+
+For WebRTC voice, use a viewer with WebRTC voice support (e.g. Firestorm with WebRTC enabled).
+
+---
+
+## Upstream
+
+Akisim tracks [OpenSimulator](http://opensimulator.org/) upstream. For questions about base OpenSim functionality see the [OpenSim wiki](http://opensimulator.org/wiki/Main_Page).
