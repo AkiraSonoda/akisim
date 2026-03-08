@@ -38,6 +38,7 @@ using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenMetaverse.Messages.Linden;
+// AKIDO remove Mono.Addins;
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Framework.Monitoring;
@@ -50,6 +51,7 @@ using GridRegion = OpenSim.Services.Interfaces.GridRegion;
 using OSDMap = OpenMetaverse.StructuredData.OSDMap;
 using OSDArray = OpenMetaverse.StructuredData.OSDArray;
 
+// AKIDO remove Mono.Addins.ExtensionAttribute;
 namespace OpenSim.Region.CoreModules.World.Land
 {
     // used for caching
@@ -61,6 +63,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         public byte RegionAccess;
     }
 
+    // AKIDO remove Mono.Addins[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "LandManagementModule")]
     public class LandManagementModule : INonSharedRegionModule , ILandChannel
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -261,8 +264,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             newData.LocalID = local_id;
 
             ILandObject land;
-            // AKIDO remove lock
-
+// AKIDO    lock (m_landList) {
                 if (m_landList.TryGetValue(local_id, out land))
                 {
                     // AKIDO
@@ -287,7 +289,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 else
                     return;
-            // AKIDO end remove lock
+// AKIDO    }
 
             m_scene.EventManager.TriggerLandObjectUpdated((uint)local_id, land);
         }
@@ -329,7 +331,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         /// <returns>The parcel created.</returns>
         protected ILandObject CreateDefaultParcel()
         {
-            m_log.Debug("Creating default parcel for region " + m_scene.RegionInfo.RegionName);
+            m_log.Debug("[LAND MANAGEMENT MODULE]: Creating default parcel for region " + m_scene.RegionInfo.RegionName);
 
             ILandObject fullSimParcel = new LandObject(UUID.Zero, false, m_scene);
 
@@ -631,12 +633,12 @@ namespace OpenSim.Region.CoreModules.World.Land
                     if(currenttime > 3600)
                         remote_client.SendAgentAlertMessage(string.Format("You already have a pass valid for {0:0.###} hours",
                                     currenttime/3600f), false);
-                    else if(currenttime > 60)
+                   else if(currenttime > 60)
                         remote_client.SendAgentAlertMessage(string.Format("You already have a pass valid for {0:0.##} minutes",
-                            currenttime/60f), false);
-                    else
+                                    currenttime/60f), false);
+                   else
                         remote_client.SendAgentAlertMessage(string.Format("You already have a pass valid for {0:0.#} seconds",
-                            currenttime), false);
+                                    currenttime), false);
                     return;
                 }
             }
@@ -733,7 +735,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             }
             else
             {
-                m_log.Warn("Invalid local land ID " + landLocalID.ToString());
+                m_log.Warn("[LAND MANAGEMENT MODULE]: Invalid local land ID " + landLocalID.ToString());
             }
         }
 
@@ -815,11 +817,16 @@ namespace OpenSim.Region.CoreModules.World.Land
                                      "when adding newLandLocalID: {0} new_land: {1}", newLandLocalID, new_land);
                 }
                 m_landGlobalIDs[new_land.LandData.GlobalID] = newLandLocalID;
-                m_landFakeIDs[new_land.LandData.FakeID] = newLandLocalID;
+                if(new_land.LandData.FakeID.IsNotZero())
+                    m_landFakeIDs[new_land.LandData.FakeID] = newLandLocalID;
                 m_lastLandLocalID++;
             // AKIDO end remove lock
 
             new_land.ForceUpdateLandInfo();
+// AKIDO    lock (m_landList) {
+                m_landFakeIDs[new_land.LandData.FakeID] = new_land.LandData.LocalID;
+// AKIDO    }
+
             m_scene.EventManager.TriggerLandObjectAdded(new_land);
 
             return new_land;
@@ -1935,7 +1942,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             {
                 if (returnType != 1)
                 {
-                    m_log.WarnFormat("ReturnObjectsInParcel: unknown return type {0}", returnType);
+                    m_log.WarnFormat("[LAND MANAGEMENT MODULE]: ReturnObjectsInParcel: unknown return type {0}", returnType);
                     return;
                 }
 
@@ -1957,14 +1964,14 @@ namespace OpenSim.Region.CoreModules.World.Land
                     }
                     else
                     {
-                        m_log.WarnFormat("ReturnObjectsInParcel: unknown object {0}", groupID);
+                        m_log.WarnFormat("[LAND MANAGEMENT MODULE]: ReturnObjectsInParcel: unknown object {0}", groupID);
                     }
                 }
 
                 int num = 0;
                 foreach (HashSet<SceneObjectGroup> objs in returns.Values)
                     num += objs.Count;
-                m_log.DebugFormat("Returning {0} specific object(s)", num);
+                m_log.DebugFormat("[LAND MANAGEMENT MODULE]: Returning {0} specific object(s)", num);
 
                 foreach (HashSet<SceneObjectGroup> objs in returns.Values)
                 {
@@ -1975,7 +1982,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                     }
                     else
                     {
-                        m_log.WarnFormat("ReturnObjectsInParcel: not permitted to return {0} object(s) belonging to user {1}",
+                        m_log.WarnFormat("[LAND MANAGEMENT MODULE]: ReturnObjectsInParcel: not permitted to return {0} object(s) belonging to user {1}",
                             objs2.Count, objs2[0].OwnerID);
                     }
                 }
@@ -2028,7 +2035,7 @@ namespace OpenSim.Region.CoreModules.World.Land
 
             if (!m_scene.TryGetClient(agentID, out IClientAPI client))
             {
-                m_log.WarnFormat("Unable to retrieve IClientAPI for {0}", agentID);
+                m_log.WarnFormat("[LAND MANAGEMENT MODULE]: Unable to retrieve IClientAPI for {0}", agentID);
                 response.StatusCode = (int)HttpStatusCode.Gone;
                 return;
             }
@@ -2057,7 +2064,7 @@ namespace OpenSim.Region.CoreModules.World.Land
 
             if (land is null)
             {
-                m_log.WarnFormat("Unable to find parcelID {0}", parcelID);
+                m_log.WarnFormat("[LAND MANAGEMENT MODULE]: Unable to find parcelID {0}", parcelID);
                 response.StatusCode = (int)HttpStatusCode.NotFound;
                 return;
             }
@@ -2204,12 +2211,12 @@ namespace OpenSim.Region.CoreModules.World.Land
             }
             catch
             {
-                m_log.Error("RemoteParcelRequest failed");
+                m_log.Error("[LAND MANAGEMENT MODULE]: RemoteParcelRequest failed");
                 response.StatusCode = (int)HttpStatusCode.BadRequest;
                 return;
             }
 
-            //m_log.DebugFormat("Got parcelID {0} {1}", parcelID, parcelID.IsZero() ? args.ToString() :"");
+            //m_log.DebugFormat("[LAND MANAGEMENT MODULE]: Got parcelID {0} {1}", parcelID, parcelID.IsZero() ? args.ToString() :"");
             osUTF8 sb = LLSDxmlEncode2.Start();
                 LLSDxmlEncode2.AddMap(sb);
                   LLSDxmlEncode2.AddElem("parcel_id", parcelID,sb);
@@ -2236,7 +2243,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                                         out extLandData.X, out extLandData.Y))
                         break;
 
-                    //m_log.DebugFormat("Got parcelinfo request for regionHandle {0}, x/y {1}/{2}",
+                    //m_log.DebugFormat("[LAND MANAGEMENT MODULE]: Got parcelinfo request for regionHandle {0}, x/y {1}/{2}",
                     //                extLandData.RegionHandle, extLandData.X, extLandData.Y);
 
                     // for this region or for somewhere else?
@@ -2282,7 +2289,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                     info = m_scene.GridService.GetRegionByHandle(m_scene.RegionInfo.ScopeID, data.RegionHandle);
                 }
                 // we need to transfer the fake parcelID, not the one in landData, so the viewer can match it to the landmark.
-                //m_log.DebugFormat("got parcelinfo for parcel {0} in region {1}; sending...",
+                //m_log.DebugFormat("[LAND MANAGEMENT MODULE]: got parcelinfo for parcel {0} in region {1}; sending...",
                 //                  data.LandData.Name, data.RegionHandle);
 
                 // HACK for now
@@ -2296,7 +2303,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 remoteClient.SendParcelInfo(r, data.LandData, parcelID, data.X, data.Y);
             }
             else
-                m_log.Debug("got no parcelinfo; not sending");
+                m_log.Debug("[LAND MANAGEMENT MODULE]: got no parcelinfo; not sending");
         }
 
         public void SetParcelOtherCleanTime(IClientAPI remoteClient, int localID, int otherCleanTime)
@@ -2362,7 +2369,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             land.LandData.AuthBuyerID = UUID.Zero;
             land.LandData.Category = ParcelCategory.None;
             land.LandData.ClaimDate = Util.UnixTimeSinceEpoch();
-            land.LandData.Description = String.Empty;
+            land.LandData.Description = string.Empty;
             land.LandData.Dwell = 0;
             land.LandData.Flags = (uint)ParcelFlags.AllowFly | (uint)ParcelFlags.AllowLandmark |
                                 (uint)ParcelFlags.AllowAPrimitiveEntry |
@@ -2377,9 +2384,9 @@ namespace OpenSim.Region.CoreModules.World.Land
             land.LandData.MediaID = UUID.Zero;
             land.LandData.MediaLoop = false;
             land.LandData.MediaType = "none/none";
-            land.LandData.MediaURL = String.Empty;
+            land.LandData.MediaURL = string.Empty;
             land.LandData.MediaWidth = 0;
-            land.LandData.MusicURL = String.Empty;
+            land.LandData.MusicURL = string.Empty;
             land.LandData.ObscureMedia = false;
             land.LandData.ObscureMusic = false;
             land.LandData.OtherCleanTime = 0;
@@ -2416,11 +2423,11 @@ namespace OpenSim.Region.CoreModules.World.Land
 
         private void ClientOnSimWideDeletes(IClientAPI client, UUID agentID, int flags, UUID targetID)
         {
-            if(!((Scene)client.Scene).TryGetScenePresence(client.AgentId, out ScenePresence SP))
+            if(!((Scene)client.Scene).TryGetScenePresence(client.AgentId, out ScenePresence sp))
                 return;
 
             List<SceneObjectGroup> returns = new();
-            if (SP.GodController.UserLevel != 0)
+            if (sp.GodController.UserLevel != 0)
             {
                 if (flags == 0) //All parcels, scripted or not
                 {

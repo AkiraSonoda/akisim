@@ -108,6 +108,22 @@ namespace OpenSim.Framework.Servers
         protected virtual void StartupSpecific()
         {
             StatsManager.SimExtraStats = new SimExtraStatsCollector();
+            // AKIDO
+            // Register OpenTelemetry metrics exporter
+            if (Monitoring.OpenTelemetryManager.IsInitialized && Monitoring.OpenTelemetryManager.Instance.MetricsEnabled)
+            {
+                try
+                {
+                    var metricsExporter = new Monitoring.OpenTelemetryMetricsExporter();
+                    metricsExporter.RegisterStatsManagerMetrics();
+                    m_log.Info("[STARTUP]: OpenTelemetry metrics exporter registered");
+                }
+                catch (Exception e)
+                {
+                    m_log.Warn($"[STARTUP]: Failed to register OpenTelemetry metrics exporter: {e.Message}");
+                }
+            }
+
             RegisterCommonCommands();
             RegisterCommonComponents(Config);
 
@@ -133,7 +149,21 @@ namespace OpenSim.Framework.Servers
         {
             Watchdog.Enabled = false;
             base.ShutdownSpecific();
-            
+            // AKIDO
+            // Flush OpenTelemetry data
+            if (Monitoring.OpenTelemetryManager.IsInitialized)
+            {
+                m_log.Info("[SHUTDOWN]: Flushing OpenTelemetry data...");
+                try
+                {
+                    Monitoring.OpenTelemetryManager.Instance.Dispose();
+                }
+                catch (Exception e)
+                {
+                    m_log.Warn($"[SHUTDOWN]: Error disposing OpenTelemetry: {e.Message}");
+                }
+            }
+
             MainServer.Stop();
 
             Thread.Sleep(500);
@@ -179,7 +209,7 @@ namespace OpenSim.Framework.Servers
         {
             m_log.Info("[STARTUP]: Beginning startup processing");
 
-            m_log.Info("[STARTUP]: version: " + m_version);
+            m_log.Info("[STARTUP]: Version: " + m_version);
             m_log.Info($"[STARTUP]: Operating system version: {Environment.OSVersion}, .NET platform {Util.RuntimePlatformStr}, Runtime {Environment.Version}");
             m_log.Info($"[STARTUP]: Processor Architecture: {RuntimeInformation.ProcessArchitecture}({(BitConverter.IsLittleEndian ? "le" : "be")} {(Environment.Is64BitProcess ? "64" : "32")}bit)");
             try

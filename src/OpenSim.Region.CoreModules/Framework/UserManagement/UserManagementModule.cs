@@ -26,21 +26,28 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.IO;
 using System.Reflection;
+using System.Threading;
+
 using OpenSim.Framework;
 using OpenSim.Framework.Console;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.Connectors.Hypergrid;
+
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
-using ThreadedClasses;
-// AKIDO: clean
+// AKIDO removed Mono.Addins;
+using ThreadedClasses; // AKIDO
+
 
 namespace OpenSim.Region.CoreModules.Framework.UserManagement
 {
+    // AKIDO removed Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "UserManagementModule")]
     public class UserManagementModule : ISharedRegionModule, IUserManagement, IPeople
     {
         private const int BADURLEXPIRE = 2 * 60;
@@ -99,7 +106,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             {
                 m_Enabled = true;
                 Init(config);
-                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} is enabled", Name);
+                if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} is enabled", Name); // AKIDO
             }
         }
 
@@ -183,7 +190,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         protected virtual void EventManager_OnPrimsLoaded(Scene s)
         {
             // let's sniff all the user names referenced by objects in the scene
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat( // AKIDO
                 "Caching creators' data from {0} ({1} objects)...", 
                 s.RegionInfo.RegionName, s.GetEntities().Length);
             
@@ -206,7 +213,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         protected virtual void HandleUUIDNameRequest(UUID uuid, IClientAPI client)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat( // AKIDO
                 "Handling request for name binding of UUID {0} from {1}",
                 uuid, client.Name);
             
@@ -245,7 +252,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
         {
             //EventManager.TriggerAvatarPickerRequest();
 
-            if(m_log.IsDebugEnabled) m_log.DebugFormat("HandleAvatarPickerRequest for {0}", query);
+            if(m_log.IsDebugEnabled) m_log.DebugFormat("HandleAvatarPickerRequest for {0}", query); // AKIDO
             List<UserData> users = GetUserData(query, 500, 1);
             client.SendAvatarPickerReply(RequestID, users);
         }
@@ -328,7 +335,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         protected virtual void CacheCreators(SceneObjectGroup sog)
         {
-            m_log.InfoFormat(
+            m_log.InfoFormat( // AKIDO
                 "CacheCreators - processing Name: {0}, CreatorID: {1}, CreatorDate: {2}", 
                 sog.RootPart.Name, sog.RootPart.CreatorData, sog.RootPart.CreatorIdentification);
             
@@ -519,7 +526,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             }
                         }
                         else
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID); // AKIDO
                     }
                 }
             }
@@ -652,7 +659,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             }
                         }
                         else
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
+                        	if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID); // AKIDO
                     }
                 }
             }
@@ -768,7 +775,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                             }
                         }
                         else
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
+                        	if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID); // AKIDO
                     }
                 }
             }
@@ -844,6 +851,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 string homeuri = userdata.HomeURL.ToLower();
                 if (!WebUtil.GlobalExpiringBadURLs.ContainsKey(homeuri))
                 {
+                    //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Requested url type {0} for {1}", serverType, userID);
                     UserAgentServiceConnector uConn = new UserAgentServiceConnector(homeuri);
                     try
                     {
@@ -851,13 +859,13 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch (System.Net.Http.HttpRequestException e)
                     {
-                        m_log.WarnFormat("GetServerURLs call failed {0}", e.Message);
+                        m_log.WarnFormat("GetServerURLs call failed {0}", e.Message); // AKIDO
                         WebUtil.GlobalExpiringBadURLs.Add(homeuri, BADURLEXPIRE * 1000);
                         userdata.ServerURLs = new Dictionary<string, object>();
                     }
                     catch (Exception e)
                     {
-                        m_log.Warn("GetServerURLs call failed ", e);
+                        m_log.Warn("GetServerURLs call failed ", e); // AKIDO
                         userdata.ServerURLs = new Dictionary<string, object>();
                     }
 
@@ -913,6 +921,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 string homeurl = userdata.HomeURL.ToLower();
                 if(!WebUtil.GlobalExpiringBadURLs.ContainsKey(homeurl))
                 {
+                    //m_log.DebugFormat("[USER MANAGEMENT MODULE]: Requested url type {0} for {1}", serverType, userID);
                     UserAgentServiceConnector uConn = new UserAgentServiceConnector(homeurl);
                     try
                     {
@@ -920,7 +929,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch (System.Net.Http.HttpRequestException e)
                     {
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat("GetServerURLs call failed {0}", e.Message);
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat("GetServerURLs call failed {0}", e.Message); // AKIDO
                         userdata.ServerURLs = new Dictionary<string, object>();
                         userdata.LastWebFail = Util.GetTimeStamp();
                         WebUtil.GlobalExpiringBadURLs.Add(homeurl, BADURLEXPIRE * 1000);
@@ -928,7 +937,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                     }
                     catch (Exception e)
                     {
-                        if(m_log.IsDebugEnabled) m_log.Debug("GetServerURLs call failed ", e);
+                        if(m_log.IsDebugEnabled) m_log.Debug("GetServerURLs call failed ", e); // AKIDO
                         userdata.ServerURLs = new Dictionary<string, object>();
                         userdata.LastWebFail = Util.GetTimeStamp();
                         recentFail = true;
@@ -995,13 +1004,15 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
             }
             else
             {
-                userdata = new UserData();
-                userdata.Id = uuid;
-                userdata.FirstName = "Unknown";
-                userdata.LastName = uuid.ToString();
-                userdata.HomeURL = string.Empty;
-                userdata.IsUnknownUser = true;
-                userdata.HasGridUserTried = false;
+                userdata = new UserData
+                {
+                    Id = uuid,
+                    FirstName = "Unknown",
+                    LastName = uuid.ToString(),
+                    HomeURL = string.Empty,
+                    IsUnknownUser = true,
+                    HasGridUserTried = false
+                };
             }
 
             if (!userdata.HasGridUserTried)
@@ -1053,7 +1064,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                         }
                     }
                     else
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID);
+                    	if(m_log.IsDebugEnabled) m_log.DebugFormat("Unable to parse UUI {0}", uInfo.UserID); // AKIDO 
                 }
                 userdata.HasGridUserTried = true;
             }
@@ -1111,7 +1122,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public virtual void AddUser(UUID uuid, string first, string last, string homeURL)
         {
-            // if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            // if(m_log.IsDebugEnabled) m_log.DebugFormat( // AKIDO
             //     "Adding user with id {0}, first {1}, last {2}, url {3}", uuid, first, last, homeURL);
 
             UserData oldUser;
@@ -1121,7 +1132,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
                 {
                     if (!homeURL.Equals(oldUser.HomeURL) && m_DisplayChangingHomeURI)
                     {
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
+                        if(m_log.IsDebugEnabled) m_log.DebugFormat( // AKIDO
                             "Different HomeURI for {0} {1} ({2}): {3} and {4}",
                             first, last, uuid.ToString(), homeURL, oldUser.HomeURL);
                     }
@@ -1170,7 +1181,7 @@ namespace OpenSim.Region.CoreModules.Framework.UserManagement
 
         public virtual void AddCreatorUser(UUID id, string creatorData)
         {
-            if(m_log.IsDebugEnabled) m_log.DebugFormat(
+            if(m_log.IsDebugEnabled) m_log.DebugFormat( // AKIDO
                 "Adding user with id {0}, creatorData {1}", id, creatorData);
 
             if(string.IsNullOrEmpty(creatorData))

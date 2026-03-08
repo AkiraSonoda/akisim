@@ -25,8 +25,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
- // AKIDO Changes implemented
- 
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
@@ -56,7 +54,6 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
 
         private int m_savetime = 5; // seconds to wait before saving changed appearance
         private int m_sendtime = 2; // seconds to wait before sending changed appearance
-        private bool m_reusetextures = false;
 
         private int m_checkTime = 500; // milliseconds to wait between checks for appearance updates
         private System.Timers.Timer m_updateTimer = new System.Timers.Timer();
@@ -75,10 +72,8 @@ namespace OpenSim.Region.CoreModules.Avatar.AvatarFactory
             IConfig appearanceConfig = config.Configs["Appearance"];
             if (appearanceConfig != null)
             {
-                m_savetime = Convert.ToInt32(appearanceConfig.GetString("DelayBeforeAppearanceSave",Convert.ToString(m_savetime)));
-                m_sendtime = Convert.ToInt32(appearanceConfig.GetString("DelayBeforeAppearanceSend",Convert.ToString(m_sendtime)));
-                m_reusetextures = appearanceConfig.GetBoolean("ReuseTextures",m_reusetextures);
-
+                m_savetime = appearanceConfig.GetInt("DelayBeforeAppearanceSave", m_savetime);
+                m_sendtime = appearanceConfig.GetInt("DelayBeforeAppearanceSend", m_sendtime);
                 // m_log.InfoFormat("[AVFACTORY] configured for {0} save and {1} send",m_savetime,m_sendtime);
             }
 

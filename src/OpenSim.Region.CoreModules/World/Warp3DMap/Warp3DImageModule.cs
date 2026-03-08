@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO clean 
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -37,8 +37,10 @@ using CSJ2K;
 using Nini.Config;
 using log4net;
 using Warp3D;
+// AKIDO remove using Mono.Addins;
 
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
@@ -47,11 +49,13 @@ using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.Rendering;
 using OpenMetaverse.StructuredData;
+using SkiaSharp; // AKIDO 
 
 using WarpRenderer = Warp3D.Warp3D;
 
 namespace OpenSim.Region.CoreModules.World.Warp3DMap
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "Warp3DImageModule")]
     public class Warp3DImageModule : IMapImageGenerator, INonSharedRegionModule
     {
         private static readonly Color4 WATER_COLOR = new Color4(29, 72, 96, 216);
@@ -185,7 +189,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         private float fov;
         private bool orto;
 
-        public Bitmap CreateMapTile()
+        public SKBitmap CreateMapTile()
         {
             List<string> renderers = RenderingLoader.ListRenderers(Util.ExecutingDirectory());
             if (renderers.Count > 0)
@@ -204,15 +208,15 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             cameraDir = -Vector3.UnitZ;
             orto = true;
 
-            Bitmap tile = GenImage();
+            SKBitmap tile = GenImage();
             // image may be reloaded elsewhere, so no compression format
             string filename = "MAP-" + m_scene.RegionInfo.RegionID.ToString() + ".png";
-            tile.Save(filename,ImageFormat.Png);
+            tile.SaveAsPng(filename);
             m_primMesher = null;
             return tile;
         }
 
-        public Bitmap CreateViewImage(Vector3 camPos, Vector3 camDir, float pfov, int width, int height, bool useTextures)
+        public SKBitmap CreateViewImage(Vector3 camPos, Vector3 camDir, float pfov, int width, int height, bool useTextures)
         {
             List<string> renderers = RenderingLoader.ListRenderers(Util.ExecutingDirectory());
             if (renderers.Count > 0)
@@ -227,12 +231,12 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             fov = pfov;
             orto = false;
 
-            Bitmap tile = GenImage();
+            SKBitmap tile = GenImage();
             m_primMesher = null;
             return tile;
         }
 
-        private Bitmap GenImage()
+        private SKBitmap GenImage()
         {
             m_colors= new Dictionary<UUID, int>();
             m_warpTextures= new Dictionary<UUID, warp_Texture>();
@@ -240,7 +244,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             WarpRenderer renderer = new WarpRenderer();
 
             if (!renderer.CreateScene(viewWidth, viewHeight))
-                return new Bitmap(viewWidth, viewHeight);
+                return new SKBitmap(viewWidth, viewHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 
             #region Camera
 
@@ -265,7 +269,17 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 CreateAllPrims(renderer);
 
             renderer.Render();
-            Bitmap bitmap = renderer.Scene.getImage();
+            System.Drawing.Bitmap sysBitmap = renderer.Scene.getImage();
+
+            // Convert System.Drawing.Bitmap to SKBitmap
+            SKBitmap bitmap;
+            using (var ms = new MemoryStream())
+            {
+                sysBitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                ms.Position = 0;
+                bitmap = SKBitmap.Decode(ms);
+            }
+            sysBitmap.Dispose();
 
             renderer.Scene.destroy();
             renderer.Reset();
@@ -286,8 +300,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         {
             try
             {
-                using (Bitmap mapbmp = CreateMapTile())
+                using (SKBitmap mapbmp = CreateMapTile())
+                {
+                    // OpenJPEG.EncodeFromImage now accepts SKBitmap directly
                     return OpenJPEG.EncodeFromImage(mapbmp, false);
+                }
             }
             catch (Exception e)
             {
@@ -410,11 +427,20 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             };
 
             warp_Texture texture;
-            using (Bitmap image = TerrainSplat.Splat(terrain, textureIDs, startHeights, heightRanges,
+            using (SKBitmap skImage = TerrainSplat.Splat(terrain, textureIDs, startHeights, heightRanges,
                         m_scene.RegionInfo.WorldLocX, m_scene.RegionInfo.WorldLocY,
                         m_scene.AssetService, m_imgDecoder, m_textureTerrain, m_textureAverageTerrain,
                         twidth, twidth))
-                    texture = new warp_Texture(image);
+            {
+                // Convert SKBitmap to System.Drawing.Bitmap for warp_Texture
+                using (var ms = new MemoryStream())
+                {
+                    skImage.Encode(ms, SKEncodedImageFormat.Png, 100);
+                    ms.Position = 0;
+                    using (Bitmap image = new Bitmap(ms))
+                        texture = new warp_Texture(image);
+                }
+            }
 
             warp_Material material = new warp_Material(texture);
             obj.setMaterial(material);
@@ -510,10 +536,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         {
                             if (m_imgDecoder is not null)
                             {
-                                Image sculpt = m_imgDecoder.DecodeToImage(sculptAsset.Data);
+                                SKBitmap sculpt = m_imgDecoder.DecodeToImage(sculptAsset.Data);
                                 if (sculpt is not null)
                                 {
-                                    renderMesh = m_primMesher.GenerateFacetedSculptMesh(omvPrim, (Bitmap)sculpt, lod);
+                                    // GenerateFacetedSculptMesh now accepts SKBitmap directly
+                                    renderMesh = m_primMesher.GenerateFacetedSculptMesh(omvPrim, sculpt, lod);
                                     sculpt.Dispose();
                                 }
                             }
@@ -748,8 +775,20 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             {
                 try
                 {
-                    using (Bitmap img = (Bitmap)m_imgDecoder.DecodeToImage(asset.Data))
-                        ret = new warp_Texture(img, 8); // reduce textures size to 256 * 256
+                    using (SKBitmap skImg = m_imgDecoder.DecodeToImage(asset.Data))
+                    {
+                        if (skImg != null)
+                        {
+                            // Convert SKBitmap to System.Drawing.Bitmap for warp_Texture
+                            using (var ms = new MemoryStream())
+                            {
+                                skImg.Encode(ms, SKEncodedImageFormat.Png, 100);
+                                ms.Position = 0;
+                                using (Bitmap img = new Bitmap(ms))
+                                    ret = new warp_Texture(img, 8); // reduce textures size to 256 * 256
+                            }
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -818,50 +857,52 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             try
             {
                 using (MemoryStream stream = new MemoryStream(j2kData))
-                using (Bitmap bitmap = (Bitmap)J2kImage.FromStream(stream))
+                using (SKBitmap bitmap = J2kImage.FromStream(stream))
                 {
                     width = bitmap.Width;
                     height = bitmap.Height;
 
-                    BitmapData bitmapData = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-                    pixelBytes = (bitmapData.PixelFormat == PixelFormat.Format24bppRgb) ? 3 : 4;
+                    // Get actual bytes per pixel from SkiaSharp
+                    // Note: Rgb888x is 4 bytes (RGBX with padding), not 3
+                    pixelBytes = bitmap.BytesPerPixel;
 
-                    // Sum up the individual channels
+                    // Sum up the individual channels using SKBitmap pixel access
+                    IntPtr pixels = bitmap.GetPixels();
                     unsafe
                     {
-                        byte* start = (byte*)bitmapData.Scan0;
-                        if (pixelBytes == 4)
+                        byte* start = (byte*)pixels;
+                        int stride = bitmap.RowBytes;
+
+                        if (pixelBytes == 4 || bitmap.ColorType == SKColorType.Rgba8888 || bitmap.ColorType == SKColorType.Bgra8888)
                         {
                             for (int y = 0; y < height; y++)
                             {
-                                
-                                byte* end = start + 4 * width;
-                                for(byte* row = start; row < end; row += 4)
+                                byte* row = start + (y * stride);
+                                byte* end = row + 4 * width;
+                                for(byte* p = row; p < end; p += 4)
                                 {
-                                    b += row[0];
-                                    g += row[1];
-                                    r += row[2];
-                                    a += row[3];
+                                    b += p[0];
+                                    g += p[1];
+                                    r += p[2];
+                                    a += p[3];
                                 }
-                                start += bitmapData.Stride;
                             }
                         }
                         else
                         {
                             for (int y = 0; y < height; y++)
                             {
-                                byte* end = start + 3 * width;
-                                for (byte* row = start; row < end; row += 3)
+                                byte* row = start + (y * stride);
+                                byte* end = row + 3 * width;
+                                for (byte* p = row; p < end; p += 3)
                                 {
-                                    b += row[0];
-                                    g += row[1];
-                                    r += row[2];
+                                    b += p[0];
+                                    g += p[1];
+                                    r += p[2];
                                 }
-                                start += bitmapData.Stride;
                             }
                         }
                     }
-                    bitmap.UnlockBits(bitmapData);
                 }
                 // Get the averages for each channel
                 double invtotalPixels = 1.0/(255.0 * width * height);

@@ -42,7 +42,7 @@ namespace OpenSim.Services.Connectors
     public class GridServicesConnector : BaseServiceConnector, IGridService
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private string m_ServerURI = String.Empty;
+        private string m_ServerURI = string.Empty;
         private string m_ServerGridURI = string.Empty;
 
         public GridServicesConnector()
@@ -442,7 +442,7 @@ namespace OpenSim.Services.Connectors
                         m_ServerGridURI,
                         ServerUtils.BuildQueryString(sendData), m_Auth);
 
-                m_log.DebugFormat("[GRID CONNECTOR]: GetRegionRange reply was {0}", reply);
+                m_log.DebugFormat("[GRID CONNECTOR]: GetRegionRange reply was {0}", reply); // AKIDO
                 if (reply.Length > 0)
                 {
                     Dictionary<string, object> replyData = ServerUtils.ParseXmlResponse(reply);
@@ -788,7 +788,7 @@ namespace OpenSim.Services.Connectors
 
             return [];
         }
-        #endregion
 
+        #endregion^
     }
 }

@@ -189,6 +189,7 @@ namespace OpenSim.Region.CoreModules.Scripting.HttpRequest
                             MaxConnectionsPerServer = maxThreads < 10 ? maxThreads : 10,
                             PooledConnectionLifetime = TimeSpan.FromMinutes(3)
                         };
+
                         //shhnc.SslOptions.ClientCertificates = null,
                         shh.SslOptions.EnabledSslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12 | SslProtocols.Tls13;
                         shh.SslOptions.CertificateRevocationCheckMode = X509RevocationMode.NoCheck;
@@ -577,7 +578,6 @@ namespace OpenSim.Region.CoreModules.Scripting.HttpRequest
         public int MaxRedirects { get; set; } = 10;
 
         public string OutboundBody;
-
         public string ResponseBody;
         public Dictionary<string, string> Headers;
         public int Status;
@@ -642,8 +642,8 @@ namespace OpenSim.Region.CoreModules.Scripting.HttpRequest
                     else
                         len = -1;
 
-                    Stream resStream = responseMessage.Content.ReadAsStream();
-
+                    using CancellationTokenSource cts = new(30000);
+                    Stream resStream = responseMessage.Content.ReadAsStream(cts.Token);
                     if(resStream is not null)
                     {
                         int maxBytes =  (len < 0  || len > HttpBodyMaxLen) ? HttpBodyMaxLen : len;
@@ -748,6 +748,9 @@ namespace OpenSim.Region.CoreModules.Scripting.HttpRequest
                     }
                     else
                     {
+                        if(Status == 0)
+                            Status = 499;
+
                         ResponseBody ??= string.Empty;
                         RequestModule.GotCompletedRequest(this);
                     }

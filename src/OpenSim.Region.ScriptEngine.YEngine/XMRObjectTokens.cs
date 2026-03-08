@@ -1433,7 +1433,7 @@ namespace OpenSim.Region.ScriptEngine.Yengine
 
             public override string DumpString()
             {
-                return opCode.ToString() + ' ' + this.field.Name;
+                return opCode.ToString() + ' ' + field.Name;
             }
 
             public override void BuildStatements(OTDecompile decompile, LinkedListNode<OTCilInstr> link)
@@ -2928,7 +2928,7 @@ namespace OpenSim.Region.ScriptEngine.Yengine
                 if(!(other is OTOpndField))
                     return false;
                 OTOpndField otherfield = (OTOpndField)other;
-                return (this.field.Name == otherfield.field.Name) && obj.SameAs(otherfield.obj);
+                return (field.Name == otherfield.field.Name) && obj.SameAs(otherfield.obj);
             }
 
             public override string PrintableString
@@ -2942,7 +2942,7 @@ namespace OpenSim.Region.ScriptEngine.Yengine
                     if(obj is OTOpndBinOp)
                         sb.Append(')');
                     sb.Append('.');
-                    sb.Append(this.field.Name);
+                    sb.Append(field.Name);
                     return sb.ToString();
                 }
             }
@@ -3541,16 +3541,16 @@ namespace OpenSim.Region.ScriptEngine.Yengine
                 if(!(other is OTOpndSField))
                     return false;
                 OTOpndSField othersfield = (OTOpndSField)other;
-                return (this.field.Name == othersfield.field.Name) && (this.field.DeclaringType == othersfield.field.DeclaringType);
+                return (field.Name == othersfield.field.Name) && (field.DeclaringType == othersfield.field.DeclaringType);
             }
 
             public override string PrintableString
             {
                 get
                 {
-                    if(this.field.DeclaringType == typeof(ScriptBaseClass))
-                        return this.field.Name;
-                    return this.field.DeclaringType.Name + "." + this.field.Name;
+                    if(field.DeclaringType == typeof(ScriptBaseClass))
+                        return field.Name;
+                    return field.DeclaringType.Name + "." + field.Name;
                 }
             }
         }

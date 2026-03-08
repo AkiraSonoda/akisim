@@ -30,8 +30,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -52,10 +50,11 @@ using Nini.Config;
 using Nwc.XmlRpc;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using Amib.Threading;
 using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
+using SkiaSharp;
+using OpenSim.Framework.SkiaSharp;
 
 namespace OpenSim.Framework
 {
@@ -112,27 +111,22 @@ namespace OpenSim.Framework
         None,
         RegressionTest,
         QueueUserWorkItem,
-        SmartThreadPool,
+        // AKIDO SmartThreadPool is gone
         Thread
     }
 
     /// <summary>
-    /// Class for delivering SmartThreadPool statistical information
+    /// Class for delivering ThreadPool statistical information
     /// </summary>
-    /// <remarks>
-    /// We do it this way so that we do not directly expose STP.
-    /// </remarks>
-    public class STPInfo
+    public class ThreadPoolInfo  // AKIDO SmartThreadPool is gone
     {
         public string Name;
-        public bool IsIdle;
-        public bool IsShuttingDown;
         public int MaxThreads;
         public int MinThreads;
         public int InUseThreads;
         public int ActiveThreads;
         public int WaitingCallbacks;
-        public int MaxConcurrentWorkItems;
+        public int AvailableThreads;
     }
 
     /// <summary>
@@ -191,10 +185,10 @@ namespace OpenSim.Framework
             MaxCharactersInDocument = 10_000_000
         };
 
-        /// <summary>
-        /// Thread pool used for Util.FireAndForget if FireAndForgetMethod.SmartThreadPool is used
-        /// </summary>
-        private static SmartThreadPool m_ThreadPool;
+        // AKOD Thread pool configuration and monitoring replacement of SmartThreadPool
+        private static int s_minWorkerThreads = 2;
+        private static int s_maxWorkerThreads = -1; // -1 means use default
+        private static bool s_threadPoolInitialized = false; 
 
         // Watchdog timer that aborts threads that have timed-out
         private static Timer m_threadPoolWatchdog;
@@ -208,7 +202,7 @@ namespace OpenSim.Framework
         public static readonly Regex PermissiveUUIDPattern = new(rawUUIDPattern);
         public static readonly Regex UUIDPattern = new(string.Format("^{0}$", rawUUIDPattern));
 
-        public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.SmartThreadPool;
+        public static FireAndForgetMethod DefaultFireAndForgetMethod = FireAndForgetMethod.QueueUserWorkItem; // AKIDO SmartThreadPool is gone
         public static FireAndForgetMethod FireAndForgetMethod = DefaultFireAndForgetMethod;
 
         public static readonly string UUIDZeroString = UUID.Zero.ToString();
@@ -1336,15 +1330,30 @@ namespace OpenSim.Framework
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string SHA1Hash(byte[] data)
         {
             byte[] hash = ComputeSHA1Hash(data);
             return bytesToHexString(hash, false);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte[] ComputeSHA1Hash(byte[] src)
         {
             return SHA1.HashData(src);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string SHA256Hash(byte[] data)
+        {
+            return SHA256Hash(data.AsSpan());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string SHA256Hash(ReadOnlySpan<byte> data)
+        {
+            byte[] hash = SHA256.HashData(data);
+            return bytesToHexString(hash, false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -2530,7 +2539,9 @@ namespace OpenSim.Framework
                 (byte)regionHandle, (byte)(regionHandle >> 8), (byte)(regionHandle >> 16), (byte)(regionHandle >> 24),
                 (byte)(regionHandle >> 32), (byte)(regionHandle >> 40), (byte)(regionHandle >> 48), (byte)(regionHandle >> 56),
                 (byte)x, (byte)(x >> 8), 0, 0,
-                (byte)y, (byte)(y >> 8), 0, 0 };
+                (byte)y, (byte)(y >> 8), 0, 0
+            };
+
             return new UUID(bytes, 0);
         }
 
@@ -2541,7 +2552,8 @@ namespace OpenSim.Framework
                 (byte)regionHandle, (byte)(regionHandle >> 8), (byte)(regionHandle >> 16), (byte)(regionHandle >> 24),
                 (byte)(regionHandle >> 32), (byte)(regionHandle >> 40), (byte)(regionHandle >> 48), (byte)(regionHandle >> 56),
                 (byte)x, (byte)(x >> 8), (byte)z, (byte)(z >> 8),
-                (byte)y, (byte)(y >> 8), 0, 0 };
+                (byte)y, (byte)(y >> 8), 0, 0
+            };
             return new UUID(bytes, 0);
         }
 
@@ -3244,39 +3256,37 @@ namespace OpenSim.Framework
 
         #region FireAndForget Threading Pattern
 
-        public static void InitThreadPool(int minThreads, int maxThreads)
+        public static void InitThreadPool(int minThreads, int maxThreads)  // AKIDO SmartThreadPool is gone
         {
             if (m_log.IsDebugEnabled)
             {
-                m_log.Debug($"InitThreadPool(minThreads: {maxThreads}, maxThreads: {maxThreads})");
+                m_log.Debug($"InitThreadPool(minThreads: {minThreads}, maxThreads: {maxThreads})");
             }
-            
+
             if (maxThreads < 2)
                 throw new ArgumentOutOfRangeException(nameof(maxThreads), "maxThreads must be greater than 2");
 
             if (minThreads > maxThreads || minThreads < 2)
                 throw new ArgumentOutOfRangeException(nameof(minThreads), "minThreads must be greater than 2 and less than or equal to maxThreads");
 
-            if (m_ThreadPool != null)
+            if (s_threadPoolInitialized)
             {
-                m_log.Warn("SmartThreadPool is already initialized.  Ignoring request.");
+                m_log.Warn("ThreadPool is already initialized. Ignoring request.");
                 return;
             }
 
-            STPStartInfo startInfo = new()
-            {
-                ThreadPoolName = "Util",
-                IdleTimeout = 20000,
-                MaxWorkerThreads = maxThreads,
-                MinWorkerThreads = minThreads,
-                SuppressFlow = true
-            };
+            s_minWorkerThreads = minThreads;
+            s_maxWorkerThreads = maxThreads;
 
-            m_ThreadPool = new SmartThreadPool(startInfo);
+            // Configure .NET ThreadPool
+            ThreadPool.SetMinThreads(minThreads, minThreads);
+            ThreadPool.SetMaxThreads(maxThreads, maxThreads);
+
+            s_threadPoolInitialized = true;
             m_threadPoolWatchdog = new Timer(ThreadPoolWatchdog, null, 0, 1000);
         }
 
-        public static int FireAndForgetCount()
+        public static int FireAndForgetCount()  // AKIDO SmartThreadPool is gone
         {
             const int MAX_SYSTEM_THREADS = 200;
 
@@ -3285,15 +3295,13 @@ namespace OpenSim.Framework
                 case FireAndForgetMethod.QueueUserWorkItem:
                     ThreadPool.GetAvailableThreads(out int workerThreads, out _);
                     return workerThreads;
-                case FireAndForgetMethod.SmartThreadPool:
-                    return m_ThreadPool.MaxThreads - m_ThreadPool.InUseThreads;
                 case FireAndForgetMethod.Thread:
                     {
                         using Process p = System.Diagnostics.Process.GetCurrentProcess();
                         return MAX_SYSTEM_THREADS - p.Threads.Count;
                     }
                 default:
-                    throw new NotImplementedException();
+                    return int.MaxValue; // None and RegressionTest
             }
         }
 
@@ -3301,14 +3309,14 @@ namespace OpenSim.Framework
         /// Additional information about threads in the main thread pool. Used to time how long the
         /// thread has been running, and abort it if it has timed-out.
         /// </summary>
-        private class ThreadInfo
+        private class ThreadInfo    // AKIDO SmartThreadPool is gone
         {
             public long ThreadFuncNum { get; set; }
             public string StackTrace { get; set; }
             private readonly string context;
             public bool LogThread { get; set; }
 
-            public IWorkItemResult WorkItem { get; set; }
+            public CancellationTokenSource CancellationSource { get; set; }
             public Thread Thread { get; set; }
             public bool Running { get; set; }
             public bool Aborted { get; set; }
@@ -3346,7 +3354,7 @@ namespace OpenSim.Framework
             public void Abort()
             {
                 Aborted = true;
-                WorkItem.Cancel(true);
+                CancellationSource?.Cancel();
             }
 
             /// <summary>
@@ -3436,10 +3444,7 @@ namespace OpenSim.Framework
 
         public static void FireAndForget(System.Threading.WaitCallback callback, object obj, string context, bool dotimeout = true)
         {
-            // if (m_log.IsDebugEnabled)
-            //     m_log.DebugFormat("FireAndForget(callback: {0}, obj: {1}, context: {2}, dotimeout: {3})", callback, obj, context, dotimeout);
-
-            Interlocked.Increment(ref numQueuedThreadFuncs);
+            Interlocked.Increment(ref numQueuedThreadFuncs);  // AKIDO SmartThreadPool is gone
             Interlocked.Increment(ref numTotalThreadFuncsCalled);
             WaitCallback realCallback;
 
@@ -3483,12 +3488,12 @@ namespace OpenSim.Framework
                     }
                     catch (Exception e)
                     {
-                        m_log.Error($"[UTIL]: Util STP threadfunc {threadFuncNum} terminated with error {e.Message}");
+                        m_log.Error($"[UTIL]: Util STP threadfunc {threadFuncNum} terminated with error {e.Message}", e);
                     }
                     finally
                     {
                         Interlocked.Decrement(ref numRunningThreadFuncs);
-                        activeThreads.TryRemove(threadFuncNum, out ThreadInfo dummy);
+                        activeThreads.TryRemove(threadFuncNum, out _);
                         if (loggingEnabled && threadInfo.LogThread)
                             m_log.Debug($"Exit threadfunc {threadFuncNum} ({FormatDuration(threadInfo.Elapsed())}");
                         callback = null;
@@ -3510,12 +3515,10 @@ namespace OpenSim.Framework
                         realCallback.Invoke(obj);
                         break;
                     case FireAndForgetMethod.QueueUserWorkItem:
-                        ThreadPool.UnsafeQueueUserWorkItem(realCallback, obj);
-                        break;
-                    case FireAndForgetMethod.SmartThreadPool:
-                        if (m_ThreadPool == null)
+                        if (!s_threadPoolInitialized)   // AKIDO SmartThreadPool is gone
                             InitThreadPool(2, 15);
-                        threadInfo.WorkItem = m_ThreadPool.QueueWorkItem(realCallback, obj);
+                        threadInfo.CancellationSource = new CancellationTokenSource();
+                        ThreadPool.UnsafeQueueUserWorkItem(realCallback, obj);
                         break;
                     case FireAndForgetMethod.Thread:
                         Thread thread = new(delegate (object o) { realCallback(o); realCallback = null; });
@@ -3528,7 +3531,7 @@ namespace OpenSim.Framework
             catch (Exception)
             {
                 Interlocked.Decrement(ref numQueuedThreadFuncs);
-                activeThreads.TryRemove(threadFuncNum, out ThreadInfo dummy);
+                activeThreads.TryRemove(threadFuncNum, out ThreadInfo dummy);  // AKIDO SmartThreadPool is gone
                 throw;
             }
         }
@@ -3688,33 +3691,35 @@ namespace OpenSim.Framework
         /// <returns>
         /// null if this isn't the pool being used for non-scriptengine threads.
         /// </returns>
-        public static STPInfo GetSmartThreadPoolInfo()
+        public static ThreadPoolInfo GetThreadPoolInfo()  // AKIDO SmartThreadPool is gone
         {
-            if (m_ThreadPool == null)
+            if (!s_threadPoolInitialized)
                 return null;
 
-            return new STPInfo()
+            ThreadPool.GetMinThreads(out int minWorker, out int minIOC);
+            ThreadPool.GetMaxThreads(out int maxWorker, out int maxIOC);
+            ThreadPool.GetAvailableThreads(out int availWorker, out int availIOC);
+
+            return new ThreadPoolInfo()
             {
-                Name = m_ThreadPool.Name,
-                IsIdle = m_ThreadPool.IsIdle,
-                IsShuttingDown = m_ThreadPool.IsShuttingdown,
-                MaxThreads = m_ThreadPool.MaxThreads,
-                MinThreads = m_ThreadPool.MinThreads,
-                InUseThreads = m_ThreadPool.InUseThreads,
-                ActiveThreads = m_ThreadPool.ActiveThreads,
-                WaitingCallbacks = m_ThreadPool.WaitingCallbacks,
-                MaxConcurrentWorkItems = m_ThreadPool.Concurrency
+                Name = "System ThreadPool",
+                MaxThreads = maxWorker,
+                MinThreads = minWorker,
+                InUseThreads = (int)numRunningThreadFuncs,
+                ActiveThreads = maxWorker - availWorker,
+                WaitingCallbacks = (int)numQueuedThreadFuncs,
+                AvailableThreads = availWorker
             };
         }
 
         public static void StopThreadPool()
         {
-            if (m_ThreadPool == null)
-                return;
-            SmartThreadPool pool = m_ThreadPool;
-            m_ThreadPool = null;
-
-            try { pool.Shutdown(); } catch { }
+            if (m_threadPoolWatchdog != null)
+            {
+                m_threadPoolWatchdog.Dispose();
+                m_threadPoolWatchdog = null;
+            }
+            s_threadPoolInitialized = false;
         }
 
         #endregion FireAndForget Threading Pattern
@@ -4695,24 +4700,9 @@ namespace OpenSim.Framework
         /// <param name="width">New width</param>
         /// <param name="height">New height</param>
         /// <returns>Resized image</returns>
-        public static Bitmap ResizeImageSolid(Image image, int width, int height)
+        public static SKBitmap ResizeImageSolid(SKBitmap image, int width, int height) // AKIDO SkiaSharp 
         {
-            Bitmap result = new(width, height, PixelFormat.Format24bppRgb);
-
-            using (ImageAttributes atrib = new())
-            using (Graphics graphics = Graphics.FromImage(result))
-            {
-                atrib.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
-                graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-
-                graphics.DrawImage(image, new Rectangle(0, 0, result.Width, result.Height),
-                    0, 0, image.Width, image.Height, GraphicsUnit.Pixel, atrib);
-            }
-
-            return result;
+            return image.ResizeHighQuality(width, height);
         }
 
         public static void SaveAssetToFile(string filename, byte[] data)

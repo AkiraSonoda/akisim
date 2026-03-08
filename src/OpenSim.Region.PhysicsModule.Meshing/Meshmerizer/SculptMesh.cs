@@ -34,8 +34,7 @@ using System.Text;
 using System.IO;
 
 #if SYSTEM_DRAWING
-using System.Drawing;
-using System.Drawing.Imaging;
+using SkiaSharp;
 #endif
 
 namespace PrimMesher
@@ -56,7 +55,7 @@ namespace PrimMesher
 
         public SculptMesh SculptMeshFromFile(string fileName, SculptType sculptType, int lod, bool viewerMode)
         {
-            Bitmap bitmap = (Bitmap)Bitmap.FromFile(fileName);
+            SKBitmap bitmap = SKBitmap.Decode(fileName);
             SculptMesh sculptMesh = new SculptMesh(bitmap, sculptType, lod, viewerMode);
             bitmap.Dispose();
             return sculptMesh;
@@ -65,7 +64,7 @@ namespace PrimMesher
 
         public SculptMesh(string fileName, int sculptType, int lod, int viewerMode, int mirror, int invert)
         {
-            Bitmap bitmap = (Bitmap)Bitmap.FromFile(fileName);
+            SKBitmap bitmap = SKBitmap.Decode(fileName);
             _SculptMesh(bitmap, (SculptType)sculptType, lod, viewerMode != 0, mirror != 0, invert != 0);
             bitmap.Dispose();
         }
@@ -175,12 +174,12 @@ namespace PrimMesher
         }
 
 #if SYSTEM_DRAWING
-        public SculptMesh(Bitmap sculptBitmap, SculptType sculptType, int lod, bool viewerMode)
+        public SculptMesh(SKBitmap sculptBitmap, SculptType sculptType, int lod, bool viewerMode)
         {
             _SculptMesh(sculptBitmap, sculptType, lod, viewerMode, false, false);
         }
 
-        public SculptMesh(Bitmap sculptBitmap, SculptType sculptType, int lod, bool viewerMode, bool mirror, bool invert)
+        public SculptMesh(SKBitmap sculptBitmap, SculptType sculptType, int lod, bool viewerMode, bool mirror, bool invert)
         {
             _SculptMesh(sculptBitmap, sculptType, lod, viewerMode, mirror, invert);
         }
@@ -202,7 +201,7 @@ namespace PrimMesher
         /// <param name="scale"></param>
         /// <param name="mirror"></param>
         /// <returns></returns>
-        private List<List<Coord>> bitmap2Coords(Bitmap bitmap, int scale, bool mirror)
+        private List<List<Coord>> bitmap2Coords(SKBitmap bitmap, int scale, bool mirror)
         {
             int numRows = bitmap.Height / scale;
             int numCols = bitmap.Width / scale;
@@ -231,15 +230,15 @@ namespace PrimMesher
                     {
                         for (imageY = imageYStart; imageY < imageYEnd; imageY++)
                         {
-                            Color c = bitmap.GetPixel(imageX, imageY);
-                            if (c.A != 255)
+                            SKColor c = bitmap.GetPixel(imageX, imageY);
+                            if (c.Alpha != 255)
                             {
-                                bitmap.SetPixel(imageX, imageY, Color.FromArgb(255, c.R, c.G, c.B));
+                                bitmap.SetPixel(imageX, imageY, new SKColor(c.Red, c.Green, c.Blue, 255));
                                 c = bitmap.GetPixel(imageX, imageY);
                             }
-                            rSum += c.R;
-                            gSum += c.G;
-                            bSum += c.B;
+                            rSum += c.Red;
+                            gSum += c.Green;
+                            bSum += c.Blue;
                         }
                     }
                     if (mirror)
@@ -253,7 +252,7 @@ namespace PrimMesher
             return rows;
         }
 
-        private List<List<Coord>> bitmap2CoordsSampled(Bitmap bitmap, int scale, bool mirror)
+        private List<List<Coord>> bitmap2CoordsSampled(SKBitmap bitmap, int scale, bool mirror)
         {
             int numRows = bitmap.Height / scale;
             int numCols = bitmap.Width / scale;
@@ -275,17 +274,17 @@ namespace PrimMesher
                     imageX = colNdx * scale;
                     if (colNdx == numCols) imageX--;
 
-                    Color c = bitmap.GetPixel(imageX, imageY);
-                    if (c.A != 255)
+                    SKColor c = bitmap.GetPixel(imageX, imageY);
+                    if (c.Alpha != 255)
                     {
-                        bitmap.SetPixel(imageX, imageY, Color.FromArgb(255, c.R, c.G, c.B));
+                        bitmap.SetPixel(imageX, imageY, new SKColor(c.Red, c.Green, c.Blue, 255));
                         c = bitmap.GetPixel(imageX, imageY);
                     }
 
                     if (mirror)
-                        row.Add(new Coord(-(c.R * pixScale - 0.5f), c.G * pixScale - 0.5f, c.B * pixScale - 0.5f));
+                        row.Add(new Coord(-(c.Red * pixScale - 0.5f), c.Green * pixScale - 0.5f, c.Blue * pixScale - 0.5f));
                     else
-                        row.Add(new Coord(c.R * pixScale - 0.5f, c.G * pixScale - 0.5f, c.B * pixScale - 0.5f));
+                        row.Add(new Coord(c.Red * pixScale - 0.5f, c.Green * pixScale - 0.5f, c.Blue * pixScale - 0.5f));
 
                 }
                 rows.Add(row);
@@ -294,7 +293,7 @@ namespace PrimMesher
         }
 
 
-        void _SculptMesh(Bitmap sculptBitmap, SculptType sculptType, int lod, bool viewerMode, bool mirror, bool invert)
+        void _SculptMesh(SKBitmap sculptBitmap, SculptType sculptType, int lod, bool viewerMode, bool mirror, bool invert)
         {
             _SculptMesh(new SculptMap(sculptBitmap, lod).ToRows(mirror), sculptType, viewerMode, mirror, invert);
         }

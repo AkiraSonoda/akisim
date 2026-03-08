@@ -24,16 +24,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO check
 using System;
+using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Timers;
 using System.Net;
 using log4net;
 using NDesk.Options;
@@ -123,14 +126,14 @@ namespace OpenSim
                 try { ServicePointManager.DnsRefreshTimeout = dnsTimeout; } catch { }
             }
 
-            m_log.Info("Initialize ThreadPool");
-            
-            if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
+            m_log.Info("Initialize ThreadPool"); // AKIDO
+
+            if (Util.FireAndForgetMethod == FireAndForgetMethod.QueueUserWorkItem) // AKIDO
                 Util.InitThreadPool(stpMinThreads, stpMaxThreads);
 
-            m_log.Info("Using async_call_method " + Util.FireAndForgetMethod);
+            m_log.Info("Using async_call_method " + Util.FireAndForgetMethod); // AKIODO
 
-            m_log.InfoFormat("Running GC in {0} mode", GCSettings.IsServerGC ? "server":"workstation");
+            m_log.InfoFormat("Running GC in {0} mode", GCSettings.IsServerGC ? "server":"workstation"); // AKIDO
         }
 
         /// <summary>
@@ -141,7 +144,12 @@ namespace OpenSim
             m_log.Info("====================================================================");
             m_log.Info("========================= STARTING OPENSIM =========================");
             m_log.Info("====================================================================");
-            
+
+            //m_log.InfoFormat("[OPENSIM MAIN]: GC Is Server GC: {0}", GCSettings.IsServerGC.ToString());
+            // http://msdn.microsoft.com/en-us/library/bb384202.aspx
+            //GCSettings.LatencyMode = GCLatencyMode.Batch;
+            //m_log.InfoFormat("[OPENSIM MAIN]: GC Latency Mode: {0}", GCSettings.LatencyMode.ToString());
+
             if (m_gui) // Driven by external GUI
             {
                 m_console = new CommandConsole("Region");
@@ -293,6 +301,10 @@ namespace OpenSim
                                             + "  --mergeReplaceObjects if scene as a object with same id, replace it\n"
                                             + "       without this option, skip loading that object\n"
                                             + "--skip-assets will load the OAR but ignore the assets it contains.\n"
+                                            + "--force-assets will load the OAR and try to upload the assets it contains.\n"
+                                            + "       it will REPLACE those assets on local region cache\n"
+                                            + "       it will also try to upload them to service, but that only work if they are not present"
+                                            + "       Avoid using this except for some recovery attempts"
                                             + "--default-user will use this user for any objects with an owner whose UUID is not found in the grid.\n"
                                             + "--no-objects suppresses the addition of any objects (good for loading only the terrain).\n"
                                             + "--rotation specified rotation to be applied to the oar. Specified in degrees.\n"
@@ -514,8 +526,8 @@ namespace OpenSim
             {
                 RegionInfo regionInfo = presence.Scene.RegionInfo;
 
-                if (presence.Firstname.ToLower().Equals(mainParams[2].ToLower()) &&
-                    presence.Lastname.ToLower().Equals(mainParams[3].ToLower()))
+                if (presence.Firstname.Equals(mainParams[2], StringComparison.OrdinalIgnoreCase) &&
+                    presence.Lastname.Equals(mainParams[3],StringComparison.OrdinalIgnoreCase))
                 {
                     MainConsole.Instance.Output(
                             "Kicking user: {0,-16} {1,-16} {2,-37} in region: {3,-16}",

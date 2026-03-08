@@ -30,8 +30,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
-using System.Drawing;
-using System.Drawing.Imaging;
+using SkiaSharp;
 
 namespace PrimMesher
 {
@@ -44,7 +43,7 @@ namespace PrimMesher
         public enum SculptType { sphere = 1, torus = 2, plane = 3, cylinder = 4 };
 
 
-        public SculptMesh(Bitmap sculptBitmap, SculptType sculptType, int lod, bool mirror, bool invert)
+        public SculptMesh(SKBitmap sculptBitmap, SculptType sculptType, int lod, bool mirror, bool invert)
         {
             if (mirror)
                 invert = !invert;

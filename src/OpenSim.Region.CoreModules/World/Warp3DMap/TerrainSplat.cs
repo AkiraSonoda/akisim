@@ -27,14 +27,16 @@
 
 using System;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
+// AKIDO remove using System.Drawing;
+// AKIDO remove using System.Drawing.Imaging;
 using System.IO;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp; // AKIDO
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Services.Interfaces;
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.World.Warp3DMap
 {
@@ -55,12 +57,12 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
             ROCK_DETAIL
         };
 
-        private static readonly Color[] DEFAULT_TERRAIN_COLOR = new Color[]
+        private static readonly SKColor[] DEFAULT_TERRAIN_COLOR = new SKColor[]
         {
-            Color.FromArgb(255, 164, 136, 117),
-            Color.FromArgb(255, 65, 87, 47),
-            Color.FromArgb(255, 157, 145, 131),
-            Color.FromArgb(255, 125, 128, 130)
+            new SKColor(164, 136, 117, 255),
+            new SKColor(65, 87, 47, 255),
+            new SKColor(157, 145, 131, 255),
+            new SKColor(125, 128, 130, 255)
         };
 
         private static readonly UUID TERRAIN_CACHE_MAGIC = new UUID("2c0c7ef2-56be-4eb8-aacb-76712c535b4b");
@@ -81,14 +83,14 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
         /// Note we create a 256x256 dimension texture even if the actual terrain is larger.
         /// </remarks>
 
-        public static Bitmap Splat(ITerrainChannel terrain, UUID[] textureIDs,
+        public static SKBitmap Splat(ITerrainChannel terrain, UUID[] textureIDs,
                 float[] startHeights, float[] heightRanges,
                 uint regionPositionX, uint regionPositionY,
                 IAssetService assetService, IJ2KDecoder decoder,
                 bool textureTerrain, bool averagetextureTerrain,
                 int twidth, int theight)
         {
-            Bitmap[] detailTexture = new Bitmap[4];
+            SKBitmap[] detailTexture = new SKBitmap[4];
 
             byte[] mapColorsRed = new byte[4];
             byte[] mapColorsGreen = new byte[4];
@@ -114,17 +116,20 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         // asset cache indexes are strings
                         string cacheName = "MAP" + textureIDs[i].ToString();
 
+                        m_log.DebugFormat("{0} Bypassing cache for {1}, will re-decode from original JPEG2000", LogHeader, cacheName);
+
                         // Try to fetch a cached copy of the decoded/resized version of this texture
-                        AssetBase asset = assetService.GetCached(cacheName);
+                        // Skip cache to force re-decode (in case CSJ2K corrupted versions were cached)
+                        AssetBase asset = null; // assetService.GetCached(cacheName);
                         if(asset != null)
                         {
                             try
                             {
                                 using(MemoryStream stream = new MemoryStream(asset.Data))
-                                    detailTexture[i] = (Bitmap)Image.FromStream(stream);
+                                    detailTexture[i] = SKBitmap.Decode(stream);
 
-                                if(detailTexture[i].PixelFormat != PixelFormat.Format24bppRgb ||
-                                     detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
+                                if(detailTexture[i].Width != 16 || detailTexture[i].Height != 16 ||
+                                   detailTexture[i].ColorType == SKColorType.Bgra8888)
                                 {
                                     detailTexture[i].Dispose();
                                     detailTexture[i] = null;
@@ -144,7 +149,7 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             {
                                 try
                                 {
-                                    detailTexture[i] = (Bitmap)decoder.DecodeToImage(asset.Data);
+                                    detailTexture[i] = decoder.DecodeToImage(asset.Data);
                                 }
                                 catch(Exception ex)
                                 {
@@ -154,20 +159,39 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
                             if(detailTexture[i] != null)
                             {
-                                //detailTexture[i].Save("terrOri" + i.ToString() + ".png");
-
-                                if (detailTexture[i].PixelFormat != PixelFormat.Format24bppRgb ||
-                                   detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
-                                    using(Bitmap origBitmap = detailTexture[i])
+                                // Resize if needed
+                                if (detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
+                                {
+                                    m_log.DebugFormat("{0} Resizing texture {1} from {2}x{3} to 16x16",
+                                        LogHeader, i, detailTexture[i].Width, detailTexture[i].Height);
+                                    using(SKBitmap origBitmap = detailTexture[i])
                                         detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
+                                }
 
-                                //detailTexture[i].Save("terr" + i.ToString() + ".png");
+                                // Convert to fresh Rgba8888 and fix alpha channel
+                                using(SKBitmap sourceBitmap = detailTexture[i])
+                                {
+                                    detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
+
+                                    // Copy pixels manually to force alpha to 255
+                                    for(int py = 0; py < 16; py++)
+                                    {
+                                        for(int px = 0; px < 16; px++)
+                                        {
+                                            SKColor sourceColor = sourceBitmap.GetPixel(px, py);
+                                            // Force alpha to 255, keep RGB from source
+                                            detailTexture[i].SetPixel(px, py, new SKColor(sourceColor.Red, sourceColor.Green, sourceColor.Blue, 255));
+                                        }
+                                    }
+
+                                    m_log.DebugFormat("{0} Rebuilt texture {1} with forced opaque alpha", LogHeader, i);
+                                }
 
                                 // Save the decoded and resized texture to the cache
                                 byte[] data;
                                 using(MemoryStream stream = new MemoryStream())
                                 {
-                                    detailTexture[i].Save(stream, ImageFormat.Png);
+                                    detailTexture[i].Save(stream, SKEncodedImageFormat.Png, 100);
                                     data = stream.ToArray();
                                 }
 
@@ -199,9 +223,9 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         usecolors = true;
                         if(detailTexture[t] == null)
                         {
-                            mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].R;
-                            mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].G;
-                            mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].B;
+                            mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].Red;
+                            mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].Green;
+                            mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].Blue;
                             continue;
                         }
 
@@ -210,18 +234,19 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                         int cG = 0;
                         int cB = 0;
 
-                        BitmapData bmdata = detailTexture[t].LockBits(new Rectangle(0, 0, 16, 16),
-                                ImageLockMode.ReadOnly, detailTexture[t].PixelFormat);
+                        IntPtr pixels = detailTexture[t].GetPixels();
+                        int stride = detailTexture[t].RowBytes;
+                        int bytesPerPixel = detailTexture[t].BytesPerPixel;
 
-                        npixeis = bmdata.Height * bmdata.Width;
-                        int ylen = bmdata.Height * bmdata.Stride;
+                        npixeis = detailTexture[t].Height * detailTexture[t].Width;
+                        int ylen = detailTexture[t].Height * stride;
 
                         unsafe
                         {
-                            for(int y = 0; y < ylen; y += bmdata.Stride)
+                            for(int y = 0; y < ylen; y += stride)
                             {
-                                byte* ptrc = (byte*)bmdata.Scan0 + y;
-                                for(int x = 0 ; x < bmdata.Width; ++x, ptrc += 3)
+                                byte* ptrc = (byte*)pixels + y;
+                                for(int x = 0 ; x < detailTexture[t].Width; ++x, ptrc += bytesPerPixel)
                                 {
                                     cR += ptrc[0];
                                     cG += ptrc[1];
@@ -229,7 +254,6 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                                 }
                             }
                         }
-                        detailTexture[t].UnlockBits(bmdata);
                         detailTexture[t].Dispose();
 
                         mapColorsRed[t] = (byte)Math.Clamp(cR / npixeis, 0 , 255);
@@ -247,18 +271,18 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             m_log.DebugFormat("{0} Missing terrain texture for layer {1}. Filling with solid default color", LogHeader, i);
 
                             // Create a solid color texture for this layer
-                            detailTexture[i] = new Bitmap(16, 16, PixelFormat.Format24bppRgb);
-                            using(Graphics gfx = Graphics.FromImage(detailTexture[i]))
+                            detailTexture[i] = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Opaque);
+                            using(SKCanvas canvas = new SKCanvas(detailTexture[i]))
+                            using(SKPaint paint = new SKPaint { Color = DEFAULT_TERRAIN_COLOR[i], Style = SKPaintStyle.Fill })
                             {
-                                using(SolidBrush brush = new SolidBrush(DEFAULT_TERRAIN_COLOR[i]))
-                                    gfx.FillRectangle(brush, 0, 0, 16, 16);
+                                canvas.DrawRect(0, 0, 16, 16, paint);
                             }
                         }
                         else
                         {
                             if(detailTexture[i].Width != 16 || detailTexture[i].Height != 16)
                             {
-                                using(Bitmap origBitmap = detailTexture[i])
+                                using(SKBitmap origBitmap = detailTexture[i])
                                     detailTexture[i] = Util.ResizeImageSolid(origBitmap, 16, 16);
                             }
                         }
@@ -271,12 +295,11 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 usecolors = true;
                 for(int t = 0; t < 4; t++)
                 {
-                    mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].R;
-                    mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].G;
-                    mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].B;
+                    mapColorsRed[t] = DEFAULT_TERRAIN_COLOR[t].Red;
+                    mapColorsGreen[t] = DEFAULT_TERRAIN_COLOR[t].Green;
+                    mapColorsBlue[t] = DEFAULT_TERRAIN_COLOR[t].Blue;
                 }
             }
-
             #region Layer Map
 
             float xFactor = terrain.Width / twidth;
@@ -286,8 +309,15 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
 
             #region Texture Compositing
 
-            Bitmap output = new Bitmap(twidth, theight, PixelFormat.Format24bppRgb);
-            BitmapData outputData = output.LockBits(new Rectangle(0, 0, twidth, theight), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+            // Try platform's native format instead of forcing RGBA
+            var info = new SKImageInfo(twidth, theight, SKColorType.Rgba8888, SKAlphaType.Premul);
+            SKBitmap output = new SKBitmap(info);
+
+            m_log.DebugFormat("{0} Output bitmap: {1}x{2}, ColorType={3}",
+                LogHeader, twidth, theight, output.ColorType);
+            IntPtr outputPixels = output.GetPixels();
+            int outputStride = output.RowBytes;
+            int outputBytesPerPixel = output.BytesPerPixel;
 
             // Unsafe work as we lock down the source textures for quicker access and access the
             //    pixel data directly
@@ -308,45 +338,43 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 float a;
                 float b;
                 int l1;
-                unsafe
+                for(int y = 0; y < theight; ++y)
                 {
-                    byte* ptrO;
-                    for(int y = 0; y < theight; ++y)
+                    pcty = y * invtheightMinus1;
+                    ty = (int)(y * yFactor);
+                    yglobalpos = (uint)ty + regionPositionY;
+
+                    for(int x = 0; x < twidth; ++x)
                     {
-                        pcty = y * invtheightMinus1;
-                        ptrO = (byte*)outputData.Scan0.ToPointer() + y * outputData.Stride;
-                        ty = (int)(y * yFactor);
-                        yglobalpos = (uint)ty + regionPositionY;
+                        tx = (int)(x * xFactor);
+                        pctx = x  * invtwitdthMinus1;
+                        height = (float)terrain[tx, ty];
+                        layer = getLayerTex(height, pctx, pcty,
+                            (uint)tx + regionPositionX, yglobalpos,
+                            startHeights, heightRanges);
 
-                        for(int x = 0; x < twidth; ++x, ptrO +=3)
-                        {
-                            tx = (int)(x * xFactor);
-                            pctx = x  * invtwitdthMinus1;
-                            height = (float)terrain[tx, ty];
-                            layer = getLayerTex(height, pctx, pcty,
-                                (uint)tx + regionPositionX, yglobalpos,
-                                startHeights, heightRanges);
+                        // Select two textures
+                        l0 = (int)layer;
+                        layerDiff = layer - l0;
+                        if (l0 >= 2)
+                            l1 = 3;
+                        else
+                            l1 = l0 + 1;
 
-                            // Select two textures
-                            l0 = (int)layer;
-                            layerDiff = layer - l0;
-                            if (l0 >= 2)
-                                l1 = 3;
-                            else
-                                l1 = l0 + 1;
+                        a = mapColorsRed[l0];
+                        b = mapColorsRed[l1];
+                        byte finalR = (byte)(a + layerDiff * (b - a));
 
-                            a = mapColorsRed[l0];                         
-                            b = mapColorsRed[l1];
-                            ptrO[0] = (byte)(a + layerDiff * (b - a));
+                        a = mapColorsGreen[l0];
+                        b = mapColorsGreen[l1];
+                        byte finalG = (byte)(a + layerDiff * (b - a));
 
-                            a = mapColorsGreen[l0];
-                            b = mapColorsGreen[l1];
-                            ptrO[1] = (byte)(a + layerDiff * (b - a));
+                        a = mapColorsBlue[l0];
+                        b = mapColorsBlue[l1];
+                        byte finalB = (byte)(a + layerDiff * (b - a));
 
-                            a = mapColorsBlue[l0];
-                            b = mapColorsBlue[l1];
-                            ptrO[2] = (byte)(a + layerDiff * (b - a));
-                        }
+                        // Use SetPixel to avoid byte-order issues
+                        output.SetPixel(x, y, new SKColor(finalR, finalG, finalB, 255));
                     }
                 }
             }
@@ -362,25 +390,40 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                 unsafe
                 {
                     // Get handles to all of the texture data arrays
-                    BitmapData[] datas = new BitmapData[]
+                    IntPtr[] pixelPtrs = new IntPtr[]
                     {
-                        detailTexture[0].LockBits(new Rectangle(0, 0, 16, 16), ImageLockMode.ReadOnly, detailTexture[0].PixelFormat),
-                        detailTexture[1].LockBits(new Rectangle(0, 0, 16, 16), ImageLockMode.ReadOnly, detailTexture[1].PixelFormat),
-                        detailTexture[2].LockBits(new Rectangle(0, 0, 16, 16), ImageLockMode.ReadOnly, detailTexture[2].PixelFormat),
-                        detailTexture[3].LockBits(new Rectangle(0, 0, 16, 16), ImageLockMode.ReadOnly, detailTexture[3].PixelFormat)
+                        detailTexture[0].GetPixels(),
+                        detailTexture[1].GetPixels(),
+                        detailTexture[2].GetPixels(),
+                        detailTexture[3].GetPixels()
                     };
+                    int[] strides = new int[]
+                    {
+                        detailTexture[0].RowBytes,
+                        detailTexture[1].RowBytes,
+                        detailTexture[2].RowBytes,
+                        detailTexture[3].RowBytes
+                    };
+                    int texBytesPerPixel = detailTexture[0].BytesPerPixel;
 
-                    byte* ptr;
+                    // Log texture properties for debugging
+                    for(int i = 0; i < 4; i++)
+                    {
+                        m_log.DebugFormat("{0} Texture[{1}]: {2}x{3}, ColorType={4}",
+                            LogHeader, i, detailTexture[i].Width, detailTexture[i].Height,
+                            detailTexture[i].ColorType);
+                    }
+
                     byte* ptrO;
                     for (int y = 0; y < theight; y++)
                     {
                         pcty = y * invtheightMinus1;
                         ty = (int)(y * yFactor);
-                        int ypatch = (ty & 0x0f) * datas[0].Stride;
+                        int ypatchIndex = (ty & 0x0f);
                         yglobalpos = (uint)ty + regionPositionY;
-                        ptrO = (byte*)outputData.Scan0.ToPointer() + y * outputData.Stride;
+                        ptrO = (byte*)outputPixels + y * outputStride;
 
-                        for (int x = 0; x < twidth; x++, ptrO += 3)
+                        for (int x = 0; x < twidth; x++, ptrO += outputBytesPerPixel)
                         {
                             tx = (int)(x * xFactor);
                             pctx = x  * invtwitdthMinus1;
@@ -393,40 +436,40 @@ namespace OpenSim.Region.CoreModules.World.Warp3DMap
                             l0 = (int)layer;
                             layerDiff = layer - l0;
 
-                            int patchOffset = (tx & 0x0f) * 3 + ypatch;
+                            // Calculate texture coordinates from OUTPUT coordinates for proper tiling
+                            int patchX = x & 0x0f;
+                            int patchY = y & 0x0f;
 
-                            ptr = (byte*)datas[l0].Scan0.ToPointer() + patchOffset;
-                            aB = ptr[0];
-                            aG = ptr[1];
-                            aR = ptr[2];
+                            SKColor colorA = detailTexture[l0].GetPixel(patchX, patchY);
+                            aR = colorA.Red;
+                            aG = colorA.Green;
+                            aB = colorA.Blue;
 
                             if(l0 >= 2 )
                                 l0 = 3;
                             else
                                 l0++;
 
-                            ptr = (byte*)datas[l0].Scan0.ToPointer() + patchOffset;
-                            bB = ptr[0];
-                            bG = ptr[1];
-                            bR = ptr[2];
+                            SKColor colorB = detailTexture[l0].GetPixel(patchX, patchY);
+                            bR = colorB.Red;
+                            bG = colorB.Green;
+                            bB = colorB.Blue;
 
                             // Interpolate between the two selected textures
-                            ptrO[0] = (byte)(aB + layerDiff * (bB - aB));
-                            ptrO[1] = (byte)(aG + layerDiff * (bG - aG));
-                            ptrO[2] = (byte)(aR + layerDiff * (bR - aR));
+                            byte finalR = (byte)(aR + layerDiff * (bR - aR));
+                            byte finalG = (byte)(aG + layerDiff * (bG - aG));
+                            byte finalB = (byte)(aB + layerDiff * (bB - aB));
+
+                            // Use SetPixel to avoid byte-order issues
+                            output.SetPixel(x, y, new SKColor(finalR, finalG, finalB, 255));
                         }
                     }
-
-                    for (int i = 0; i < detailTexture.Length; i++)
-                        detailTexture[i].UnlockBits(datas[i]);
                 }
 
                 for(int i = 0; i < detailTexture.Length; i++)
                     if(detailTexture[i] != null)
                         detailTexture[i].Dispose();
             }
-
-            output.UnlockBits(outputData);
 
 //output.Save("terr.jpg",ImageFormat.Jpeg);
 

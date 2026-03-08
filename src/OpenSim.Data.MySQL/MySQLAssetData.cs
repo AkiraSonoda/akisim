@@ -30,9 +30,10 @@ using System.Data;
 using System.Reflection;
 using System.Collections.Generic;
 using log4net;
-using MySqlConnector;
+using MySqlConnector; // AKIDO
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Data;
 
 namespace OpenSim.Data.MySQL
 {
@@ -323,7 +324,7 @@ namespace OpenSim.Data.MySQL
                                 metadata.CreatorID = dbReader["CreatorID"].ToString();
 
                                 // Current SHA1s are not stored/computed.
-                                metadata.SHA1 = new byte[] { };
+                                metadata.SHA1 = Array.Empty<byte>();
 
                                 retList.Add(metadata);
                             }

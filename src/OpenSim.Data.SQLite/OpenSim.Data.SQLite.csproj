@@ -10,9 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.0.4" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
-    <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
+    <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
+    <PackageReference Include="log4net" Version="3.2.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
   </ItemGroup>
 
 
@@ -25,15 +26,12 @@
     </Reference>
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Drawing.Common" >
-      <HintPath>../../bin/System.Drawing.Common.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+    </Reference>  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Data/OpenSim.Data.csproj" />
     <ProjectReference Include="../OpenSim.Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../OpenSim.Framework.SkiaSharp/OpenSim.Framework.SkiaSharp.csproj" />
     <ProjectReference Include="../OpenSim.Framework.Console/OpenSim.Framework.Console.csproj" />
     <ProjectReference Include="../OpenSim.Region.Framework/OpenSim.Region.Framework.csproj" />
   </ItemGroup>

@@ -27,7 +27,3 @@
 
 using System.Reflection;
 using System.Runtime.InteropServices;
-using Mono.Addins;
-
-[assembly: Addin("OpenSim.ApplicationPlugins.LoadRegions", OpenSim.VersionInfo.VersionNumber)]
-[assembly: AddinDependency("OpenSim", OpenSim.VersionInfo.VersionNumber)]

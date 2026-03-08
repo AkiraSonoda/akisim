@@ -31,11 +31,16 @@ using System.Net;
 using System.Reflection;
 using System.Threading;
 using OpenSim.Framework;
+using OpenSim.Framework.Capabilities;
+using OpenSim.Framework.Client;
 using OpenSim.Framework.Monitoring;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
+using OpenSim.Region.PhysicsModules.SharedBase;
 using OpenSim.Services.Interfaces;
+
 using GridRegion = OpenSim.Services.Interfaces.GridRegion;
+
 using OpenMetaverse;
 using log4net;
 using Nini.Config;
@@ -46,6 +51,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
     public class EntityTransferModule : INonSharedRegionModule, IEntityTransferModule, IDisposable
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly string LogHeader = "[ENTITY TRANSFER MODULE]";
         private static readonly string OutfitTPError = "destination region does not support the Outfit you are wearing. Please retry with a simpler one";
 
         public EntityTransferModule()
@@ -490,7 +496,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 sp.Name, position, m_sceneName);
 
             // Teleport within the same region
-            if (!m_scene.PositionIsInCurrentRegion(position) || position.Z < 0)
+            if (!m_scene.PositionIsInCurrentRegion(position))
             {
                 Vector3 emergencyPos = new(128, 128, 128);
 
@@ -514,14 +520,18 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                 position.Z = posZLimit;
             }
 
-            // AKIDO: Re-enabled landing point enforcement for parcel landing points
+            if(position.Z < Constants.MinSimulationHeight)
+                position.Z = Constants.MinSimulationHeight;
+            else if(position.Z > Constants.MaxSimulationHeight)
+                position.Z = Constants.MaxSimulationHeight;
+
+/*
             if(!sp.CheckLocalTPLandingPoint(ref position))
             {
                 sp.ControllingClient.SendTeleportFailed("Not allowed at destination");
                 return;
             }
-            // AKIDO
-
+*/
             if (sp.Flying)
                 teleportFlags |= (uint)TeleportFlags.IsFlying;
 
@@ -2099,7 +2109,6 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         public void EnableChildAgents(ScenePresence sp)
         {
             if (m_log.IsDebugEnabled) m_log.DebugFormat("[ENTITY TRANSFER MODULE]: Enabling child agents for {0}", sp.Name);
-
             
             // assumes that out of view range regions are disconnected by the previous region
             ICapabilitiesModule capsModule = m_scene.CapsModule;
@@ -2755,7 +2764,7 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
                     }
                     else
                         m_log.ErrorFormat(
-                            "InTransitScriptStates.Count={0} smaller than Attachments.Count={1}",
+                            "[ENTITY TRANSFER MODULE]: InTransitScriptStates.Count={0} smaller than Attachments.Count={1}",
                             sp.InTransitScriptStates.Count, attachments.Count);
                 }
 
@@ -2768,19 +2777,18 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
         {
             if (so.OwnerID.IsZero())
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Denied object {0}({1}) entry into {2} because ownerID is zero",
-                    so.Name, so.UUID, m_sceneName);
+                m_log.DebugFormat(
+                    "[ENTITY TRANSFER MODULE]: Denied object {0}({1}) entry into {2} because ownerID is zero",
+                        so.Name, so.UUID, m_sceneName);
                 return false;
             }
 
             // If the user is banned, we won't let any of their objects
             // enter. Period.
-            if (m_sceneRegionInfo.EstateSettings.IsBanned(so.OwnerID))
+            if (!m_scene.Permissions.IsAdministrator(so.OwnerID) && m_sceneRegionInfo.EstateSettings.IsBanned(so.OwnerID))
             {
-                if (m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Denied {0} {1} into {2} of banned owner {3}",
-                    so.Name, so.UUID, m_sceneName, so.OwnerID);
+                m_log.Debug(
+                    $"[ENTITY TRANSFER MODULE]: Denied {so.Name} {so.UUID} into { m_sceneName} of banned owner {so.OwnerID}");
                 return false;
             }
 
@@ -2788,9 +2796,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
             {
                 if(m_scene.GetScenePresence(so.OwnerID) == null)
                 {
-                    if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                        "Denied attachment {0}({1}) owner {2} not in region {3}",
-                        so.Name, so.UUID, so.OwnerID, m_sceneName);
+                    m_log.Debug(
+                        $"[ENTITY TRANSFER MODULE]: Denied attachment {so.Name}({so.UUID}) owner {so.OwnerID} not in region {m_sceneName}");
                     return false;
                 }
             }
@@ -2800,8 +2807,8 @@ namespace OpenSim.Region.CoreModules.Framework.EntityTransfer
 
             if (!m_scene.AddSceneObject(so))
             {
-                if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                    "Problem adding scene object {0} {1} into {2} ",
+                m_log.DebugFormat(
+                    "[ENTITY TRANSFER MODULE]: Problem adding scene object {0} {1} into {2} ",
                     so.Name, so.UUID, m_sceneName);
 
                 return false;

@@ -24,7 +24,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: cleanup
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -32,7 +34,7 @@ using System.Threading;
 using log4net;
 using OpenMetaverse;
 using OpenSim.Framework;
-// AKIDO: cleanup
+using OpenSim.Region.Framework.Interfaces;
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -72,7 +74,7 @@ namespace OpenSim.Region.Framework.Scenes
     /// </remarks>
     public class AsyncInventorySender
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType); // AKIDO
 
         protected Scene m_scene;
 
@@ -99,7 +101,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="ownerID"></param>
         public void HandleFetchInventory(IClientAPI remoteClient, UUID[] items, UUID[] owners)
         {
-            m_log.DebugFormat(
+            m_log.DebugFormat( // AKIDO
                 "Putting request from {0} for {1} on queue", remoteClient.Name, items);
 
             m_fetchHolder.Enqueue(new FetchHolder(remoteClient, items, owners));
@@ -127,7 +129,7 @@ namespace OpenSim.Region.Framework.Scenes
                     {
                         if (!fh.Client.IsActive)
                             continue;
-                        m_log.DebugFormat(
+                        m_log.DebugFormat( // AKIDO
                             "Handling request from {0} for {1} on queue", fh.Client.Name, fh.Items);
 
                         var items = new List<InventoryItemBase>();
@@ -136,6 +138,15 @@ namespace OpenSim.Region.Framework.Scenes
                             InventoryItemBase item = m_scene.InventoryService.GetItem(fh.Owners[i], fh.Items[i]);
                             if (item == null)
                                 continue;
+
+                            /*
+                            if (item.AssetType == (int)AssetType.Link)
+                            {
+                                InventoryItemBase itemlk = m_scene.InventoryService.GetItem(fh.Owners[i], item.AssetID);
+                                if(itemlk != null)
+                                    items.Add(itemlk);
+                            }
+                            */
 
                             items.Add(item);
                         }

@@ -37,10 +37,13 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
+
+// AKIDO remove Mono.Addins;
 using PermissionMask = OpenSim.Framework.PermissionMask;
 
 namespace OpenSim.Region.CoreModules.World.Permissions
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "DefaultPermissionsModule")]
     public class DefaultPermissionsModule : INonSharedRegionModule, IPermissionsModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -119,6 +122,7 @@ namespace OpenSim.Region.CoreModules.World.Permissions
                 return m_friendsModule;
             }
         }
+
         private IGroupsModule m_groupsModule;
         private IGroupsModule GroupsModule
         {

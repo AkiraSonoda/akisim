@@ -164,6 +164,5 @@ namespace OpenSim.Region.ClientStack.Linden
         {
             _ = new BunchOfCaps(m_Scene, agentID, caps, ConfigOptions);
         }
-
     }
 }

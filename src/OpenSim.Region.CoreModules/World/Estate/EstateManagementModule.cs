@@ -34,6 +34,7 @@ using System.Reflection;
 using System.Security;
 using System.Timers;
 using log4net;
+// AKIDO remove Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -47,6 +48,7 @@ using Timer = System.Timers.Timer;
 
 namespace OpenSim.Region.CoreModules.World.Estate
 {
+    // AKIDO remove [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EstateManagementModule")]
     public class EstateManagementModule : IEstateModule, INonSharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -226,7 +228,104 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
         public void setEstateTerrainBaseTexture(int level, UUID texture)
         {
-            SetEstateTerrainBaseTexture(null, level, texture);
+            if (texture.IsZero())
+                return;
+
+            switch (level)
+            {
+                case 0:
+                    Scene.RegionInfo.RegionSettings.TerrainTexture1 = texture;
+                    break;
+                case 1:
+                    Scene.RegionInfo.RegionSettings.TerrainTexture2 = texture;
+                    break;
+                case 2:
+                    Scene.RegionInfo.RegionSettings.TerrainTexture3 = texture;
+                    break;
+                case 3:
+                    Scene.RegionInfo.RegionSettings.TerrainTexture4 = texture;
+                    break;
+                default:
+                    return;
+            }
+
+            Scene.RegionInfo.RegionSettings.Save();
+            TriggerRegionInfoChange();
+            sendRegionHandshakeToAll();
+        }
+
+        public void SetEstateTerrainTextures(List<UUID> ids, int types)
+        {
+            switch(types)
+            {
+                case 2:
+                    if (ids[0].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture1 = ids[0];
+                        Scene.RegionInfo.RegionSettings.TerrainPBR1 = ids[0];
+                    }
+                    if (ids[1].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture2 = ids[1];
+                        Scene.RegionInfo.RegionSettings.TerrainPBR2 = ids[1];
+                    }
+                    if (ids[2].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture3 = ids[2];
+                        Scene.RegionInfo.RegionSettings.TerrainPBR3 = ids[2];
+                    }
+                    if (ids[3].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture4 = ids[3];
+                        Scene.RegionInfo.RegionSettings.TerrainPBR4 = ids[3];
+                    }
+                    break;
+
+                case 1:
+                    if (ids[0].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainPBR1 = ids[0];
+                    }
+                    if (ids[1].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainPBR2 = ids[1];
+                    }
+                    if (ids[2].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainPBR3 = ids[2];
+                    }
+                    if (ids[3].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainPBR4 = ids[3];
+                    }
+                    break;
+
+                case 0:
+                    if (ids[0].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture1 = ids[0];
+                    }
+                    if (ids[1].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture2 = ids[1];
+                    }
+                    if (ids[2].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture3 = ids[2];
+                    }
+                    if (ids[3].IsNotZero())
+                    {
+                        Scene.RegionInfo.RegionSettings.TerrainTexture4 = ids[3];
+                    }
+                    break;
+
+                default:
+                    return;
+            }
+
+            Scene.RegionInfo.RegionSettings.Save();
+            TriggerRegionInfoChange();
+            sendRegionHandshakeToAll();
         }
 
         public void setEstateTerrainTextureHeights(int corner, float lowValue, float highValue)
@@ -970,8 +1069,12 @@ namespace OpenSim.Region.CoreModules.World.Estate
 
                 if ((estateAccessType & 64) != 0) // Ban add
                 {
-
-                    if(thisSettings.EstateBansCount() >= (int)Constants.EstateAccessLimits.EstateBans)
+                    bool userIsAdmin = Scene.Permissions.IsAdministrator(user);
+                    if(userIsAdmin)
+                    {
+                        remote_client.SendAlertMessage("Cannot ban a Administrator");
+                    }
+                    else if(thisSettings.EstateBansCount() >= (int)Constants.EstateAccessLimits.EstateBans)
                     {
                         if(!sentBansFull)
                         {

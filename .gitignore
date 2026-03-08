@@ -138,6 +138,10 @@ build/bin/Debug/_build.dll
 
 bin/
 
-OpenSim/
-
 packages/
+
+.nuke/
+
+build/
+
+OpenSim/

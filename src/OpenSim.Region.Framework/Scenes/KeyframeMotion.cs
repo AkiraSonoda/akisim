@@ -24,30 +24,36 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
 using System.Timers;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Region.Framework.Interfaces;
+using OpenSim.Region.PhysicsModules.SharedBase;
+using OpenSim.Region.Framework.Scenes.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 using Timer = System.Timers.Timer;
 using log4net;
-using ThreadedClasses;
-// AKIDO: clean
+using ThreadedClasses; // AKIDO
 
 namespace OpenSim.Region.Framework.Scenes
 {
     public class KeyframeTimer
     {
-        private static RwLockedDictionary<Scene, KeyframeTimer> m_timers =
+        private static RwLockedDictionary<Scene, KeyframeTimer> m_timers =  // AKIDO
                 new RwLockedDictionary<Scene, KeyframeTimer>();
 
         private Timer m_timer;
-        private RwLockedDictionary<KeyframeMotion, object> m_motions = new RwLockedDictionary<KeyframeMotion, object>();
+        private RwLockedDictionary<KeyframeMotion, object> m_motions = new RwLockedDictionary<KeyframeMotion, object>(); // AKIDO
         private object m_lockObject = new object();
         private object m_timerLock = new object();
         private const double m_tickDuration = 50.0;
@@ -176,7 +182,7 @@ namespace OpenSim.Region.Framework.Scenes
     [Serializable]
     public class KeyframeMotion
     {
-        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        // private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType); // AKIDO
 
         public enum PlayMode : int
         {

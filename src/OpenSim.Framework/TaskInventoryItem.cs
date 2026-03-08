@@ -24,12 +24,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clear
 
 using System;
 using System.Reflection;
 using log4net;
 using OpenMetaverse;
-// AKIDO: clear
 
 namespace OpenSim.Framework
 {
@@ -132,6 +132,7 @@ namespace OpenSim.Framework
             set
             {
                 _ownerChanged = value;
+		// AKIDO
                 if(m_log.IsDebugEnabled) m_log.DebugFormat(
                     "Owner changed set {0} for {1} {2} owned by {3}",
                     _ownerChanged, Name, ItemID, OwnerID);

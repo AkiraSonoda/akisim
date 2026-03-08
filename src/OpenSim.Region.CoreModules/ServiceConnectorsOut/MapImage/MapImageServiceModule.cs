@@ -24,14 +24,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Net;
 using System.IO;
 using System.Timers;
 using System.Drawing;
 using System.Drawing.Imaging;
+
 using log4net;
+// AKIDO remove Mono.Addins;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -39,8 +44,10 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using OpenSim.Server.Base;
 using OpenMetaverse;
-using ThreadedClasses;
-// AKIDO: clean
+using OpenMetaverse.StructuredData;
+using ThreadedClasses; // AKIDO
+using SkiaSharp; // AKIDO
+
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
 {
@@ -49,6 +56,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
     /// <remarks>
     /// </remarks>
 
+    // AKIDO remove Mono.Addin [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "MapImageServiceModule")]
 
     public class MapImageServiceModule : IMapImageUploadModule, ISharedRegionModule
     {
@@ -256,7 +264,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             m_lastrefresh = Util.EnvironmentTickCount();
         }
 
-        public void UploadMapTile(IScene scene, Bitmap mapTile)
+        public void UploadMapTile(IScene scene, SKBitmap mapTile)
         {
             m_log.InfoFormat("{0} Starting map tile upload for region {1}", LogHeader, scene.RegionInfo.RegionName);
 
@@ -295,11 +303,18 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
                         // Images are addressed from the upper left corner so have to do funny
                         //     math to pick out the sub-tile since regions are numbered from
                         //     the lower left.
-                        Rectangle rect = new Rectangle(
+                        SKRectI rect = new SKRectI(
                             (int)xx,
                             mapTile.Height - (int)yy - (int)Constants.RegionSize,
-                            (int)Constants.RegionSize, (int)Constants.RegionSize);
-                        using (Bitmap subMapTile = mapTile.Clone(rect, mapTile.PixelFormat))
+                            (int)xx + (int)Constants.RegionSize,
+                            mapTile.Height - (int)yy);
+
+                        SKBitmap subMapTile = new SKBitmap((int)Constants.RegionSize, (int)Constants.RegionSize);
+                        using (SKCanvas canvas = new SKCanvas(subMapTile))
+                        {
+                            canvas.DrawBitmap(mapTile, rect, new SKRect(0, 0, Constants.RegionSize, Constants.RegionSize));
+                        }
+                        using (subMapTile)
                         {
                             if(!ConvertAndUploadMaptile(scene, subMapTile,
                                                     scene.RegionInfo.RegionLocX + (xx / Constants.RegionSize),
@@ -333,7 +348,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             }
             if(m_log.IsDebugEnabled) m_log.DebugFormat("{0} Found map image generator for region {1}", LogHeader, scene.RegionInfo.RegionName);
 
-            using (Bitmap mapTile = tileGenerator.CreateMapTile())
+            using (SKBitmap mapTile = tileGenerator.CreateMapTile())
             {
                 // The MapImageModule will return a null if the user has chosen not to create map tiles and there
                 // is no static map tile.
@@ -348,7 +363,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             }
         }
 
-        private bool ConvertAndUploadMaptile(IScene scene, Image tileImage, uint locX, uint locY, string regionName)
+        private bool ConvertAndUploadMaptile(IScene scene, SKBitmap tileImage, uint locX, uint locY, string regionName)
         {
             m_log.InfoFormat("{0} Converting and uploading map tile for {1} at location {2},{3}", LogHeader, regionName, locX, locY);
 
@@ -358,7 +373,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.MapImage
             {
                 using (MemoryStream stream = new MemoryStream())
                 {
-                    tileImage.Save(stream, ImageFormat.Jpeg);
+                    tileImage.Encode(stream, SKEncodedImageFormat.Jpeg, 95);
                     jpgData = stream.ToArray();
                 }
             }

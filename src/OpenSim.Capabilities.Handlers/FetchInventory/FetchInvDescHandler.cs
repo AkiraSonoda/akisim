@@ -67,7 +67,9 @@ namespace OpenSim.Capabilities.Handlers
 
         public void FetchInventoryDescendentsRequest(IOSHttpRequest httpRequest, IOSHttpResponse httpResponse, ExpiringKey<UUID> BadRequests)
         {
+            //m_log.DebugFormat("[XXX]: FetchInventoryDescendentsRequest in {0}, {1}", (m_Scene == null) ? "none" : m_Scene.Name, request);
 
+	    // AKIDO
             if (m_log.IsDebugEnabled)
             {
                 m_log.DebugFormat("[XXX]: FetchInventoryDescendentsRequest in {0}, {1}", (m_Scene == null) ? "none" : m_Scene.Name, httpRequest.Url);
@@ -81,6 +83,7 @@ namespace OpenSim.Capabilities.Handlers
             
             List<LLSDFetchInventoryDescendents> folders;
             List<UUID> bad_folders = new();
+
             try
             {
                 OSDArray foldersrequested = null;
@@ -119,7 +122,7 @@ namespace OpenSim.Capabilities.Handlers
                         }
                         catch (Exception e)
                         {
-                            m_log.Debug("caught exception doing OSD deserialize" + e.Message);
+                            m_log.Debug("[WEB FETCH INV DESC HANDLER]: caught exception doing OSD deserialize" + e.Message);
                             continue;
                         }
                         folders.Add(llsdRequest);
@@ -130,7 +133,7 @@ namespace OpenSim.Capabilities.Handlers
             }
             catch (Exception e)
             {
-                m_log.Error("fail parsing request: " + e.Message);
+                m_log.Error("[FETCH INV DESC]: fail parsing request: " + e.Message);
                 httpResponse.RawBuffer = EmptyResponse;
                 return;
             }
@@ -144,7 +147,7 @@ namespace OpenSim.Capabilities.Handlers
                 }
 
                 osUTF8 osu = OSUTF8Cached.Acquire();
-                osu.AppendASCII("Unable to fetch folders owned by Unknown user:");
+                osu.AppendASCII("[WEB FETCH INV DESC HANDLER]: Unable to fetch folders owned by Unknown user:");
                 int limit = 5;
                 int count = 0;
                 foreach (UUID bad in bad_folders)
@@ -311,6 +314,7 @@ namespace OpenSim.Capabilities.Handlers
 
         private List<InventoryCollection> Fetch(List<LLSDFetchInventoryDescendents> fetchFolders, List<UUID> bad_folders)
         {
+	    // AKIDO
             if (m_log.IsDebugEnabled) m_log.DebugFormat(
                 "Fetching {0} folders for owner {1}", fetchFolders.Count, fetchFolders[0].owner_id);
 
@@ -362,6 +366,7 @@ namespace OpenSim.Capabilities.Handlers
 
             if(otherFolders.Count > 0)
             { 
+	        // AKIDO
                 if (m_log.IsDebugEnabled) m_log.DebugFormat("OtherIDs: {0}", string.Join(",", otherIDs));
 
                 InventoryCollection[] fetchedContents = m_InventoryService.GetMultipleFoldersContent(otherFolders[0].owner_id, otherIDs.ToArray());
@@ -411,6 +416,7 @@ namespace OpenSim.Capabilities.Handlers
 
         private bool BadFolder(LLSDFetchInventoryDescendents freq, InventoryCollection contents, List<UUID> bad_folders)
         {
+	    // AKIDO
             if (m_log.IsDebugEnabled) m_log.DebugFormat("Bad folder {0} for owner {1}", freq.folder_id, freq.owner_id);
             
             if (contents is null)
@@ -439,6 +445,7 @@ namespace OpenSim.Capabilities.Handlers
 
         private void ProcessLinks(LLSDFetchInventoryDescendents freq, InventoryCollection contents)
         {
+	    // AKIDO
             if(m_log.IsDebugEnabled) m_log.DebugFormat("Processing links for folder {0} ({1})", freq.folder_id, freq.owner_id);
             
             if (contents.Items is null || contents.Items.Count == 0)

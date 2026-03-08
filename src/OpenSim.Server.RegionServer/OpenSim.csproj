@@ -1,0 +1,209 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PreserveCompilationContext>false</PreserveCompilationContext>
+    <OutputType>Exe</OutputType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OpenSim</AssemblyName>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <GenerateDependencyFile>true</GenerateDependencyFile>
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>True</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>False</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <BaseAddress>285212672</BaseAddress>
+    <ConfigurationOverrideFile>
+    </ConfigurationOverrideFile>
+    <DefineConstants></DefineConstants>
+    <DocumentationFile></DocumentationFile>
+    <DebugSymbols>False</DebugSymbols>
+    <FileAlignment>4096</FileAlignment>
+    <Optimize>True</Optimize>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+    <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <RemoveIntegerChecks>False</RemoveIntegerChecks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoStdLib>False</NoStdLib>
+    <NoWarn>CA1416,SYSLIB0011,SYSLIB0014,SYSLIB0039</NoWarn>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="log4net" Version="2.0.17" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <PackageReference Include="OpenTelemetry" Version="1.14.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <Reference Include="Mono.Addins" >
+      <Name>Mono.Addins</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/Mono.Addins.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NDesk.Options" >
+      <Name>NDesk.Options</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/NDesk.Options.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse" >
+      <Name>OpenMetaverse</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/OpenMetaverse.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OpenMetaverse.StructuredData" >
+      <Name>OpenMetaverse.StructuredData</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/OpenMetaverse.StructuredData.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OpenMetaverseTypes" >
+      <Name>OpenMetaverseTypes</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/OpenMetaverseTypes.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="XMLRPC" >
+      <Name>XMLRPC</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/XMLRPC.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="LukeSkywalker.IPNetwork" >
+      <Name>LukeSkywalker.IPNetwork</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/LukeSkywalker.IPNetwork.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="C5" >
+      <Name>C5</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/C5.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="CSJ2K" >
+      <Name>CSJ2K</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/CSJ2K.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DotNetOpenId" >
+      <Name>DotNetOpenId</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/DotNetOpenId.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Ionic.Zip" >
+      <Name>Ionic.Zip</Name>
+      <HintPath>/home/akira/develop/0.9.3.0_akisim/akisim/bin/Ionic.Zip.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Data/OpenSim.Data.csproj" />
+    <ProjectReference Include="../../Framework/OpenSim.Framework.csproj" />
+    <ProjectReference Include="../../Framework/Console/OpenSim.Framework.Console.csproj" />
+    <ProjectReference Include="../../Framework/Monitoring/OpenSim.Framework.Monitoring.csproj" />
+    <ProjectReference Include="../../Framework/Servers/OpenSim.Framework.Servers.csproj" />
+    <ProjectReference Include="../../Framework/Servers/HttpServer/OpenSim.Framework.Servers.HttpServer.csproj" />
+    <ProjectReference Include="../CoreModules/OpenSim.Region.CoreModules.csproj" />
+    <ProjectReference Include="../Framework/OpenSim.Region.Framework.csproj" />
+    <ProjectReference Include="../PhysicsModules/SharedBase/OpenSim.Region.PhysicsModules.SharedBase.csproj" />
+    <ProjectReference Include="../../Server/Base/OpenSim.Server.Base.csproj" />
+    <ProjectReference Include="../../Services/AssetService/OpenSim.Services.AssetService.csproj" />
+    <ProjectReference Include="../../Services/AuthenticationService/OpenSim.Services.AuthenticationService.csproj" />
+    <ProjectReference Include="../../Services/AuthorizationService/OpenSim.Services.AuthorizationService.csproj" />
+    <ProjectReference Include="../../Services/AvatarService/OpenSim.Services.AvatarService.csproj" />
+    <ProjectReference Include="../../Services/Base/OpenSim.Services.Base.csproj" />
+    <ProjectReference Include="../../Services/Connectors/OpenSim.Services.Connectors.csproj" />
+    <ProjectReference Include="../../Services/EstateService/OpenSim.Services.EstateService.csproj" />
+    <ProjectReference Include="../../Services/FSAssetService/OpenSim.Services.FSAssetService.csproj" />
+    <ProjectReference Include="../../Services/FreeswitchService/OpenSim.Services.FreeswitchService.csproj" />
+    <ProjectReference Include="../../Services/Friends/OpenSim.Services.FriendsService.csproj" />
+    <ProjectReference Include="../../Services/GridService/OpenSim.Services.GridService.csproj" />
+    <ProjectReference Include="../../Services/HypergridService/OpenSim.Services.HypergridService.csproj" />
+    <ProjectReference Include="../../Services/Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="../../Services/InventoryService/OpenSim.Services.InventoryService.csproj" />
+    <ProjectReference Include="../../Services/LLLoginService/OpenSim.Services.LLLoginService.csproj" />
+    <ProjectReference Include="../../Services/MapImageService/OpenSim.Services.MapImageService.csproj" />
+    <ProjectReference Include="../../Services/MuteListService/OpenSim.Services.MuteListService.csproj" />
+    <ProjectReference Include="../../Services/PresenceService/OpenSim.Services.PresenceService.csproj" />
+    <ProjectReference Include="../../Services/SimulationService/OpenSim.Services.SimulationService.csproj" />
+    <ProjectReference Include="../../Services/UserAccountService/OpenSim.Services.UserAccountService.csproj" />
+    <ProjectReference Include="../../Services/UserProfilesService/OpenSim.Services.UserProfilesService.csproj" />
+  </ItemGroup>
+
+  <!-- Copy all plugin DLLs to publish directory after publish -->
+  <Target Name="CopyApplicationPlugins" AfterTargets="Publish">
+    <ItemGroup>
+      <!-- ApplicationPlugins -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../ApplicationPlugins/LoadRegions/bin/$(Configuration)/OpenSim.ApplicationPlugins.LoadRegions.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../ApplicationPlugins/RegionModulesController/bin/$(Configuration)/OpenSim.ApplicationPlugins.RegionModulesController.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../ApplicationPlugins/RemoteController/bin/$(Configuration)/OpenSim.ApplicationPlugins.RemoteController.dll" />
+      <!-- Data providers -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Data/Null/bin/$(Configuration)/OpenSim.Data.Null.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Data/PGSQL/bin/$(Configuration)/OpenSim.Data.PGSQL.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Data/SQLite/bin/$(Configuration)/OpenSim.Data.SQLite.dll" />
+      <!-- Physics modules -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/BasicPhysics/bin/$(Configuration)/OpenSim.Region.PhysicsModule.BasicPhysics.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/BulletS/bin/$(Configuration)/OpenSim.Region.PhysicsModule.BulletS.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/ConvexDecompositionDotNet/bin/$(Configuration)/OpenSim.Region.PhysicsModules.ConvexDecompositionDotNet.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/Meshing/bin/$(Configuration)/OpenSim.Region.PhysicsModule.Meshing.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/POS/bin/$(Configuration)/OpenSim.Region.PhysicsModule.POS.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/ubOde/bin/$(Configuration)/OpenSim.Region.PhysicsModule.ubOde.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../PhysicsModules/ubOdeMeshing/bin/$(Configuration)/OpenSim.Region.PhysicsModule.ubOdeMeshing.dll" />
+      <!-- Addons -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Addons/Groups/bin/$(Configuration)/OpenSim.Addons.Groups.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Addons/OfflineIM/bin/$(Configuration)/OpenSim.Addons.OfflineIM.dll" />
+      <!-- ClientStack -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../ClientStack/Linden/Caps/bin/$(Configuration)/OpenSim.Region.ClientStack.LindenCaps.dll" />
+      <!-- Capabilities Handlers -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Capabilities/Handlers/bin/$(Configuration)/OpenSim.Capabilities.Handlers.dll" />
+      <!-- Script Engine -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../ScriptEngine/Shared/bin/$(Configuration)/OpenSim.Region.ScriptEngine.Shared.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../ScriptEngine/Shared/Api/Runtime/bin/$(Configuration)/OpenSim.Region.ScriptEngine.Shared.Api.Runtime.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../ScriptEngine/Shared/Api/Implementation/bin/$(Configuration)/OpenSim.Region.ScriptEngine.Shared.Api.dll" />
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../ScriptEngine/YEngine/bin/$(Configuration)/OpenSim.Region.ScriptEngine.YEngine.dll" />
+      <!-- Optional modules -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../OptionalModules/bin/$(Configuration)/OpenSim.Region.OptionalModules.dll" />
+      <!-- Currency module from addon-modules -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../../addon-modules/akkimoney_module/Modules/bin/$(Configuration)/OpenSim.Modules.Currency.dll" />
+      <!-- AssetLoader -->
+      <PluginFiles Include="$(MSBuildThisFileDirectory)../../Framework/AssetLoader/Filesystem/bin/$(Configuration)/OpenSim.Framework.AssetLoader.Filesystem.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <Message Text="Copied all plugin DLLs to $(PublishDir)" Importance="high" />
+  </Target>
+
+</Project>

@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
 using System.Collections.Generic;
@@ -38,11 +39,14 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using log4net;
 using System.Reflection;
-using ThreadedClasses;
-// AKIDO: clean
+// AKIDO remove Mono.Addins;
+using ThreadedClasses; // AKIDO
+using SkiaSharp; // AKIDO
+
 
 namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "DynamicTextureModule")]
     public class DynamicTextureModule : ISharedRegionModule, IDynamicTextureManager
     {
 //        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -114,10 +118,19 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
         {
             DynamicTextureUpdater updater = null;
 
-            if(Updaters.TryGetValue(updaterId, out updater))
+            lock (Updaters)
             {
-                if (RegisteredScenes.TryGetValue(updater.SimUUID, out Scene scene))
+                if (Updaters.ContainsKey(updaterId))
                 {
+                    updater = Updaters[updaterId];
+                }
+            }
+
+            if (updater != null)
+            {
+                if (RegisteredScenes.ContainsKey(updater.SimUUID))
+                {
+                    Scene scene = RegisteredScenes[updater.SimUUID];
                     UUID newTextureID = updater.DataReceived(texture.Data, scene);
 
                     if (ReuseTextures
@@ -128,6 +141,7 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                         m_reuseableDynamicTextures.Store(
                             GenerateReusableTextureKey(texture.InputCommands, texture.InputParams), newTextureID);
                     }
+                    updater.newTextureID = newTextureID;
                 }
 
                 // AKIDO
@@ -188,10 +202,12 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                 updater.Face = face;
                 updater.Disp = disp;
 
-                try {
-                    Updaters.Add(updater.UpdaterID, updater);
-                } catch {
-                }
+// AKIDO remove lock (Updaters) {
+                    if (!Updaters.ContainsKey(updater.UpdaterID))
+                    {
+                        Updaters.Add(updater.UpdaterID, updater);
+                    }
+// AKIDO        }
 
                 RenderPlugins[contentType].AsyncConvertUrl(updater.UpdaterID, url, extraParams);
                 return updater.newTextureID;
@@ -270,7 +286,12 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
             // We cannot reuse a dynamic texture if the data is going to be blended with something already there.
             if (objReusableTextureUUID == null)
             {
-                Updaters.AddIfNotExists(updater.UpdaterID, delegate() { return updater; });
+// AKIDO remove  lock (Updaters) {
+                    if (!Updaters.ContainsKey(updater.UpdaterID))
+                    {
+                        Updaters.Add(updater.UpdaterID, updater);
+                    }
+// AKIDO          }
 
 //                m_log.DebugFormat(
 //                    "[DYNAMIC TEXTURE MODULE]: Requesting generation of new dynamic texture for {0} in {1}",
@@ -334,10 +355,11 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
         public void AddRegion(Scene scene)
         {
-            // AKIDO
-            RegisteredScenes.Add(scene.RegionInfo.RegionID, scene);
-            scene.RegisterModuleInterface<IDynamicTextureManager>(this);
-            // AKIDO
+            if (!RegisteredScenes.ContainsKey(scene.RegionInfo.RegionID))
+            {
+                RegisteredScenes.Add(scene.RegionInfo.RegionID, scene);
+                scene.RegisterModuleInterface<IDynamicTextureManager>(this);
+            }
         }
 
         public void RegionLoaded(Scene scene)
@@ -346,8 +368,8 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
         public void RemoveRegion(Scene scene)
         {
-            // AKIDO
-            RegisteredScenes.Remove(scene.RegionInfo.RegionID);
+            if (RegisteredScenes.ContainsKey(scene.RegionInfo.RegionID))
+                RegisteredScenes.Remove(scene.RegionInfo.RegionID);
         }
 
         public void Close()
@@ -399,6 +421,9 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
             public UUID UpdatePart(SceneObjectPart part, UUID textureID)
             {
                 UUID oldID;
+
+                if( Face == -9999)
+                    return UUID.Zero;
 
                 lock (part)
                 {
@@ -517,11 +542,9 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
                 UUID oldID = UpdatePart(part, asset.FullID);
 
-                if (!oldID.IsZero() && ((Disp & DISP_EXPIRE) != 0))
+                if ((Disp & DISP_EXPIRE) != 0 && oldID.IsNotZero() )
                 {
-                    if (oldAsset == null)
-                        oldAsset = scene.AssetService.Get(oldID.ToString());
-
+                    oldAsset ??= scene.AssetService.Get(oldID.ToString());
                     if (oldAsset != null)
                     {
                         if (oldAsset.Temporary)
@@ -534,14 +557,19 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
             private byte[] BlendTextures(byte[] frontImage, byte[] backImage, byte newAlpha)
             {
+				// AKIDO replaced System.Drawing.Common with SkiaSharp
                 ManagedImage managedImage;
-                Image image;
 
-                if (!OpenJPEG.DecodeToImage(frontImage, out managedImage, out image) || image == null)
+                if (!OpenJPEG.DecodeToImage(frontImage, out managedImage) || managedImage == null)
                     return null;
 
-                Bitmap image1 = new Bitmap(image);
-                image.Dispose();
+                // Convert ManagedImage to System.Drawing.Bitmap for manipulation
+                Bitmap image1;
+                using (var ms = new System.IO.MemoryStream(managedImage.ExportTGA()))
+                {
+                    image1 = (Bitmap)System.Drawing.Image.FromStream(ms);
+                }
+                managedImage = null;
 
                 if(backImage == null)
                 {
@@ -550,7 +578,16 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
                     try
                     {
-                        result = OpenJPEG.EncodeFromImage(image1, false);
+                        // Convert System.Drawing.Bitmap to SKBitmap for encoding
+                        using (var ms = new System.IO.MemoryStream())
+                        {
+                            image1.Save(ms, ImageFormat.Png);
+                            ms.Position = 0;
+                            using (SKBitmap skBitmap = SKBitmap.Decode(ms))
+                            {
+                                result = OpenJPEG.EncodeFromImage(skBitmap, false);
+                            }
+                        }
                     }
                     catch (Exception e)
                     {
@@ -560,14 +597,19 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
                     return result;
                 }
 
-                if (!OpenJPEG.DecodeToImage(backImage, out managedImage, out image) || image == null)
+                if (!OpenJPEG.DecodeToImage(backImage, out managedImage) || managedImage == null)
                 {
                     image1.Dispose();
                     return null;
                 }
 
-                Bitmap image2 = new Bitmap(image);
-                image.Dispose();
+                // Convert second ManagedImage to System.Drawing.Bitmap
+                Bitmap image2;
+                using (var ms = new System.IO.MemoryStream(managedImage.ExportTGA()))
+                {
+                    image2 = (Bitmap)System.Drawing.Image.FromStream(ms);
+                }
+                managedImage = null;
 
                 using(Bitmap joint = MergeBitMaps(image1, image2, newAlpha))
                 {
@@ -578,7 +620,16 @@ namespace OpenSim.Region.CoreModules.Scripting.DynamicTexture
 
                     try
                     {
-                        result = OpenJPEG.EncodeFromImage(joint, false);
+                        // Convert System.Drawing.Bitmap to SKBitmap for encoding
+                        using (var ms = new System.IO.MemoryStream())
+                        {
+                            joint.Save(ms, ImageFormat.Png);
+                            ms.Position = 0;
+                            using (SKBitmap skBitmap = SKBitmap.Decode(ms))
+                            {
+                                result = OpenJPEG.EncodeFromImage(skBitmap, false);
+                            }
+                        }
                     }
                     catch (Exception e)
                     {

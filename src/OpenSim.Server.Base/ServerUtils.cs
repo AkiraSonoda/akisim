@@ -39,15 +39,11 @@ using log4net;
 using Nini.Config;
 using OpenSim.Framework;
 using OpenMetaverse;
-using Mono.Addins;
 using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Framework.Servers;
 using OpenMetaverse.StructuredData; // LitJson is hidden on this
-
-[assembly:AddinRoot("Robust", OpenSim.VersionInfo.VersionNumber)]
 namespace OpenSim.Server.Base
 {
-    [TypeExtensionPoint(Path="/Robust/Connector", Name="RobustConnector")]
     public interface IRobustConnector
     {
         string ConfigName

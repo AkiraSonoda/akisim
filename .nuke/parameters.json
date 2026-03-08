@@ -1,6 +1,0 @@
-{
-  "$schema": "build.schema.json",
-  "Solution": "Akisim.sln",
-  "DOTNET_ROOT": "/usr/share/dotnet",
-  "DOTNET_PATH": "/usr/bin/dotnet"
-}

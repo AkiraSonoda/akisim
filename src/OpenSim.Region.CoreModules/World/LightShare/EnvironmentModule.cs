@@ -38,6 +38,7 @@ using OpenSim.Region.Framework.Scenes;
 using OpenSim.Services.Interfaces;
 using log4net;
 using Nini.Config;
+// AKIDO remove Mono.Addins;
 
 using Caps = OpenSim.Framework.Capabilities.Caps;
 using OSDArray = OpenMetaverse.StructuredData.OSDArray;
@@ -47,6 +48,8 @@ using MethodImplOptions = System.Runtime.CompilerServices.MethodImplOptions;
 
 namespace OpenSim.Region.CoreModules.World.LightShare
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "EnvironmentModule")]
+
     public class EnvironmentModule : INonSharedRegionModule, IEnvironmentModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -89,7 +92,6 @@ namespace OpenSim.Region.CoreModules.World.LightShare
             }
 
             Enabled = true;
-
 
             m_log.InfoFormat("[{0}]: Module is enabled.", Name);
         }
@@ -774,7 +776,7 @@ namespace OpenSim.Region.CoreModules.World.LightShare
                     Name, m_scene.Name, e.Message, e.StackTrace);
 
                 success = false;
-                fail_reason = String.Format("Environment Set for region {0} has failed, settings not saved.", m_scene.Name);
+                fail_reason = string.Format("Environment Set for region {0} has failed, settings not saved.", m_scene.Name);
             }
 
             Error:

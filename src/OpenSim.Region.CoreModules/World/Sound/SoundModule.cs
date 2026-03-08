@@ -31,12 +31,15 @@ using System.Reflection;
 using Nini.Config;
 using OpenMetaverse;
 using log4net;
+// AKIDO remove Mono.Addins;
+
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 
 namespace OpenSim.Region.CoreModules.World.Sound
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "SoundModule")]
     public class SoundModule : INonSharedRegionModule, ISoundModule
     {
         //private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -219,7 +222,6 @@ namespace OpenSim.Region.CoreModules.World.Sound
                     return;
                 if (!ssp.ParcelAllowThisAvatarSounds)
                     return;
-
                 radius = MaxDistance;
             }
             else
@@ -233,7 +235,6 @@ namespace OpenSim.Region.CoreModules.World.Sound
 
                     if (!ssp.ParcelAllowThisAvatarSounds)
                         return;
-
                 }
 
                 radius = (float)part.SoundRadius;

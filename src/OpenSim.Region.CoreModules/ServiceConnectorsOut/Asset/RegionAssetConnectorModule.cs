@@ -26,6 +26,7 @@
  */
 
 using log4net;
+// AKIDO remove Mono.Addins;
 using Nini.Config;
 using System;
 using System.Collections.Concurrent;
@@ -45,6 +46,7 @@ using OpenSim.Services.Interfaces;
 
 namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
 {
+    // AKIDO remove Mono.Addins [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "RegionAssetConnector")]
     public class RegionAssetConnector : ISharedRegionModule, IAssetService
     {
         private static readonly ILog m_log = LogManager.GetLogger( MethodBase.GetCurrentMethod().DeclaringType);
@@ -513,7 +515,6 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
             return null;
         }
 
-        private readonly string stringUUIDZero = UUID.Zero.ToString();
         public string Store(AssetBase asset)
         {
             string id;
@@ -525,7 +526,7 @@ namespace OpenSim.Region.CoreModules.ServiceConnectorsOut.Asset
                 id = StoreForeign(asset);
                 if (m_Cache != null)
                 {
-                    if (!string.IsNullOrEmpty(id) && !id.Equals(stringUUIDZero))
+                    if (!string.IsNullOrEmpty(id) && !id.Equals(UUID.ZeroString))
                         m_Cache.Cache(asset);
                 }
                 return id;

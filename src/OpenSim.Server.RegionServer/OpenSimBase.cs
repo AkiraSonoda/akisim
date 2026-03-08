@@ -49,7 +49,6 @@ using OpenSim.Server.Base;
 using OpenSim.Services.Base;
 using OpenSim.Services.Interfaces;
 using OpenSim.Services.UserAccountService;
-// Removed circular dependency - will use reflection to load RegionModulesController
 
 namespace OpenSim
 {
@@ -175,15 +174,17 @@ namespace OpenSim
             }
         }
 
-        protected virtual void LoadPlugins()
+        protected virtual void LoadPlugins() // AKIDO
         {
             // PluginLoader removed - using manual plugin loading only
-            // Manual fallback for RegionModulesController when Mono.Addins fails
+            // Manual loading of essential application plugins
+
+            // Load RegionModulesController
             IRegionModulesController testController;
             if (!ApplicationRegistry.TryGet<IRegionModulesController>(out testController))
             {
                 m_log.Warn("[STARTUP]: RegionModulesController not found via Mono.Addins, loading manually...");
-                
+
                 try
                 {
                     // Use reflection to avoid circular dependency
@@ -205,6 +206,29 @@ namespace OpenSim
                 {
                     m_log.Error("[STARTUP]: Failed to manually load RegionModulesController: " + e.Message);
                 }
+            }
+
+            // Load LoadRegionsPlugin
+            try
+            {
+                m_log.Info("[STARTUP]: Loading LoadRegionsPlugin manually...");
+                Assembly loadRegionsAssembly = Assembly.LoadFrom("OpenSim.ApplicationPlugins.LoadRegions.dll");
+                Type loadRegionsType = loadRegionsAssembly.GetType("OpenSim.ApplicationPlugins.LoadRegions.LoadRegionsPlugin");
+                if (loadRegionsType != null)
+                {
+                    var loadRegionsPlugin = (IApplicationPlugin)Activator.CreateInstance(loadRegionsType);
+                    loadRegionsPlugin.Initialise(this);
+                    m_plugins.Add(loadRegionsPlugin);
+                    m_log.Info("[STARTUP]: LoadRegionsPlugin loaded manually via reflection.");
+                }
+                else
+                {
+                    m_log.Error("[STARTUP]: Could not find LoadRegionsPlugin type in assembly.");
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.Error("[STARTUP]: Failed to manually load LoadRegionsPlugin: " + e.Message);
             }
         }
 
@@ -251,6 +275,45 @@ namespace OpenSim
                 managedStatsPassword = startupConfig.GetString("ManagedStatsRemoteFetchPassword", String.Empty);
             }
 
+            // AKIDO Initialize OpenTelemetry metrics
+            try
+            {
+                var metrics = OpenTelemetryMetrics.Instance;
+                metrics.Configure(Config, autoStart: true);
+
+                // Add console commands for telemetry testing
+                if (MainConsole.Instance != null)
+                {
+                    MainConsole.Instance.Commands.AddCommand(
+                        "Monitoring", false, "telemetry export",
+                        "telemetry export",
+                        "Manually trigger OpenTelemetry metrics export",
+                        (module, args) =>
+                        {
+                            m_log.Info("[OPENTELEMETRY]: Manual export requested via console");
+                            OpenTelemetryMetrics.Instance.TestExport();
+                        });
+
+                    MainConsole.Instance.Commands.AddCommand(
+                        "Monitoring", false, "telemetry test",
+                        "telemetry test",
+                        "Record test metrics and trigger export",
+                        (module, args) =>
+                        {
+                            m_log.Info("[OPENTELEMETRY]: Recording test metrics...");
+                            OpenTelemetryMetrics.Instance.RecordAvatarConnection();
+                            OpenTelemetryMetrics.Instance.RecordScriptExecution();
+                            OpenTelemetryMetrics.Instance.RecordFrameTime(16.7);
+                            m_log.Info("[OPENTELEMETRY]: Test metrics recorded, triggering export...");
+                            OpenTelemetryMetrics.Instance.TestExport();
+                        });
+                }
+            }
+            catch (Exception ex)
+            {
+                m_log.Warn($"[OPENTELEMETRY]: Failed to initialize metrics: {ex.Message}");
+            }
+
             // Load the simulation data service
             IConfig simDataConfig = Config.Configs["SimulationDataStore"];
             if (simDataConfig == null)
@@ -283,6 +346,32 @@ namespace OpenSim
             }
 
             base.StartupSpecific();
+
+            // AKIDO Initialize OpenTelemetry
+            try
+            {
+                OpenTelemetryManager.Initialize(ConfigSource.Source);
+                m_log.Info("[STARTUP]: OpenTelemetry initialized");
+
+                // Register metrics exporter now that OpenTelemetry is initialized
+                if (OpenTelemetryManager.IsInitialized && OpenTelemetryManager.Instance.MetricsEnabled)
+                {
+                    try
+                    {
+                        var metricsExporter = new OpenTelemetryMetricsExporter();
+                        metricsExporter.RegisterStatsManagerMetrics();
+                        m_log.Info("[STARTUP]: OpenTelemetry metrics exporter registered");
+                    }
+                    catch (Exception ex)
+                    {
+                        m_log.Warn($"[STARTUP]: Failed to register OpenTelemetry metrics exporter: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.Warn($"[STARTUP]: OpenTelemetry initialization failed: {e.Message}");
+            }
 
             if (EnableInitialPluginLoad)
                 LoadPlugins();
@@ -512,6 +601,9 @@ namespace OpenSim
                 scene.SnmpService.BootInfo("Loading prims", scene);
             }
 
+            // AKIDO
+	    // while (regionInfo.EstateSettings.EstateOwner.IsZero() && MainConsole.Instance != null)
+            //     SetUpEstateOwner(scene);
 
             scene.loadAllLandObjectsFromStorage(regionInfo.originRegionID);
 
@@ -559,7 +651,7 @@ namespace OpenSim
             }
 
             SceneManager.Add(scene);
-
+            // AKIDO
             // Set up estate owner after all modules are loaded and interfaces are available
             while (regionInfo.EstateSettings.EstateOwner.IsZero() && MainConsole.Instance != null)
                 SetUpEstateOwner(scene);
@@ -636,6 +728,7 @@ namespace OpenSim
                 estateOwnerLastName = MainConsole.Instance.Prompt("Estate owner last name", "User", excluded);
             }
 
+            // AKIDO
             if (scene.UserAccountService == null)
             {
                 m_log.Error("[OPENSIM BASE]: UserAccountService is not available yet. Cannot set up estate owner at this time.");
@@ -979,6 +1072,16 @@ namespace OpenSim
 
             try
             {
+                // AKIDO Stop OpenTelemetry metrics
+                try
+                {
+                    OpenTelemetryMetrics.Instance.Stop();
+                }
+                catch (Exception ex)
+                {
+                    m_log.Warn($"[OPENTELEMETRY]: Error stopping metrics: {ex.Message}");
+                }
+
                 SceneManager.Close();
 
                 foreach (IApplicationPlugin plugin in m_plugins)

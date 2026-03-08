@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+// AKIDO clean
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -36,7 +36,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
 using log4net;
-using ThreadedClasses;
+using ThreadedClasses; // AKIDO
 using OpenMetaverse;
 using OpenMetaverse.Packets;
 using OpenSim.Framework;
@@ -44,7 +44,6 @@ using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes.Serialization;
 using OpenSim.Region.PhysicsModules.SharedBase;
 using PermissionMask = OpenSim.Framework.PermissionMask;
-// AKIDO: clean
 
 namespace OpenSim.Region.Framework.Scenes
 {
@@ -149,7 +148,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public bool IsRoot
         {
-            get { return Object.ReferenceEquals(ParentGroup.RootPart, this); }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return object.ReferenceEquals(ParentGroup.RootPart, this); }
         }
 
         /// <summary>
@@ -196,7 +196,13 @@ namespace OpenSim.Region.Framework.Scenes
         /// If another thread is simultaneously turning physics off on this part then this refernece could become
         /// null at any time.
         /// </remarks>
-        public PhysicsActor PhysActor { get; set; }
+        public PhysicsActor PhysActor
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set;
+        }
 
         //Xantor 20080528 Sound stuff:
         //  Note: This isn't persisted in the database right now, as the fields for that aren't just there yet.
@@ -233,7 +239,9 @@ namespace OpenSim.Region.Framework.Scenes
 
         public UUID FromUserInventoryItemID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_fromUserInventoryItemID; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { m_fromUserInventoryItemID = value; }
         }
 
@@ -251,6 +259,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool VolumeDetectActive
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return (m_flags & (PrimFlags)primFlagVolumeDetect) != 0;
@@ -278,6 +287,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public IEntityInventory Inventory
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_inventory; }
         }
         protected SceneObjectPartInventory m_inventory;
@@ -296,8 +306,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         private int m_scriptAccessPin;
 
-        private RwLockedDictionary<UUID, scriptEvents> m_scriptEvents = // AKIDO
-            new RwLockedDictionary<UUID, scriptEvents>(); // AKIDO
+        private RwLockedDictionary<UUID, scriptEvents> m_scriptEvents = new RwLockedDictionary<UUID, scriptEvents>(); // AKIDO
         private Quaternion m_sitTargetOrientation = Quaternion.Identity;
         private Vector3 m_sitTargetPosition;
         private string m_sitAnimation = "SIT";
@@ -504,7 +513,9 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public string CreatorData
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_creatorData; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { m_creatorData = value; }
         }
 
@@ -567,7 +578,9 @@ namespace OpenSim.Region.Framework.Scenes
         /// </value>
         public uint InventorySerial
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_inventory.Serial; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { m_inventory.Serial = value; }
         }
 
@@ -576,10 +589,13 @@ namespace OpenSim.Region.Framework.Scenes
         /// </value>
         public TaskInventoryDictionary TaskInventory
         {
-            get {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
                 return m_inventory.Items;
             }
-            set {
+            set
+            {
                 m_inventory.Items = value;
             }
         }
@@ -590,12 +606,14 @@ namespace OpenSim.Region.Framework.Scenes
         [Obsolete("Use Flags property instead")]
         public uint ObjectFlags
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return (uint)Flags; }
             set { Flags = (PrimFlags)value; }
         }
 
         public override UUID UUID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_uuid; }
             set
             {
@@ -610,6 +628,7 @@ namespace OpenSim.Region.Framework.Scenes
         private osUTF8 osUTF8LargeName;
         public override string Name
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return osUTF8LargeName == null ? string.Empty : osUTF8LargeName.ToString();
@@ -639,30 +658,37 @@ namespace OpenSim.Region.Framework.Scenes
         [XmlIgnore]
         public bool PassTouches
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_passTouches; }
             set
             {
-                m_passTouches = value;
-
-                if (ParentGroup != null)
-                    ParentGroup.HasGroupChanged = true;
+                if(m_passTouches != value)
+                {
+                    m_passTouches = value;
+                    if(ParentGroup != null)
+                        ParentGroup.HasGroupChanged = true;
+                }
             }
         }
 
         public bool PassCollisions
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_passCollisions; }
             set
             {
-                m_passCollisions = value;
-
-                if (ParentGroup != null)
-                    ParentGroup.HasGroupChanged = true;
+                if(m_passCollisions != value)
+                {
+                    m_passCollisions = value;
+                    if(ParentGroup != null)
+                        ParentGroup.HasGroupChanged = true;
+                }
             }
         }
 
         public bool IsSelected
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_isSelected; }
             set
             {
@@ -673,30 +699,35 @@ namespace OpenSim.Region.Framework.Scenes
 
         protected bool APIDActive
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_APIDActive; }
             set { m_APIDActive = value; }
         }
 
         protected Quaternion APIDTarget
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_APIDTarget; }
             set { m_APIDTarget = value; }
         }
 
         protected float APIDDamp
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_APIDDamp; }
             set { m_APIDDamp = value; }
         }
 
         protected float APIDStrength
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_APIDStrength; }
             set { m_APIDStrength = value; }
         }
 
         public ulong RegionHandle
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_regionHandle; }
             set { m_regionHandle = value; }
         }
@@ -707,8 +738,9 @@ namespace OpenSim.Region.Framework.Scenes
             set { m_scriptAccessPin = (int)value; }
         }
 
-        public Byte[] TextureAnimation
+        public byte[] TextureAnimation
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_TextureAnimation; }
             set { m_TextureAnimation = value; }
         }
@@ -729,12 +761,14 @@ namespace OpenSim.Region.Framework.Scenes
 
         public DateTime Expires
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_expires; }
             set { m_expires = value; }
         }
 
         public DateTime Rezzed
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_rezzed; }
             set { m_rezzed = value; }
         }
@@ -742,10 +776,12 @@ namespace OpenSim.Region.Framework.Scenes
 
         public float Damage
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_damage; }
             set { m_damage = value; }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void setGroupPosition(Vector3 pos)
         {
             m_groupPosition = pos;
@@ -784,6 +820,7 @@ namespace OpenSim.Region.Framework.Scenes
             set
             {
                 m_groupPosition = value;
+
                 PhysicsActor actor = PhysActor;
                 if (actor != null && ParentGroup.Scene.PhysicsScene != null)
                 {
@@ -803,12 +840,13 @@ namespace OpenSim.Region.Framework.Scenes
                     }
                     catch (Exception e)
                     {
-                        m_log.ErrorFormat("GROUP POSITION. {0}", e);
+                        m_log.ErrorFormat("[SCENEOBJECTPART]: GROUP POSITION. {0}", e);
                     }
                 }
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void setOffsetPosition(Vector3 pos)
         {
             m_offsetPosition = pos;
@@ -816,6 +854,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public Vector3 OffsetPosition
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_offsetPosition; }
             set
             {
@@ -871,6 +910,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void setRotationOffset(Quaternion q)
         {
             m_rotationOffset = q;
@@ -878,21 +918,22 @@ namespace OpenSim.Region.Framework.Scenes
 
         public Quaternion RotationOffset
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                // We don't want the physics engine mucking up the rotations in a linkset
-                PhysicsActor actor = PhysActor;
                 // If this is a root of a linkset, the real rotation is what the physics engine thinks.
                 // If not a root prim, the offset rotation is computed by SOG and is relative to the root.
-                if (_parentID == 0 && (Shape.PCode != 9 || Shape.State == 0) && actor != null)
+                PhysicsActor actor = PhysActor;
+                if (actor != null && _parentID == 0 && (Shape.PCode != 9 || Shape.State == 0))
+                { 
                     m_rotationOffset = actor.Orientation;
-
+                }
                 return m_rotationOffset;
             }
 
             set
             {
-//                StoreUndoState();
+                //StoreUndoState();
                 m_rotationOffset = value;
                 m_rotationOffset.Normalize();
 
@@ -905,17 +946,19 @@ namespace OpenSim.Region.Framework.Scenes
                         if (_parentID == 0)
                         {
                             actor.Orientation = value;
+                            //m_log.Info("[PART]: RO1:" + actor.Orientation.ToString());
                         }
                         else
                         {
                             // Child prim we have to calculate it's world rotationwel
                             Quaternion resultingrotation = GetWorldRotation();
                             actor.Orientation = resultingrotation;
+                            //m_log.Info("[PART]: RO2:" + actor.Orientation.ToString());
                         }
                     }
                     catch (Exception ex)
                     {
-                        m_log.Error("ROTATIONOFFSET" + ex.Message);
+                        m_log.Error("[SCENEOBJECTPART]: ROTATIONOFFSET" + ex.Message);
                     }
                 }
             }
@@ -954,9 +997,12 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>Update angular velocity and schedule terse update.</summary>
         public void UpdateAngularVelocity(Vector3 avel)
         {
-            AngularVelocity = avel;
-            ScheduleTerseUpdate();
-            ParentGroup.HasGroupChanged = true;
+            if(m_angularVelocity.NotEqual(avel))
+            {
+                AngularVelocity = avel;
+                ScheduleTerseUpdate();
+                ParentGroup.HasGroupChanged = true;
+            }
         }
 
         /// <summary>Get or set angular velocity. Does not schedule update.</summary>
@@ -1017,7 +1063,9 @@ namespace OpenSim.Region.Framework.Scenes
         public osUTF8 osUTF8Description;
         public string Description
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {return osUTF8Description == null ? string.Empty : osUTF8Description.ToString(); }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { osUTF8Description = string.IsNullOrEmpty(value) ? null : new osUTF8(value, 127);}
         }
 
@@ -1026,43 +1074,69 @@ namespace OpenSim.Region.Framework.Scenes
         /// </value>
         public Color Color
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_color; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { m_color = value; }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int TextColorArgb()
+        {
+            return m_color.ToArgb();
         }
 
         public osUTF8 osUTF8Text;
         public string Text
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return osUTF8Text == null ? string.Empty : osUTF8Text.ToString(); }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { osUTF8Text = string.IsNullOrEmpty(value) ? null : new osUTF8(value, 254); }
         }
 
         public osUTF8 osUTF8SitName;
         public string SitName
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return osUTF8SitName == null ? string.Empty : osUTF8SitName.ToString(); }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { osUTF8SitName = string.IsNullOrEmpty(value) ? null : new osUTF8(value, 36); }
         }
 
         public osUTF8 osUTF8TouchName;
         public string TouchName
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return osUTF8TouchName == null ? string.Empty : osUTF8TouchName.ToString(); }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { osUTF8TouchName = string.IsNullOrEmpty(value) ? null : new osUTF8(value, 36); }
         }
 
         public int LinkNum
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_linkNum; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
+//                if (ParentGroup != null)
+//                {
+//                    m_log.DebugFormat(
+//                        "[SCENE OBJECT PART]: Setting linknum of {0}@{1} to {2} from {3}",
+//                        Name, AbsolutePosition, value, m_linkNum);
+//                    Util.PrintCallStack();
+//                }
+
                 m_linkNum = value;
             }
         }
 
         public byte ClickAction
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_clickAction; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 m_clickAction = value;
@@ -1071,7 +1145,9 @@ namespace OpenSim.Region.Framework.Scenes
 
         public PrimitiveBaseShape Shape
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_shape; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 m_shape = value;
@@ -1083,6 +1159,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// </summary>
         public Vector3 Scale
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_shape.Scale; }
             set
             {
@@ -1157,6 +1234,7 @@ namespace OpenSim.Region.Framework.Scenes
         public osUTF8 osUTFMediaUrl;
         public string MediaUrl
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return osUTFMediaUrl == null ? string.Empty : osUTFMediaUrl.ToString();
@@ -1183,9 +1261,12 @@ namespace OpenSim.Region.Framework.Scenes
 
         public bool CreateSelected
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_createSelected; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
+//                m_log.DebugFormat("[SOP]: Setting CreateSelected to {0} for {1} {2}", value, Name, UUID);
                 m_createSelected = value;
             }
         }
@@ -1197,6 +1278,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public override Vector3 AbsolutePosition
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return _parentID == 0 ? GroupPosition : GroupPosition + m_offsetPosition * ParentGroup.RootPart.RotationOffset;
@@ -1205,30 +1287,39 @@ namespace OpenSim.Region.Framework.Scenes
 
         public SceneObjectGroup ParentGroup
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_parentGroup; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private set { m_parentGroup = value; }
         }
 
         public scriptEvents ScriptEvents
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return AggregatedScriptEvents; }
         }
 
         public Quaternion SitTargetOrientation
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_sitTargetOrientation; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 m_sitTargetOrientation = value;
+//                m_log.DebugFormat("[SCENE OBJECT PART]: Set sit target orientation {0} for {1} {2}", m_sitTargetOrientation, Name, LocalId);
             }
         }
 
         public Vector3 SitTargetPosition
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_sitTargetPosition; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 m_sitTargetPosition = value;
+//                m_log.DebugFormat("[SCENE OBJECT PART]: Set sit target position to {0} for {1} {2}", m_sitTargetPosition, Name, LocalId);
             }
         }
 
@@ -1236,13 +1327,17 @@ namespace OpenSim.Region.Framework.Scenes
         // the mappings more consistant.
         public Vector3 SitTargetPositionLL
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_sitTargetPosition; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { m_sitTargetPosition = value; }
         }
 
         public Quaternion SitTargetOrientationLL
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_sitTargetOrientation; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { m_sitTargetOrientation = value; }
         }
 
@@ -1272,7 +1367,9 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public uint ParentID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _parentID; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { _parentID = value; }
         }
 
@@ -1308,18 +1405,22 @@ namespace OpenSim.Region.Framework.Scenes
 
         public UUID GroupID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _groupID; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set { _groupID = value; }
         }
 
         public UUID OwnerID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _ownerID; }
             set { _ownerID = value; }
         }
 
         public UUID LastOwnerID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _lastOwnerID; }
             set {
              _lastOwnerID = value; }
@@ -1327,36 +1428,42 @@ namespace OpenSim.Region.Framework.Scenes
 
         public UUID RezzerID
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _rezzerID; }
             set { _rezzerID = value; }
         }
 
         public uint BaseMask
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _baseMask; }
             set { _baseMask = value; }
         }
 
         public uint OwnerMask
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _ownerMask; }
             set { _ownerMask = value; }
         }
 
         public uint GroupMask
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _groupMask; }
             set { _groupMask = value; }
         }
 
         public uint EveryoneMask
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _everyoneMask; }
             set { _everyoneMask = value; }
         }
 
         public uint NextOwnerMask
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return _nextOwnerMask; }
             set { _nextOwnerMask = value; }
         }
@@ -1369,9 +1476,11 @@ namespace OpenSim.Region.Framework.Scenes
         /// </remarks>
         public PrimFlags Flags
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_flags; }
             set
             {
+                //m_log.DebugFormat("[SOP]: Setting flags for {0} {1} to {2}", UUID, Name, value);
                 m_flags = value & ~(PrimFlags.Touch | PrimFlags.Money | PrimFlags.AllowInventoryDrop);
             }
         }
@@ -1421,6 +1530,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public string SitAnimation
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_sitAnimation; }
             set { m_sitAnimation = value; }
         }
@@ -1432,6 +1542,7 @@ namespace OpenSim.Region.Framework.Scenes
         [XmlIgnore]
         public sbyte CollisionSoundType
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return m_collisionSoundType;
@@ -1453,6 +1564,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public UUID CollisionSound
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_collisionSound; }
             set
             {
@@ -1473,6 +1585,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public float CollisionSoundVolume
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_collisionSoundVolume; }
             set
             {
@@ -1497,14 +1610,24 @@ namespace OpenSim.Region.Framework.Scenes
             }
             set
             {
-                if (ParentGroup != null && ParentGroup.RootPart != null && ParentGroup.RootPart != this)
+                if (ParentGroup != null)
                 {
-                    ParentGroup.RootPart.Buoyancy = value;
-                    return;
+                    if (ParentGroup.RootPart != null && ParentGroup.RootPart != this)
+                    {
+                        ParentGroup.RootPart.Buoyancy = value;
+                        return;
+                    }
+                    if (ParentGroup.IsAttachment)
+                    {
+                        ScenePresence avatar = m_scene.GetScenePresence(ParentGroup.AttachedAvatar);
+                        PhysicsActor pa = avatar?.PhysicsActor;
+                        if (pa != null)
+                            pa.Buoyancy = value;
+                    }
+                    else if (PhysActor != null)
+                        PhysActor.Buoyancy = value;
                 }
                 m_buoyancy = value;
-                if (PhysActor != null)
-                    PhysActor.Buoyancy = value;
             }
         }
 
@@ -1568,17 +1691,18 @@ namespace OpenSim.Region.Framework.Scenes
                         update = true;
                         m_material = (Material)value;
                     }
-
-                    if (m_friction != SOPMaterialData.friction(m_material))
+                    float newfriction = SOPMaterialData.friction(m_material);
+                    if (m_friction != newfriction)
                     {
                         update = true;
-                        m_friction = SOPMaterialData.friction(m_material);
+                        m_friction = newfriction;
                     }
 
-                    if (m_bounce != SOPMaterialData.bounce(m_material))
+                    float newbounce = SOPMaterialData.bounce(m_material);
+                    if (m_bounce != newbounce)
                     {
                         update = true;
-                        m_bounce = SOPMaterialData.bounce(m_material);
+                        m_bounce = newbounce;
                     }
 
                     if (update)
@@ -1595,6 +1719,7 @@ namespace OpenSim.Region.Framework.Scenes
         }
 
         // not a propriety to move to methods place later
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool HasMesh()
         {
             if (Shape != null && (Shape.SculptType == (byte)SculptType.Mesh))
@@ -1721,13 +1846,13 @@ namespace OpenSim.Region.Framework.Scenes
 
         public float Density // in kg/m^3
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_density; }
             set
             {
-                if (value >=1 && value <= 22587.0)
+                if (value >=1 && value <= 22587.0 && value != m_density)
                 {
                     m_density = value;
-
 
                     if (ParentGroup != null)
                     {
@@ -1744,10 +1869,11 @@ namespace OpenSim.Region.Framework.Scenes
 
         public float GravityModifier
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_gravitymod; }
             set
             {
-                if( value >= -1 && value <=28.0f)
+                if(value >= -1f && value <= 28.0f && value != m_gravitymod)
                 {
                     m_gravitymod = value;
 
@@ -1766,10 +1892,11 @@ namespace OpenSim.Region.Framework.Scenes
 
         public float Friction
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_friction; }
             set
             {
-                if (value >= 0 && value <= 255.0f)
+                if (value >= 0 && value <= 255.0f && value != m_friction)
                 {
                     m_friction = value;
 
@@ -1788,10 +1915,11 @@ namespace OpenSim.Region.Framework.Scenes
 
         public float Restitution
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return m_bounce; }
             set
             {
-                if (value >= 0 && value <= 1.0f)
+                if (value >= 0 && value <= 1.0f && value != m_bounce)
                 {
                     m_bounce = value;
 
@@ -1820,6 +1948,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Clear all pending updates of parts to clients
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ClearUpdateSchedule()
         {
             lock(UpdateFlagLock)
@@ -1830,6 +1959,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// Send this part's properties (name, description, inventory serial, base mask, etc.) to a client
         /// </summary>
         /// <param name="client"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SendPropertiesToClient(IClientAPI client)
         {
             client.SendObjectPropertiesReply(this);
@@ -1861,6 +1991,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         #region Public Methods
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ResetExpire()
         {
             Expires = DateTime.UtcNow + new TimeSpan(600000000);
@@ -1870,11 +2001,13 @@ namespace OpenSim.Region.Framework.Scenes
         {
             if ((m_flags & flag) == 0)
             {
+                //m_log.Debug("Adding flag: " + ((PrimFlags) flag).ToString());
                 m_flags |= flag;
 
                 if (flag == PrimFlags.TemporaryOnRez)
                     ResetExpire();
             }
+            // m_log.Debug("Aprev: " + prevflag.ToString() + " curr: " + Flags.ToString());
         }
 
         public void AddNewParticleSystem(Primitive.ParticleSystem pSystem, bool expire)
@@ -1886,6 +2019,7 @@ namespace OpenSim.Region.Framework.Scenes
             m_particleSystem = pSystem.GetBytes();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveParticleSystem()
         {
             m_particleSystem = Array.Empty<byte>();
@@ -2096,7 +2230,7 @@ namespace OpenSim.Region.Framework.Scenes
             if (userExposed)
                 dupe.UUID = UUID.Random();
 
-            dupe.m_scriptEvents = new RwLockedDictionary<UUID, scriptEvents>();
+            dupe.m_scriptEvents = new RwLockedDictionary<UUID, scriptEvents>(); // AKIDO
 
             dupe.PhysActor = null;
 
@@ -2187,7 +2321,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// <summary>
         /// Do a physics propery update for this part.
         /// now also updates phantom and volume detector
-        /// </summary>5c
+        /// </summary>
         /// <param name="UsePhysics"></param>
         /// <param name="isNew"></param>
         public void DoPhysicsPropertyUpdate(bool UsePhysics, bool isNew)
@@ -2331,6 +2465,7 @@ namespace OpenSim.Region.Framework.Scenes
             return 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint GetEffectiveObjectFlags()
         {
             uint eff = (uint)(m_flags | m_localFlags);
@@ -2419,7 +2554,6 @@ namespace OpenSim.Region.Framework.Scenes
             return pa is null ? AbsolutePosition : pa.CenterOfMass;
         }
 
-
         public Vector3 GetForce()
         {
             return Force;
@@ -2432,6 +2566,8 @@ namespace OpenSim.Region.Framework.Scenes
         /// Remember, the Group Position simply gives the position of the group itself
         /// </remarks>
         /// <returns>A Linked Child Prim objects position in world</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
         public Vector3 GetWorldPosition()
         {
             // If a child SOP, my position is relative to the root SOP so take
@@ -2444,6 +2580,7 @@ namespace OpenSim.Region.Framework.Scenes
         /// Gets the rotation of this prim offset by the group rotation
         /// </summary>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Quaternion GetWorldRotation()
         {
             // A child SOP's rotation is relative to the root SOP's rotation.
@@ -2531,7 +2668,7 @@ namespace OpenSim.Region.Framework.Scenes
             };
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private DetectedObject CreateDetObject(SceneObjectPart obj)
         {
             return new DetectedObject()
@@ -2548,7 +2685,7 @@ namespace OpenSim.Region.Framework.Scenes
             };
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private DetectedObject CreateDetObject(ScenePresence av)
         {
             DetectedObject detobj = new DetectedObject()
@@ -2570,7 +2707,7 @@ namespace OpenSim.Region.Framework.Scenes
             return detobj;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private DetectedObject CreateDetObjectForGround()
         {
             return new DetectedObject()
@@ -2849,7 +2986,7 @@ namespace OpenSim.Region.Framework.Scenes
             // Note: This is only being called on the root prim at this time.
 
             m_log.ErrorFormat(
-                "Physical object {0}, localID {1} went out of bounds at {2} in {3}.  Stopping at {4} and making non-physical.",
+                "[SCENE OBJECT PART]: Physical object {0}, localID {1} went out of bounds at {2} in {3}.  Stopping at {4} and making non-physical.",
                 Name, LocalId, pos, ParentGroup.Scene.Name, AbsolutePosition);
 
             RemFlag(PrimFlags.Physics);
@@ -2875,6 +3012,7 @@ namespace OpenSim.Region.Framework.Scenes
             ScheduleTerseUpdate();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemFlag(PrimFlags flag)
         {
             m_flags &= ~flag;
@@ -2896,9 +3034,9 @@ namespace OpenSim.Region.Framework.Scenes
                 m_scriptEvents.Remove(scriptid);
                 aggregateScriptEvents();
             }
-            // AKIDO
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveScriptTargets(UUID scriptid)
         {
             ParentGroup?.RemoveScriptTargets(scriptid);
@@ -2988,6 +3126,7 @@ namespace OpenSim.Region.Framework.Scenes
                 scale.Y = Utils.Clamp(scale.Y, minsize, maxsize);
                 scale.Z = Utils.Clamp(scale.Z, minsize, maxsize);
             }
+//            m_log.DebugFormat("[SCENE OBJECT PART]: Resizing {0} {1} to {2}", Name, LocalId, scale);
 
             Scale = scale;
 
@@ -3017,7 +3156,7 @@ namespace OpenSim.Region.Framework.Scenes
 
             if (APIDStrength <= 0)
             {
-                m_log.WarnFormat("Invalid rotation strength {0}",APIDStrength);
+                m_log.WarnFormat("[SceneObjectPart] Invalid rotation strength {0}",APIDStrength);
                 return;
             }
 
@@ -3169,6 +3308,7 @@ namespace OpenSim.Region.Framework.Scenes
             ParentGroup.Scene.EventManager.TriggerSceneObjectPartUpdated(this, isfull);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ScriptSetPhysicsStatus(bool UsePhysics)
         {
             ParentGroup.ScriptSetPhysicsStatus(UsePhysics);
@@ -3436,6 +3576,7 @@ namespace OpenSim.Region.Framework.Scenes
             ParentGroup.SetAxisRotation(axis, rotate);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetBuoyancy(float fvalue)
         {
             Buoyancy = fvalue;
@@ -3464,6 +3605,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public PhysicsInertiaData PhysicsInertia
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return m_physicsInertia;
@@ -3476,6 +3618,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public SOPVehicle VehicleParams
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 return m_vehicleParams;
@@ -3489,12 +3632,10 @@ namespace OpenSim.Region.Framework.Scenes
 
         public int VehicleType
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                if (m_vehicleParams == null)
-                    return (int)Vehicle.TYPE_NONE;
-                else
-                    return (int)m_vehicleParams.Type;
+                return m_vehicleParams == null ? (int)Vehicle.TYPE_NONE : (int)m_vehicleParams.Type;
             }
             set
             {
@@ -3829,6 +3970,9 @@ namespace OpenSim.Region.Framework.Scenes
         public void SetGroup(UUID groupID, IClientAPI client)
         {
             // Scene.AddNewPrims() calls with client == null so can't use this.
+            // m_log.DebugFormat(
+            //      "[SCENE OBJECT PART]: Setting group for {0} to {1} for {2}",
+            //      Name, groupID, OwnerID);
 
             ++PseudoCRC;
             GroupID = groupID;
@@ -3864,6 +4008,9 @@ namespace OpenSim.Region.Framework.Scenes
         /// <param name="events"></param>
         public void SetScriptEvents(UUID scriptid, ulong events)
         {
+            //            m_log.DebugFormat(
+            //                "[SCENE OBJECT PART]: Set script events for script with id {0} on {1}/{2} to {3} in {4}",
+            //                scriptid, Name, ParentGroup.Name, events, ParentGroup.Scene.Name);
             // scriptEvents oldparts;
             // AKIDO
             if (m_scriptEvents.TryGetValue(scriptid, out scriptEvents ev))
@@ -3871,9 +4018,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (ev == (scriptEvents)events)
                     return;
             }
-
             m_scriptEvents[scriptid] = (scriptEvents)events;
-            // AKIDO
             aggregateScriptEvents();
         }
 
@@ -3908,16 +4053,16 @@ namespace OpenSim.Region.Framework.Scenes
         /// Set the text displayed for this part.
         /// </summary>
         /// <param name="text"></param>
-        /// <param name="color"></param>
-        /// <param name="alpha"></param>
-        public void SetText(string text, Vector3 color, double alpha)
+        /// <param name="newcolor"></param>
+        /// <param name="newalpha"></param>
+        public void SetText(string text, Vector3 newcolor, double newalpha)
         {
             Color oldcolor = Color;
 
-            Color = Color.FromArgb((int) (alpha * 0xff),
-                                   (int) (color.X * 0xff),
-                                   (int) (color.Y * 0xff),
-                                   (int) (color.Z * 0xff));
+            Color = Color.FromArgb((int) (newalpha * 0xff),
+                                   (int) (newcolor.X * 0xff),
+                                   (int) (newcolor.Y * 0xff),
+                                   (int) (newcolor.Z * 0xff));
             osUTF8 old = osUTF8Text;
             if(string.IsNullOrEmpty(text))
             {
@@ -4186,6 +4331,8 @@ namespace OpenSim.Region.Framework.Scenes
             // Get our plane normals
             for (int i = 0; i < 6; i++)
             {
+                //m_log.Info("[FACECALCULATION]: FaceA[" + i + "]=" + FaceA[i] + " FaceB[" + i + "]=" + FaceB[i] + " FaceC[" + i + "]=" + FaceC[i] + " FaceD[" + i + "]=" + FaceD[i]);
+
                 // Our Plane direction
                 AmBa = FaceA[i] - FaceB[i];
                 AmBb = FaceB[i] - FaceC[i];
@@ -4194,6 +4341,8 @@ namespace OpenSim.Region.Framework.Scenes
 
                 // normalize the cross product to get the normal.
                 normals[i] = cross / cross.Length();
+
+                //m_log.Info("[NORMALS]: normals[ " + i + "]" + normals[i].ToString());
                 //distance[i] = (normals[i].X * AmBa.X + normals[i].Y * AmBa.Y + normals[i].Z * AmBa.Z) * -1;
             }
 
@@ -4309,6 +4458,9 @@ namespace OpenSim.Region.Framework.Scenes
                         result.HitTF = true;
                         result.ipoint = q;
                         result.face = i;
+                        //m_log.Info("[FACE]:" + i.ToString());
+                        //m_log.Info("[POINT]: " + q.ToString());
+                        //m_log.Info("[DIST]: " + distance2.ToString());
                         if (faceCenters)
                         {
                             result.normal = AAfacenormals[i] * AXrot;
@@ -4344,12 +4496,14 @@ namespace OpenSim.Region.Framework.Scenes
             SceneObjectSerializer.SOPToXml2(xmlWriter, this, new Dictionary<string, object>());
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void TriggerScriptChangedEvent(Changed val, object data = null)
         {
             //if (ParentGroup != null && ParentGroup.Scene != null && (ScriptEvents & scriptEvents.changed) != 0)
             if ((ScriptEvents & scriptEvents.changed) != 0)
                 ParentGroup.Scene.EventManager.TriggerOnScriptChangedEvent(LocalId, (uint)val, data);
         }
+
 
         public void TrimPermissions()
         {
@@ -4619,6 +4773,8 @@ namespace OpenSim.Region.Framework.Scenes
                 ParentGroup.HasGroupChanged = true;
                 ScheduleFullUpdate();
             }
+
+//            m_log.DebugFormat("[SCENE OBJECT PART]: Updated PrimFlags on {0} {1} to {2}", Name, LocalId, Flags);
         }
 
         /// <summary>
@@ -4653,7 +4809,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("caught exception meshing object {0}. Object set to phantom. e={1}", m_uuid, e);
+                m_log.ErrorFormat("[SCENE]: caught exception meshing object {0}. Object set to phantom. e={1}", m_uuid, e);
                 pa = null;
             }
 
@@ -4915,7 +5071,7 @@ namespace OpenSim.Region.Framework.Scenes
                 if (newTex.FaceTextures[i] != null)
                     newFace = newTex.FaceTextures[i];
 
-                if (oldFace.TextureID != newFace.TextureID)
+                if (oldFace.TextureID.NotEqual(newFace.TextureID))
                     changeFlags |= Changed.TEXTURE;
 
                 Color4 oldRGBA = oldFace.RGBA;
@@ -5041,7 +5197,6 @@ namespace OpenSim.Region.Framework.Scenes
             {
                 AggregatedScriptEvents |= s;
             }
-            // AKIDO
 
             uint objectflagupdate = 0;
             if ((AggregatedScriptEvents & scriptEvents.anytouch) != 0 )
@@ -5073,6 +5228,8 @@ namespace OpenSim.Region.Framework.Scenes
             }
             else
             {
+//                m_log.DebugFormat(
+//                    "[SCENE OBJECT PART]: Scheduling part {0} {1} for full update in aggregateScriptEvents()", Name, LocalId);
                 UpdatePhysicsSubscribedEvents();
                 ScheduleFullUpdate();
             }
@@ -5110,7 +5267,7 @@ namespace OpenSim.Region.Framework.Scenes
 
         public override string ToString()
         {
-            return String.Format("{0} {1} (parent {2}))", Name, UUID, ParentGroup);
+            return $"{Name} {UUID} (parent {ParentGroup}))";
         }
 
         #endregion Public Methods
@@ -5270,14 +5427,21 @@ namespace OpenSim.Region.Framework.Scenes
             }
             catch (Exception ex)
             {
-                m_log.Error("Exception in UpdateLookAt" + ex);
+                m_log.Error("[Physics] " + ex);
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Color4 GetTextColor()
         {
-            Color color = Color;
-            return new Color4(color.R, color.G, color.B, (byte)(0xFF - color.A));
+            Color color = m_color;
+            return new Color4(color.R, color.G, color.B, color.A);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float GetTextAlpha()
+        {
+            return m_color.A * 0.0039215686f;
         }
 
         public void ResetOwnerChangeFlag()
@@ -5556,7 +5720,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public Byte[] SerializeAnimations()
+        public byte[] SerializeAnimations()
         {
             if (AnimationsNames == null)
                 return null;
@@ -5590,7 +5754,7 @@ namespace OpenSim.Region.Framework.Scenes
             }
         }
 
-        public void DeSerializeAnimations(Byte[] data)
+        public void DeSerializeAnimations(byte[] data)
         {
             if(data == null)
             {

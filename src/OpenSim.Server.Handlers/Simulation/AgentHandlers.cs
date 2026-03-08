@@ -61,6 +61,7 @@ namespace OpenSim.Server.Handlers.Simulation
         {
             if (m_log.IsDebugEnabled) m_log.DebugFormat("ProcessRequest: Received request {0}", httpRequest.RawUrl);
 
+            if (httpRequest.RawUrl.StartsWith("/api/v1/"))
             httpResponse.ContentType = "text/html"; //??
             httpResponse.KeepAlive = false;
 
@@ -235,6 +236,10 @@ namespace OpenSim.Server.Handlers.Simulation
                 httpResponse.RawBuffer = Utils.falseStrBytes;
                 return;
             }
+            
+            m_log.DebugFormat("Received {0} request for Agent: {1}, Region: {2}, Action: {3}, From: {4}", 
+                httpRequest.HttpMethod, agentID, regionID, action ?? "none", 
+                httpRequest.RemoteIPEndPoint?.Address?.ToString() ?? "unknown");
 
             m_log.DebugFormat("Received {0} request for Agent: {1}, Region: {2}, Action: {3}, From: {4}", 
                 httpRequest.HttpMethod, agentID, regionID, action ?? "none", 

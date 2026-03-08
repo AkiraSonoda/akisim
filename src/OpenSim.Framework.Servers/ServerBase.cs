@@ -63,7 +63,7 @@ namespace OpenSim.Framework.Servers
         protected DateTime m_startuptime;
         protected string m_startupDirectory = Environment.CurrentDirectory;
 
-        protected string m_pidFile = String.Empty;
+        protected string m_pidFile = string.Empty;
 
         protected ServerStatsCollector m_serverStatsCollector;
 
@@ -90,7 +90,7 @@ namespace OpenSim.Framework.Servers
 
                 using (FileStream fs = File.Create(path))
                 {
-                    Byte[] buf = Encoding.ASCII.GetBytes(pidstring);
+                    byte[] buf = Encoding.ASCII.GetBytes(pidstring);
                     fs.Write(buf, 0, buf.Length);
                 }
 
@@ -116,8 +116,7 @@ namespace OpenSim.Framework.Servers
                 {
                     m_log.Error($"[SERVER BASE]: Error whilst removing {m_pidFile}", e);
                 }
-
-                m_pidFile = String.Empty;
+                m_pidFile = string.Empty;
             }
         }
 
@@ -891,19 +890,20 @@ namespace OpenSim.Framework.Servers
             int inUseThreads = 0;
             int waitingCallbacks = 0;
 
-            if (Util.FireAndForgetMethod == FireAndForgetMethod.SmartThreadPool)
+            // AKIDO
+	    if (Util.FireAndForgetMethod == FireAndForgetMethod.QueueUserWorkItem)
             {
-                STPInfo stpi = Util.GetSmartThreadPoolInfo();
+                ThreadPoolInfo tpi = Util.GetThreadPoolInfo();
 
                 // ROBUST currently leaves this the FireAndForgetMethod but never actually initializes the threadpool.
-                if (stpi != null)
+                if (tpi != null)
                 {
-                    threadPoolUsed = "SmartThreadPool";
-                    maxThreads = stpi.MaxThreads;
-                    minThreads = stpi.MinThreads;
-                    inUseThreads = stpi.InUseThreads;
-                    allocatedThreads = stpi.ActiveThreads;
-                    waitingCallbacks = stpi.WaitingCallbacks;
+                    threadPoolUsed = "System ThreadPool";
+                    maxThreads = tpi.MaxThreads;
+                    minThreads = tpi.MinThreads;
+                    inUseThreads = tpi.InUseThreads;
+                    allocatedThreads = tpi.ActiveThreads;
+                    waitingCallbacks = tpi.WaitingCallbacks;
                 }
             }
  

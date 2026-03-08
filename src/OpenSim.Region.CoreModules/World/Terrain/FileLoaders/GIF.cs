@@ -25,30 +25,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Drawing;
-using System.Drawing.Imaging;
+// AKIDO remove using System.Drawing;
+// AKIDO remove using System.Drawing.Imaging;
 using System.IO;
 using OpenSim.Region.Framework.Interfaces;
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 {
     internal class GIF : GenericSystemDrawing
     {
+        public override int SupportedHeight
+        {
+            get { return 256; }
+        }
         public override void SaveFile(string filename, ITerrainChannel map)
         {
-            using(Bitmap colours = CreateGrayscaleBitmapFromMap(map))
-                colours.Save(filename,ImageFormat.Gif);
+            using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
+            using(var fileStream = File.Create(filename))
+            using(var data = colours.Encode(SKEncodedImageFormat.Gif, 100))
+                data.SaveTo(fileStream);
         }
 
         /// <summary>
-        /// Exports a stream using a System.Drawing exporter.
+        /// Exports a stream using SkiaSharp.
         /// </summary>
         /// <param name="stream">The target stream</param>
         /// <param name="map">The terrain channel being saved</param>
         public override void SaveStream(Stream stream, ITerrainChannel map)
         {
-            using(Bitmap colours = CreateGrayscaleBitmapFromMap(map))
-                colours.Save(stream,ImageFormat.Gif);
+            using(SKBitmap colours = CreateGrayscaleBitmapFromMap(map))
+            using(var data = colours.Encode(SKEncodedImageFormat.Gif, 100))
+                data.SaveTo(stream);
         }
 
         public override string ToString()
@@ -58,6 +66,11 @@ namespace OpenSim.Region.CoreModules.World.Terrain.FileLoaders
 
         //Returns true if this extension is supported for terrain save-tile
         public override bool SupportsTileSave()
+        {
+            return false;
+        }
+
+        public override bool SupportsExtendedTileSave()
         {
             return false;
         }

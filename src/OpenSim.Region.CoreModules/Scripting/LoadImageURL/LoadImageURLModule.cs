@@ -33,10 +33,12 @@ using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenSim.Framework;
+using OpenSim.Framework.SkiaSharp;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using log4net;
 using System.Reflection;
+using SkiaSharp;
 
 namespace OpenSim.Region.CoreModules.Scripting.LoadImageURL
 {
@@ -207,47 +209,63 @@ namespace OpenSim.Region.CoreModules.Scripting.LoadImageURL
                     {
                         try
                         {
-                            using(Bitmap image = new Bitmap(stream))
+                            using(SKBitmap image = SKBitmap.Decode(stream))
                             {
-                                // TODO: make this a bit less hard coded
-                                if((image.Height < 64) && (image.Width < 64))
+                                if (image == null)
                                 {
-                                    newSize.Width = 32;
-                                    newSize.Height = 32;
-                                }
-                                else if((image.Height < 128) && (image.Width < 128))
-                                {
-                                    newSize.Width = 64;
-                                    newSize.Height = 64;
-                                }
-                                else if((image.Height < 256) && (image.Width < 256))
-                                {
-                                    newSize.Width = 128;
-                                    newSize.Height = 128;
-                                }
-                                else if((image.Height < 512 && image.Width < 512))
-                                {
-                                    newSize.Width = 256;
-                                    newSize.Height = 256;
-                                }
-                                else if((image.Height < 1024 && image.Width < 1024))
-                                {
-                                    newSize.Width = 512;
-                                    newSize.Height = 512;
+                                    m_log.Error("[LOADIMAGEURLMODULE]: Failed to decode image from stream");
                                 }
                                 else
                                 {
-                                    newSize.Width = 1024;
-                                    newSize.Height = 1024;
-                                }
+                                    // TODO: make this a bit less hard coded
+                                    if((image.Height < 64) && (image.Width < 64))
+                                    {
+                                        newSize.Width = 32;
+                                        newSize.Height = 32;
+                                    }
+                                    else if((image.Height < 128) && (image.Width < 128))
+                                    {
+                                        newSize.Width = 64;
+                                        newSize.Height = 64;
+                                    }
+                                    else if((image.Height < 256) && (image.Width < 256))
+                                    {
+                                        newSize.Width = 128;
+                                        newSize.Height = 128;
+                                    }
+                                    else if((image.Height < 512 && image.Width < 512))
+                                    {
+                                        newSize.Width = 256;
+                                        newSize.Height = 256;
+                                    }
+                                    else if((image.Height < 1024 && image.Width < 1024))
+                                    {
+                                        newSize.Width = 512;
+                                        newSize.Height = 512;
+                                    }
+                                    else
+                                    {
+                                        newSize.Width = 1024;
+                                        newSize.Height = 1024;
+                                    }
 
-                                if(newSize.Width != image.Width || newSize.Height != image.Height)
-                                {
-                                    using(Bitmap resize = new Bitmap(image, newSize))
-                                     imageJ2000 = OpenJPEG.EncodeFromImage(resize, false);
+                                    SKBitmap processedImage = image;
+                                    if(newSize.Width != image.Width || newSize.Height != image.Height)
+                                    {
+                                        processedImage = image.ResizeHighQuality(newSize.Width, newSize.Height);
+                                    }
+
+                                    try
+                                    {
+                                        // OpenJPEG.EncodeFromImage now requires SKBitmap
+                                        imageJ2000 = OpenJPEG.EncodeFromImage(processedImage, false);
+                                    }
+                                    finally
+                                    {
+                                        if (processedImage != image)
+                                            processedImage?.Dispose();
+                                    }
                                 }
-                                else
-                                    imageJ2000 = OpenJPEG.EncodeFromImage(image, false);
                             }
                         }
                         catch (Exception)

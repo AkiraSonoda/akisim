@@ -33,17 +33,29 @@ using OpenSim.Framework;
 using OpenMetaverse;
 using OpenSim.Region.Framework.Scenes;
 
-using Mono.Addins;
-
 namespace OpenSim.Region.Framework.Interfaces
 {
-    [TypeExtensionPoint(Path = "/OpenSim/WindModule", NodeName = "WindModel")]
-    public interface IWindModelPlugin : IPlugin
+    public interface IWindModelPlugin
     {
+        /// <summary>
+        /// Plugin name
+        /// </summary>
+        string Name { get; }
+
         /// <summary>
         /// Brief description of this plugin's wind model
         /// </summary>
         string Description { get; }
+
+        /// <summary>
+        /// Initialise the plugin
+        /// </summary>
+        void Initialise();
+
+        /// <summary>
+        /// Dispose of the plugin
+        /// </summary>
+        void Dispose();
 
         /// <summary>
         /// Provides access to the wind configuration, if any.

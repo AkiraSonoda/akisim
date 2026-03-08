@@ -31,7 +31,9 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Text;
+
 using log4net;
+// removed Mono.Addins;
 using Nini.Config;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
@@ -39,19 +41,20 @@ using CSJ2K;
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
-// AKIDO: clean
+using SkiaSharp; // AKIDO
 
 namespace OpenSim.Region.CoreModules.Agent.TextureSender
 {
     public delegate void J2KDecodeDelegate(UUID assetID);
 
+    // AKIDO removed Mono.Addins[Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "J2KDecoderModule")]
     public class J2KDecoderModule : ISharedRegionModule, IJ2KDecoder
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         /// <summary>Temporarily holds deserialized layer data information in memory</summary>
         private readonly ThreadedClasses.ExpiringCache<UUID, OpenJPEG.J2KLayerInfo[]> m_decodedCache = 
-            new ThreadedClasses.ExpiringCache<UUID,OpenJPEG.J2KLayerInfo[]>(30);
+            new ThreadedClasses.ExpiringCache<UUID,OpenJPEG.J2KLayerInfo[]>(30); // AKIDO
         
         /// <summary>List of client methods to notify of results of decode</summary>
         private readonly Dictionary<UUID, List<DecodedCallback>> m_notifyList = new Dictionary<UUID, List<DecodedCallback>>();
@@ -73,7 +76,10 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
         #region ISharedRegionModule
 
-        private bool m_useCSJ2K = true;
+	// AKIDO
+        // CSJ2K disabled for image decoding due to vertical stripe artifacts, but always used for layer boundaries
+        // to avoid OpenMetaverse.Logger initialization errors with log4net 3.x
+        private bool m_useCSJ2K = false;
 
         public string Name { get { return "J2KDecoderModule"; } }
 
@@ -182,18 +188,46 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
             return DoJ2KDecode(assetID, j2kData, out layers, out components);
         }
 
-        public Image DecodeToImage(byte[] j2kData)
+        public SKBitmap DecodeToImage(byte[] j2kData)
         {
             if (m_useCSJ2K)
-                return J2kImage.FromBytes(j2kData);
+            {
+                m_log.Debug("[J2KDecoderModule] Using CSJ2K decoder");
+                // CSJ2K now returns SKBitmap directly
+                SKBitmap skBitmap = J2kImage.FromBytes(j2kData);
+                return skBitmap;
+            }
             else
             {
+                m_log.Debug("[J2KDecoderModule] Using OpenJPEG decoder");
                 ManagedImage mimage;
-                Image image;
-                if (OpenJPEG.DecodeToImage(j2kData, out mimage, out image))
+                if (OpenJPEG.DecodeToImage(j2kData, out mimage) && mimage != null)
                 {
+                    // Convert ManagedImage to SKBitmap with Unpremul to preserve alpha without premultiplication
+                    var info = new SKImageInfo(mimage.Width, mimage.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+                    SKBitmap skBitmap = new SKBitmap(info);
+                    IntPtr pixels = skBitmap.GetPixels();
+
+                    if (pixels != IntPtr.Zero)
+                    {
+                        int pixelCount = mimage.Width * mimage.Height;
+                        byte[] rgba = new byte[pixelCount * 4];
+
+                        for (int i = 0; i < pixelCount; i++)
+                        {
+                            rgba[i * 4 + 0] = mimage.Red[i];
+                            rgba[i * 4 + 1] = mimage.Green[i];
+                            rgba[i * 4 + 2] = mimage.Blue[i];
+                            rgba[i * 4 + 3] = (mimage.Alpha != null && i < mimage.Alpha.Length) ? mimage.Alpha[i] : (byte)255;
+                        }
+
+                        System.Runtime.InteropServices.Marshal.Copy(
+                            rgba, 0, pixels,
+                            Math.Min(rgba.Length, skBitmap.ByteCount));
+                    }
+
                     mimage = null;
-                    return image;
+                    return skBitmap;
                 }
                 else
                     return null;
@@ -226,51 +260,42 @@ namespace OpenSim.Region.CoreModules.Agent.TextureSender
 
             if (!TryLoadCacheForAsset(assetID, out layers))
             {
-                if (m_useCSJ2K)
+                // Always use CSJ2K for layer boundary decoding to avoid OpenMetaverse.Logger
+                // initialization errors with log4net 3.x (OpenJPEG.DecodeLayerBoundaries calls Logger.DebugLog)
+                try
                 {
-                    try
+                    List<int> layerStarts;
+                    using (MemoryStream ms = new MemoryStream(j2kData))
                     {
-                        List<int> layerStarts;
-                        using (MemoryStream ms = new MemoryStream(j2kData))
-                        {
-                            layerStarts = CSJ2K.J2kImage.GetLayerBoundaries(ms);
-                        }
-
-                        if (layerStarts != null && layerStarts.Count > 0)
-                        {
-                            layers = new OpenJPEG.J2KLayerInfo[layerStarts.Count];
-
-                            for (int i = 0; i < layerStarts.Count; i++)
-                            {
-                                OpenJPEG.J2KLayerInfo layer = new OpenJPEG.J2KLayerInfo();
-
-                                if (i == 0)
-                                    layer.Start = 0;
-                                else
-                                    layer.Start = layerStarts[i];
-
-                                if (i == layerStarts.Count - 1)
-                                    layer.End = j2kData.Length;
-                                else
-                                    layer.End = layerStarts[i + 1] - 1;
-
-                                layers[i] = layer;
-                            }
-                        }
+                        layerStarts = CSJ2K.J2kImage.GetLayerBoundaries(ms);
                     }
-                    catch (Exception ex)
+
+                    if (layerStarts != null && layerStarts.Count > 0)
                     {
-                        m_log.Warn("CSJ2K threw an exception decoding texture " + assetID + ": " + ex.Message);
-                        decodedSuccessfully = false;
+                        layers = new OpenJPEG.J2KLayerInfo[layerStarts.Count];
+
+                        for (int i = 0; i < layerStarts.Count; i++)
+                        {
+                            OpenJPEG.J2KLayerInfo layer = new OpenJPEG.J2KLayerInfo();
+
+                            if (i == 0)
+                                layer.Start = 0;
+                            else
+                                layer.Start = layerStarts[i];
+
+                            if (i == layerStarts.Count - 1)
+                                layer.End = j2kData.Length;
+                            else
+                                layer.End = layerStarts[i + 1] - 1;
+
+                            layers[i] = layer;
+                        }
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    if (!OpenJPEG.DecodeLayerBoundaries(j2kData, out layers, out components))
-                    {
-                        m_log.Warn("OpenJPEG failed to decode texture " + assetID);
-                        decodedSuccessfully = false;
-                    }
+                    m_log.Warn("CSJ2K threw an exception decoding layer boundaries for texture " + assetID + ": " + ex.Message);
+                    decodedSuccessfully = false;
                 }
 
                 if (layers == null || layers.Length == 0)

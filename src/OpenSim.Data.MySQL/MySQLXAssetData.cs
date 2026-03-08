@@ -32,10 +32,12 @@ using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using log4net;
-using MySqlConnector;
+using MySqlConnector; // AKIDO
 using OpenMetaverse;
 using OpenSim.Framework;
+using OpenSim.Data;
 
 namespace OpenSim.Data.MySQL
 {

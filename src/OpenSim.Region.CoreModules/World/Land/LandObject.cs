@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+// AKIDO: clean
 
 using System;
 using System.Collections.Generic;
@@ -36,8 +37,7 @@ using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using RegionFlags = OpenMetaverse.RegionFlags;
-using ThreadedClasses;
-// AKIDO: clean
+using ThreadedClasses; // AKIDO
 
 namespace OpenSim.Region.CoreModules.World.Land
 {
@@ -49,6 +49,7 @@ namespace OpenSim.Region.CoreModules.World.Land
         #region Member Variables
 
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly string LogHeader = "[LAND OBJECT]";
 
         protected const int GROUPMEMBERCACHETIMEOUT = 30000;  // cache invalidation after 30s
 
@@ -1351,8 +1352,8 @@ namespace OpenSim.Region.CoreModules.World.Land
                     || bitmap_base.GetLength(1) != bitmap_add.GetLength(1))
             {
                 throw new Exception(
-                    String.Format("MergeLandBitmaps. merging maps not same size. baseSizeXY=<{0},{1}>, addSizeXY=<{2},{3}>",
-                                bitmap_base.GetLength(0), bitmap_base.GetLength(1), bitmap_add.GetLength(0), bitmap_add.GetLength(1))
+                    String.Format("{0} MergeLandBitmaps. merging maps not same size. baseSizeXY=<{1},{2}>, addSizeXY=<{3},{4}>",
+                                LogHeader, bitmap_base.GetLength(0), bitmap_base.GetLength(1), bitmap_add.GetLength(0), bitmap_add.GetLength(1))
                 );
             }
 
@@ -1442,8 +1443,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                         }
                         catch (Exception)   //just in case we've still not taken care of every way the arrays might go out of bounds! ;)
                         {
-                            if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                                "RemapLandBitmap Rotate: Out of Bounds sx={0} sy={1} dx={2} dy={3}", sx, sy, x, y);
+                            m_log.DebugFormat("{0} RemapLandBitmap Rotate: Out of Bounds sx={1} sy={2} dx={3} dy={4}", LogHeader, sx, sy, x, y);
                         }
                     }
                 }
@@ -1500,8 +1500,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                         }
                         catch (Exception)   //just in case we've still not taken care of every way the arrays might go out of bounds! ;)
                         {
-                            m_log.ErrorFormat(
-                                "RemapLandBitmap - Bound & Displace: Out of Bounds sx={0} sy={1} dx={2} dy={2}", x, y, dx, dy);
+                            m_log.DebugFormat("{0} RemapLandBitmap - Bound & Displace: Out of Bounds sx={1} sy={2} dx={3} dy={4}", LogHeader, x, y, dx, dy);
                         }
                     }
                 }
@@ -1530,8 +1529,7 @@ namespace OpenSim.Region.CoreModules.World.Land
             if (baseX != newX || baseY != newY)
             {
                 throw new Exception(
-                    String.Format("RemoveFromLandBitmap: Land bitmaps are not the same size! baseX={0} baseY={1} newX={2} newY={3}",
-                        baseX, baseY, newX, newY));
+                    String.Format("{0} RemoveFromLandBitmap: Land bitmaps are not the same size! baseX={1} baseY={2} newX={3} newY={4}", LogHeader, baseX, baseY, newX, newY));
             }
 
             isEmptyNow = true;
@@ -1632,8 +1630,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                     }
                     catch (Exception)
                     {
-                        if(m_log.IsDebugEnabled) m_log.DebugFormat(
-                            "ConvertBytestoLandBitmap: i={0}, x={1}, y={2}", i, x, y);
+                        m_log.DebugFormat("{0} ConvertBytestoLandBitmap: i={1}, x={2}, y={3}", LogHeader, i, x, y);
                     }
                     x++;
                     if (x >= xLen)
@@ -1661,7 +1658,7 @@ namespace OpenSim.Region.CoreModules.World.Land
 
         public void DebugLandBitmap(bool[,] landBitmap)
         {
-            m_log.Info("Map Key: #=claimed land .=unclaimed land.");
+            m_log.InfoFormat("{0}: Map Key: #=claimed land .=unclaimed land.", LogHeader);
             for (int y = landBitmap.GetLength(1) - 1; y >= 0; y--)
             {
                 string row = "";
@@ -1669,7 +1666,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 {
                     row += landBitmap[x, y] ? "#" : ".";
                 }
-                m_log.InfoFormat("{0}", row);
+                m_log.InfoFormat("{0}: {1}", LogHeader, row);
             }
         }
 
@@ -1711,7 +1708,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                     // AKIDO end remove lock
                 } catch (InvalidOperationException)
                 {
-                    m_log.Error("Unable to force select the parcel objects. Arr.");
+                    m_log.Error("[LAND]: Unable to force select the parcel objects. Arr.");
                 }
 
                 remote_client.SendForceClientSelectObjects(resultLocalIDs);
@@ -1783,7 +1780,6 @@ namespace OpenSim.Region.CoreModules.World.Land
 
                 try
                 {
-
                     foreach (SceneObjectGroup obj in primsOverMe)
                     {
                         if (!ownersAndCount.ContainsKey(obj.OwnerID))
@@ -1817,13 +1813,13 @@ namespace OpenSim.Region.CoreModules.World.Land
             IBuySellModule m_BuySellModule = m_scene.RequestModuleInterface<IBuySellModule>();
             if (m_BuySellModule == null)
             {
-                m_log.Error("BuySellModule not found");
+                m_log.Error("[LAND OBJECT]: BuySellModule not found");
                 return;
             }
 
             if (!m_scene.TryGetScenePresence(LandData.OwnerID, out ScenePresence sp))
             {
-                m_log.Error("New owner is not present in scene");
+                m_log.Error("[LAND OBJECT]: New owner is not present in scene");
                 return;
             }
 
@@ -1969,7 +1965,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("SetMediaUrl error: {0}", e.Message);
+                    m_log.ErrorFormat("[LAND OBJECT]: SetMediaUrl error: {0}", e.Message);
                     return;
                 }
             }
@@ -1994,7 +1990,7 @@ namespace OpenSim.Region.CoreModules.World.Land
                 }
                 catch (Exception e)
                 {
-                    m_log.ErrorFormat("SetMusicUrl error: {0}", e.Message);
+                    m_log.ErrorFormat("[LAND OBJECT]: SetMusicUrl error: {0}", e.Message);
                     return;
                 }
             }

@@ -239,7 +239,8 @@ namespace OpenSim.Framework.Monitoring
             else
                 args["Error"] = "No Region data";
 
-            args["Util Thread Count"] = OSD.FromString(String.Format("{0:0.##}", Util.GetSmartThreadPoolInfo().InUseThreads));
+            var threadPoolInfo = Util.GetThreadPoolInfo();
+            args["Util Thread Count"] = OSD.FromString(String.Format("{0:0.##}", threadPoolInfo != null ? threadPoolInfo.InUseThreads : 0));
             args["System Thread Count"] = OSD.FromString(String.Format("{0:0.##}", numberThreads));
             args["System Thread Active"] = OSD.FromString(String.Format("{0:0.##}", numberThreadsRunning));
             args["ProcMem"] = OSD.FromString(String.Format("{0:0.##}", memUsage));
