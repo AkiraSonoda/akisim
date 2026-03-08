@@ -127,6 +127,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Tools.pCampBot", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSim.Data.MySQL.MoneyData", "src\OpenSim.Data.MySQL.MoneyData\OpenSim.Data.MySQL.MoneyData.csproj", "{75A073E8-F39B-4BC7-B1EB-3B6FBB1B8C3B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opensim.Addons.os-webrtc-janus.WebRtcJanusService", "src\Opensim.Addons.os-webrtc-janus\Opensim.Addons.os-webrtc-janus.WebRtcJanusService\Opensim.Addons.os-webrtc-janus.WebRtcJanusService.csproj", "{D4A26FB8-4610-484E-BD74-9CD5DDB01ADB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opensim.Addons.os-webrtc-janus.WebRtcVoice", "src\Opensim.Addons.os-webrtc-janus\Opensim.Addons.os-webrtc-janus.WebRtcVoice\Opensim.Addons.os-webrtc-janus.WebRtcVoice.csproj", "{44C3411E-C6F4-4F84-9FD7-DC4D7C9E0E9C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opensim.Addons.os-webrtc-janus.WebRtcVoiceRegionModule", "src\Opensim.Addons.os-webrtc-janus\Opensim.Addons.os-webrtc-janus.WebRtcVoiceRegionModule\Opensim.Addons.os-webrtc-janus.WebRtcVoiceRegionModule.csproj", "{02FADB4A-80C6-4ED9-9342-7981E91F85E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opensim.Addons.os-webrtc-janus.WebRtcVoiceServiceModule", "src\Opensim.Addons.os-webrtc-janus\Opensim.Addons.os-webrtc-janus.WebRtcVoiceServiceModule\Opensim.Addons.os-webrtc-janus.WebRtcVoiceServiceModule.csproj", "{6F21FC06-D946-4D46-8A92-4096CCDAEEBD}"
+EndProject
 
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -719,6 +727,22 @@ Global
 		{75A073E8-F39B-4BC7-B1EB-3B6FBB1B8C3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75A073E8-F39B-4BC7-B1EB-3B6FBB1B8C3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75A073E8-F39B-4BC7-B1EB-3B6FBB1B8C3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4A26FB8-4610-484E-BD74-9CD5DDB01ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4A26FB8-4610-484E-BD74-9CD5DDB01ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4A26FB8-4610-484E-BD74-9CD5DDB01ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4A26FB8-4610-484E-BD74-9CD5DDB01ADB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44C3411E-C6F4-4F84-9FD7-DC4D7C9E0E9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44C3411E-C6F4-4F84-9FD7-DC4D7C9E0E9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44C3411E-C6F4-4F84-9FD7-DC4D7C9E0E9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44C3411E-C6F4-4F84-9FD7-DC4D7C9E0E9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02FADB4A-80C6-4ED9-9342-7981E91F85E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02FADB4A-80C6-4ED9-9342-7981E91F85E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02FADB4A-80C6-4ED9-9342-7981E91F85E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02FADB4A-80C6-4ED9-9342-7981E91F85E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F21FC06-D946-4D46-8A92-4096CCDAEEBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F21FC06-D946-4D46-8A92-4096CCDAEEBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F21FC06-D946-4D46-8A92-4096CCDAEEBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F21FC06-D946-4D46-8A92-4096CCDAEEBD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F5D70E5F-C93E-4E9A-8DFD-026FDD434843} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
@@ -783,5 +807,9 @@ Global
 		{10FEFB04-6BF7-48B2-A8FF-1167B7E61E7B} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
 		{CB4227D0-5E0C-49A9-8739-A2FDBC561A98} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
 		{75A073E8-F39B-4BC7-B1EB-3B6FBB1B8C3B} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
+		{D4A26FB8-4610-484E-BD74-9CD5DDB01ADB} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
+		{44C3411E-C6F4-4F84-9FD7-DC4D7C9E0E9C} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
+		{02FADB4A-80C6-4ED9-9342-7981E91F85E8} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
+		{6F21FC06-D946-4D46-8A92-4096CCDAEEBD} = {5A9A319F-737A-4D73-9E39-35D97F2418D7}
 	EndGlobalSection
 EndGlobal

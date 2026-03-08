@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="AkiSim.Nini" Version="2.0.0.1" />
     <PackageReference Include="Ionic.Zlib.Core" Version="1.0.0" />
+    <PackageReference Include="log4net" Version="3.3.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
   </ItemGroup>
@@ -57,6 +58,7 @@
     <ProjectReference Include="../OpenSim.Services.Base/OpenSim.Services.Base.csproj" />
     <ProjectReference Include="../OpenSim.Services.Connectors/OpenSim.Services.Connectors.csproj" />
     <ProjectReference Include="../OpenSim.Services.Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="../Opensim.Addons.os-webrtc-janus/Opensim.Addons.os-webrtc-janus.WebRtcVoiceRegionModule/Opensim.Addons.os-webrtc-janus.WebRtcVoiceRegionModule.csproj" /> <!-- AKIDO: WebRTC Voice Region Module -->
   </ItemGroup>
 
   <ItemGroup>

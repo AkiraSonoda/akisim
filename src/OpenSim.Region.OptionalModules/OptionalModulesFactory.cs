@@ -59,6 +59,7 @@ using OpenSim.Region.OptionalModules.World.TreePopulator;
 using OpenSim.Region.OptionalModules.World.MoneyModule;
 using OpenSim.Region.OptionalModules.ViewerSupport;
 using OpenSim.Region.OptionalModules.World.SceneCommands;
+using osWebRtcVoice; // AKIDO: WebRtcVoiceRegionModule - loaded via factory instead of Mono.Addins
 
 namespace OpenSim.Region.OptionalModules
 {
@@ -332,6 +333,19 @@ namespace OpenSim.Region.OptionalModules
             else
             {
                 if (m_log.IsDebugEnabled) m_log.Debug("GodNamesModule disabled - set Enabled = true in [GodNames] section to enable god name display functionality");
+            }
+
+            // AKIDO: WebRtcVoiceRegionModule - registered here instead of Mono.Addins [Extension] attribute
+            IConfig webRtcConfig = configSource?.Configs["Opensim.Addons.os-webrtc-janus.WebRtcVoice"];
+            if (webRtcConfig?.GetBoolean("Enabled", false) == true)
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("Loading WebRtcVoiceRegionModule for WebRTC-based voice communication");
+                yield return new WebRtcVoiceRegionModule();
+                if (m_log.IsInfoEnabled) m_log.Info("WebRtcVoiceRegionModule loaded");
+            }
+            else
+            {
+                if (m_log.IsDebugEnabled) m_log.Debug("WebRtcVoiceRegionModule disabled - set Enabled = true in [Opensim.Addons.os-webrtc-janus.WebRtcVoice] to enable WebRTC voice");
             }
 
             // Additional optional modules can be added here as needed

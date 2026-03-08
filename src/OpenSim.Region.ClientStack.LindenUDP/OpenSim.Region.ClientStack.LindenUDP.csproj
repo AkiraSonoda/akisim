@@ -31,7 +31,8 @@
     </Reference>
     <Reference Include="OpenMetaverseTypes" >
       <HintPath>../../bin/OpenMetaverseTypes.dll</HintPath>
-    </Reference>  </ItemGroup>
+    </Reference>  
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../OpenSim.Capabilities/OpenSim.Capabilities.csproj" />

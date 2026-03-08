@@ -1,0 +1,7 @@
+<Project>
+  <!-- AKIDO: runs after each project file, so Update here overrides any PackageReference Include -->
+  <ItemGroup>
+    <!-- Resolve NU1605: ThreadedClasses requires log4net >= 3.3.0, but many projects reference 3.2.0 directly -->
+    <PackageReference Update="log4net" Version="3.3.0" />
+  </ItemGroup>
+</Project>
