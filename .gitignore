@@ -137,3 +137,7 @@ build/bin/Debug/_build.dll
 .aider*
 
 bin/
+
+OpenSim/
+
+packages/
